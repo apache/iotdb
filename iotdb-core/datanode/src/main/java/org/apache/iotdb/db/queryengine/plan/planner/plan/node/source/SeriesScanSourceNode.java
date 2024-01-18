@@ -89,8 +89,6 @@ public abstract class SeriesScanSourceNode extends SeriesSourceNode {
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
-  public abstract String getSourceSymbol();
-
   public long getPushDownLimit() {
     return pushDownLimit;
   }

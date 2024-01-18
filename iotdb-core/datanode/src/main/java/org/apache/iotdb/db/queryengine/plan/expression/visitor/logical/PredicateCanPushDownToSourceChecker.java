@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.logical;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
@@ -27,34 +28,71 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
-public class PredicateCanPushDownToSourceChecker extends LogicalAndVisitor<String> {
+public class PredicateCanPushDownToSourceChecker
+    extends LogicalAndVisitor<PredicateCanPushDownToSourceChecker.Context> {
 
   @Override
-  public Boolean visitIsNullExpression(
-      IsNullExpression isNullExpression, String checkedSourceSymbol) {
+  public Boolean visitIsNullExpression(IsNullExpression isNullExpression, Context context) {
     if (!isNullExpression.isNot()) {
       // IS NULL cannot be pushed down
       return Boolean.FALSE;
     }
-    return process(isNullExpression.getExpression(), checkedSourceSymbol);
+    return process(isNullExpression.getExpression(), context);
   }
 
   @Override
-  public Boolean visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, String checkedSourceSymbol) {
+  public Boolean visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Context context) {
     PartialPath path = timeSeriesOperand.getPath();
 
-    checkArgument(path instanceof MeasurementPath);
-    // check if the predicate only contains checkedSourceSymbol
-    if (((MeasurementPath) path).isUnderAlignedEntity()) {
-      return path.getDevice().equals(checkedSourceSymbol);
+    if (context.isBuildPlanUseTemplate()) {
+      String measurement = path.getFullPath();
+      if (context.isAligned()) {
+        return ((AlignedPath) context.getCheckedSourcePath())
+            .getMeasurementList()
+            .contains(measurement);
+      } else {
+        return measurement.equals(context.getCheckedSourcePath().getMeasurement());
+      }
     } else {
-      return path.getFullPath().equals(checkedSourceSymbol);
+      checkArgument(path instanceof MeasurementPath);
+      // check if the predicate only contains checkedSourceSymbol
+      if (((MeasurementPath) path).isUnderAlignedEntity()) {
+        return context.isAligned()
+            && path.getDevice().equals(context.getCheckedSourcePath().getDevice());
+      } else {
+        return !context.isAligned()
+            && path.getFullPath().equals(context.getCheckedSourcePath().getFullPath());
+      }
     }
   }
 
   @Override
-  public Boolean visitLeafOperand(LeafOperand leafOperand, String checkedSourceSymbol) {
+  public Boolean visitLeafOperand(LeafOperand leafOperand, Context context) {
     return Boolean.TRUE;
+  }
+
+  public static class Context {
+
+    private final PartialPath checkedSourcePath;
+    private final boolean isAligned;
+    private final boolean isBuildPlanUseTemplate;
+
+    public Context(PartialPath checkedSourcePath, boolean isBuildPlanUseTemplate) {
+      this.checkedSourcePath = checkedSourcePath;
+      this.isAligned = checkedSourcePath instanceof AlignedPath;
+      this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
+    }
+
+    public PartialPath getCheckedSourcePath() {
+      return checkedSourcePath;
+    }
+
+    public boolean isBuildPlanUseTemplate() {
+      return isBuildPlanUseTemplate;
+    }
+
+    public boolean isAligned() {
+      return isAligned;
+    }
   }
 }

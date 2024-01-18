@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -269,13 +270,17 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToFilter(
-      Expression predicate, List<String> allMeasurements) {
+      Expression predicate,
+      List<String> allMeasurements,
+      boolean isBuildPlanUseTemplate,
+      TypeProvider typeProvider) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new ConvertPredicateToFilterVisitor(),
-        new ConvertPredicateToFilterVisitor.Context(allMeasurements));
+        new ConvertPredicateToFilterVisitor.Context(
+            allMeasurements, isBuildPlanUseTemplate, typeProvider));
   }
 
   /**
@@ -326,7 +331,11 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushDownToSource(
-      Expression predicate, String checkedSourceSymbol) {
-    return new PredicateCanPushDownToSourceChecker().process(predicate, checkedSourceSymbol);
+      Expression predicate, PartialPath checkedSourcePath, boolean isBuildPlanUseTemplate) {
+    return new PredicateCanPushDownToSourceChecker()
+        .process(
+            predicate,
+            new PredicateCanPushDownToSourceChecker.Context(
+                checkedSourcePath, isBuildPlanUseTemplate));
   }
 }

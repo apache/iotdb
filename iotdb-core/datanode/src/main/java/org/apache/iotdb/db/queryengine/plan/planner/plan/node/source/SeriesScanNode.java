@@ -86,11 +86,6 @@ public class SeriesScanNode extends SeriesScanSourceNode {
     this.seriesPath = seriesPath;
   }
 
-  @Override
-  public String getSourceSymbol() {
-    return seriesPath.getFullPath();
-  }
-
   public MeasurementPath getSeriesPath() {
     return seriesPath;
   }

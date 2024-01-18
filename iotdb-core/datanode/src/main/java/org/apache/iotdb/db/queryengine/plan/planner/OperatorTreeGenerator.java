@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -328,7 +329,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (pushDownPredicate != null && predicateCanPushIntoScan) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(
-              pushDownPredicate, Collections.singletonList(node.getSeriesPath().getMeasurement())));
+              pushDownPredicate,
+              Collections.singletonList(node.getSeriesPath().getMeasurement()),
+              context.getTypeProvider().getTemplatedInfo() != null,
+              context.getTypeProvider()));
     }
 
     OperatorContext operatorContext =
@@ -383,7 +387,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
     if (pushDownPredicate != null && predicateCanPushIntoScan) {
       scanOptionsBuilder.withPushDownFilter(
-          convertPredicateToFilter(pushDownPredicate, node.getAlignedPath().getMeasurementList()));
+          convertPredicateToFilter(
+              pushDownPredicate,
+              node.getAlignedPath().getMeasurementList(),
+              context.getTypeProvider().getTemplatedInfo() != null,
+              context.getTypeProvider()));
     }
 
     OperatorContext operatorContext =
@@ -447,11 +455,37 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 ProjectOperator.class.getSimpleName());
-    List<String> outputColumnNames = node.getOutputColumnNames();
+
     List<String> inputColumnNames = node.getChild().getOutputColumnNames();
+    List<String> outputColumnNames = node.getOutputColumnNames();
+    if (outputColumnNames == null) {
+      outputColumnNames = context.getTypeProvider().getTemplatedInfo().getSelectMeasurements();
+      // skip device column
+      outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+
+      List<PartialPath> inputColumnPaths = new ArrayList<>();
+      for (String inputColumnName : inputColumnNames) {
+        try {
+          inputColumnPaths.add(new PartialPath(inputColumnName));
+        } catch (IllegalPathException e) {
+          throw new IllegalArgumentException(
+              "Cannot parse column name to path: " + inputColumnName);
+        }
+      }
+      inputColumnNames =
+          inputColumnPaths.stream().map(PartialPath::getMeasurement).collect(Collectors.toList());
+    }
+
+    if (inputColumnNames.equals(outputColumnNames)) {
+      // no need to project
+      return child;
+    }
+
     List<Integer> remainingColumnIndexList = new ArrayList<>();
     for (String outputColumnName : outputColumnNames) {
-      remainingColumnIndexList.add(inputColumnNames.indexOf(outputColumnName));
+      int index = inputColumnNames.indexOf(outputColumnName);
+      checkState(index >= 0, "Cannot find column [%s] in child's output", outputColumnName);
+      remainingColumnIndexList.add(index);
     }
     return new ProjectOperator(operatorContext, child, remainingColumnIndexList);
   }
@@ -2831,12 +2865,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           .map(typeProvider::getType)
           .collect(Collectors.toList());
     } else {
-      return getInputColumnTypesUseTemplate(node, typeProvider);
+      return getInputColumnTypesUseTemplate(node);
     }
   }
 
-  private List<TSDataType> getInputColumnTypesUseTemplate(
-      PlanNode node, TypeProvider typeProvider) {
+  private List<TSDataType> getInputColumnTypesUseTemplate(PlanNode node) {
     // Only templated device + filter situation can invoke this method,
     // the children of FilterNode/TransformNode can be TimeJoinNode, ScanNode, any others?
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -2850,7 +2883,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getSchemaList()
             .forEach(c -> dataTypes.add(c.getType()));
       } else {
-        dataTypes.addAll(getInputColumnTypesUseTemplate(child, typeProvider));
+        dataTypes.addAll(getInputColumnTypesUseTemplate(child));
       }
     }
     return dataTypes;

@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -47,9 +48,11 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -73,11 +76,11 @@ public class ConvertPredicateToFilterVisitor
     Set<String> stringValues = inExpression.getValues();
     if (stringValues.size() == 1) {
       // rewrite 'value in (1)' to 'value = 1' or 'value not in 1' to 'value != 1'
-      Expression rewrittenExpression = rewriteInExpressionToEqual(inExpression);
+      Expression rewrittenExpression = rewriteInExpressionToEqual(inExpression, context);
       return process(rewrittenExpression, context);
     }
 
-    MeasurementPath path = (MeasurementPath) ((TimeSeriesOperand) operand).getPath();
+    PartialPath path = ((TimeSeriesOperand) operand).getPath();
     if (inExpression.isNotIn()) {
       return constructNotInFilter(path, stringValues, context);
     } else {
@@ -85,32 +88,31 @@ public class ConvertPredicateToFilterVisitor
     }
   }
 
-  private Expression rewriteInExpressionToEqual(InExpression inExpression) {
+  private Expression rewriteInExpressionToEqual(InExpression inExpression, Context context) {
     Set<String> stringValues = inExpression.getValues();
-    MeasurementPath path =
-        (MeasurementPath) ((TimeSeriesOperand) inExpression.getExpression()).getPath();
+    PartialPath path = ((TimeSeriesOperand) inExpression.getExpression()).getPath();
     if (inExpression.isNotIn()) {
       return new NonEqualExpression(
           inExpression.getExpression(),
-          new ConstantOperand(path.getSeriesType(), stringValues.iterator().next()));
+          new ConstantOperand(context.getType(path), stringValues.iterator().next()));
     } else {
       return new EqualToExpression(
           inExpression.getExpression(),
-          new ConstantOperand(path.getSeriesType(), stringValues.iterator().next()));
+          new ConstantOperand(context.getType(path), stringValues.iterator().next()));
     }
   }
 
   private <T extends Comparable<T>> ValueFilterOperators.ValueNotIn<T> constructNotInFilter(
-      MeasurementPath path, Set<String> stringValues, Context context) {
+      PartialPath path, Set<String> stringValues, Context context) {
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    Set<T> values = constructInSet(stringValues, path.getSeriesType());
+    Set<T> values = constructInSet(stringValues, context.getType(path));
     return ValueFilterApi.notIn(measurementIndex, values);
   }
 
   private <T extends Comparable<T>> ValueFilterOperators.ValueIn<T> constructInFilter(
-      MeasurementPath path, Set<String> stringValues, Context context) {
+      PartialPath path, Set<String> stringValues, Context context) {
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    Set<T> values = constructInSet(stringValues, path.getSeriesType());
+    Set<T> values = constructInSet(stringValues, context.getType(path));
     return ValueFilterApi.in(measurementIndex, values);
   }
 
@@ -247,9 +249,9 @@ public class ConvertPredicateToFilterVisitor
       Expression timeseriesOperand,
       Expression constantOperand,
       Context context) {
-    MeasurementPath path = (MeasurementPath) ((TimeSeriesOperand) timeseriesOperand).getPath();
+    PartialPath path = ((TimeSeriesOperand) timeseriesOperand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    T value = getValue(((ConstantOperand) constantOperand).getValueString(), path.getSeriesType());
+    T value = getValue(((ConstantOperand) constantOperand).getValueString(), context.getType(path));
 
     switch (expressionType) {
       case EQUAL_TO:
@@ -311,9 +313,9 @@ public class ConvertPredicateToFilterVisitor
       Expression maxValueConstantOperand,
       boolean isNot,
       Context context) {
-    MeasurementPath path = (MeasurementPath) ((TimeSeriesOperand) timeseriesOperand).getPath();
+    PartialPath path = ((TimeSeriesOperand) timeseriesOperand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    TSDataType dataType = path.getSeriesType();
+    TSDataType dataType = context.getType(path);
 
     T minValue = getValue(((ConstantOperand) minValueConstantOperand).getValueString(), dataType);
     T maxValue = getValue(((ConstantOperand) maxValueConstantOperand).getValueString(), dataType);
@@ -370,9 +372,18 @@ public class ConvertPredicateToFilterVisitor
   public static class Context {
 
     private final List<String> allMeasurements;
+    private final boolean isBuildPlanUseTemplate;
+    private final TypeProvider typeProvider;
+    private Map<String, IMeasurementSchema> schemaMap;
 
-    public Context(List<String> allMeasurements) {
+    public Context(
+        List<String> allMeasurements, boolean isBuildPlanUseTemplate, TypeProvider typeProvider) {
       this.allMeasurements = allMeasurements;
+      this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
+      this.typeProvider = typeProvider;
+      if (isBuildPlanUseTemplate) {
+        this.schemaMap = typeProvider.getTemplatedInfo().getSchemaMap();
+      }
     }
 
     public int getMeasurementIndex(String measurement) {
@@ -382,6 +393,14 @@ public class ConvertPredicateToFilterVisitor
             String.format("Measurement %s does not exist", measurement));
       }
       return measurementIndex;
+    }
+
+    public TSDataType getType(PartialPath path) {
+      if (isBuildPlanUseTemplate) {
+        return schemaMap.get(path.getFullPath()).getType();
+      } else {
+        return typeProvider.getType(path.getFullPath());
+      }
     }
   }
 }

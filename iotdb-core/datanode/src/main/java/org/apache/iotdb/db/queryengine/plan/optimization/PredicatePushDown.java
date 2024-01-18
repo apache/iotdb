@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -54,16 +55,16 @@ public class PredicatePushDown implements PlanOptimizer {
     if (analysis.getStatement().getType() != StatementType.QUERY) {
       return plan;
     }
-    if (analysis.isBuildPlanUseTemplate()) {
-      return plan;
-    }
     QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
     if (queryStatement.isLastQuery() || !analysis.hasValueFilter()) {
       return plan;
     }
     return plan.accept(
         new Rewriter(),
-        new RewriterContext(context.getQueryId(), queryStatement.isAlignByDevice()));
+        new RewriterContext(
+            context.getQueryId(),
+            queryStatement.isAlignByDevice(),
+            analysis.isBuildPlanUseTemplate()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -132,7 +133,7 @@ public class PredicatePushDown implements PlanOptimizer {
 
       List<Expression> cannotPushDownConjuncts = new ArrayList<>();
       extractPushDownConjunctsForEachChild(
-          conjuncts, children, pushDownConjunctsForEachChild, cannotPushDownConjuncts);
+          conjuncts, children, pushDownConjunctsForEachChild, cannotPushDownConjuncts, context);
 
       if (cannotPushDownConjuncts.size() == conjuncts.size()) {
         // all conjuncts cannot push down
@@ -175,21 +176,22 @@ public class PredicatePushDown implements PlanOptimizer {
         List<Expression> conjuncts,
         List<PlanNode> children,
         List<List<Expression>> pushDownConjunctsForEachChild,
-        List<Expression> cannotPushDownConjuncts) {
+        List<Expression> cannotPushDownConjuncts,
+        RewriterContext context) {
       // find the source symbol for each child
-      List<String> sourceSymbolForEachChild = new ArrayList<>(children.size());
+      List<PartialPath> sourcePathForEachChild = new ArrayList<>(children.size());
       for (PlanNode child : children) {
         checkArgument(
             child instanceof SeriesScanSourceNode, "Unexpected node type: " + child.getClass());
-        sourceSymbolForEachChild.add(((SeriesScanSourceNode) child).getSourceSymbol());
+        sourcePathForEachChild.add(((SeriesScanSourceNode) child).getPartitionPath());
       }
 
       // distinguish conjuncts that can push down and cannot push down
       for (Expression conjunct : conjuncts) {
         boolean canPushDown = false;
-        for (int i = 0; i < sourceSymbolForEachChild.size(); i++) {
+        for (int i = 0; i < sourcePathForEachChild.size(); i++) {
           if (PredicateUtils.predicateCanPushDownToSource(
-              conjunct, sourceSymbolForEachChild.get(i))) {
+              conjunct, sourcePathForEachChild.get(i), context.isBuildPlanUseTemplate())) {
             pushDownConjunctsForEachChild.get(i).add(conjunct);
             canPushDown = true;
             break;
@@ -255,7 +257,8 @@ public class PredicatePushDown implements PlanOptimizer {
       }
 
       Expression inheritedPredicate = context.getInheritedPredicate();
-      if (PredicateUtils.predicateCanPushDownToSource(inheritedPredicate, node.getSourceSymbol())) {
+      if (PredicateUtils.predicateCanPushDownToSource(
+          inheritedPredicate, node.getPartitionPath(), context.isBuildPlanUseTemplate())) {
         node.setPushDownPredicate(inheritedPredicate);
         context.setEnablePushDown(true);
 
@@ -269,6 +272,10 @@ public class PredicatePushDown implements PlanOptimizer {
     }
 
     private PlanNode planTransform(PlanNode resultNode, RewriterContext context) {
+      if (context.isBuildPlanUseTemplate()) {
+        return resultNode;
+      }
+
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();
       Expression[] outputExpressions = pushDownFilterNode.getOutputExpressions();
       boolean needTransform = false;
@@ -296,6 +303,10 @@ public class PredicatePushDown implements PlanOptimizer {
         return resultNode;
       }
 
+      if (context.isBuildPlanUseTemplate()) {
+        return new ProjectNode(context.genPlanNodeId(), resultNode, null);
+      }
+
       if (context.isAlignByDevice()
           || (pushDownFilterNode.getOutputColumnNames().size()
               != pushDownFilterNode.getChild().getOutputColumnNames().size())) {
@@ -310,14 +321,17 @@ public class PredicatePushDown implements PlanOptimizer {
 
     private final QueryId queryId;
     private final boolean isAlignByDevice;
+    private final boolean isBuildPlanUseTemplate;
 
     private FilterNode pushDownFilterNode;
 
     private boolean enablePushDown = false;
 
-    private RewriterContext(QueryId queryId, boolean isAlignByDevice) {
+    private RewriterContext(
+        QueryId queryId, boolean isAlignByDevice, boolean isBuildPlanUseTemplate) {
       this.queryId = queryId;
       this.isAlignByDevice = isAlignByDevice;
+      this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
     }
 
     public PlanNodeId genPlanNodeId() {
@@ -326,6 +340,10 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public boolean isAlignByDevice() {
       return isAlignByDevice;
+    }
+
+    public boolean isBuildPlanUseTemplate() {
+      return isBuildPlanUseTemplate;
     }
 
     public FilterNode getPushDownFilterNode() {

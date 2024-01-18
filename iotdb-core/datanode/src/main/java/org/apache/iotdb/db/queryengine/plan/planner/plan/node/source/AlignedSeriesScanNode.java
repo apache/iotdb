@@ -91,11 +91,6 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
     this.queryAllSensors = lastLevelUseWildcard;
   }
 
-  @Override
-  public String getSourceSymbol() {
-    return alignedPath.getDevice();
-  }
-
   public AlignedPath getAlignedPath() {
     return alignedPath;
   }

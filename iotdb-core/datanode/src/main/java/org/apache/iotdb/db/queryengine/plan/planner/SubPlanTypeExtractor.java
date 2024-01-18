@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Aggregatio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
@@ -173,6 +174,16 @@ public class SubPlanTypeExtractor {
     @Override
     public Void visitFilter(FilterNode node, Void context) {
       // if TemplateInfo is not empty, all type infos used by FilterNode have been stored in
+      // TemplateInfo
+      if (typeProvider.getTemplatedInfo() != null) {
+        return null;
+      }
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public Void visitProject(ProjectNode node, Void context) {
+      // if TemplateInfo is not empty, all type infos used by ProjectNode have been stored in
       // TemplateInfo
       if (typeProvider.getTemplatedInfo() != null) {
         return null;
