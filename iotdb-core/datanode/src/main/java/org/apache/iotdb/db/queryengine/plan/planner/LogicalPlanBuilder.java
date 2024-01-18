@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -712,7 +711,7 @@ public class LogicalPlanBuilder {
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<String> partialAggregationsNames =
-            SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
     for (String partialAggregationName : partialAggregationsNames) {
       typeProvider.setType(
