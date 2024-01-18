@@ -692,7 +692,7 @@ public class TestUtils {
       long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failure
+      // Keep retrying if there are execution failures
       await()
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(

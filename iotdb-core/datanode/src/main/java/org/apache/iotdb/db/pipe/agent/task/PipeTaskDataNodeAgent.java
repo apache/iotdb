@@ -125,7 +125,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     // Clear useless events for listening queues
     try {
       // Remove used messages
-      final Map<Integer, Long> earliestIndexMap = new HashMap<>();
+      final Map<Integer, Long> newFirstIndexMap = new HashMap<>();
 
       for (PipeMeta pipeMeta : pipeMetaListFromCoordinator) {
         Map<Integer, PipeTaskMeta> metaMap =
@@ -141,20 +141,21 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
             if (schemaMeta != null) {
               ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
               if (schemaIndex instanceof MetaProgressIndex
-                  && ((MetaProgressIndex) schemaIndex).getIndex()
-                      < earliestIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
-                earliestIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex());
+                  && ((MetaProgressIndex) schemaIndex).getIndex() + 1
+                      < newFirstIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
+                // The index itself is committed, thus can be removed
+                newFirstIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex() + 1);
               } else {
                 // Do not clear "minimumProgressIndex"s related queues to avoid clearing
                 // the queue when there are schema tasks just started and transferring
-                earliestIndexMap.put(id, 0L);
+                newFirstIndexMap.put(id, 0L);
               }
             }
           }
         }
       }
 
-      earliestIndexMap.forEach(
+      newFirstIndexMap.forEach(
           (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
 
       // Close queues of no sending pipe because there may be no pipeTasks originally for
@@ -164,7 +165,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           .forEach(
               schemaRegionId -> {
                 int id = schemaRegionId.getId();
-                if (!earliestIndexMap.containsKey(id)
+                if (!newFirstIndexMap.containsKey(id)
                     && SchemaNodeListeningQueue.getInstance(id).isLeaderReady()
                     && SchemaNodeListeningQueue.getInstance(id).isOpened()) {
                   try {

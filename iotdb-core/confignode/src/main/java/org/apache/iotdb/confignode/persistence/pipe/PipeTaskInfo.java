@@ -457,7 +457,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     pipeMetaKeeper.clear();
 
-    AtomicLong earliestIndex = new AtomicLong(Long.MAX_VALUE);
+    AtomicLong newFirstIndex = new AtomicLong(Long.MAX_VALUE);
 
     plan.getPipeMetaList()
         .forEach(
@@ -472,23 +472,17 @@ public class PipeTaskInfo implements SnapshotProcessor {
                       .get(Integer.MIN_VALUE)
                       .getProgressIndex();
               if (configIndex instanceof MetaProgressIndex
-                  && ((MetaProgressIndex) configIndex).getIndex() < earliestIndex.get()) {
-                earliestIndex.set(((MetaProgressIndex) configIndex).getIndex());
+                  && ((MetaProgressIndex) configIndex).getIndex() + 1 < newFirstIndex.get()) {
+                // The index itself is committed, thus can be removed
+                newFirstIndex.set(((MetaProgressIndex) configIndex).getIndex() + 1);
               } else {
                 // Do not clear "minimumProgressIndex"s related queues to avoid clearing
                 // the queue when there are schema tasks just started and transferring
-                earliestIndex.set(0);
+                newFirstIndex.set(0);
               }
             });
 
-    if (earliestIndex.get() == Long.MAX_VALUE) {
-      // Do not clear if there are only "minimumProgressIndex"s to avoid clearing
-      // the queue when there are config tasks that haven't been started yet
-      // Note that there's no need to clear when there are no pipeTasks on
-      // configNode because the ConfigPlanListeningQueue is closed
-      earliestIndex.set(0);
-    }
-    ConfigPlanListeningQueue.getInstance().removeBefore(earliestIndex.get());
+    ConfigPlanListeningQueue.getInstance().removeBefore(newFirstIndex.get());
 
     // No need to handle meta changes on configNodeAgent here since pipeMetas here only change on
     // follower

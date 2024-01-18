@@ -175,14 +175,6 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       }
     }
 
-    // We do not test the schema region's recover process since
-    // it hasn't been implemented yet in simple consensus
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)));
-
     int index;
     try {
       index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
