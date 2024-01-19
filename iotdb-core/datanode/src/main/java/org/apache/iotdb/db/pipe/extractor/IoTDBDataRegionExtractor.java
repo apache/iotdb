@@ -199,6 +199,9 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
         // Check whether the last node is legal.
         if (!"".equals(lastNode)) {
+          if (lastNode.startsWith("`")) {
+            lastNode = lastNode.replace("`", " ").trim().replace("  ", "");
+          }
           Double.parseDouble(lastNode);
         }
       } catch (Exception ignored) {
