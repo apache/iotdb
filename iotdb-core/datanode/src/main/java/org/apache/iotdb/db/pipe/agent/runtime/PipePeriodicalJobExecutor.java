@@ -49,7 +49,12 @@ public class PipePeriodicalJobExecutor {
           ThreadName.PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR.getName());
 
   private static final long MIN_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+      Math.max(
+          60,
+          Math.min(
+              10 * 60,
+              PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()
+                  >> 2));
   private long rounds;
   private Future<?> executorFuture;
 
