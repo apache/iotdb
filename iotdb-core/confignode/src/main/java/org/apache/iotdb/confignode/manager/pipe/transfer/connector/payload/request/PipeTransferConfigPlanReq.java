@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.BytesUtils;

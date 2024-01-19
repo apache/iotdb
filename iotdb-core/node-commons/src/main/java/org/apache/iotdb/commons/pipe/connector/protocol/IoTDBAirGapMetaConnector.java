@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.airgap;
+package org.apache.iotdb.commons.pipe.connector.protocol;
 
-public class AirGapOneByteResponse {
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-  public static final byte[] OK = new byte[] {0};
-  public static final byte[] FAIL = new byte[] {(byte) 0xFF};
+public abstract class IoTDBAirGapMetaConnector extends IoTDBAirGapCommonConnector {
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapMetaConnector can't transfer TabletInsertionEvent.");
+  }
 
-  private AirGapOneByteResponse() {
-    // Utility class
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapMetaConnector can't transfer TsFileInsertionEvent.");
   }
 }

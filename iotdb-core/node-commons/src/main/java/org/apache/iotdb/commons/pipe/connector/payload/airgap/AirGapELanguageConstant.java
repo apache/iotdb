@@ -17,19 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.request;
+package org.apache.iotdb.commons.pipe.connector.payload.airgap;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  ;
+import java.nio.charset.StandardCharsets;
 
-  private final byte version;
+public class AirGapELanguageConstant {
+  public static final byte[] E_LANGUAGE_PREFIX =
+      ("<!System=IoTDB Version=1.0 Code=UTF-8 Data=1.0!>" + "\n" + "<block:=Free>" + "\n")
+          .getBytes(StandardCharsets.UTF_8);
+  public static final byte[] E_LANGUAGE_SUFFIX =
+      ("\n" + "</block:=Free>").getBytes(StandardCharsets.UTF_8);
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
+  private AirGapELanguageConstant() {
+    // Utility class
   }
 }

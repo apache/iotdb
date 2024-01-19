@@ -17,15 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.thrift;
+package org.apache.iotdb.commons.pipe.connector.payload.airgap;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-public class IoTDBThriftReceiverAgent extends IoTDBReceiverAgent {
-  @Override
-  protected void initConstructors() {
-    RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBThriftReceiverV1::new);
-  }
-}
+public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}
