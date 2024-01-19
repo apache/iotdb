@@ -881,6 +881,7 @@ public class WALNode implements IWALNode {
       itr = null;
       filesToSearch = null;
       currentFileIndex = -1;
+      brokenFileId = -1;
       needUpdatingFilesToSearch = true;
     }
 
