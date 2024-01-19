@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
+
 public class SchemaUtils {
 
   private SchemaUtils() {}
@@ -191,17 +193,17 @@ public class SchemaUtils {
       case LAST_VALUE:
         return Collections.singletonList(SqlConstant.MAX_TIME);
       case STDDEV:
-        return Collections.singletonList(SqlConstant.STDDEV + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV));
       case STDDEV_POP:
-        return Collections.singletonList(SqlConstant.STDDEV_POP + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV_POP));
       case STDDEV_SAMP:
-        return Collections.singletonList(SqlConstant.STDDEV_SAMP + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV_SAMP));
       case VARIANCE:
-        return Collections.singletonList(SqlConstant.VARIANCE + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.VARIANCE));
       case VAR_POP:
-        return Collections.singletonList(SqlConstant.VAR_POP + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_POP));
       case VAR_SAMP:
-        return Collections.singletonList(SqlConstant.VAR_SAMP + "_partial");
+        return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
       case AVG:
         return Arrays.asList(SqlConstant.COUNT, SqlConstant.SUM);
       case TIME_DURATION:
