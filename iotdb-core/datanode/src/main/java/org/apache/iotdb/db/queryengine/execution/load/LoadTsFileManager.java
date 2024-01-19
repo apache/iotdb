@@ -90,7 +90,7 @@ public class LoadTsFileManager {
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
-            CONFIG.getLoadCleanupTaskMaxTimeInSec());
+            CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() >> 2);
   }
 
   private void cleanupTasks() {
@@ -137,7 +137,7 @@ public class LoadTsFileManager {
 
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskMaxTimeInSec() * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }
@@ -149,7 +149,7 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskMaxTimeInSec() * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }

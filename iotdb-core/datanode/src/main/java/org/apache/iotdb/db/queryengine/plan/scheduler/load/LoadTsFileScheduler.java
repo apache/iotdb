@@ -99,9 +99,11 @@ import java.util.stream.IntStream;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
@@ -252,7 +254,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
     try {
       FragInstanceDispatchResult result =
-          dispatchResultFuture.get(CONFIG.getLoadCleanupTaskMaxTimeInSec(), TimeUnit.SECONDS);
+          dispatchResultFuture.get(
+              CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(
