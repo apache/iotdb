@@ -22,6 +22,9 @@ package org.apache.iotdb.commons.pipe.datastructure;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class PipeInclusionNormalizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionNormalizer.class);
   private static final Map<String, Set<String>> SUBSTITUTION_MAP = new HashMap<>();
   private static final Set<PartialPath> LEGAL_PATHS = new HashSet<>();
 
@@ -45,21 +49,23 @@ public class PipeInclusionNormalizer {
       LEGAL_PATHS.add(new PartialPath("schema.database.alter"));
       LEGAL_PATHS.add(new PartialPath("schema.database.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.view.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.view.rename"));
-      LEGAL_PATHS.add(new PartialPath("schema.view.drop"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.delete"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.delete"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.template.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.set"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.unset"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.drop"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.activate"));
-      LEGAL_PATHS.add(new PartialPath("schema.template.deactivate"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.create"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.set"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.unset"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.alter"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.drop"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.activate"));
+      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.deactivate"));
+
+      LEGAL_PATHS.add(new PartialPath("schema.ttl"));
 
       LEGAL_PATHS.add(new PartialPath("auth.role.create"));
       LEGAL_PATHS.add(new PartialPath("auth.role.drop"));
@@ -71,36 +77,68 @@ public class PipeInclusionNormalizer {
       LEGAL_PATHS.add(new PartialPath("auth.user.drop"));
       LEGAL_PATHS.add(new PartialPath("auth.user.grant"));
       LEGAL_PATHS.add(new PartialPath("auth.user.revoke"));
-      LEGAL_PATHS.add(new PartialPath("auth.grantRoleToUser"));
-      LEGAL_PATHS.add(new PartialPath("auth.revokeRoleFromUser"));
 
-      LEGAL_PATHS.add(new PartialPath("ttl.set"));
-      LEGAL_PATHS.add(new PartialPath("ttl.unset"));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
     }
 
     SUBSTITUTION_MAP.put(
-        "all",
-        Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth", "ttl"))));
+        "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
     SUBSTITUTION_MAP.put(
         "deletion",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.template.drop",
+                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.view.drop",
+                    "schema.timeseries.template.drop",
+                    "schema.timeseries.template.deactivate",
                     "auth.role.drop",
-                    "auth.user.drop",
-                    "ttl.unset"))));
+                    "auth.user.drop"))));
     SUBSTITUTION_MAP.put(
         "schema.deletion",
         Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList("schema.database.drop", "schema.template.drop"))));
+            new HashSet<>(
+                Arrays.asList(
+                    "schema.database.drop",
+                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.view.drop",
+                    "schema.timeseries.template.drop",
+                    "schema.timeseries.template.deactivate"))));
     SUBSTITUTION_MAP.put(
         "auth.deletion",
         Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
+  }
+
+  public static boolean isEmpty(String inclusionStr, String exclusionStr) {
+    try {
+      Set<PartialPath> planTypes = new HashSet<>();
+      List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
+      List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+      inclusionPath.forEach(
+          inclusion ->
+              planTypes.addAll(
+                  LEGAL_PATHS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(inclusion))
+                      .collect(Collectors.toSet())));
+      exclusionPath.forEach(
+          exclusion ->
+              planTypes.removeAll(
+                  LEGAL_PATHS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(exclusion))
+                      .collect(Collectors.toSet())));
+
+      return planTypes.isEmpty();
+    } catch (IllegalPathException e) {
+      LOGGER.warn(
+          "Illegal path encountered when judging isEmpty() for inclusionStr {} and exclusionStr {}: ",
+          inclusionStr,
+          exclusionStr,
+          e);
+      return true;
+    }
   }
 
   public static boolean allLegal(String prefixesRawStr) {
@@ -110,12 +148,17 @@ public class PipeInclusionNormalizer {
               prefix ->
                   LEGAL_PATHS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
     } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path encountered when parsing pipe prefixStr {}: ", prefixesRawStr, e);
       return false;
     }
   }
 
   public static List<PartialPath> getPartialPaths(String prefixesRawStr)
       throws IllegalPathException {
+    if (prefixesRawStr.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     List<PartialPath> result;
     AtomicReference<IllegalPathException> exception = new AtomicReference<>();
     result =

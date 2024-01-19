@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -110,7 +110,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
         return;
       }
 
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
@@ -141,6 +141,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
+
       extractorAttributes.put("extractor.history.enable", "false");
       // start-time and end-time should not work
       extractorAttributes.put("extractor.history.start-time", "0001.01.01T00:00:00");
@@ -162,26 +165,60 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.ln",
+              "create timeseries root.db.d1.s2 with datatype=BOOLEAN,encoding=PLAIN",
+              "insert into root.db.d1(time, s1) values (2, 2)"))) {
         return;
       }
 
-      Set<String> expectedResSet = new HashSet<>();
-      expectedResSet.add("2,2.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          Collections.singleton("2,2.0,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create database root.ln0",
+              "create timeseries root.db.d1.s3 with datatype=BOOLEAN,encoding=PLAIN",
+              "insert into root.db.d1(time, s1) values (3, 3)"))) {
         return;
       }
 
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          Collections.singleton("2,2.0,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+          receiverEnv,
+          "select s1 from root.db.d1",
+          "Time,root.db.d1.s1,",
+          new HashSet<>(Arrays.asList("2,2.0,", "3,3.0,")),
+          10);
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("3,"));
     }
   }
 
@@ -571,143 +608,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualDataIT {
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
-  }
-
-  @Test
-  public void testDoubleLiving() throws Exception {
-    // Double living is two clusters with pipes connecting each other.
-    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    String senderIp = senderDataNode.getIp();
-    int senderPort = senderDataNode.getPort();
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
-
-    for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
-
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
-
-      // add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-    }
-    for (int i = 100; i < 200; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-
-    for (int i = 200; i < 300; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
-
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
-
-      // add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", senderIp);
-      connectorAttributes.put("connector.port", Integer.toString(senderPort));
-
-      TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-    }
-    for (int i = 300; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-
-    Set<String> expectedResSet = new HashSet<>();
-    for (int i = 0; i < 400; ++i) {
-      expectedResSet.add(i + ",1.0,");
-    }
-
-    TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
-
-    for (int i = 400; i < 500; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
-    for (int i = 500; i < 600; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
-
-    for (int i = 400; i < 600; ++i) {
-      expectedResSet.add(i + ",1.0,");
-    }
-    TestUtils.assertDataEventuallyOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 
   @Test

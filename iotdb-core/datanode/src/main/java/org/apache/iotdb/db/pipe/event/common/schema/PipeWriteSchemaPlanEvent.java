@@ -64,7 +64,7 @@ public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
   @Override
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer planBuffer = planNode.serializeToByteBuffer();
-    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.capacity());
+    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
     ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
@@ -73,7 +73,7 @@ public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
 
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
-    planNode = PlanNodeType.deserialize(buffer);
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
+    planNode = PlanNodeType.deserialize(buffer);
   }
 }

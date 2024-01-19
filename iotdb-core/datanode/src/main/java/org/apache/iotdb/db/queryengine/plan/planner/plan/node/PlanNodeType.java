@@ -56,7 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
@@ -429,7 +429,7 @@ public enum PlanNodeType {
       case 88:
         return LeftOuterTimeJoinNode.deserialize(buffer);
       case 89:
-        return OperateSchemaQueueReferenceNode.deserialize(buffer);
+        return OperateSchemaQueueNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

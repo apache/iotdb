@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
@@ -58,7 +59,7 @@ import java.util.stream.Collectors;
  *                                             | ----------------------> drop pipe -----------------------> |
  * </code>
  *
- * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
+ * <p>Other transitions are not allowed, will be ignored when received in the {@link PipeTaskAgent}.
  */
 public abstract class PipeTaskAgent {
 
@@ -149,7 +150,8 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
-  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator) {
+  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
+      throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
@@ -187,7 +189,8 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeRuntimeMetaChanges(
       /* @NotNull */ PipeStaticMeta pipeStaticMeta,
       /* @NotNull */ PipeRuntimeMeta runtimeMetaFromCoordinator,
-      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent) {
+      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent)
+      throws IllegalPathException {
     // 1. Handle region group leader changed first
     final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
         runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap();
@@ -398,12 +401,12 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Manage by Pipe Name //////////////////////////
 
   /**
-   * Create a new pipe. If the pipe already exists, do nothing and return false. Otherwise, create
-   * the pipe and return true.
+   * Create a new pipe. If the pipe already exists, do nothing and return {@code false}. Otherwise,
+   * create the pipe and return {@code true}.
    *
-   * @param pipeMetaFromCoordinator pipe meta from coordinator
-   * @return true if the pipe is created successfully and should be started, false if the pipe
-   *     already exists or is created but should not be started
+   * @param pipeMetaFromCoordinator {@link PipeMeta} from coordinator
+   * @return {@code true} if the pipe is created successfully and should be started, {@code false}
+   *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
   private boolean createPipe(PipeMeta pipeMetaFromCoordinator) {
@@ -815,7 +818,8 @@ public abstract class PipeTaskAgent {
   ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   protected abstract void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      throws IllegalPathException;
 
   private void dropPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper

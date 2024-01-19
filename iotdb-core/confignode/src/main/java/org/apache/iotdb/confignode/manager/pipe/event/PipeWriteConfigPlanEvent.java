@@ -63,7 +63,7 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
   @Override
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer planBuffer = physicalPlan.serializeToByteBuffer();
-    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.capacity());
+    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
@@ -72,7 +72,7 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
 
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) throws IOException {
-    physicalPlan = ConfigPhysicalPlan.Factory.create(buffer);
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
+    physicalPlan = ConfigPhysicalPlan.Factory.create(buffer);
   }
 }

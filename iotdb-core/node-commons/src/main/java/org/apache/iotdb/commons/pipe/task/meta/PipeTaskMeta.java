@@ -67,7 +67,7 @@ public class PipeTaskMeta {
 
   public ProgressIndex updateProgressIndex(ProgressIndex updateIndex) {
     return progressIndex.updateAndGet(
-        index -> index.updateToMinimumIsAfterProgressIndex(updateIndex));
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
   }
 
   public int getLeaderNodeId() {

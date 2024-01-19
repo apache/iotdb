@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -52,7 +52,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeNullValueIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
 
   // Test dimensions:
   // 1. is or not aligned

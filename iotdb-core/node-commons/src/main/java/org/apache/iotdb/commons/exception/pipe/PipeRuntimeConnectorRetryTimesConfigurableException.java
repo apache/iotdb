@@ -17,15 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.exception;
+package org.apache.iotdb.commons.exception.pipe;
 
-public class PipeTemporaryException extends PipeException {
+public class PipeRuntimeConnectorRetryTimesConfigurableException
+    extends PipeRuntimeConnectorCriticalException {
 
-  public PipeTemporaryException(String message) {
+  private final int retryTimes;
+
+  public PipeRuntimeConnectorRetryTimesConfigurableException(String message, int retryTimes) {
     super(message);
+    this.retryTimes = retryTimes;
   }
 
-  public PipeTemporaryException(String message, Throwable cause) {
-    super(message, cause);
+  public int getRetryTimes() {
+    return retryTimes;
   }
 }

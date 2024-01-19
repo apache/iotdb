@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftA
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -53,7 +52,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       throws IOException {
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
-    events = batchBuilder.deepcopyEvents();
+    events = batchBuilder.deepCopyEvents();
     req = batchBuilder.toTPipeTransferReq();
 
     this.connector = connector;
@@ -71,15 +70,19 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       return;
     }
 
-    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    try {
+      connector
+          .getExceptionHandler()
+          .handleExceptionStatusWithLaterRetry(
+              response.getStatus(), response.getStatus().getMessage(), events.toString());
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
-    } else {
-      onError(new PipeException(response.getStatus().getMessage()));
+    } catch (Exception e) {
+      onError(e);
     }
   }
 

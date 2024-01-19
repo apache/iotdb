@@ -56,7 +56,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   }
 
   /**
-   * AuthorPlan Constructor.
+   * {@link AuthorPlan} Constructor.
    *
    * @param authorType author type
    * @param userName user name

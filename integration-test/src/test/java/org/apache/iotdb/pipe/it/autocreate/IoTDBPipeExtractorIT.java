@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
   @Test
   public void testExtractorValidParameter() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -710,6 +710,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualDataIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
+      extractorAttributes.put("source.inclusion", "data");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       extractorAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
 

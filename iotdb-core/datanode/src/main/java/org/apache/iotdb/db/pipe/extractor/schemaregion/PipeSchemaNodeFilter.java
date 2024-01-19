@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,30 +35,36 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
  * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
  * collect.
  */
-class PipeSchemaNodeFilter {
+public class PipeSchemaNodeFilter {
 
   private static final Map<PartialPath, List<PlanNodeType>> NODE_MAP = new HashMap<>();
 
   static {
     try {
       NODE_MAP.put(
-          new PartialPath("schema.view.create"),
+          new PartialPath("schema.timeseries.view.create"),
           Collections.singletonList(PlanNodeType.CREATE_LOGICAL_VIEW));
       NODE_MAP.put(
-          new PartialPath("schema.view.rename"),
+          new PartialPath("schema.timeseries.view.alter"),
           Collections.singletonList(PlanNodeType.ALTER_LOGICAL_VIEW));
       NODE_MAP.put(
-          new PartialPath("schema.view.drop"),
+          new PartialPath("schema.timeseries.view.drop"),
           Collections.singletonList(PlanNodeType.DELETE_LOGICAL_VIEW));
 
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.create"),
+          new PartialPath("schema.timeseries.ordinary.create"),
           Collections.unmodifiableList(
               Arrays.asList(
                   PlanNodeType.CREATE_TIME_SERIES,
@@ -66,21 +73,21 @@ class PipeSchemaNodeFilter {
                   PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
                   PlanNodeType.INTERNAL_CREATE_TIMESERIES)));
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.alter"),
+          new PartialPath("schema.timeseries.ordinary.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
       NODE_MAP.put(
-          new PartialPath("schema.timeseries.delete"),
+          new PartialPath("schema.timeseries.ordinary.delete"),
           Collections.singletonList(PlanNodeType.DELETE_TIMESERIES));
 
       NODE_MAP.put(
-          new PartialPath("schema.template.activate"),
+          new PartialPath("schema.timeseries.template.activate"),
           Collections.unmodifiableList(
               Arrays.asList(
                   PlanNodeType.ACTIVATE_TEMPLATE,
                   PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
                   PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE)));
       NODE_MAP.put(
-          new PartialPath("schema.template.deactivate"),
+          new PartialPath("schema.timeseries.template.deactivate"),
           Collections.singletonList(PlanNodeType.DEACTIVATE_TEMPLATE_NODE));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
@@ -98,8 +105,17 @@ class PipeSchemaNodeFilter {
     }
   }
 
-  static Set<PlanNodeType> getPipeListenSet(String inclusionStr, String exclusionStr)
+  public static Set<PlanNodeType> getPipeListenSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
+    String inclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+    String exclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+
     Set<PlanNodeType> planTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
     List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);

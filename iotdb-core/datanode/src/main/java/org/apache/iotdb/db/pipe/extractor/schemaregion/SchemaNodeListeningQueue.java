@@ -70,8 +70,9 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
         default:
           event = new PipeWriteSchemaPlanEvent(node, false);
       }
-      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
-      super.listenToElement(event);
+      if (super.tryListenToElement(event)) {
+        event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      }
     }
   }
 
@@ -108,7 +109,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   public boolean createSnapshot(File snapshotDir) {
     try {
-      return super.serializeToFile(new File(snapshotDir + SNAPSHOT_FILE_NAME));
+      return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
       LOGGER.warn("Take snapshot error: {}", e.getMessage());
       return false;
@@ -117,7 +118,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   public void loadSnapshot(File snapshotDir) {
     try {
-      super.deserializeFromFile(new File(snapshotDir + SNAPSHOT_FILE_NAME));
+      super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot {}", e.getMessage());
     }

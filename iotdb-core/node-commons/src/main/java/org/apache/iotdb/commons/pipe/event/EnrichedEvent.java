@@ -32,8 +32,9 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * {@link EnrichedEvent} is an event that can be enriched with additional runtime information. The
- * additional information mainly includes the reference count of the event.
+ * {@link EnrichedEvent} is an {@link Event} that can be enriched with additional runtime
+ * information. The additional information mainly includes the {@link EnrichedEvent#referenceCount}
+ * of the {@link Event}.
  */
 public abstract class EnrichedEvent implements Event {
 
@@ -71,11 +72,13 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * increase the reference count of this event. when the reference count is positive, the data in
-   * the resource of this event should be safe to use.
+   * Increase the {@link EnrichedEvent#referenceCount} of this event. When the {@link
+   * EnrichedEvent#referenceCount} is positive, the data in the resource of this {@link
+   * EnrichedEvent} should be safe to use.
    *
    * @param holderMessage the message of the invoker
-   * @return true if the reference count is increased successfully, false if the event is not
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
+   *     {@code false} if the {@link EnrichedEvent} is not
    */
   public boolean increaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
@@ -89,21 +92,25 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Increase the reference count of the resource of this event.
+   * Increase the {@link EnrichedEvent#referenceCount} of the resource of this {@link
+   * EnrichedEvent}.
    *
    * @param holderMessage the message of the invoker
-   * @return true if the reference count is increased successfully, false if the event is not
-   *     controlled by the invoker, which means the data stored in the event is not safe to use
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
+   *     {@code false} if the {@link EnrichedEvent} is not controlled by the invoker, which means
+   *     the data stored in the event is not safe to use
    */
   public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
 
   /**
-   * Decrease the reference count of this event by 1. If the reference count is decreased to 0, the
-   * event can be recycled and the data stored in the event is not safe to use, the processing
-   * progress of the event should be reported to the pipe task meta.
+   * Decrease the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent} by 1. If the
+   * {@link EnrichedEvent#referenceCount} is decreased to 0, the {@link EnrichedEvent} can be
+   * recycled and the data stored in the {@link EnrichedEvent} is not safe to use, the processing
+   * {@link ProgressIndex} of the event should be reported to the {@link PipeTaskMeta}.
    *
    * @param holderMessage the message of the invoker
-   * @return true if the reference count is decreased successfully, false otherwise
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully, v
+   *     otherwise
    */
   public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
@@ -124,11 +131,13 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Decrease the reference count of this event to 0, to release the event directly. The event can
-   * be recycled and the data stored in the event is not safe to use.
+   * Decrease the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent} to 0, to
+   * release the {@link EnrichedEvent} directly. The {@link EnrichedEvent} can be recycled and the
+   * data stored in the {@link EnrichedEvent} may not be safe to use.
    *
    * @param holderMessage the message of the invoker
-   * @return true if the reference count is decreased successfully, false otherwise
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
+   *     {@code true} otherwise
    */
   public boolean clearReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
@@ -142,11 +151,13 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
-   * can be recycled and the data stored in the event is not safe to use.
+   * Decrease the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent}. If the {@link
+   * EnrichedEvent#referenceCount} is decreased to 0, the {@link EnrichedEvent} can be recycled and
+   * the data stored in the {@link EnrichedEvent} may not be safe to use.
    *
    * @param holderMessage the message of the invoker
-   * @return true if the reference count is decreased successfully, false otherwise
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
+   *     {@code true} otherwise
    */
   public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
 
@@ -165,9 +176,9 @@ public abstract class EnrichedEvent implements Event {
   public abstract ProgressIndex getProgressIndex();
 
   /**
-   * Get the reference count of this event.
+   * Get the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent}.
    *
-   * @return the reference count
+   * @return the {@link EnrichedEvent#referenceCount}
    */
   public int getReferenceCount() {
     return referenceCount.get();
@@ -178,9 +189,9 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Get the pattern of this event.
+   * Get the {@link EnrichedEvent#pattern} of this {@link EnrichedEvent}.
    *
-   * @return the pattern
+   * @return the {@link EnrichedEvent#pattern}
    */
   public final String getPattern() {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
@@ -195,8 +206,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
-   * data-region-level.
+   * If pipe's {@link EnrichedEvent#pattern} is database-level, then no need to parse {@link
+   * EnrichedEvent} by {@link EnrichedEvent#pattern} cause pipes are data-region-level.
    */
   public void skipParsingPattern() {
     isPatternParsed = true;
@@ -223,7 +234,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
-  /** Whether the event need to be committed in order. */
+  /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
   }

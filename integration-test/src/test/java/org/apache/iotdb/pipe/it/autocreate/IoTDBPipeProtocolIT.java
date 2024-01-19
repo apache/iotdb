@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -46,7 +46,7 @@ import java.util.Map;
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
   @Override
   @Before
@@ -55,7 +55,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
       MultiEnvFactory.createEnv(2);
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }
@@ -407,7 +407,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualDataIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
 
-      System.out.println(status.getMessage());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());

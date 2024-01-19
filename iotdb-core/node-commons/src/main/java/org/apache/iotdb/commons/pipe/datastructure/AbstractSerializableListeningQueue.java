@@ -33,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
@@ -40,7 +41,7 @@ import java.util.function.Supplier;
  * {@link AbstractSerializableListeningQueue} is the encapsulation of the {@link
  * ConcurrentIterableLinkedQueue} to enable flushing all the element to disk and reading from it. To
  * implement this, each element much be configured with its own ser/de method. Besides, this class
- * also provides a means of opening and closing the queue, and a queue will stay empty when closed.
+ * also provides a means of opening and closing the queue, and a queue will stay empty while closed.
  */
 public abstract class AbstractSerializableListeningQueue<E> implements Closeable {
 
@@ -65,10 +66,12 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void listenToElement(E element) {
-    if (!isSealed.get()) {
-      queue.add(element);
+  public boolean tryListenToElement(E element) {
+    if (isSealed.get()) {
+      return false;
     }
+    queue.add(element);
+    return true;
   }
 
   public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long index) {
@@ -89,12 +92,13 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          "Failed to serialize to file, because file [{}] is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+      ReadWriteIOUtils.write(isSealed.get(), fileOutputStream);
       ReadWriteIOUtils.write(currentType.getType(), fileOutputStream);
       return serializerMap
           .get(currentType)
@@ -107,13 +111,14 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot, snapshot file [{}] is not exist.",
+          "Failed to deserialize from file, file [{}] does not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
 
     queue.clear();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
+      isSealed.set(ReadWriteIOUtils.readBool(inputStream));
       final LinkedQueueSerializerType type =
           LinkedQueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
       if (serializerMap.containsKey(type)) {
@@ -122,7 +127,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .get()
             .loadQueueFromFile(inputStream, queue, this::deserializeFromByteBuffer);
       } else {
-        throw new UnsupportedOperationException("Unknown listening queue type: " + type.getType());
+        throw new UnsupportedOperationException("Unknown serializer type: " + type.getType());
       }
     }
   }
@@ -148,6 +153,21 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   @Override
   public synchronized void close() throws IOException {
     isSealed.set(true);
+    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
+      while (true) {
+        E element = itr.next(0);
+        if (Objects.isNull(element)) {
+          break;
+        }
+        releaseResource(element);
+      }
+    }
     queue.clear();
+  }
+
+  protected abstract void releaseResource(E element);
+
+  public boolean isOpened() {
+    return !isSealed.get();
   }
 }

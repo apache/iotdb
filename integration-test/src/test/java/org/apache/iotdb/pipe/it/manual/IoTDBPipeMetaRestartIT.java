@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.metadata;
+package org.apache.iotdb.pipe.it.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -33,16 +33,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBMetaConditionIT extends AbstractPipeDualMetaIT {
+public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
   @Test
-  public void testDoubleLiving() throws Exception {
+  public void testAutoRestartSchemaTask() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -54,12 +53,14 @@ public class IoTDBMetaConditionIT extends AbstractPipeDualMetaIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "schema");
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
       extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
       TSStatus status =
           client.createPipe(
@@ -73,19 +74,71 @@ public class IoTDBMetaConditionIT extends AbstractPipeDualMetaIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
+    int successCount = 0;
+    for (int i = 0; i < 10; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv,
+          String.format(
+              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
+              i))) {
+        ++successCount;
+      }
+    }
+
+    // We do not test the schema region's recover process since
+    // it hasn't been implemented yet in simple consensus
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton(String.format("%d,", successCount)));
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return;
+    }
+
+    for (int i = 10; i < 20; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv,
+          String.format(
+              "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
+              i))) {
+        ++successCount;
+      }
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton(String.format("%d,", successCount)));
+  }
+
+  @Test
+  public void testAutoRestartConfigTask() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "schema");
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
       extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", senderEnv.getDataNodeWrapper(0).getIp());
-      connectorAttributes.put(
-          "connector.port", Integer.toString(senderEnv.getDataNodeWrapper(0).getPort()));
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
       TSStatus status =
           client.createPipe(
@@ -99,33 +152,33 @@ public class IoTDBMetaConditionIT extends AbstractPipeDualMetaIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        senderEnv,
-        "create timeseries root.ln.wf01.wt01.status0 with datatype=BOOLEAN,encoding=PLAIN")) {
+    int successCount = 0;
+    for (int i = 0; i < 10; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("create database root.ln%s", i))) {
+        ++successCount;
+      }
+    }
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Exception e) {
+      e.printStackTrace();
       return;
     }
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        receiverEnv,
-        "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN")) {
-      return;
+    for (int i = 10; i < 20; ++i) {
+      if (TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, String.format("create database root.ln%s", i))) {
+        ++successCount;
+      }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        senderEnv,
-        "show timeseries",
-        "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
-        new HashSet<>(
-            Arrays.asList(
-                "root.ln.wf01.wt01.status0,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
-    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "show timeseries",
-        "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
-        new HashSet<>(
-            Arrays.asList(
-                "root.ln.wf01.wt01.status0,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,",
-                "root.ln.wf01.wt01.status1,null,root.ln,BOOLEAN,PLAIN,LZ4,null,null,null,null,BASE,")));
+        "count databases",
+        "count,",
+        Collections.singleton(String.format("%d,", successCount)));
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -26,7 +26,7 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 
-abstract class AbstractPipeDualDataIT {
+abstract class AbstractPipeDualAutoIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
@@ -43,17 +43,17 @@ abstract class AbstractPipeDualDataIT {
 
       senderEnv.initClusterEnvironment();
       receiverEnv.initClusterEnvironment();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }
 
   @After
-  public void tearDown() {
+  public final void tearDown() {
     try {
       senderEnv.cleanClusterEnvironment();
       receiverEnv.cleanClusterEnvironment();
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }

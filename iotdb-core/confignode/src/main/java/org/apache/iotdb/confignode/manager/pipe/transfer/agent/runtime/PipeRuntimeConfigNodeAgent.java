@@ -41,7 +41,8 @@ public class PipeRuntimeConfigNodeAgent implements IService {
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
-    PipeConfigNodeAgentLauncher.launchPipeTaskAgent();
+    // PipeTasks will not be started here and will be started by "HandleLeaderChange"
+    // procedure when the consensus layer notify leader ready
     // TODO: clean sender (connector) hardlink snapshot dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
     isShutdown.set(false);
@@ -77,8 +78,7 @@ public class PipeRuntimeConfigNodeAgent implements IService {
 
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
 
-    // Quick stop all pipes locally if critical exception occurs,
-    // no need to wait for the next heartbeat cycle.
+    // Stop all pipes locally if critical exception occurs
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
     }

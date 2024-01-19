@@ -61,8 +61,8 @@ public class PipeMetaDeSerTest {
 
     HybridProgressIndex hybridProgressIndex =
         new HybridProgressIndex(new SimpleProgressIndex(1, 2));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
 
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
@@ -87,7 +87,7 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta.setShouldBeRunning(false);
     pipeRuntimeMeta.setExceptionsClearTime(123456789L);
     pipeRuntimeMeta
-        .getDataNodeId2PipeRuntimeExceptionMap()
+        .getNodeId2PipeRuntimeExceptionMap()
         .put(123, new PipeRuntimeCriticalException("test"));
 
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
@@ -98,10 +98,10 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta.setShouldBeRunning(true);
     pipeRuntimeMeta.setExceptionsClearTime(0);
     pipeRuntimeMeta
-        .getDataNodeId2PipeRuntimeExceptionMap()
+        .getNodeId2PipeRuntimeExceptionMap()
         .put(123, new PipeRuntimeCriticalException("test123"));
     pipeRuntimeMeta
-        .getDataNodeId2PipeRuntimeExceptionMap()
+        .getNodeId2PipeRuntimeExceptionMap()
         .put(345, new PipeRuntimeCriticalException("test345"));
     pipeRuntimeMeta
         .getConsensusGroupId2TaskMetaMap()

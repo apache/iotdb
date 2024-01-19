@@ -71,7 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;

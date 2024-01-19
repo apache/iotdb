@@ -17,42 +17,55 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeEnrichedPlan extends ConfigPhysicalPlan {
+/**
+ * This plan is the transmitted version of {@link UnsetSchemaTemplatePlan} to carry adequate message
+ * to the receiver. Note that this plan will not be executed by the consensus layer directly.
+ */
+public class PipeUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
+  private String name;
+  private String path;
 
-  private ConfigPhysicalPlan innerPlan;
-
-  public PipeEnrichedPlan() {
-    super(ConfigPhysicalPlanType.PipeEnriched);
+  public PipeUnsetSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.PipeUnsetTemplate);
   }
 
-  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan) {
-    super(ConfigPhysicalPlanType.PipeEnriched);
-    this.innerPlan = innerPlan;
+  public PipeUnsetSchemaTemplatePlan(String name, String path) {
+    super(ConfigPhysicalPlanType.PipeUnsetTemplate);
+    this.name = name;
+    this.path = path;
   }
 
-  public ConfigPhysicalPlan getInnerPlan() {
-    return innerPlan;
+  public String getName() {
+    return name;
+  }
+
+  public String getPath() {
+    return path;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.write(innerPlan.serializeToByteBuffer().array());
+    ReadWriteIOUtils.write(name, stream);
+    ReadWriteIOUtils.write(path, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    innerPlan = ConfigPhysicalPlan.Factory.create(buffer);
+    this.name = ReadWriteIOUtils.readString(buffer);
+    this.path = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -63,17 +76,12 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeEnrichedPlan that = (PipeEnrichedPlan) obj;
-    return innerPlan.equals(that.innerPlan);
+    PipeUnsetSchemaTemplatePlan that = (PipeUnsetSchemaTemplatePlan) obj;
+    return name.equals(that.name) && path.equals(that.path);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(innerPlan);
-  }
-
-  @Override
-  public String toString() {
-    return "PipeEnrichedPlan{" + "innerPlan='" + innerPlan + "'}";
+    return Objects.hash(name, path);
   }
 }

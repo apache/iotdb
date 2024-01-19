@@ -165,6 +165,10 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     return binaryBuffers.isEmpty() && insertNodeBuffers.isEmpty() && tabletBuffers.isEmpty();
   }
 
+  public List<Event> deepCopyEvents() {
+    return new ArrayList<>(events);
+  }
+
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
       throws IOException, WALPipeException {
     final ByteBuffer buffer;

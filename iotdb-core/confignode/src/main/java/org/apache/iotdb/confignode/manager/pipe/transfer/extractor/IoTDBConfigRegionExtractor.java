@@ -27,16 +27,8 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 
 public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
   private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
@@ -45,14 +37,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes =
-        PipeConfigPlanFilter.getPipeListenSet(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE),
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+    listenTypes = PipeConfigPlanFilter.getPipeListenSet(parameters);
   }
 
   @Override

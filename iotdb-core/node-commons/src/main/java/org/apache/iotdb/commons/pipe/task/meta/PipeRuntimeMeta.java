@@ -89,7 +89,7 @@ public class PipeRuntimeMeta {
    * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
    * pipes sharing the same connector, and will stop the pipe likewise.
    */
-  private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap =
+  private final Map<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
@@ -112,8 +112,8 @@ public class PipeRuntimeMeta {
     return consensusGroupId2TaskMetaMap;
   }
 
-  public Map<Integer, PipeRuntimeException> getDataNodeId2PipeRuntimeExceptionMap() {
-    return dataNodeId2PipeRuntimeExceptionMap;
+  public Map<Integer, PipeRuntimeException> getNodeId2PipeRuntimeExceptionMap() {
+    return nodeId2PipeRuntimeExceptionMap;
   }
 
   public long getExceptionsClearTime() {
@@ -157,7 +157,7 @@ public class PipeRuntimeMeta {
 
     // Avoid concurrent modification
     final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMapView =
-        new HashMap<>(dataNodeId2PipeRuntimeExceptionMap);
+        new HashMap<>(nodeId2PipeRuntimeExceptionMap);
     ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMapView.size(), outputStream);
     for (Map.Entry<Integer, PipeRuntimeException> entry :
         dataNodeId2PipeRuntimeExceptionMapView.entrySet()) {
@@ -214,7 +214,7 @@ public class PipeRuntimeMeta {
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
+      pipeRuntimeMeta.nodeId2PipeRuntimeExceptionMap.put(
           ReadWriteIOUtils.readInt(inputStream),
           PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, inputStream));
     }
@@ -270,7 +270,7 @@ public class PipeRuntimeMeta {
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
+      pipeRuntimeMeta.nodeId2PipeRuntimeExceptionMap.put(
           ReadWriteIOUtils.readInt(byteBuffer),
           PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
     }
@@ -292,7 +292,7 @@ public class PipeRuntimeMeta {
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
-        && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
+        && nodeId2PipeRuntimeExceptionMap.equals(that.nodeId2PipeRuntimeExceptionMap)
         && exceptionsClearTime.get() == that.exceptionsClearTime.get()
         && shouldBeRunning.get() == that.shouldBeRunning.get();
   }
@@ -302,7 +302,7 @@ public class PipeRuntimeMeta {
     return Objects.hash(
         status.get(),
         consensusGroupId2TaskMetaMap,
-        dataNodeId2PipeRuntimeExceptionMap,
+        nodeId2PipeRuntimeExceptionMap,
         exceptionsClearTime.get(),
         shouldBeRunning.get());
   }
@@ -314,8 +314,8 @@ public class PipeRuntimeMeta {
         + status.get()
         + ", consensusGroupId2TaskMetaMap="
         + consensusGroupId2TaskMetaMap
-        + ", dataNodeId2PipeRuntimeExceptionMap="
-        + dataNodeId2PipeRuntimeExceptionMap
+        + ", nodeId2PipeRuntimeExceptionMap="
+        + nodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()
         + ", shouldBeRunning="

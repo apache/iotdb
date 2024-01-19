@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -70,7 +71,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
 
-  /** Variables for ConfigNode Simple Consensus. */
+  /** Variables for {@link ConfigNode} Simple Consensus. */
   private LogWriter simpleLogWriter;
 
   private File simpleLogFile;
@@ -110,7 +111,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
@@ -124,7 +125,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       writeLogForSimpleConsensus(plan);
     }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan);
+      ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan, false);
     }
     return result;
   }
@@ -174,7 +175,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return read(plan);
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
     try {
@@ -220,6 +221,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
       // Remove Metric after leader change
       configManager.removeMetrics();
+
+      // Deactivate config pipe plan queue
+      ConfigPlanListeningQueue.getInstance().deactivate();
     }
   }
 
@@ -241,6 +245,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
+    // Activate config pipe plan queue
+    ConfigPlanListeningQueue.getInstance().activate();
+
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
     // make notifyLeaderChanged not blocked by it
@@ -257,7 +264,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             configManager
                 .getPipeManager()
                 .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChanged());
+                .onConfigRegionGroupLeaderChangedIfReady());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.
@@ -353,7 +360,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           // read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
-            executor.executeNonQueryPlan(nextPlan);
+            TSStatus status = executor.executeNonQueryPlan(nextPlan);
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              // Recover the linked queue.
+              // Note that the "nextPlan"s may contain create and drop pipe operations
+              // and will affect whether the queue listen to the plans.
+              ConfigPlanListeningQueue.getInstance().tryListenToPlan(nextPlan, false);
+            }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }

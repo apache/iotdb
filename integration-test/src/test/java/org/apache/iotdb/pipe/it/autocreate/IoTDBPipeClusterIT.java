@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.data;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -60,7 +60,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
+public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
   @Override
   @Before
@@ -88,7 +88,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualDataIT {
 
       senderEnv.initClusterEnvironment(3, 3, 180);
       receiverEnv.initClusterEnvironment(3, 3, 180);
-    } catch (Exception | Error e) {
+    } catch (Throwable e) {
       Assume.assumeNoException(e);
     }
   }

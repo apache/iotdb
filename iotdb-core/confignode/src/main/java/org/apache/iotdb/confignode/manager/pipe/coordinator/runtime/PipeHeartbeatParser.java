@@ -241,7 +241,7 @@ public class PipeHeartbeatParser {
                           runtimeMeta -> {
                             // Record the connector exception for each pipe affected
                             Map<Integer, PipeRuntimeException> exceptionMap =
-                                runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                                runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
                             if (!exceptionMap.containsKey(dataNodeId)
                                 || exceptionMap.get(dataNodeId).getTimeStamp()
                                     < exception.getTimeStamp()) {

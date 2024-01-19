@@ -23,20 +23,28 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
  * {@link PipeDataRegionFilter} is to tell the insertion and deletion for {@link PipeTask} on {@link
  * DataRegion} to collect.
  */
-class PipeDataRegionFilter {
+public class PipeDataRegionFilter {
 
   private static final Set<PartialPath> TYPE_SET = new HashSet<>();
 
@@ -49,8 +57,17 @@ class PipeDataRegionFilter {
     }
   }
 
-  static Pair<Boolean, Boolean> getDataRegionListenPair(String inclusionStr, String exclusionStr)
+  public static Pair<Boolean, Boolean> getDataRegionListenPair(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
+    String inclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+    String exclusionStr =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+
     Set<String> listenTypes = new HashSet<>();
     List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
     List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);

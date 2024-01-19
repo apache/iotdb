@@ -50,7 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -137,7 +137,7 @@ public class ClusterSchemaManager {
   // ======================================================
 
   /** Set Database */
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
     TSStatus result;
     if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
       IllegalPathException illegalPathException =
@@ -162,7 +162,12 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
-      result = getConsensusManager().write(databaseSchemaPlan);
+      result =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(databaseSchemaPlan)
+                      : databaseSchemaPlan);
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
@@ -196,7 +201,7 @@ public class ClusterSchemaManager {
   }
 
   /** Alter Database */
-  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
     TSStatus result;
     TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
@@ -239,7 +244,12 @@ public class ClusterSchemaManager {
 
     // Alter DatabaseSchema
     try {
-      result = getConsensusManager().write(databaseSchemaPlan);
+      result =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(databaseSchemaPlan)
+                      : databaseSchemaPlan);
       PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
           MetricService.getInstance(),
           databaseSchemaPlan.getSchema().getName(),
@@ -396,10 +406,10 @@ public class ClusterSchemaManager {
    * Update TTL for the specific StorageGroup or all databases in a path
    *
    * @param setTTLPlan setTTLPlan
-   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path
-   *     doesn't exist
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if successfully update the TTL, {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if the path doesn't exist
    */
-  public TSStatus setTTL(SetTTLPlan setTTLPlan) {
+  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
 
     Map<String, TDatabaseSchema> storageSchemaMap =
         clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
@@ -443,7 +453,8 @@ public class ClusterSchemaManager {
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     try {
-      return getConsensusManager().write(setTTLPlan);
+      return getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -794,6 +805,11 @@ public class ClusterSchemaManager {
     return resp;
   }
 
+  /** Get template by id. Only leader uses this interface. */
+  public Template getTemplate(int id) throws MetadataException {
+    return clusterSchemaInfo.getTemplate(id);
+  }
+
   /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName, PathPatternTree scope) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan =
@@ -995,7 +1011,8 @@ public class ClusterSchemaManager {
     }
   }
 
-  public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
+  public synchronized TSStatus extendSchemaTemplate(
+      TemplateExtendInfo templateExtendInfo, boolean isGeneratedByPipe) {
     if (templateExtendInfo.getEncodings() != null) {
       for (int i = 0; i < templateExtendInfo.getDataTypes().size(); i++) {
         try {
@@ -1034,7 +1051,12 @@ public class ClusterSchemaManager {
         new ExtendSchemaTemplatePlan(templateExtendInfo);
     TSStatus status;
     try {
-      status = getConsensusManager().write(extendSchemaTemplatePlan);
+      status =
+          getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(extendSchemaTemplatePlan)
+                      : extendSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

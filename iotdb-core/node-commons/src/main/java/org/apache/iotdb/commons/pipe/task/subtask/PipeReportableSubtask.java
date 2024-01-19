@@ -17,35 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import java.util.Objects;
 
-public abstract class PipeDataNodeSubtask extends PipeSubtask {
+public abstract class PipeReportableSubtask extends PipeSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReportableSubtask.class);
 
-  protected PipeDataNodeSubtask(String taskID, long creationTime) {
+  protected PipeReportableSubtask(String taskID, long creationTime) {
     super(taskID, creationTime);
   }
 
   @Override
-  public synchronized void onFailure(@NotNull Throwable throwable) {
+  public synchronized void onFailure(Throwable throwable) {
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.");
       releaseLastEvent(false);
       return;
     }
+
+    int maxRetryTimes =
+        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
+            : MAX_RETRY_TIMES;
 
     if (retryCount.get() == 0) {
       LOGGER.warn(
@@ -53,18 +56,18 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
           taskID,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
-          MAX_RETRY_TIMES,
+          maxRetryTimes,
           throwable);
     }
 
-    if (retryCount.get() < MAX_RETRY_TIMES) {
+    if (retryCount.get() < maxRetryTimes) {
       retryCount.incrementAndGet();
       LOGGER.warn(
           "Retry executing subtask {}({}), retry count [{}/{}]",
           taskID,
           this.getClass().getSimpleName(),
           retryCount.get(),
-          MAX_RETRY_TIMES);
+          maxRetryTimes);
       try {
         Thread.sleep(1000L * retryCount.get());
       } catch (InterruptedException e) {
@@ -77,24 +80,24 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
 
       submitSelf();
     } else {
-      final String errorMessage =
+      String errorMessage =
           String.format(
               "Failed to execute subtask %s(%s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s, root cause: %s",
-              taskID,
-              this.getClass().getSimpleName(),
-              retryCount.get(),
-              throwable.getMessage(),
-              ErrorHandlingUtils.getRootCause(throwable).getMessage());
+                  + "retry count exceeds the max retry times %d, last exception: %s",
+              taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
+      String rootCause = getRootCause(throwable);
+      if (Objects.nonNull(rootCause)) {
+        errorMessage += String.format(", root cause: %s", rootCause);
+      }
+
       LOGGER.warn(errorMessage, throwable);
 
       if (lastEvent instanceof EnrichedEvent) {
-        PipeAgent.runtime()
-            .report(
-                ((EnrichedEvent) lastEvent),
-                throwable instanceof PipeRuntimeException
-                    ? (PipeRuntimeException) throwable
-                    : new PipeRuntimeCriticalException(errorMessage));
+        report(
+            ((EnrichedEvent) lastEvent),
+            throwable instanceof PipeRuntimeException
+                ? (PipeRuntimeException) throwable
+                : new PipeRuntimeCriticalException(errorMessage));
         LOGGER.warn(
             "The last event is an instance of EnrichedEvent, so the exception is reported. "
                 + "Stopping current pipe task {}({}) locally... "
@@ -122,4 +125,8 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
       // is dropped or the process is running normally.
     }
   }
+
+  protected abstract String getRootCause(Throwable throwable);
+
+  protected abstract void report(EnrichedEvent event, PipeRuntimeException exception);
 }

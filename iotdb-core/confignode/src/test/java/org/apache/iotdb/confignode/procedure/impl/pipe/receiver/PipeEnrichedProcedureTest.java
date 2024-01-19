@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.receiver;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOperand;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -32,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -54,6 +58,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -287,6 +292,38 @@ public class PipeEnrichedProcedureTest {
 
       DropTriggerProcedure p2 =
           (DropTriggerProcedure) ProcedureFactory.getInstance().create(buffer);
+      assertEquals(p1, p2);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void authOperationTest() throws AuthException {
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    AuthOperationProcedure p1 =
+        new AuthOperationProcedure(
+            new AuthorPlan(
+                ConfigPhysicalPlanType.DropRole,
+                "",
+                "test",
+                "",
+                "",
+                Collections.emptySet(),
+                false,
+                Collections.emptyList()),
+            Collections.emptyList(),
+            true);
+
+    try {
+      p1.serialize(outputStream);
+      ByteBuffer buffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+      AuthOperationProcedure p2 =
+          (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
       assertEquals(p1, p2);
     } catch (Exception e) {
       fail();

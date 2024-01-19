@@ -21,8 +21,10 @@ package org.apache.iotdb.db.consensus.statemachine.schemaregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -56,6 +58,19 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    if (schemaRegion.getSchemaRegionId().equals(groupId)
+        && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
+      SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId()).deactivate();
+    }
+  }
+
+  @Override
+  public void notifyLeaderReady() {
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId()).activate();
   }
 
   @Override

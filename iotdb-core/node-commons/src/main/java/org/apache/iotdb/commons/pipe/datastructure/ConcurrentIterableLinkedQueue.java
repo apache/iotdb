@@ -182,7 +182,7 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
-  public void setFirstIndex(int firstIndex) {
+  public void setFirstIndex(long firstIndex) {
     lock.writeLock().lock();
     try {
       this.firstIndex = firstIndex;
@@ -190,7 +190,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         tailIndex = firstIndex;
       }
     } finally {
-      lock.readLock().unlock();
+      lock.writeLock().unlock();
     }
   }
 
@@ -260,7 +260,11 @@ public class ConcurrentIterableLinkedQueue<E> {
       lock.writeLock().lock();
       try {
         while (!hasNext()) {
-          if (isClosed || !hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
+          if (isClosed) {
+            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            return null;
+          }
+          if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
             return null;
           }
         }

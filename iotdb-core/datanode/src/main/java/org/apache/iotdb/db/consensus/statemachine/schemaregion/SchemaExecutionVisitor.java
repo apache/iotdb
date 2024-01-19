@@ -51,7 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueReferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -75,7 +75,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Schema write PlanNode visitor */
+/** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
@@ -537,15 +537,17 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitOperateSchemaQueueReferenceNode(
-      OperateSchemaQueueReferenceNode node, ISchemaRegion schemaRegion) {
-    SchemaNodeListeningQueue queue =
-        SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId());
+  public TSStatus visitOperateSchemaQueueNode(
+      OperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
+    int id = schemaRegion.getSchemaRegionId().getId();
+    SchemaNodeListeningQueue queue = SchemaNodeListeningQueue.getInstance(id);
     try {
       if (node.isOpen()) {
-        queue.increaseReferenceCount();
+        logger.info("Opened pipe listening queue on schema region {}", id);
+        queue.open();
       } else {
-        queue.decreaseReferenceCount();
+        logger.info("Closed pipe listening queue on schema region {}", id);
+        queue.close();
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {

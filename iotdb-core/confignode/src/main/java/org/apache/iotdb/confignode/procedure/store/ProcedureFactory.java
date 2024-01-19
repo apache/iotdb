@@ -159,7 +159,7 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DropPipePluginProcedure();
         break;
       case AUTH_OPERATE_PROCEDURE:
-        procedure = new AuthOperationProcedure();
+        procedure = new AuthOperationProcedure(false);
         break;
       case PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE:
         procedure = new DeleteDatabaseProcedure(true);
@@ -187,6 +187,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE:
         procedure = new DropTriggerProcedure(true);
+        break;
+      case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
+        procedure = new AuthOperationProcedure(true);
         break;
       default:
         LOGGER.error("Unknown Procedure type: {}", typeCode);

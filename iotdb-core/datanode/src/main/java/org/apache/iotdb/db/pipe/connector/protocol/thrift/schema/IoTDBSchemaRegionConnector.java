@@ -96,13 +96,12 @@ public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
           e);
     }
     final TSStatus status = resp.getStatus();
-    // TODO: judge return code
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",
-              pipeWriteSchemaPlanEvent, status));
-    }
+    exceptionHandler.handleExceptionStatus(
+        status,
+        String.format(
+            "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",
+            pipeWriteSchemaPlanEvent, status),
+        pipeWriteSchemaPlanEvent.getPlanNode().toString());
   }
 
   private void doTransfer(PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
@@ -138,7 +137,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer file %s, because %s.", snapshot, e.getMessage()),
+                  "Network error when transfer snapshot %s, because %s.", snapshot, e.getMessage()),
               e);
         }
 
@@ -150,15 +149,15 @@ public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
             == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
+          LOGGER.info("Redirect snapshot file position to {}.", position);
           continue;
         }
 
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(
-              String.format(
-                  "Transfer file %s error, result status %s.", snapshot, resp.getStatus()));
-        }
+        exceptionHandler.handleExceptionStatus(
+            resp.getStatus(),
+            String.format(
+                "Transfer snapshot %s error, result status %s.", snapshot, resp.getStatus()),
+            snapshot.toString());
       }
     }
 
@@ -178,11 +177,10 @@ public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
           e);
     }
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format("Seal file %s error, result status %s.", snapshot, resp.getStatus()));
-    } else {
-      LOGGER.info("Successfully transferred file {}.", snapshot);
-    }
+    exceptionHandler.handleExceptionStatus(
+        resp.getStatus(),
+        String.format("Seal file %s error, result status %s.", snapshot, resp.getStatus()),
+        snapshot.toString());
+    LOGGER.info("Successfully transferred file {}.", snapshot);
   }
 }

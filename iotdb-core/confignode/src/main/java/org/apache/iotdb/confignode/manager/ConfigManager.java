@@ -230,6 +230,7 @@ public class ConfigManager implements IManager {
   /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
+  /** Manage load balancing. */
   private final LoadManager loadManager;
 
   /** Manage procedure. */
@@ -315,6 +316,7 @@ public class ConfigManager implements IManager {
 
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
+    pipeManager.getPipeRuntimeCoordinator().onConfigRegionGroupLeaderChangedIfReady();
   }
 
   public void close() throws IOException {
@@ -507,7 +509,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan);
+      return clusterSchemaManager.setTTL(setTTLPlan, false);
     } else {
       return status;
     }
@@ -574,7 +576,7 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
@@ -584,7 +586,7 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
@@ -1002,6 +1004,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public PermissionManager getPermissionManager() {
+    return permissionManager;
+  }
+
+  @Override
   public LoadManager getLoadManager() {
     return loadManager;
   }
@@ -1020,7 +1027,7 @@ public class ConfigManager implements IManager {
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan);
+      return permissionManager.operatePermission(authorPlan, false);
     } else {
       return status;
     }
@@ -1719,7 +1726,7 @@ public class ConfigManager implements IManager {
           TemplateAlterOperationUtil.parseOperationType(buffer);
       if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
         return clusterSchemaManager.extendSchemaTemplate(
-            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     } else {

@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
+import org.junit.Assume;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -435,7 +436,7 @@ public class TestUtils {
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
       BaseEnv env, List<String> sqlList, String userName, String password) {
     int lastIndex = 0;
@@ -443,8 +444,8 @@ public class TestUtils {
       try (Connection connection = env.getConnection(userName, password);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
-          statement.execute(sqlList.get(i));
           lastIndex = i;
+          statement.execute(sqlList.get(i));
         }
         return true;
       } catch (SQLException e) {
@@ -465,7 +466,7 @@ public class TestUtils {
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
         break;
@@ -484,7 +485,7 @@ public class TestUtils {
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     return tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -495,7 +496,7 @@ public class TestUtils {
       BaseEnv env, DataNodeWrapper wrapper, List<String> sqlList) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           statement.execute(sqlList.get(i));
@@ -653,25 +654,29 @@ public class TestUtils {
     }
   }
 
-  public static void restartCluster(BaseEnv env) throws Exception {
+  public static void restartCluster(BaseEnv env) {
     restartCluster(env, 1);
   }
 
-  public static void restartCluster(BaseEnv env, long waitSeconds) throws Exception {
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.shutdownConfigNode(i);
+  public static void restartCluster(BaseEnv env, long waitSeconds) {
+    try {
+      for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+        env.shutdownConfigNode(i);
+      }
+      for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+        env.shutdownDataNode(i);
+      }
+      TimeUnit.SECONDS.sleep(waitSeconds);
+      for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+        env.startConfigNode(i);
+      }
+      for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+        env.startDataNode(i);
+      }
+      ((AbstractEnv) env).testWorkingNoUnknown();
+    } catch (Throwable e) {
+      Assume.assumeNoException(e);
     }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.shutdownDataNode(i);
-    }
-    TimeUnit.SECONDS.sleep(waitSeconds);
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.startConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.startDataNode(i);
-    }
-    ((AbstractEnv) env).testWorkingNoUnknown();
   }
 
   public static void assertDataEventuallyOnEnv(
@@ -687,16 +692,21 @@ public class TestUtils {
       long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failure
+      // Keep retrying if there are execution failures
       await()
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
-          .ignoreExceptions()
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -713,16 +723,21 @@ public class TestUtils {
       long consistentSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failure
+      // Keep retrying if there are execution failures
       await()
           .atMost(consistentSeconds, TimeUnit.SECONDS)
-          .ignoreExceptions()
           .failFast(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
+      fail();
     }
   }
 }

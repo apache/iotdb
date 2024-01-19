@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -46,35 +47,45 @@ import java.util.List;
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
   private static final String SNAPSHOT_PREFIX = ".snapshot";
-  private int referenceCount = 0;
 
   private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
+
+  private volatile boolean leaderReady = false;
 
   protected AbstractPipeListeningQueue() {
     super(LinkedQueueSerializerType.PLAIN);
   }
 
-  public synchronized void increaseReferenceCount() {
-    referenceCount++;
-    if (referenceCount == 1) {
-      open();
-    }
+  /////////////////////////////// Leader ready ///////////////////////////////
+
+  /**
+   * Get leader ready state, DO NOT use consensus layer's leader ready flag because SimpleConsensus'
+   * ready flag is always {@code true}. Note that this flag has nothing to do with listening and a
+   * {@link PipeTask} starts only iff the current node is a leader and ready.
+   *
+   * @return {@code true} iff the current node is a leader and ready
+   */
+  public boolean isLeaderReady() {
+    return leaderReady;
   }
 
-  public synchronized void decreaseReferenceCount() throws IOException {
-    referenceCount--;
-    if (referenceCount == 0) {
-      close();
-    }
+  // The linked list starts serving only after leader gets ready
+  public void activate() {
+    leaderReady = true;
   }
 
-  /////////////////////////////// Snapshot Getter ///////////////////////////////
+  public void deactivate() {
+    leaderReady = false;
+  }
+
+  /////////////////////////////// Snapshot Cache ///////////////////////////////
 
   // This method is thread-unsafe but snapshot must not be parallel with other
   // snapshots or write-plan.
   public void listenToSnapshots(List<PipeSnapshotEvent> events) {
     if (!isSealed.get()) {
+      clearSnapshots();
       snapshotCache.setLeft(queue.getTailIndex());
       snapshotCache.setRight(events);
     }
@@ -83,10 +94,19 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
     if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
-      snapshotCache.setLeft(Long.MIN_VALUE);
-      snapshotCache.setRight(new ArrayList<>());
+      clearSnapshots();
     }
     return snapshotCache;
+  }
+
+  private void clearSnapshots() {
+    snapshotCache.setLeft(Long.MIN_VALUE);
+    snapshotCache
+        .getRight()
+        .forEach(
+            event ->
+                event.decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false));
+    snapshotCache.setRight(new ArrayList<>());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
@@ -105,7 +125,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
       ReadWriteIOUtils.write(snapshotCache.getRight().size(), fileOutputStream);
       for (PipeSnapshotEvent event : snapshotCache.getRight()) {
         ByteBuffer planBuffer = serializeToByteBuffer(event);
-        ReadWriteIOUtils.write(planBuffer.capacity(), fileOutputStream);
         ReadWriteIOUtils.write(planBuffer, fileOutputStream);
       }
     }
@@ -135,7 +154,9 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
           }
           ByteBuffer buffer = ByteBuffer.allocate(capacity);
           channel.read(buffer);
-          snapshotCache.getRight().add((PipeSnapshotEvent) deserializeFromByteBuffer(buffer));
+          PipeSnapshotEvent event = (PipeSnapshotEvent) deserializeFromByteBuffer(buffer);
+          event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
+          snapshotCache.getRight().add(event);
         }
       }
     }
@@ -146,8 +167,15 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public synchronized void close() throws IOException {
+    clearSnapshots();
     super.close();
-    snapshotCache.setLeft(Long.MIN_VALUE);
-    snapshotCache.setRight(new ArrayList<>());
+  }
+
+  @Override
+  protected void releaseResource(Event event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false);
+    }
   }
 }

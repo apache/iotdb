@@ -204,6 +204,7 @@ public enum ConfigPhysicalPlanType {
 
   /** Pipe PayLoad. */
   PipeEnriched((short) 1700),
+  PipeUnsetTemplate((short) 1701),
   ;
 
   private final short planType;

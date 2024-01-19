@@ -224,7 +224,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// For Commit Ordering ///////////////////////////////
 
-  /** HeartbeatEvents do not need to be committed in order. */
+  /** {@link PipeHeartbeatEvent}s do not need to be committed in order. */
   @Override
   public boolean needToCommit() {
     return false;
