@@ -105,7 +105,7 @@ echo data_dir_param: %data_dir_param%
 set "command=show version"
 
 call :collect_info
-echo "Program execution completed, directory name is %COLLECTION_DIR%"
+echo Program execution completed, directory name is %COLLECTION_DIR%
 pause
 exit /b
 
