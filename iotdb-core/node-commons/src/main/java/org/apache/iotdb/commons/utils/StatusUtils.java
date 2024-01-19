@@ -20,11 +20,15 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class StatusUtils {
   private StatusUtils() {}
@@ -33,6 +37,18 @@ public class StatusUtils {
   public static final TSStatus INTERNAL_ERROR = getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
   public static final TSStatus EXECUTE_STATEMENT_ERROR =
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+
+  private static final Set<Integer> NEED_RETRY = new HashSet<>();
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+
+  static {
+    NEED_RETRY.add(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.TIMESERIES_IN_BLACK_LIST.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
+  }
 
   /**
    * @param statusMap index -> status
@@ -170,5 +186,30 @@ public class StatusUtils {
         break;
     }
     return status;
+  }
+
+  public static boolean needRetry(TSStatus status) {
+    // always retry while node is in not running case
+    if (!COMMON_CONFIG.isRunning()) {
+      return true;
+    } else if (status == null) {
+      return false;
+    }
+    int code = status.getCode();
+    if (code == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (TSStatus subStatus : status.subStatus) {
+        if (subStatus == null
+            || (subStatus.getCode() != OK.code && !NEED_RETRY.contains(subStatus.getCode()))) {
+          return false;
+        }
+      }
+      return true;
+    } else {
+      return NEED_RETRY.contains(code);
+    }
+  }
+
+  public static boolean needRetry(int statusCode) {
+    return NEED_RETRY.contains(statusCode);
   }
 }
