@@ -88,7 +88,9 @@ public class LoadTsFileManager {
   private void registerCleanupTaskExecutor() {
     PipeAgent.runtime()
         .registerPeriodicalJob(
-            "LoadTsFileManager#cleanupTasks", this::cleanupTasks, CONFIG.getLoadTaskMaxTimeInSec());
+            "LoadTsFileManager#cleanupTasks",
+            this::cleanupTasks,
+            CONFIG.getLoadCleanupTaskMaxTimeInSec());
   }
 
   private void cleanupTasks() {
@@ -135,7 +137,7 @@ public class LoadTsFileManager {
 
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadTaskMaxTimeInSec() * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskMaxTimeInSec() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }
@@ -147,7 +149,7 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadTaskMaxTimeInSec() * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskMaxTimeInSec() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }

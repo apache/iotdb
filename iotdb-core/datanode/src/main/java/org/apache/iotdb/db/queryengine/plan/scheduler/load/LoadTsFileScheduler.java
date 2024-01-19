@@ -252,7 +252,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
     try {
       FragInstanceDispatchResult result =
-          dispatchResultFuture.get(CONFIG.getLoadTaskMaxTimeInSec(), TimeUnit.SECONDS);
+          dispatchResultFuture.get(CONFIG.getLoadCleanupTaskMaxTimeInSec(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(

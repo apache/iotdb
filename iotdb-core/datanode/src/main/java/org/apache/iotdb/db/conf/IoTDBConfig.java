@@ -1098,7 +1098,7 @@ public class IoTDBConfig {
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
-  private long loadTaskMaxTimeInSec = 1800L; // 30 min
+  private long loadCleanupTaskMaxTimeInSec = 1800L; // 30 min
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3765,12 +3765,12 @@ public class IoTDBConfig {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
   }
 
-  public long getLoadTaskMaxTimeInSec() {
-    return loadTaskMaxTimeInSec;
+  public long getLoadCleanupTaskMaxTimeInSec() {
+    return loadCleanupTaskMaxTimeInSec;
   }
 
-  public void setLoadTaskMaxTimeInSec(long loadTaskMaxTimeInSec) {
-    this.loadTaskMaxTimeInSec = loadTaskMaxTimeInSec;
+  public void setLoadCleanupTaskMaxTimeInSec(long loadCleanupTaskMaxTimeInSec) {
+    this.loadCleanupTaskMaxTimeInSec = loadCleanupTaskMaxTimeInSec;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
