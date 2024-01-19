@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - "rel/*"
+      - "pbtree_page_concurrency"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -17,6 +18,7 @@ on:
     branches:
       - master
       - "rel/*"
+      - "pbtree_page_concurrency"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
