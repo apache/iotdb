@@ -1094,10 +1094,11 @@ public class IoTDBConfig {
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
 
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
-      0; // 0 means that the decision will be adaptive based on the number of sequences
+      0L; // 0 means that the decision will be adaptive based on the number of sequences
 
-  private long loadMemoryAllocateRetryIntervalMs = 1000;
+  private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
+  private long loadTaskMaxTimeInSec = 1800L; // 30 min
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3762,6 +3763,14 @@ public class IoTDBConfig {
 
   public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
+  }
+
+  public long getLoadTaskMaxTimeInSec() {
+    return loadTaskMaxTimeInSec;
+  }
+
+  public void setLoadTaskMaxTimeInSec(long loadTaskMaxTimeInSec) {
+    this.loadTaskMaxTimeInSec = loadTaskMaxTimeInSec;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
