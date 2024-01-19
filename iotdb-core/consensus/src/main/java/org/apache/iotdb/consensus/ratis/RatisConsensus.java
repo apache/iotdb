@@ -426,11 +426,11 @@ class RatisConsensus implements IConsensus {
   public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
     RaftGroup group = buildRaftGroup(groupId, peers);
-    RaftGroup clientGroup =
-        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
-    try (RatisClient client = getRaftClient(clientGroup)) {
+    try {
       RaftClientReply reply =
-          client.getRaftClient().getGroupManagementApi(myself.getId()).add(group, true);
+          server.groupManagement(
+              GroupManagementRequest.newAdd(
+                  localFakeId, myself.getId(), localFakeCallId.incrementAndGet(), group, true));
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
