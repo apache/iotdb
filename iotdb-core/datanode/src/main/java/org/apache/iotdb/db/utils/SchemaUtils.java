@@ -138,6 +138,7 @@ public class SchemaUtils {
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
+        return null;
       default:
         return TSDataType.TEXT;
     }
