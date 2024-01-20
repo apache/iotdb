@@ -27,8 +27,15 @@ public class ConfigNodeClientManager {
     // Empty constructor
   }
 
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    ConfigNodeClientManagerHolder.INSTANCE =
+        new IClientManager.Factory<ConfigRegionId, ConfigNodeClient>()
+            .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  }
+
   private static final class ConfigNodeClientManagerHolder {
-    private static final IClientManager<ConfigRegionId, ConfigNodeClient> INSTANCE =
+    private static IClientManager<ConfigRegionId, ConfigNodeClient> INSTANCE =
         new IClientManager.Factory<ConfigRegionId, ConfigNodeClient>()
             .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   }

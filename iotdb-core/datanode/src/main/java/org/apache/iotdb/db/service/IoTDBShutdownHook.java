@@ -125,6 +125,11 @@ public class IoTDBShutdownHook extends Thread {
       isReportSuccess =
           client.reportDataNodeShutdown(DataNode.generateDataNodeLocation()).getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+
+      // Actually stop all services started by the DataNode.
+      // If we don't call this, services like the RestService are not stopped and I can't re-start
+      // it.
+      DataNode.getInstance().stop();
     } catch (ClientManagerException e) {
       logger.error("Failed to borrow ConfigNodeClient", e);
     } catch (TException e) {

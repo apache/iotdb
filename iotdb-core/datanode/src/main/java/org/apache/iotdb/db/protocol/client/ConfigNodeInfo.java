@@ -66,6 +66,10 @@ public class ConfigNodeInfo {
                 + File.separator
                 + PROPERTIES_FILE_NAME);
   }
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo();
+  }
 
   /** Update ConfigNodeList both in memory and system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
@@ -157,7 +161,7 @@ public class ConfigNodeInfo {
   }
 
   private static class ConfigNodeInfoHolder {
-    private static final ConfigNodeInfo INSTANCE = new ConfigNodeInfo();
+    private static ConfigNodeInfo INSTANCE = new ConfigNodeInfo();
 
     private ConfigNodeInfoHolder() {
       // Empty constructor

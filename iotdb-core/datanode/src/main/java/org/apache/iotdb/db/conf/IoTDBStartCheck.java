@@ -112,9 +112,14 @@ public class IoTDBStartCheck {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    IoTDBConfigCheckHolder.INSTANCE = new IoTDBStartCheck();
+  }
+
   private static class IoTDBConfigCheckHolder {
 
-    private static final IoTDBStartCheck INSTANCE = new IoTDBStartCheck();
+    private static IoTDBStartCheck INSTANCE = new IoTDBStartCheck();
   }
 
   private String getVal(String paramName) {

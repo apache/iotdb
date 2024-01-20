@@ -113,7 +113,7 @@ public abstract class ThriftService implements IService {
       initTProcessor();
       if (!setSyncedImpl && !setAsyncedImpl) {
         throw new StartupException(
-            getID().getName(), "At least one service implementataion should be set.");
+            getID().getName(), "At least one service implementation should be set.");
       }
       initThriftServiceThread();
       thriftServiceThread.setThreadStopLatch(stopLatch);
