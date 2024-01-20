@@ -226,7 +226,7 @@ public class BOSHashTest {
             int block_size,
             int remaining,
             int[] min_delta) {
-        int[] ts_block_delta = new int[block_size-1];
+        int[] ts_block_delta = new int[remaining-1];
 
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
