@@ -630,6 +630,8 @@ public class WALNode implements IWALNode {
     private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
     private ListIterator<IndexedConsensusRequest> itr = null;
+    /** last broken wal file's version id */
+    private long brokenFileId = -1;
 
     public PlanNodeIterator(long startIndex) {
       this.nextSearchIndex = startIndex;
@@ -644,9 +646,12 @@ public class WALNode implements IWALNode {
       // clear outdated iterator
       insertNodes.clear();
       itr = null;
+      if (filesToSearch == null || currentFileIndex >= filesToSearch.length - 1) {
+        needUpdatingFilesToSearch = true;
+      }
 
       // update files to search
-      if (needUpdatingFilesToSearch || filesToSearch == null) {
+      if (needUpdatingFilesToSearch) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
           logger.debug(
@@ -706,6 +711,7 @@ public class WALNode implements IWALNode {
         reset();
         return hasNext();
       } catch (Exception e) {
+        brokenFileId = WALFileUtils.parseVersionId(filesToSearch[currentFileIndex].getName());
         logger.error(
             "Fail to read wal from wal file {}, skip this file.",
             filesToSearch[currentFileIndex],
@@ -769,6 +775,7 @@ public class WALNode implements IWALNode {
             reset();
             return hasNext();
           } catch (Exception e) {
+            brokenFileId = WALFileUtils.parseVersionId(filesToSearch[fileIndex].getName());
             logger.error(
                 "Fail to read wal from wal file {}, skip this file.", filesToSearch[fileIndex], e);
           }
@@ -874,6 +881,7 @@ public class WALNode implements IWALNode {
       itr = null;
       filesToSearch = null;
       currentFileIndex = -1;
+      brokenFileId = -1;
       needUpdatingFilesToSearch = true;
     }
 
@@ -887,6 +895,11 @@ public class WALNode implements IWALNode {
       // searchIndex is larger than target searchIndex
       if (fileIndex == -1) {
         fileIndex = 0;
+      }
+      // skip broken files
+      while (fileIndex < filesToSearch.length - 1
+          && WALFileUtils.parseVersionId(filesToSearch[fileIndex].getName()) <= brokenFileId) {
+        fileIndex++;
       }
       if (filesToSearch != null
           && (fileIndex >= 0 && fileIndex < filesToSearch.length - 1)) { // possible to find next
