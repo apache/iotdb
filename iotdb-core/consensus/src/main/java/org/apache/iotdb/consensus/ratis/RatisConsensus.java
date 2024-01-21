@@ -796,7 +796,6 @@ class RatisConsensus implements IConsensus {
           new GenericKeyedObjectPool<>(
               new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
               new ClientPoolProperty.Builder<RatisClient>()
-                  .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());

@@ -57,8 +57,6 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -84,8 +82,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -109,8 +105,6 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -136,8 +130,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -165,8 +157,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -192,8 +182,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -217,8 +205,6 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
               new ClientPoolProperty.Builder<SyncDataNodeMPPDataExchangeServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -244,8 +230,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -273,7 +257,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
-                  .setCoreClientNumForEachNode(conf.getPipeAsyncConnectorCoreClientNumber())
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
                   .build()
                   .getConfig());
