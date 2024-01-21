@@ -56,9 +56,7 @@ public class ClientPoolFactory {
                       .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                       .build()),
-              new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>()
-                  .build()
-                  .getConfig());
+              new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>().build().getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
@@ -81,9 +79,7 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
-              new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
-                  .build()
-                  .getConfig());
+              new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>().build().getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
@@ -156,9 +152,7 @@ public class ClientPoolFactory {
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
-              new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
-                  .build()
-                  .getConfig());
+              new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>().build().getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;

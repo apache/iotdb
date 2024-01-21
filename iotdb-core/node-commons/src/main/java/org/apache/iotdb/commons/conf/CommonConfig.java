@@ -107,6 +107,7 @@ public class CommonConfig {
 
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
+
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
