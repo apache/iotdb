@@ -60,7 +60,7 @@ public class ClientPoolProperty<V> {
     /**
      * the duration to sleep between runs of the idle object evictor thread. When non-positive, no
      * idle object evictor thread will be run, which means clients that are idle for more than
-     * {@code maxIdleTimeForClient} will never be cleaned up.
+     * {@code minIdleTimeForClient} will never be cleaned up.
      */
     private long timeBetweenEvictionRuns = DefaultProperty.TIME_BETWEEN_EVICTION_RUNS_MS;
 
