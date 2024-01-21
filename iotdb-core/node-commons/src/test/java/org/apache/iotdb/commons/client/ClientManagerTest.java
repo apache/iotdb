@@ -96,7 +96,7 @@ public class ClientManagerTest {
   public void allTest() throws Exception {
     normalSyncTest();
     normalAsyncTest();
-    maxIdleTest();
+    evictionTest();
     maxTotalTest();
     maxWaitClientTimeoutTest();
     invalidSyncClientReturnTest();
@@ -190,10 +190,12 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
   }
 
-  public void maxIdleTest() throws Exception {
-    int maxIdleClientForEachNode = 1;
+  public void evictionTest() throws Exception {
+    int maxClientForEachNode = 2;
+    long minIdleDuration = TimeUnit.SECONDS.toMillis(10);
+    long evictionRunsDuration = TimeUnit.SECONDS.toMillis(5);
 
-    // init syncClientManager and set maxIdleClientForEachNode to 1
+    // init syncClientManager and set minIdleDuation and evictionRunsDuration
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
         (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
             new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -207,7 +209,9 @@ public class ClientManagerTest {
                             new SyncDataNodeInternalServiceClient.Factory(
                                 manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setCoreClientNumForEachNode(maxIdleClientForEachNode)
+                                .setMaxClientNumForEachNode(maxClientForEachNode)
+                                .setMinIdleTimeForClient(minIdleDuration)
+                                .setTimeBetweenEvictionRuns(evictionRunsDuration)
                                 .build()
                                 .getConfig());
                       }
@@ -236,17 +240,28 @@ public class ClientManagerTest {
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
-    // return another sync client, clientManager should destroy this client
+    // return another sync client
     syncClient2.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
-    Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
-    Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
+    Assert.assertEquals(2, syncClusterManager.getPool().getNumIdle(endPoint));
 
-    // close syncClientManager, syncClientManager should destroy all client
-    syncClusterManager.close();
+    // wait 5 seconds
+    Thread.sleep(TimeUnit.SECONDS.toMillis(5));
+    // since the two clients are only idle for 5s, which doesn't exceed `minIdleDuration`, they
+    // should not be destroyed.
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(2, syncClusterManager.getPool().getNumIdle(endPoint));
+    Assert.assertTrue(syncClient1.getInputProtocol().getTransport().isOpen());
+    Assert.assertTrue(syncClient2.getInputProtocol().getTransport().isOpen());
+
+    // wait another 10 seconds for client to be evicted
+    Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+    // since the two clients are idle for more than 10s, which exceeds `minIdleDuration`, they
+    // should be destroyed.
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
+    Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
   public void maxTotalTest() throws Exception {
