@@ -59,8 +59,8 @@ public class ClientPoolProperty<V> {
 
     /**
      * the duration to sleep between runs of the idle object evictor thread. When non-positive, no
-     * idle object evictor thread will be run, which means clients that are idle for more than {@code
-     * maxIdleTimeForClient} will never be cleaned up.
+     * idle object evictor thread will be run, which means clients that are idle for more than
+     * {@code maxIdleTimeForClient} will never be cleaned up.
      */
     private long timeBetweenEvictionRuns = DefaultProperty.TIME_BETWEEN_EVICTION_RUNS_MS;
 
@@ -103,7 +103,7 @@ public class ClientPoolProperty<V> {
 
     public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
     public static final long MIN_IDLE_TIME_FOR_CLIENT_MS = TimeUnit.MINUTES.toMillis(1);
-    public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.SECONDS.toMillis(30);
+    public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.MINUTES.toMillis(1);
     public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 300;
   }
 }
