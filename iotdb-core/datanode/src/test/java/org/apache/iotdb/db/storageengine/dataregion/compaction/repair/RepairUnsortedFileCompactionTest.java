@@ -593,6 +593,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
+    tempDir.toFile().deleteOnExit();
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
@@ -642,6 +643,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
+    tempDir.toFile().deleteOnExit();
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
@@ -703,6 +705,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
+    tempDir.toFile().deleteOnExit();
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
 
@@ -765,6 +768,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     long currentTime = System.currentTimeMillis();
     Path tempDir = Files.createTempDirectory("");
+    tempDir.toFile().deleteOnExit();
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
