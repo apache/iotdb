@@ -265,6 +265,7 @@ public class ClientManagerTest {
         }
       }
     }
+    Thread.sleep(minIdleDuration + evictionRunsDuration);
     // since the two clients are idle for more than 10s, which exceeds `minIdleDuration`, they
     // should be destroyed.
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
