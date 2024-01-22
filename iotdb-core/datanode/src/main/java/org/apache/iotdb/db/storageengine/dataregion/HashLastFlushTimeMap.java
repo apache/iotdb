@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
@@ -58,7 +59,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    * <p>It is used to separate sequence and unsequence data.
    */
   private final Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice =
-      new HashMap<>();
+      new ConcurrentHashMap<>();
 
   /**
    * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
@@ -68,13 +69,13 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    *
    * <p>It is used to update last cache.
    */
-  private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
+  private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
 
   /** used for recovering flush time from tsfile resource */
   TsFileManager tsFileManager;
 
   /** record memory cost of map for each partitionId */
-  private final Map<Long, Long> memCostForEachPartition = new HashMap<>();
+  private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
 
   public HashLastFlushTimeMap(TsFileManager tsFileManager) {
     this.tsFileManager = tsFileManager;

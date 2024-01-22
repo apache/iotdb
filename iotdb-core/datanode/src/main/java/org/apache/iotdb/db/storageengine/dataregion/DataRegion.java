@@ -3396,13 +3396,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  /* Be careful, the thread that calls this method may not hold the write lock!!*/
   public void releaseFlushTimeMap(long timePartitionId) {
-    writeLock("releaseFlushTimeMap");
-    try {
-      lastFlushTimeMap.removePartition(timePartitionId);
-    } finally {
-      writeUnlock();
-    }
+    lastFlushTimeMap.removePartition(timePartitionId);
   }
 
   public long getMemCost() {
