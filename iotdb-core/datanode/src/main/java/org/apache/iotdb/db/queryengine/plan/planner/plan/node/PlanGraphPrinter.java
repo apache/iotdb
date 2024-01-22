@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -74,6 +75,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -417,12 +420,15 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
     List<String> outputColumns = node.getOutputColumnNames();
     if (outputColumns == null) {
-      boxValue.add("OutputColumns: see template info");
-    } else {
-      for (int i = 0; i < outputColumns.size(); i++) {
-        String outputColumn = outputColumns.get(i);
-        boxValue.add(String.format("OutputColumn-%d: %s", i, outputColumn));
-      }
+      checkArgument(context.getTemplatedInfo() != null);
+      outputColumns = context.getTemplatedInfo().getSelectMeasurements();
+      // skip device column
+      outputColumns = outputColumns.subList(1, outputColumns.size());
+    }
+
+    for (int i = 0; i < outputColumns.size(); i++) {
+      String outputColumn = outputColumns.get(i);
+      boxValue.add(String.format("OutputColumn-%d: %s", i, outputColumn));
     }
     return render(node, boxValue, context);
   }
@@ -770,10 +776,20 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
   }
 
-  public static class GraphContext {}
+  public static class GraphContext {
+    private final TemplatedInfo templatedInfo;
+
+    public GraphContext(TemplatedInfo templatedInfo) {
+      this.templatedInfo = templatedInfo;
+    }
+
+    public TemplatedInfo getTemplatedInfo() {
+      return templatedInfo;
+    }
+  }
 
   public static List<String> getGraph(PlanNode node) {
-    return node.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+    return node.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext(null));
   }
 
   public static void print(PlanNode node) {

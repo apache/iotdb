@@ -94,7 +94,9 @@ public class StatementMemorySourceVisitor
 
     List<String> lines =
         optimizedRootWithExchange.accept(
-            new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+            new PlanGraphPrinter(),
+            new PlanGraphPrinter.GraphContext(
+                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(
