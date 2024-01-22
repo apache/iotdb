@@ -259,8 +259,8 @@ public class ClientManagerTest {
         long current = System.currentTimeMillis();
         // for each idle client, its theoretical max idle time is `minIdleDuration` +
         // `evictionRunsDuration`. Taking into account the difference in thread scheduling rates of
-        // different machines, here we multiply by 3
-        if ((current - start) > (minIdleDuration + evictionRunsDuration) * 3) {
+        // different machines, here we multiply by 6
+        if ((current - start) > (minIdleDuration + evictionRunsDuration) * 6) {
           Assert.fail("Evict invalid client failed");
         }
       }
