@@ -791,6 +791,84 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testRecoverRepairScheduleSkipRepairedTimePartitionWithDeletedFile()
+      throws IOException {
+    DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
+    Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
+    Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("root.testsg");
+    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockDataRegion.getTimePartitions()).thenReturn(Collections.singletonList(0L));
+
+    TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(15, 30)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+
+    TsFileResource seqResource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource2)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 50), new TimeRange(55, 60)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource seqResource3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource3)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDevice(
+          Arrays.asList("s1", "s2"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(40, 80)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResource3.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    tsFileManager.addAll(seqResources, true);
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
+
+    long currentTime = System.currentTimeMillis();
+    Path tempDir = Files.createTempDirectory("");
+    tempDir.toFile().deleteOnExit();
+    File logFile =
+        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    Files.createFile(logFile.toPath());
+    try (RepairLogger logger = new RepairLogger(logFile)) {
+      RepairTimePartition timePartition =
+          new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
+      // record seqResource3 as cannot recover
+      logger.recordRepairedTimePartition(timePartition);
+    }
+    // reset the repair status
+    seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
+    // resource3 is deleted
+    tsFileManager.replace(
+        Collections.singletonList(seqResource3),
+        Collections.emptyList(),
+        Collections.emptyList(),
+        0);
+
+    UnsortedFileRepairTaskScheduler scheduler =
+        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+    scheduler.run();
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Files.deleteIfExists(logFile.toPath());
+  }
+
+  @Test
   public void testTimePartitionFilterFiles() {
     DataRegion mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(tsFileManager);
