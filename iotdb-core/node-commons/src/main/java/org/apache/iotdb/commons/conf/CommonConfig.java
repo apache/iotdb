@@ -171,7 +171,7 @@ public class CommonConfig {
   private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private int pipeAsyncConnectorSelectorNumber = 8;
+  private int pipeAsyncConnectorSelectorNumber = 4;
   private int pipeAsyncConnectorCoreClientNumber = 8;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
