@@ -390,7 +390,7 @@ public class IoTDBConfig {
   private boolean enableTimedFlushSeqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
   private long seqMemtableFlushInterval = 10 * 60 * 1000L;
@@ -402,7 +402,7 @@ public class IoTDBConfig {
   private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
   private long unseqMemtableFlushInterval = 10 * 60 * 1000L;
