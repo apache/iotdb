@@ -1574,6 +1574,11 @@ public class TsFileProcessor {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
   }
 
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableUpdateTime() {
+    return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
+  }
+
   public long getLastWorkMemtableFlushTime() {
     return lastWorkMemtableFlushTime;
   }
