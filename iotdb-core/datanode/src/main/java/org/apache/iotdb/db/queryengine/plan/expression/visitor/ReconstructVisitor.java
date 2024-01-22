@@ -22,14 +22,17 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
@@ -62,6 +65,34 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
       CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<Expression> childResults = getResultsFromChild(caseWhenThenExpression, context);
     return reconstructCaseWhenThenExpression(caseWhenThenExpression, childResults);
+  }
+
+  @Override
+  public Expression visitFunctionExpression(FunctionExpression functionExpression, C context) {
+    List<Expression> reconstructedChildren = getReconstructedChildren(functionExpression, context);
+    return reconstructFunctionExpression(functionExpression, reconstructedChildren);
+  }
+
+  protected List<Expression> getReconstructedChildren(
+      FunctionExpression functionExpression, C context) {
+    List<Expression> expressions = functionExpression.getExpressions();
+
+    int childrenStartIndex = 0;
+    // We just process first input Expression of AggregationFunction.
+    // If AggregationFunction need more than one input series, we need to reconsider this.
+    int childrenEndIndex =
+        functionExpression.isBuiltInAggregationFunctionExpression() ? 1 : expressions.size();
+
+    List<Expression> reconstructedChildren = new ArrayList<>();
+    for (int i = childrenStartIndex; i < childrenEndIndex; i++) {
+      // process each child
+      reconstructedChildren.add(process(expressions.get(i), context));
+    }
+    for (int i = childrenEndIndex; i < expressions.size(); i++) {
+      // just copy attributes, e.g. [keep > 1] in COUNT_IF
+      reconstructedChildren.add(expressions.get(i));
+    }
+    return reconstructedChildren;
   }
 
   @Override

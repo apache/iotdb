@@ -23,11 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class ReplaceSubTreeWithViewVisitor extends ReconstructVisitor<Analysis> {
 
@@ -38,18 +34,6 @@ public class ReplaceSubTreeWithViewVisitor extends ReconstructVisitor<Analysis> 
       return new TimeSeriesOperand(new MeasurementPath(expression.getViewPath(), dataType));
     }
     return expression.accept(this, analysis);
-  }
-
-  @Override
-  public Expression visitFunctionExpression(
-      FunctionExpression functionExpression, Analysis analysis) {
-    List<Expression> childResult = new ArrayList<>();
-    functionExpression.getExpressions().forEach(child -> childResult.add(process(child, analysis)));
-    return new FunctionExpression(
-        functionExpression.getFunctionName(),
-        functionExpression.getFunctionAttributes(),
-        childResult,
-        functionExpression.getCountTimeExpressions());
   }
 
   @Override
