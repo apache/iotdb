@@ -284,7 +284,7 @@ public class ExpressionTypeAnalyzer {
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         return setExpressionType(
             functionExpression,
-            TypeInferenceUtils.getAggrDataType(
+            TypeInferenceUtils.getBuiltinAggregationDataType(
                 functionExpression.getFunctionName(),
                 getInputExpressionTypeForAggregation(
                     inputExpressions, functionExpression.getFunctionName())));

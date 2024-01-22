@@ -122,13 +122,13 @@ public class TypeInferenceUtils {
     return TSDataType.TEXT;
   }
 
-  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType dataType) {
-    if (aggrFuncName == null) {
+  public static TSDataType getBuiltinAggregationDataType(String aggregationFunctionName, TSDataType dataType) {
+    if (aggregationFunctionName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
-    verifyIsAggregationDataTypeMatched(aggrFuncName, dataType);
+    verifyIsAggregationDataTypeMatched(aggregationFunctionName, dataType);
 
-    switch (aggrFuncName.toLowerCase()) {
+    switch (aggregationFunctionName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
@@ -154,7 +154,7 @@ public class TypeInferenceUtils {
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationFunctionName);
     }
   }
 
