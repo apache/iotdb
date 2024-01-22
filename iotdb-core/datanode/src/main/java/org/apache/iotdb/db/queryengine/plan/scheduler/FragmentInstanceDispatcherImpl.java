@@ -361,7 +361,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         dispatchRemoteHelper(instance, endPoint);
       } catch (ClientManagerException | TException e1) {
         logger.warn(
-            "can't connect to node {}, error msg is {}.",
+            "can't connect to node {} in second try, error msg is {}.",
             endPoint,
             ExceptionUtils.getRootCause(e1).toString());
         TSStatus status = new TSStatus();
