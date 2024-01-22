@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -186,6 +189,17 @@ public class TemplatedInfo {
 
   public Map<String, List<InputLocation>> getLayoutMap() {
     return this.layoutMap;
+  }
+
+  public Expression[] getProjectExpressions() {
+    Expression[] projectExpressions = new Expression[measurementList.size()];
+    for (int i = 0; i < measurementList.size(); i++) {
+      projectExpressions[i] =
+          new TimeSeriesOperand(
+              new MeasurementPath(
+                  new PartialPath(new String[] {measurementList.get(i)}), schemaList.get(i)));
+    }
+    return projectExpressions;
   }
 
   public static Map<String, List<InputLocation>> makeLayout(List<String> measurementList) {

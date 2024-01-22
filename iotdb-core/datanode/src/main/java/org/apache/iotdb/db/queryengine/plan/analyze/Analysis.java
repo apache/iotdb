@@ -289,7 +289,6 @@ public class Analysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
-  // tmp variable, remove before merge
   private boolean buildPlanUseTemplate;
 
   public Analysis() {

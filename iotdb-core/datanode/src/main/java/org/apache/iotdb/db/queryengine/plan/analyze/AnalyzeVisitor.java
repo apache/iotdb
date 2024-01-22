@@ -1420,9 +1420,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       Analysis analysis) {
     if (queryStatement.isAggregationQuery()
-        || queryStatement.hasWhere()
+        || analysis.getWhereExpression() != null
             && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
-                queryStatement.getWhereCondition().getPredicate(), analysis)) {
+                analysis.getWhereExpression(), analysis)) {
       return true;
     }
     for (Expression expression : deviceViewOutputExpressions) {

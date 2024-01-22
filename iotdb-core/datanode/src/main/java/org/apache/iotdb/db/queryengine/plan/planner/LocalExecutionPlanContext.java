@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -295,5 +296,13 @@ public class LocalExecutionPlanContext {
 
   public ZoneId getZoneId() {
     return driverContext.getFragmentInstanceContext().getSessionInfo().getZoneId();
+  }
+
+  public boolean isBuildPlanUseTemplate() {
+    return typeProvider.getTemplatedInfo() != null;
+  }
+
+  public TemplatedInfo getTemplatedInfo() {
+    return typeProvider.getTemplatedInfo();
   }
 }
