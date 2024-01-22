@@ -268,10 +268,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               Objects.equals(v, Long.MAX_VALUE) ? Long.valueOf(System.currentTimeMillis()) : v);
       LAST_TABLET_EPOCH_TIME_MAP.put(pipeName, Long.MAX_VALUE);
     } else {
-      if (System.currentTimeMillis() - LAST_TABLET_EPOCH_TIME_MAP.get(pipeName)
-          > PipeConfig.getInstance().getPipeTsFileEpochPersistJudgeMillis() / 2) {
-        LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.put(pipeName, Long.MAX_VALUE);
-      }
+      LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.compute(
+          pipeName,
+          (k, v) ->
+              System.currentTimeMillis() - LAST_TABLET_EPOCH_TIME_MAP.get(pipeName)
+                      > PipeConfig.getInstance().getPipeTsFileEpochPersistJudgeMillis() / 2
+                  ? Long.valueOf(Long.MAX_VALUE)
+                  : v);
       LAST_TABLET_EPOCH_TIME_MAP.put(pipeName, System.currentTimeMillis());
     }
     return needToExtractFile;
