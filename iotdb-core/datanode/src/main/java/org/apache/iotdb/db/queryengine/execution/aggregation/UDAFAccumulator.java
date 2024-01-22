@@ -89,9 +89,8 @@ public class UDAFAccumulator implements Accumulator {
   }
 
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    // TODO: lastIndex slice
-    udaf.addInput(state, column, bitMap);
+  public void addInput(Column[] columns, BitMap bitMap) {
+    udaf.addInput(state, columns, bitMap);
   }
 
   @Override

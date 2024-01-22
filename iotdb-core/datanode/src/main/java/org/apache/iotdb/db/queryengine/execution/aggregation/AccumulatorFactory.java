@@ -88,7 +88,7 @@ public class AccumulatorFactory {
       case TIME_DURATION:
         return new TimeDurationAccumulator();
       case MODE:
-        return crateModeAccumulator(tsDataType);
+        return createModeAccumulator(tsDataType);
       case COUNT_TIME:
         return new CountTimeAccumulator();
       case STDDEV:
@@ -108,7 +108,7 @@ public class AccumulatorFactory {
     }
   }
 
-  private static Accumulator crateModeAccumulator(TSDataType tsDataType) {
+  private static Accumulator createModeAccumulator(TSDataType tsDataType) {
     switch (tsDataType) {
       case BOOLEAN:
         return new BooleanModeAccumulator();

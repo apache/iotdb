@@ -62,7 +62,7 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public void processTsBlock(TsBlock tsBlock, BitMap bitMap, int lastIndex) {
+  public void processTsBlock(TsBlock tsBlock, BitMap bitMap) {
     long startTime = System.nanoTime();
     try {
       checkArgument(
@@ -81,7 +81,7 @@ public class Aggregator {
           timeAndValueColumn[1 + i] =
               index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
         }
-        accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
+        accumulator.addInput(timeAndValueColumn, bitMap);
       }
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(

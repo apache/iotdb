@@ -134,12 +134,13 @@ public class AggregationUtil {
       lastIndexToProcess = i;
     }
 
+    TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
     for (Aggregator aggregator : aggregators) {
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
+      aggregator.processTsBlock(inputRegion, null);
     }
     int lastReadRowIndex = lastIndexToProcess + 1;
     if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
