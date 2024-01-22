@@ -425,9 +425,6 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
-  /** Insert the non overlapped unsequence files into sequence space */
-  private boolean enableInsertionCrossSpaceCompaction = true;
-
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -1095,12 +1092,13 @@ public class IoTDBConfig {
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
-
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
-      0; // 0 means that the decision will be adaptive based on the number of sequences
+      0L; // 0 means that the decision will be adaptive based on the number of sequences
 
-  private long loadMemoryAllocateRetryIntervalMs = 1000;
+  private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
+
+  private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -2700,14 +2698,6 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public boolean isEnableInsertionCrossSpaceCompaction() {
-    return enableInsertionCrossSpaceCompaction;
-  }
-
-  public void setEnableInsertionCrossSpaceCompaction(boolean enableInsertionCrossSpaceCompaction) {
-    this.enableInsertionCrossSpaceCompaction = enableInsertionCrossSpaceCompaction;
-  }
-
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -3773,6 +3763,15 @@ public class IoTDBConfig {
 
   public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
+  }
+
+  public long getLoadCleanupTaskExecutionDelayTimeSeconds() {
+    return loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public void setLoadCleanupTaskExecutionDelayTimeSeconds(
+      long loadCleanupTaskExecutionDelayTimeSeconds) {
+    this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

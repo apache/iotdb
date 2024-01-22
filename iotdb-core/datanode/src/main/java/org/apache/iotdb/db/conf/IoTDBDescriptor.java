@@ -437,12 +437,6 @@ public class IoTDBDescriptor {
                 "compaction_submission_interval_in_ms",
                 Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
-    conf.setEnableInsertionCrossSpaceCompaction(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_insertion_cross_space_compaction",
-                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction()))));
-
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -908,6 +902,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1167,14 +1166,7 @@ public class IoTDBDescriptor {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
             || conf.isEnableUnseqSpaceCompaction()
-            || conf.isEnableCrossSpaceCompaction()
-            || conf.isEnableInsertionCrossSpaceCompaction();
-
-    boolean newConfigEnableInsertionCrossSpaceCompaction =
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_insertion_cross_space_compaction",
-                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction())));
+            || conf.isEnableCrossSpaceCompaction();
     boolean newConfigEnableCrossSpaceCompaction =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1192,7 +1184,6 @@ public class IoTDBDescriptor {
                 Boolean.toString(conf.isEnableUnseqSpaceCompaction())));
     boolean compactionEnabledInNewConfig =
         newConfigEnableCrossSpaceCompaction
-            || newConfigEnableInsertionCrossSpaceCompaction
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
@@ -1201,7 +1192,6 @@ public class IoTDBDescriptor {
       return;
     }
 
-    conf.setEnableInsertionCrossSpaceCompaction(newConfigEnableInsertionCrossSpaceCompaction);
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
@@ -1643,6 +1633,13 @@ public class IoTDBDescriptor {
 
       // update compaction config
       loadCompactionHotModifiedProps(properties);
+
+      // update load config
+      conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+          Long.parseLong(
+              properties.getProperty(
+                  "load_clean_up_task_execution_delay_time_seconds",
+                  String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }

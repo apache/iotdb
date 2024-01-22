@@ -27,6 +27,7 @@ fi
 export IOTDB_HOME="`dirname "$0"`/.."
 IOTDB_CLUSTER_PATH="${IOTDB_HOME}"/conf/iotdb-cluster.properties
 if [ ! -f ${IOTDB_CLUSTER_PATH} ]; then
+  exec ${IOTDB_HOME}/sbin/stop-standalone.sh -f >/dev/null 2>&1 &
   exec rm -rf ${IOTDB_HOME}/data/
   exec ${IOTDB_HOME}/sbin/destroy-datanode.sh -f >/dev/null 2>&1 &
   exec ${IOTDB_HOME}/sbin/destroy-confignode.sh -f >/dev/null 2>&1 &
