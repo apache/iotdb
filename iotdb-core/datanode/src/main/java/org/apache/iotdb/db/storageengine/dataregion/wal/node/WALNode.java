@@ -76,7 +76,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -104,11 +103,6 @@ public class WALNode implements IWALNode {
   // memTable id -> memTable snapshot count
   // used to avoid write amplification caused by frequent snapshot
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
-  // total cost of flushedMemTables
-  // when memControl enabled, cost is memTable ram cost, otherwise cost is memTable count
-  private final AtomicLong totalCostOfFlushedMemTables = new AtomicLong();
-  // version id -> cost sum of memTables flushed at this file version
-  private final Map<Long, Long> walFileVersionId2MemTablesTotalCost = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
@@ -175,12 +169,6 @@ public class WALNode implements IWALNode {
 
     // remove snapshot info
     memTableSnapshotCount.remove(memTable.getMemTableId());
-    // update cost info
-    long cost = config.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
-    long currentWALFileVersion = buffer.getCurrentWALFileVersion();
-    walFileVersionId2MemTablesTotalCost.compute(
-        currentWALFileVersion, (k, v) -> v == null ? cost : v + cost);
-    totalCostOfFlushedMemTables.addAndGet(cost);
   }
 
   @Override
@@ -336,17 +324,20 @@ public class WALNode implements IWALNode {
     private void updateEffectiveInfoRationAndUpdateMetric() {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
-      long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
-      long totalCost = costOfActiveMemTables + costOfFlushedMemTables;
+      long totalCost =
+          (getCurrentWALFileVersion()
+                  - checkpointManager.getOldestUnpinnedMemTableInfo().getFirstFileVersionId()
+                  + 1)
+              * config.getWalFileSizeThresholdInByte();
       if (totalCost == 0) {
         return;
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
       logger.debug(
-          "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
+          "Effective information ratio is {}, active memTables cost is {}, total cost is {}",
           effectiveInfoRatio,
           costOfActiveMemTables,
-          costOfFlushedMemTables);
+          totalCost);
       WRITING_METRICS.recordWALNodeEffectiveInfoRatio(identifier, effectiveInfoRatio);
     }
 
@@ -402,10 +393,6 @@ public class WALNode implements IWALNode {
           long fileSize = currentWal.length();
           if (currentWal.delete()) {
             deleteFileSize += fileSize;
-            Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
-            if (memTableRamCostSum != null) {
-              totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
-            }
             buffer.removeMemTableIdsOfWal(versionId);
             successfullyDeleted.add(versionId);
           } else {

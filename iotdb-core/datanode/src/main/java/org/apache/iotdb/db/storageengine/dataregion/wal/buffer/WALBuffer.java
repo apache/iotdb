@@ -50,6 +50,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -195,6 +196,7 @@ public class WALBuffer extends AbstractWALBuffer {
   /** This info class traverses some extra info from serializeThread to syncBufferThread. */
   private static class SerializeInfo {
     final WALMetaData metaData = new WALMetaData();
+    final Map<Long, Long> memTableId2WalDiskUsage = new HashMap<>();
     final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
@@ -291,10 +293,11 @@ public class WALBuffer extends AbstractWALBuffer {
         return;
       }
 
-      int size = byteBufferView.position();
+      int startPosition = byteBufferView.position();
+      int size;
       try {
         walEntry.serialize(byteBufferView);
-        size = byteBufferView.position() - size;
+        size = byteBufferView.position() - startPosition;
       } catch (Exception e) {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
@@ -317,6 +320,8 @@ public class WALBuffer extends AbstractWALBuffer {
       // update related info
       totalSize += size;
       info.metaData.add(size, searchIndex, walEntry.getMemTableId());
+      info.memTableId2WalDiskUsage.compute(
+          walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
       walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
@@ -520,9 +525,12 @@ public class WALBuffer extends AbstractWALBuffer {
       } finally {
         switchSyncingBufferToIdle();
       }
+
+      // update info
       memTableIdsOfWal
           .computeIfAbsent(currentWALFileVersion, memTableIds -> new HashSet<>())
           .addAll(info.metaData.getMemTablesId());
+      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage);
 
       boolean forceSuccess = false;
       // try to roll log writer

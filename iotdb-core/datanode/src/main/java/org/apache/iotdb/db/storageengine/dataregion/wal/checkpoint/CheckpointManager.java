@@ -41,9 +41,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -62,7 +62,7 @@ public class CheckpointManager implements AutoCloseable {
   private final Lock infoLock = new ReentrantLock();
   // region these variables should be protected by infoLock
   // memTable id -> memTable info
-  private final Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
+  private final Map<Long, MemTableInfo> memTableId2Info = new ConcurrentHashMap<>();
   // cache the biggest byte buffer to serialize checkpoint
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
@@ -339,6 +339,18 @@ public class CheckpointManager implements AutoCloseable {
     return firstValidVersionId;
   }
 
+  /** Update wal disk cost of active memTables. */
+  public void updateCostOfActiveMemTables(Map<Long, Long> memTableId2WalDiskUsage) {
+    for (Map.Entry<Long, Long> memTableWalUsage : memTableId2WalDiskUsage.entrySet()) {
+      memTableId2Info.computeIfPresent(
+          memTableWalUsage.getKey(),
+          (k, v) -> {
+            v.addWalDiskUsage(memTableWalUsage.getValue());
+            return v;
+          });
+    }
+  }
+
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
     List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
@@ -348,11 +360,7 @@ public class CheckpointManager implements AutoCloseable {
       if (memTableInfo.isFlushed()) {
         continue;
       }
-      if (config.isEnableMemControl()) {
-        totalCost += memTableInfo.getMemTable().getTVListsRamCost();
-      } else {
-        totalCost++;
-      }
+      totalCost += memTableInfo.getWalDiskUsage();
     }
 
     return totalCost;

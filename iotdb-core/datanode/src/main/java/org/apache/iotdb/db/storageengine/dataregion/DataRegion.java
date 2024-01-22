@@ -406,7 +406,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
+              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
