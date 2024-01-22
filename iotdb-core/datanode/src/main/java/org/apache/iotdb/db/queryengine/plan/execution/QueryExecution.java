@@ -49,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
-import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -165,7 +164,6 @@ public class QueryExecution implements IQueryExecution {
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
-    List<PlanOptimizer> valueFormerlyAssignedToPlanOptimizers1 = new ArrayList<>();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
