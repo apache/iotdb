@@ -446,7 +446,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   @Override
   public void close() throws Exception {
     super.close();
-    LAST_TABLET_EPOCH_TIME_MAP.remove(pipeName);
-    LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.remove(pipeName);
+    if (Objects.nonNull(pipeName)) {
+      LAST_TABLET_EPOCH_TIME_MAP.remove(pipeName);
+      LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.remove(pipeName);
+    }
   }
 }
