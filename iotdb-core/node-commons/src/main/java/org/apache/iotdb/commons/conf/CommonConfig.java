@@ -185,6 +185,9 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private double pipeTsFileEpochFileModePersistFactor = 2;
+  // 3 min
+  private int pipeTsFileEpochPersistJudgeMillis = 2 * 60 * 1000;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
 
@@ -753,6 +756,22 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public double getPipeTsFileEpochFileModePersistFactor() {
+    return pipeTsFileEpochFileModePersistFactor;
+  }
+
+  public void setPipeTsFileEpochFileModePersistFactor(double pipeTsFileEpochFileModePersistFactor) {
+    this.pipeTsFileEpochFileModePersistFactor = pipeTsFileEpochFileModePersistFactor;
+  }
+
+  public int getPipeTsFileEpochPersistJudgeMillis() {
+    return pipeTsFileEpochPersistJudgeMillis;
+  }
+
+  public void setPipeTsFileEpochPersistJudgeMillis(int pipeTsFileEpochPersistJudgeMillis) {
+    this.pipeTsFileEpochPersistJudgeMillis = pipeTsFileEpochPersistJudgeMillis;
   }
 
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {

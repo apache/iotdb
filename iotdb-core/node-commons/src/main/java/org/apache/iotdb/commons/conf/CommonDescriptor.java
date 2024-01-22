@@ -440,6 +440,16 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeTsFileEpochFileModePersistFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_tsfile_epoch_file_mode_persist_factor",
+                String.valueOf(config.getPipeTsFileEpochFileModePersistFactor()))));
+    config.setPipeTsFileEpochPersistJudgeMillis(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_epoch_persist_judge_millis",
+                String.valueOf(config.getPipeTsFileEpochPersistJudgeMillis()))));
     config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
         Integer.parseInt(
             properties.getProperty(

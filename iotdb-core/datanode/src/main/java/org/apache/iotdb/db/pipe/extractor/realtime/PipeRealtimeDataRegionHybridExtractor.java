@@ -28,6 +28,8 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -35,6 +37,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
@@ -45,6 +50,20 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private volatile boolean isStartedToSupply = false;
   private final AtomicInteger processorEventCollectorQueueTsFileSize = new AtomicInteger(0);
   private final AtomicInteger connectorInputPendingQueueTsFileSize = new AtomicInteger(0);
+
+  // TsFile epoch
+  private static final ConcurrentMap<String, Long> LAST_FILE_OR_BOTH_EPOCH_TIME_MAP =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, Long> LAST_TABLET_EPOCH_TIME_MAP =
+      new ConcurrentHashMap<>();
+
+  @Override
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+    LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.putIfAbsent(pipeName, Long.MAX_VALUE);
+    LAST_TABLET_EPOCH_TIME_MAP.putIfAbsent(pipeName, Long.MAX_VALUE);
+  }
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -216,6 +235,19 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore() {
+    // If pipe has stuck at "USING_TSFILE" or "USING_BOTH" for a long time, it implies that
+    // the system may currently be under high write pressure, and using tablet can easily
+    // block the wal -> tsFile transfer phase and damage the performance of the system.
+    // Hence, we here make those pipes more likely to stick to "USING_TSFILE".
+    // When a pipe encounters a "USING_TSFILE" or "USING_BOTH", then after a period of
+    // time the judging logic will be more likely to use tsFile by a factor. If "USING_TABLET"
+    // for half of that period without "USING_TSFILE" or "USING_BOTH", the tsfile time
+    // counter will be reset and the ongoing or incoming factor will be reset to 1.
+    double factor =
+        System.currentTimeMillis() - LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.get(pipeName)
+                >= PipeConfig.getInstance().getPipeTsFileEpochPersistJudgeMillis()
+            ? PipeConfig.getInstance().getPipeTsFileEpochFileModePersistFactor()
+            : 1;
     // In the following 4 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
     //  1. The historical extractor has not consumed all the data.
@@ -224,26 +256,42 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  3. The number of pinned memtables has reached the dangerous threshold.
     //  4. The number of tsfile events in the pending queue has exceeded the limit.
-    return !isStartedToSupply
-        || mayWalSizeReachThrottleThreshold()
-        || mayMemTablePinnedCountReachDangerousThreshold()
-        || isTsFileEventCountInQueueExceededLimit();
+    boolean needToExtractFile =
+        !isStartedToSupply
+            || mayWalSizeReachThrottleThreshold(factor)
+            || mayMemTablePinnedCountReachDangerousThreshold(factor)
+            || isTsFileEventCountInQueueExceededLimit(factor);
+    if (needToExtractFile) {
+      LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.compute(
+          pipeName,
+          (k, v) ->
+              Objects.equals(v, Long.MAX_VALUE) ? Long.valueOf(System.currentTimeMillis()) : v);
+      LAST_TABLET_EPOCH_TIME_MAP.put(pipeName, Long.MAX_VALUE);
+    } else {
+      if (System.currentTimeMillis() - LAST_TABLET_EPOCH_TIME_MAP.get(pipeName)
+          > PipeConfig.getInstance().getPipeTsFileEpochPersistJudgeMillis() / 2) {
+        LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.put(pipeName, Long.MAX_VALUE);
+      }
+      LAST_TABLET_EPOCH_TIME_MAP.put(pipeName, System.currentTimeMillis());
+    }
+    return needToExtractFile;
   }
 
-  private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage()
+  private boolean mayWalSizeReachThrottleThreshold(double factor) {
+    return 3 * WALManager.getInstance().getTotalDiskUsage() * factor
         > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
   }
 
-  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+  private boolean mayMemTablePinnedCountReachDangerousThreshold(double factor) {
+    return PipeResourceManager.wal().getPinnedWalCount() * factor
         >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
-  private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-            + processorEventCollectorQueueTsFileSize.get()
-            + connectorInputPendingQueueTsFileSize.get()
+  private boolean isTsFileEventCountInQueueExceededLimit(double factor) {
+    return (pendingQueue.getTsFileInsertionEventCount()
+                + processorEventCollectorQueueTsFileSize.get()
+                + connectorInputPendingQueueTsFileSize.get())
+            * factor
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
@@ -393,5 +441,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
       return null;
     }
+  }
+
+  @Override
+  public void close() throws Exception {
+    super.close();
+    LAST_TABLET_EPOCH_TIME_MAP.remove(pipeName);
+    LAST_FILE_OR_BOTH_EPOCH_TIME_MAP.remove(pipeName);
   }
 }

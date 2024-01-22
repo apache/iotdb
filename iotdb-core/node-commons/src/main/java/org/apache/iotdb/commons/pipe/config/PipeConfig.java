@@ -169,6 +169,14 @@ public class PipeConfig {
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
+  public double getPipeTsFileEpochFileModePersistFactor() {
+    return COMMON_CONFIG.getPipeTsFileEpochFileModePersistFactor();
+  }
+
+  public int getPipeTsFileEpochPersistJudgeMillis() {
+    return COMMON_CONFIG.getPipeTsFileEpochPersistJudgeMillis();
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
