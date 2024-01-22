@@ -139,6 +139,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         targetResource.updateEndTime(device, chunkMetadata.getEndTime());
       }
     }
+    writer.checkMetadataSizeAndMayFlush();
     writer.endChunkGroup();
   }
 

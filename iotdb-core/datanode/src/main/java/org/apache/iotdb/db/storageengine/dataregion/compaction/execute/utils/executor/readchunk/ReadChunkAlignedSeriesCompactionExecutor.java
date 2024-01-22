@@ -177,7 +177,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     if (!chunkWriter.isEmpty()) {
       flushCurrentChunkWriter();
     }
-    writer.checkMetadataSizeAndMayFlush();
   }
 
   private void compactWithAlignedChunk(
