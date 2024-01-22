@@ -251,7 +251,9 @@ public class ClientManagerTest {
     Assert.assertEquals(2, syncClusterManager.getPool().getNumIdle(endPoint));
 
     long start = System.currentTimeMillis();
-    while (syncClusterManager.getPool().getNumIdle() > 0) {
+    while (syncClusterManager.getPool().getNumIdle() > 0
+        || (syncClient1.getInputProtocol().getTransport().isOpen()
+            || syncClient2.getInputProtocol().getTransport().isOpen())) {
       for (SyncDataNodeInternalServiceClient evictionTestClient : evictionTestClients) {
         // if this client is evicted, skip it
         if (!evictionTestClient.getInputProtocol().getTransport().isOpen()) continue;
@@ -264,14 +266,12 @@ public class ClientManagerTest {
           Assert.fail("Evict invalid client failed");
         }
       }
+      Thread.sleep(100);
     }
-    Thread.sleep(minIdleDuration + evictionRunsDuration);
     // since the two clients are idle for more than 10s, which exceeds `minIdleDuration`, they
     // should be destroyed.
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
-    Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
-    Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
   public void maxTotalTest() throws Exception {
