@@ -355,6 +355,16 @@ public class PipeExtractorMetrics implements IMetricSet {
     gauge.set(state.getId());
   }
 
+  //////////////////////////// Getter for RuntimeAgent ////////////////////////////
+
+  public Map<String, IoTDBDataRegionExtractor> getPipeName2ExtractorMap() {
+    Map<String, IoTDBDataRegionExtractor> pipeName2ExtractorMap = new HashMap<>();
+    extractorMap
+        .values()
+        .forEach(extractor -> pipeName2ExtractorMap.put(extractor.getPipeName(), extractor));
+    return pipeName2ExtractorMap;
+  }
+
   //////////////////////////// singleton ////////////////////////////
 
   private static class PipeExtractorMetricsHolder {

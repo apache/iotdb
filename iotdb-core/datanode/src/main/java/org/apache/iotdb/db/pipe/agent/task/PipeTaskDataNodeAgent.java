@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -33,11 +34,18 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -52,8 +60,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 
@@ -308,5 +319,64 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
 
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
+  }
+
+  ///////////////////////// Restart Logic /////////////////////////
+
+  public void restartAllStuckPipes() {
+    if (!tryWriteLockWithTimeOut(0)) {
+      return;
+    }
+    try {
+      Map<String, IoTDBDataRegionExtractor> pipeName2ExtractorMap =
+          PipeExtractorMetrics.getInstance().getPipeName2ExtractorMap();
+      Map<String, PipeProcessorSubtask> pipeName2ProcessorSubtaskMap =
+          PipeProcessorMetrics.getInstance().getPipeName2ProcessorSubtaskMap();
+      Map<String, PipeConnectorSubtask> attributeSortedStr2PipeConnectorSubtaskMap =
+          PipeConnectorMetrics.getInstance().getAttributeSortedStr2PipeConnectorSubtaskMap();
+
+      Set<PipeMeta> restartPipes = new HashSet<>();
+
+      for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (!pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
+          continue;
+        }
+        String pipeName = pipeMeta.getStaticMeta().getPipeName();
+        IoTDBDataRegionExtractor extractor = pipeName2ExtractorMap.get(pipeName);
+        PipeProcessorSubtask processorSubtask = pipeName2ProcessorSubtaskMap.get(pipeName);
+        PipeConnectorSubtask connectorSubtask =
+            attributeSortedStr2PipeConnectorSubtaskMap.get(
+                PipeConnectorSubtaskManager.getAttributeSortedString(
+                    pipeMeta.getStaticMeta().getConnectorParameters()));
+
+        if (Objects.isNull(extractor)
+            || Objects.isNull(processorSubtask)
+            || Objects.isNull(connectorSubtask)) {
+          continue;
+        }
+
+        boolean tsFileCountExceeded =
+            extractor.getRealtimeTsFileInsertionEventCount()
+                    + processorSubtask.getTsFileInsertionEventCount()
+                    + connectorSubtask.getTsFileInsertionEventCount()
+                > PipeConfig.getInstance().getPipeMaxAllowedTsFileCount();
+        boolean connectorStuck =
+            System.currentTimeMillis() - connectorSubtask.getLastSendExecutionTime()
+                > PipeConfig.getInstance().getPipeMaxAllowedConnectorStuckTime();
+        if (tsFileCountExceeded || connectorStuck) {
+          restartPipes.add(pipeMeta);
+        }
+      }
+
+      restartPipes.parallelStream().forEach(this::restartPipeInternal);
+
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void restartPipeInternal(PipeMeta pipeMeta) {
+    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
+    handleSinglePipeMetaChangesInternal(pipeMeta);
   }
 }

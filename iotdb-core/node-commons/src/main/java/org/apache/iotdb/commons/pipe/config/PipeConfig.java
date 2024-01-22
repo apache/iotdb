@@ -127,6 +127,18 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
+  public long getPipeStuckRestartIntervalSeconds() {
+    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
+  }
+
+  public long getPipeMaxAllowedTsFileCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedTsFileCount();
+  }
+
+  public long getPipeMaxAllowedConnectorStuckTime() {
+    return COMMON_CONFIG.getPipeMaxAllowedConnectorStuckTime();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {

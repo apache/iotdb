@@ -65,8 +65,7 @@ public class PipeConnectorSubtaskManager {
     PipeEventCommitManager.getInstance()
         .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
 
-    final String attributeSortedString =
-        new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    final String attributeSortedString = getAttributeSortedString(pipeConnectorParameters);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final int connectorNum =
@@ -179,6 +178,10 @@ public class PipeConnectorSubtaskManager {
         .get(attributeSortedString)
         .get(0)
         .getPendingQueue();
+  }
+
+  public static String getAttributeSortedString(PipeParameters pipeConnectorParameters) {
+    return new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

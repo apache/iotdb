@@ -310,6 +310,19 @@ public class PipeConnectorMetrics implements IMetricSet {
     rate.mark();
   }
 
+  //////////////////////////// Getter for RuntimeAgent ////////////////////////////
+
+  public Map<String, PipeConnectorSubtask> getAttributeSortedStr2PipeConnectorSubtaskMap() {
+    Map<String, PipeConnectorSubtask> attributeSortedStr2PipeConnectorSubtaskMap = new HashMap<>();
+    connectorMap
+        .values()
+        .forEach(
+            connectorSubtask ->
+                attributeSortedStr2PipeConnectorSubtaskMap.put(
+                    connectorSubtask.getAttributeSortedString(), connectorSubtask));
+    return attributeSortedStr2PipeConnectorSubtaskMap;
+  }
+
   //////////////////////////// singleton ////////////////////////////
 
   private static class PipeConnectorMetricsHolder {

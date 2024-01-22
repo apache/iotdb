@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
@@ -171,6 +172,11 @@ class PipeAgentLauncher {
                         return pipeMeta;
                       })
                   .collect(Collectors.toList()));
+      PipeAgent.runtime()
+          .registerPeriodicalJob(
+              "PipeTaskAgent#RestartAllStuckPipes",
+              PipeAgent.task()::restartAllStuckPipes,
+              PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
     } catch (Exception e) {
       LOGGER.info(
           "Failed to get pipe task meta from config node. Ignore the exception, "

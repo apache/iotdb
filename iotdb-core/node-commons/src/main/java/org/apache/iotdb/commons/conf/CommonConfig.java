@@ -190,9 +190,13 @@ public class CommonConfig {
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
-  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
-  private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
-  private float PipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
+  private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
+  private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
+
+  private long pipeStuckRestartIntervalSeconds = 60;
+  private long pipeMaxAllowedTsFileCount = 1000;
+  private long pipeMaxAllowedConnectorStuckTime = (long) 15 * 60 * 1000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -805,11 +809,35 @@ public class CommonConfig {
   }
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
-    return PipeLeaderCacheMemoryUsagePercentage;
+    return pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
-    this.PipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+    this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
+    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public long getPipeMaxAllowedTsFileCount() {
+    return pipeMaxAllowedTsFileCount;
+  }
+
+  public void setPipeMaxAllowedTsFileCount(long pipeMaxAllowedTsFileCount) {
+    this.pipeMaxAllowedTsFileCount = pipeMaxAllowedTsFileCount;
+  }
+
+  public long getPipeMaxAllowedConnectorStuckTime() {
+    return pipeMaxAllowedConnectorStuckTime;
+  }
+
+  public void setPipeMaxAllowedConnectorStuckTime(long pipeMaxAllowedConnectorStuckTime) {
+    this.pipeMaxAllowedConnectorStuckTime = pipeMaxAllowedConnectorStuckTime;
   }
 
   public String getSchemaEngineMode() {

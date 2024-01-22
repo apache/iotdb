@@ -77,6 +77,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
   private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
+  private long lastSendExecutionTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
       String taskID,
@@ -123,6 +124,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
+    lastSendExecutionTime = System.currentTimeMillis();
 
     try {
       if (event == null) {
@@ -371,5 +373,11 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     return outputPipeConnector instanceof IoTDBThriftAsyncConnector
         ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;
+  }
+
+  //////////////////////////// APIs provided for restart metric ////////////////////////////
+
+  public long getLastSendExecutionTime() {
+    return lastSendExecutionTime;
   }
 }
