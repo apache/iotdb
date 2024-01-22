@@ -108,7 +108,6 @@ public class CommonConfig {
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
-  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
@@ -172,7 +171,6 @@ public class CommonConfig {
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber = 4;
-  private int pipeAsyncConnectorCoreClientNumber = 8;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
@@ -379,14 +377,6 @@ public class CommonConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
-  }
-
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
@@ -602,14 +592,6 @@ public class CommonConfig {
 
   public void setPipeAsyncConnectorSelectorNumber(int pipeAsyncConnectorSelectorNumber) {
     this.pipeAsyncConnectorSelectorNumber = pipeAsyncConnectorSelectorNumber;
-  }
-
-  public int getPipeAsyncConnectorCoreClientNumber() {
-    return pipeAsyncConnectorCoreClientNumber;
-  }
-
-  public void setPipeAsyncConnectorCoreClientNumber(int pipeAsyncConnectorCoreClientNumber) {
-    this.pipeAsyncConnectorCoreClientNumber = pipeAsyncConnectorCoreClientNumber;
   }
 
   public int getPipeAsyncConnectorMaxClientNumber() {

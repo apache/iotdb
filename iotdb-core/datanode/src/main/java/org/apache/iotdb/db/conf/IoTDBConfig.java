@@ -933,12 +933,6 @@ public class IoTDBConfig {
           : 1;
 
   /**
-   * The maximum number of clients that can be idle for a node in a clientManager. When the number
-   * of idle clients on a node exceeds this number, newly returned clients will be released
-   */
-  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
-
-  /**
    * The maximum number of clients that can be allocated for a node in a clientManager. When the
    * number of the client to a single node exceeds this number, the thread for applying for a client
    * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
@@ -3041,14 +3035,6 @@ public class IoTDBConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
-  }
-
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   public int getSelectorNumOfClientManager() {
