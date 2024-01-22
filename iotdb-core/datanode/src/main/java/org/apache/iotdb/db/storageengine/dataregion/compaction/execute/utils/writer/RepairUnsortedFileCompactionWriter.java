@@ -53,26 +53,27 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
     }
     // remove duplicate timestamp and sort
     dataOfCurrentSeries.sort(Comparator.comparingLong(TimeValuePair::getTimestamp));
-    TimeValuePair previousTimeValuePair = null;
+    TimeValuePair previousTimeValuePair = dataOfCurrentSeries.get(0);
     for (TimeValuePair timeValuePair : dataOfCurrentSeries) {
-      if (previousTimeValuePair == null) {
-        writeDataPoint(
-            timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-        previousTimeValuePair = timeValuePair;
-        chunkPointNumArray[subTaskId]++;
-        continue;
-      }
-      if (previousTimeValuePair.getTimestamp() == timeValuePair.getTimestamp()) {
+      if (timeValuePair.getTimestamp() == previousTimeValuePair.getTimestamp()) {
         // merge to previous TimeValuePair if is aligned series
         mergeTimeValuePair(timeValuePair, previousTimeValuePair);
-      } else {
-        writeDataPoint(
-            timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
-        chunkPointNumArray[subTaskId]++;
-        previousTimeValuePair = timeValuePair;
+        continue;
       }
-      checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
+      writeDataPoint(
+          previousTimeValuePair.getTimestamp(),
+          previousTimeValuePair.getValue(),
+          chunkWriters[subTaskId]);
+      chunkPointNumArray[subTaskId]++;
+      previousTimeValuePair = timeValuePair;
     }
+    // write last time value pair
+    writeDataPoint(
+        previousTimeValuePair.getTimestamp(),
+        previousTimeValuePair.getValue(),
+        chunkWriters[subTaskId]);
+    chunkPointNumArray[subTaskId]++;
+
     dataOfCurrentSeries = null;
     super.endMeasurement(subTaskId);
   }

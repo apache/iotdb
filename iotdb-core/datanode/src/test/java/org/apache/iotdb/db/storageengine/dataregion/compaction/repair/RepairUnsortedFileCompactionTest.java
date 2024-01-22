@@ -41,9 +41,18 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -55,8 +64,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
@@ -823,5 +834,58 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(task.getEstimatedMemoryCost() > 0);
     task = new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, false, 0);
     Assert.assertEquals(0, task.getEstimatedMemoryCost());
+  }
+
+  @Test
+  public void testMergeAlignedSeriesPointWithSameTimestamp() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, false, false));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, true, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, true, 0);
+    Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
+      List<AlignedChunkMetadata> chunkMetadataList =
+          reader.getAlignedChunkMetadata("root.testsg.d1");
+      for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
+        ChunkMetadata timeChunkMetadata =
+            (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+        Chunk timeChunk = reader.readMemChunk(timeChunkMetadata);
+        List<Chunk> valueChunks = new ArrayList<>();
+        for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          Chunk valueChunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+          valueChunks.add(valueChunk);
+        }
+        AlignedChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks, null);
+        while (chunkReader.hasNextSatisfiedPage()) {
+          BatchData batchData = chunkReader.nextPageData();
+          IPointReader pointReader = batchData.getBatchDataIterator();
+          while (pointReader.hasNextTimeValuePair()) {
+            TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+            for (Object value : timeValuePair.getValues()) {
+              if (value == null) {
+                Assert.fail();
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
