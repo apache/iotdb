@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,6 +64,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -108,6 +110,12 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -116,7 +124,7 @@ public class AggregationOperatorTest {
       inputLocations.add(inputLocationForOneAggregator);
     }
     AggregationOperator aggregationOperator =
-        initAggregationOperator(aggregationTypes, null, inputLocations);
+        initAggregationOperator(aggregationNames, aggregationTypes, null, inputLocations);
     int count = 0;
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
@@ -148,6 +156,12 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
+
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -157,8 +171,9 @@ public class AggregationOperatorTest {
           new InputLocation[] {new InputLocation(1, 2 * i), new InputLocation(1, 2 * i + 1)});
       inputLocations.add(inputLocationForOneAggregator);
     }
+
     AggregationOperator aggregationOperator =
-        initAggregationOperator(aggregationTypes, null, inputLocations);
+        initAggregationOperator(aggregationNames, aggregationTypes, null, inputLocations);
     int count = 0;
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
@@ -192,6 +207,7 @@ public class AggregationOperatorTest {
         };
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -199,6 +215,12 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -206,8 +228,10 @@ public class AggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(1, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
+
     AggregationOperator aggregationOperator =
-        initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+        initAggregationOperator(
+            aggregationNames, aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
@@ -247,8 +271,14 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -259,7 +289,8 @@ public class AggregationOperatorTest {
       inputLocations.add(inputLocationForOneAggregator);
     }
     AggregationOperator aggregationOperator =
-        initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
+        initAggregationOperator(
+            aggregationNames, aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
     while (true) {
       ListenableFuture<?> blocked = aggregationOperator.isBlocked();
@@ -290,6 +321,7 @@ public class AggregationOperatorTest {
    * @param inputLocations each inputLocation is used in one aggregator
    */
   private AggregationOperator initAggregationOperator(
+      List<String> aggregationNames,
       List<TAggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
@@ -322,6 +354,7 @@ public class AggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -383,6 +416,7 @@ public class AggregationOperatorTest {
     List<Aggregator> finalAggregators = new ArrayList<>();
     List<Accumulator> accumulators =
         AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

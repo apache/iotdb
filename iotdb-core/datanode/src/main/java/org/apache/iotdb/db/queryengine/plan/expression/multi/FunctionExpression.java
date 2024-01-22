@@ -40,7 +40,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -117,19 +116,14 @@ public class FunctionExpression extends Expression {
 
   private void initializeFunctionType() {
     final String lowerCaseFunctionName = this.functionName.toLowerCase();
-    try {
-      if (BuiltinAggregationFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
-        functionType = FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
-      } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
-        functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
-      } else if (UDFManagementService.getInstance().isUDAF(functionName)) {
-        functionType = FunctionType.EXTERNAL_AGGREGATION_FUNCTION;
-      } else {
-        functionType = FunctionType.UDF;
-      }
-    } catch (Exception ignore) {
-      // fallback to FunctionType.UDF if `.isUDAF()` throws an exception
-      functionType = FunctionType.UDF;
+    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
+      functionType = FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
+    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
+      functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
+    } else if (UDFManagementService.getInstance().isUDAF(functionName)) {
+      functionType = FunctionType.UDAF;
+    } else {
+      functionType = FunctionType.UDTF;
     }
   }
 
@@ -141,7 +135,7 @@ public class FunctionExpression extends Expression {
     return functionType == FunctionType.BUILT_IN_AGGREGATION_FUNCTION;
   }
 
-  public boolean isBuiltInScalarFunction() {
+  public boolean isBuiltInScalarFunctionExpression() {
     if (functionType == null) {
       initializeFunctionType();
     }
@@ -153,7 +147,7 @@ public class FunctionExpression extends Expression {
     if (functionType == null) {
       initializeFunctionType();
     }
-    return functionType == FunctionType.EXTERNAL_AGGREGATION_FUNCTION;
+    return functionType == FunctionType.UDAF;
   }
 
   @Override
@@ -171,7 +165,7 @@ public class FunctionExpression extends Expression {
   }
 
   public boolean isCountStar() {
-    if (!isBuiltInAggregationFunctionExpression()) {
+    if (!isAggregationFunctionExpression()) {
       return false;
     }
     return getPaths().size() == 1
@@ -264,7 +258,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (!isBuiltInAggregationFunctionExpression() && !isBuiltInScalarFunction()) {
+    if (!isAggregationFunctionExpression() && !isBuiltInScalarFunctionExpression()) {
       // this is a UDF function
       boolean isCurrentMappable =
           new UDTFInformationInferrer(functionName)

@@ -146,6 +146,63 @@ public class SchemaUtils {
   }
 
   /**
+   * Return aggregation function name by given function type. If aggregation type is UDAF, you shall
+   * acquire its name in other ways.
+   *
+   * @param aggregationType aggregation type
+   * @return the name of the aggregation or null if its aggregation type is null
+   */
+  public static String getBuiltinAggregationName(TAggregationType aggregationType) {
+    if (aggregationType == null) {
+      return null;
+    }
+    switch (aggregationType) {
+      case COUNT:
+        return SqlConstant.COUNT;
+      case AVG:
+        return SqlConstant.AVG;
+      case SUM:
+        return SqlConstant.SUM;
+      case FIRST_VALUE:
+        return SqlConstant.FIRST_VALUE;
+      case LAST_VALUE:
+        return SqlConstant.LAST_VALUE;
+      case MAX_TIME:
+        return SqlConstant.MAX_TIME;
+      case MIN_TIME:
+        return SqlConstant.MIN_TIME;
+      case MAX_VALUE:
+        return SqlConstant.MAX_VALUE;
+      case MIN_VALUE:
+        return SqlConstant.MIN_VALUE;
+      case EXTREME:
+        return SqlConstant.EXTREME;
+      case COUNT_IF:
+        return SqlConstant.COUNT_IF;
+      case TIME_DURATION:
+        return SqlConstant.TIME_DURATION;
+      case MODE:
+        return SqlConstant.MODE;
+      case COUNT_TIME:
+        return SqlConstant.COUNT_TIME;
+      case STDDEV:
+        return SqlConstant.STDDEV;
+      case STDDEV_POP:
+        return SqlConstant.STDDEV_POP;
+      case STDDEV_SAMP:
+        return SqlConstant.STDDEV_SAMP;
+      case VARIANCE:
+        return SqlConstant.VARIANCE;
+      case VAR_POP:
+        return SqlConstant.VAR_POP;
+      case VAR_SAMP:
+        return SqlConstant.VAR_SAMP;
+      default:
+        return null;
+    }
+  }
+
+  /**
    * judge whether the order of aggregation calculation is consistent with the order of traversing
    * data
    */

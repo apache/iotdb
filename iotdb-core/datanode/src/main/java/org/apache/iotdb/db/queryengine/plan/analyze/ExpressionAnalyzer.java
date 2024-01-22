@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -176,7 +175,7 @@ public class ExpressionAnalyzer {
       return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
     } else if (expression instanceof FunctionExpression) {
       List<Expression> inputExpressions = expression.getExpressions();
-      if (expression.isBuiltInAggregationFunctionExpression() || expression.isExternalAggregationFunctionExpression()) {
+      if (expression.isAggregationFunctionExpression()) {
         for (Expression inputExpression : inputExpressions) {
           if (identifyOutputColumnType(inputExpression, false)
               == ResultColumn.ColumnType.AGGREGATION) {
@@ -519,7 +518,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return true;
     } else if (expression instanceof FunctionExpression) {
-      return !expression.isBuiltInAggregationFunctionExpression() && !expression.isExternalAggregationFunctionExpression();
+      return !expression.isAggregationFunctionExpression();
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
     } else if (expression instanceof ConstantOperand) {

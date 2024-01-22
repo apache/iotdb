@@ -32,10 +32,12 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class AccumulatorFactory {
 
   public static Accumulator createAccumulator(
+      String functionName,
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
@@ -44,10 +46,11 @@ public class AccumulatorFactory {
     return isMultiInputAggregation(aggregationType)
         ? createAccumulatorWithMultiInput(aggregationType, inputDataTypes)
         : createSingleInputAccumulator(
-            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
+            functionName, aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
   }
 
   private static Accumulator createSingleInputAccumulator(
+      String functionName,
       TAggregationType aggregationType,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
@@ -98,6 +101,8 @@ public class AccumulatorFactory {
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
+      case UDAF:
+        return new UDAFAccumulator(functionName, inputExpressions, tsDataType, inputAttributes);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -144,16 +149,21 @@ public class AccumulatorFactory {
 
   @TestOnly
   public static List<Accumulator> createAccumulators(
+      List<String> aggregationNames,
       List<TAggregationType> aggregationTypes,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending) {
+    checkArgument(
+        aggregationNames.size() == aggregationTypes.size(),
+        "The number of aggregation names does not match aggregation types!");
     List<Accumulator> accumulators = new ArrayList<>();
-    for (TAggregationType aggregationType : aggregationTypes) {
+    for (int i = 0; i < aggregationNames.size(); i++) {
       accumulators.add(
           createAccumulator(
-              aggregationType,
+              aggregationNames.get(i),
+              aggregationTypes.get(i),
               Collections.singletonList(tsDataType),
               inputExpressions,
               inputAttributes,

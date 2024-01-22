@@ -52,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -73,6 +74,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
@@ -136,9 +138,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
     while (rawDataAggregationOperator.isBlocked().isDone()
         && rawDataAggregationOperator.hasNext()) {
@@ -192,9 +198,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
     while (rawDataAggregationOperator.isBlocked().isDone()
         && rawDataAggregationOperator.hasNext()) {
@@ -248,10 +258,17 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+            aggregationNames,
+            aggregationTypes,
+            groupByTimeParameter,
+            inputLocations,
+            windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -309,10 +326,17 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+            aggregationNames,
+            aggregationTypes,
+            groupByTimeParameter,
+            inputLocations,
+            windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -374,10 +398,17 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+            aggregationNames,
+            aggregationTypes,
+            groupByTimeParameter,
+            inputLocations,
+            windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -440,10 +471,17 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+            aggregationNames,
+            aggregationTypes,
+            groupByTimeParameter,
+            inputLocations,
+            windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -509,10 +547,17 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), false);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
-            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+            aggregationNames,
+            aggregationTypes,
+            groupByTimeParameter,
+            inputLocations,
+            windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -583,9 +628,13 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 10000);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -649,9 +698,13 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -710,9 +763,13 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 5000);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -761,9 +818,13 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -813,9 +874,13 @@ public class RawDataAggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
 
     int resultMinTime1 = -1, resultMinTime2 = -1;
 
@@ -879,9 +944,13 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new SessionWindowParameter(2, false);
-
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
 
     while (rawDataAggregationOperator.isBlocked().isDone()
@@ -910,6 +979,7 @@ public class RawDataAggregationOperatorTest {
   }
 
   private RawDataAggregationOperator initRawDataAggregationOperator(
+      List<String> aggregationNames,
       List<TAggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations,
@@ -988,6 +1058,7 @@ public class RawDataAggregationOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<Accumulator> accumulators =
         AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -1024,9 +1095,14 @@ public class RawDataAggregationOperatorTest {
       inputLocations.add(inputLocationForOneAggregator);
     }
 
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     WindowParameter windowParameter = new CountWindowParameter(10, 0, false, false);
     RawDataAggregationOperator rawDataAggregationOperator =
-        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+        initRawDataAggregationOperator(
+            aggregationNames, aggregationTypes, null, inputLocations, windowParameter);
     long count = 0;
     long index = 0;
     while (rawDataAggregationOperator.isBlocked().isDone()

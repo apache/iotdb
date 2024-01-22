@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,6 +63,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -126,10 +128,15 @@ public class HorizontallyConcatOperatorTest {
               HORIZONTALLY_CONCAT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       List<TAggregationType> aggregationTypes =
           Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.FIRST_VALUE);
+      List<String> aggregationNames =
+          aggregationTypes.stream()
+              .map(SchemaUtils::getBuiltinAggregationName)
+              .collect(Collectors.toList());
       GroupByTimeParameter groupByTimeParameter =
           new GroupByTimeParameter(0, 10, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
       List<Aggregator> aggregators = new ArrayList<>();
       AccumulatorFactory.createAccumulators(
+              aggregationNames,
               aggregationTypes,
               TSDataType.INT32,
               Collections.emptyList(),

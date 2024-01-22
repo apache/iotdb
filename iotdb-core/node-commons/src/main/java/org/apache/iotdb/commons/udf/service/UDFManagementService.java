@@ -296,18 +296,48 @@ public class UDFManagementService {
         .collect(Collectors.toList());
   }
 
-  public boolean isUDTF(String functionName)
-      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
-    return udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance()
-        instanceof UDTF;
+  public boolean isUDTF(String functionName) {
+    Class<?> udfClass = udfTable.getFunctionClass(functionName);
+    UDFInformation information = udfTable.getUDFInformation(functionName);
+    if (udfClass != null) {
+      try {
+        return udfClass.getDeclaredConstructor().newInstance() instanceof UDTF;
+      } catch (InstantiationException
+          | InvocationTargetException
+          | NoSuchMethodException
+          | IllegalAccessException e) {
+        String errorMessage =
+            String.format(
+                "Failed to reflect UDTF %s(%s) instance, because %s",
+                functionName, information.getClassName(), e);
+        LOGGER.warn(errorMessage, e);
+        throw new RuntimeException(errorMessage);
+      }
+    } else {
+      return false;
+    }
   }
 
-  public boolean isUDAF(String functionName)
-      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
-    return udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance()
-        instanceof UDAF;
+  public boolean isUDAF(String functionName) {
+    Class<?> udfClass = udfTable.getFunctionClass(functionName);
+    UDFInformation information = udfTable.getUDFInformation(functionName);
+    if (udfClass != null) {
+      try {
+        return udfClass.getDeclaredConstructor().newInstance() instanceof UDAF;
+      } catch (InstantiationException
+          | InvocationTargetException
+          | NoSuchMethodException
+          | IllegalAccessException e) {
+        String errorMessage =
+            String.format(
+                "Failed to reflect UDAF %s(%s) instance, because %s",
+                functionName, information.getClassName(), e);
+        LOGGER.warn(errorMessage, e);
+        throw new RuntimeException(errorMessage);
+      }
+    } else {
+      return false;
+    }
   }
 
   @TestOnly

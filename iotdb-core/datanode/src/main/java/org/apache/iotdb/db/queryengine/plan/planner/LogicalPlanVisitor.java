@@ -401,7 +401,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         FunctionExpression functionExpression = (FunctionExpression) expression;
         // Disable statistics optimization of UDAF for now
         if (functionExpression.isExternalAggregationFunctionExpression()) {
-          return false;
+          return true;
         }
 
         if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {

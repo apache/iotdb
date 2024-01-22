@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,6 +63,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
@@ -97,8 +100,13 @@ public class SeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithoutTimeFilter() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -121,8 +129,13 @@ public class SeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -147,8 +160,13 @@ public class SeriesAggregationScanOperatorTest {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -178,8 +196,14 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -213,8 +237,14 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -242,8 +272,14 @@ public class SeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithTimeFilter1() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -268,8 +304,14 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithTimeFilter2() throws Exception {
     Filter timeFilter = TimeFilterApi.ltEq(379);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -293,8 +335,14 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithTimeFilter3() throws Exception {
     Filter timeFilter = FilterFactory.and(TimeFilterApi.gtEq(100), TimeFilterApi.ltEq(399));
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -323,8 +371,14 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -355,9 +409,11 @@ public class SeriesAggregationScanOperatorTest {
     int[] result = new int[] {100, 100, 100, 99};
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+    List<String> aggregationNames = Collections.singletonList(SqlConstant.COUNT);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -388,8 +444,14 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -429,8 +491,14 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -471,10 +539,16 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -507,8 +581,14 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -539,8 +619,14 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -579,10 +665,16 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+    List<String> aggregationNames =
+        aggregationTypes.stream()
+            .map(SchemaUtils::getBuiltinAggregationName)
+            .collect(Collectors.toList());
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createAccumulators(
+            aggregationNames,
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

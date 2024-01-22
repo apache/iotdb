@@ -8,6 +8,7 @@ import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,18 +26,19 @@ public class UDAFInformationInferrer {
     this.functionName = functionName;
   }
 
-  public TSDataType inferOutputType(List<String> childExpressions,
+  public TSDataType inferOutputType(
+      List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
     try {
       return UDFDataTypeTransformer.transformToTsDataType(
-              reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
-                      .getOutputDataType());
+          reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
+              .getOutputDataType());
     } catch (Exception e) {
       LOGGER.warn("Error occurred during inferring UDF data type", e);
       throw new SemanticException(
-              String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
-                      + e);
+          String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
+              + e);
     }
   }
 
@@ -48,10 +50,10 @@ public class UDAFInformationInferrer {
     UDAF udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
 
     UDFParameters parameters =
-            new UDFParameters(
-                    childExpressions,
-                    UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-                    attributes);
+        new UDFParameters(
+            childExpressions,
+            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+            attributes);
     udaf.validate(new UDFParameterValidator(parameters));
 
     // use ZoneId.systemDefault() because UDF's data type is ZoneId independent

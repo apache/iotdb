@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -291,7 +289,7 @@ public class ExpressionTypeAnalyzer {
                 getInputExpressionTypeForAggregation(
                     inputExpressions, functionExpression.getFunctionName())));
       }
-      if (functionExpression.isBuiltInScalarFunction()) {
+      if (functionExpression.isBuiltInScalarFunctionExpression()) {
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
@@ -299,16 +297,16 @@ public class ExpressionTypeAnalyzer {
       }
       if (functionExpression.isExternalAggregationFunctionExpression()) {
         return setExpressionType(
-                functionExpression,
-                new UDAFInformationInferrer(functionExpression.getFunctionName())
-                        .inferOutputType(
-                                inputExpressions.stream()
-                                        .map(Expression::getExpressionString)
-                                        .collect(Collectors.toList()),
-                                inputExpressions.stream()
-                                        .map(f -> expressionTypes.get(NodeRef.of(f)))
-                                        .collect(Collectors.toList()),
-                                functionExpression.getFunctionAttributes()));
+            functionExpression,
+            new UDAFInformationInferrer(functionExpression.getFunctionName())
+                .inferOutputType(
+                    inputExpressions.stream()
+                        .map(Expression::getExpressionString)
+                        .collect(Collectors.toList()),
+                    inputExpressions.stream()
+                        .map(f -> expressionTypes.get(NodeRef.of(f)))
+                        .collect(Collectors.toList()),
+                    functionExpression.getFunctionAttributes()));
       }
 
       return setExpressionType(
