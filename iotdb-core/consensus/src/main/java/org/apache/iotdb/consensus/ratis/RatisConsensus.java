@@ -157,7 +157,12 @@ class RatisConsensus implements IConsensus {
     this.ratisMetricSet = new RatisMetricSet();
     this.readRetryPolicy =
         RetryPolicy.<RaftClientReply>newBuilder()
-            .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setRetryHandler(
+                c ->
+                    !c.isSuccess()
+                        && (c.getException() instanceof ReadIndexException
+                            || c.getException() instanceof ReadException
+                            || c.getException() instanceof NotLeaderException))
             .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
             .setWaitTime(
                 TimeDuration.valueOf(
@@ -347,7 +352,7 @@ class RatisConsensus implements IConsensus {
       if (canServeStaleRead != null && isLinearizableRead) {
         canServeStaleRead.get(groupId).set(true);
       }
-    } catch (ReadException | ReadIndexException e) {
+    } catch (ReadException | ReadIndexException | NotLeaderException e) {
       if (isLinearizableRead) {
         // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
         // read requests.
