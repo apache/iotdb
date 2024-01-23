@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -84,7 +85,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -129,7 +131,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithNullColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -174,7 +177,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithAllDeletedColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -224,7 +228,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithNotExistColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -274,7 +279,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithPartialDeletedColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -375,7 +381,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithPartialDeletedPageByWritePoint()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException {
+      throws IOException, MetadataException, StorageEngineException, InterruptedException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -426,7 +433,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByFlushPage()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -471,7 +479,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByWritePoint()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
@@ -516,7 +525,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testCompactionWithDifferentCompressionTypeOrEncoding()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",

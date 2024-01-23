@@ -151,7 +151,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  public void execute() throws IOException {
+  public void execute() throws IOException, PageException {
     while (!readerAndChunkMetadataList.isEmpty()) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -162,12 +162,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         ((CompactionTsFileReader) reader).markStartOfAlignedSeries();
       }
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-        try {
-          compactWithAlignedChunk(reader, alignedChunkMetadata);
-        } catch (Exception e) {
-          throw new RuntimeException(
-              "Meet errors when compact aligned series of device: " + device, e);
-        }
+        compactWithAlignedChunk(reader, alignedChunkMetadata);
       }
       if (reader instanceof CompactionTsFileReader) {
         ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
