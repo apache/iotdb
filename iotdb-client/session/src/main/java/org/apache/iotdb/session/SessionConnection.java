@@ -435,24 +435,50 @@ public class SessionConnection {
 
   protected void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
-    try {
-      execReq.setEnableRedirectQuery(enableRedirect);
-      TSExecuteStatementResp execResp = client.executeUpdateStatementV2(execReq);
-      RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (TException e) {
-      if (reconnect()) {
+
+    TSExecuteStatementReq request = new TSExecuteStatementReq(sessionId, sql, statementId);
+
+    TException lastTException = null;
+    for (int i = 0; i < maxRetryCount; i++) {
+      if (i > 0) {
+        // not first time, we need to sleep and then reconnect
         try {
-          execReq.setSessionId(sessionId);
-          execReq.setStatementId(statementId);
-          RpcUtils.verifySuccess(client.executeUpdateStatementV2(execReq).status);
-        } catch (TException tException) {
-          throw new IoTDBConnectionException(tException);
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
+        } catch (InterruptedException e) {
+          // just ignore
         }
-      } else {
-        throw new IoTDBConnectionException(logForReconnectionFailure());
+        if (!reconnect()) {
+          // reconnect failed, just continue to make another retry.
+          continue;
+        }
+      }
+      try {
+        TSStatus status = executeNonQueryStatementInternal(request);
+        // need retry
+        if (status.isSetNeedRetry() && status.isNeedRetry()) {
+          continue;
+        }
+        // succeed or don't need to retry
+        RpcUtils.verifySuccess(status);
+        return;
+      } catch (TException e) {
+        // all network exception need retry until reaching maxRetryCount
+        lastTException = e;
       }
     }
+
+    if (lastTException == null) {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
+    } else {
+      throw new IoTDBConnectionException(lastTException);
+    }
+  }
+
+  private TSStatus executeNonQueryStatementInternal(TSExecuteStatementReq request)
+      throws TException {
+    request.setSessionId(sessionId);
+    request.setStatementId(statementId);
+    return client.executeUpdateStatementV2(request).status;
   }
 
   protected SessionDataSet executeRawDataQuery(
