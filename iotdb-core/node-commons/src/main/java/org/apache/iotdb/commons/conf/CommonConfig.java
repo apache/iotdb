@@ -185,14 +185,16 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
+  private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private long pipeStuckRestartIntervalSeconds = 120;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
-  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
-  private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
-  private float PipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
+  private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
+  private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -754,6 +756,22 @@ public class CommonConfig {
     this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
   }
 
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
+    this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
+    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
   public boolean getPipeMemoryManagementEnabled() {
     return pipeMemoryManagementEnabled;
   }
@@ -805,11 +823,11 @@ public class CommonConfig {
   }
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
-    return PipeLeaderCacheMemoryUsagePercentage;
+    return pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
-    this.PipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+    this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public String getSchemaEngineMode() {

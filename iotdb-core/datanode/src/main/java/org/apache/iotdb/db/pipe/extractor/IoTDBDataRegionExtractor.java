@@ -372,6 +372,17 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     }
   }
 
+  //////////////////////////// APIs provided for detecting stuck ////////////////////////////
+
+  public boolean isStreamMode() {
+    return realtimeExtractor instanceof PipeRealtimeDataRegionHybridExtractor
+        || realtimeExtractor instanceof PipeRealtimeDataRegionLogExtractor;
+  }
+
+  public boolean hasConsumedAllHistoricalTsFiles() {
+    return historicalExtractor.hasConsumedAll();
+  }
+
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getTaskID() {
