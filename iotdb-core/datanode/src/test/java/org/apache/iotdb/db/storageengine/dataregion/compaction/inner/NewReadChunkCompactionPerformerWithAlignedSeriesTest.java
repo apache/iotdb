@@ -582,7 +582,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testFlushChunkMetadataToTempFile()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException {
+      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+          PageException {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 1000; i++) {
       devices.add("d" + i);
