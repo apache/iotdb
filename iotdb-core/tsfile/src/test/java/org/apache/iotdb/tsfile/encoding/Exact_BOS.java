@@ -555,6 +555,34 @@ public class Exact_BOS {
 
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size));
+        //int end_value_i = start_value_i;
+        for (int end_value_i = 1; end_value_i < unique_value_count; end_value_i++) {
+
+            int k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+
+            int cur_bits = 0;
+            int cur_k2;
+            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+            cur_bits += Math.min((cur_k2) * getBitWith(block_size-1), block_size + cur_k2);
+            int cur_k1 = 0;
+            int k_start_value = 0;
+            if (cur_k1 != 0)
+                cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+            if (cur_k1 + cur_k2 != block_size)
+                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -1);
+            if (cur_k2 != 0)
+                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+
+
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value;
+                final_k_end_value = k_end_value;
+            }
+//                if (k_end_value == max_delta_value)
+//                    break;
+        }
+
 
         int start_value_size =  unique_value_count; //valueMap.size();//start_value.size(); //
         for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) { //start_value_size
@@ -565,12 +593,30 @@ public class Exact_BOS {
 //                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
 //                }
             //int end_value_i = start_value_i;
+
+            int k_end_value = max_delta_value;
+
+            int cur_bits = 0;
+            int cur_k2 = 0;
+            if (cur_k1 != 0)
+                cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+            if (cur_k1 + cur_k2 != block_size)
+                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -1);
+            if (cur_k2 != 0)
+                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+
+
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value;
+                final_k_end_value = k_end_value;
+            }
+
             for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
 
-                int k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+                k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
 
-                int cur_bits = 0;
-                int cur_k2;
+                cur_bits = 0;
                 cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
 
 //                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift);
@@ -960,7 +1006,8 @@ public class Exact_BOS {
 
     @Test
     public void BOSOptimalTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        //String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1009,7 +1056,7 @@ public class Exact_BOS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 6; file_i < 7; file_i++) {
+//        for (int file_i = 6; file_i < input_path_list.size(); file_i++) {
 //
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
