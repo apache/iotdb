@@ -554,7 +554,7 @@ public class Exact_BOS {
         int final_k_end_value = max_delta_value+1;
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size));
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value ) * (block_size));
         //int end_value_i = start_value_i;
         for (int end_value_i = 1; end_value_i < unique_value_count; end_value_i++) {
 
@@ -562,16 +562,16 @@ public class Exact_BOS {
 
             int cur_bits = 0;
             int cur_k2;
-            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-            cur_bits += Math.min((cur_k2) * getBitWith(block_size-1), block_size + cur_k2);
             int cur_k1 = 0;
-            int k_start_value = 0;
+            int k_start_value = -1;
+            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
             if (cur_k1 != 0)
                 cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
             if (cur_k1 + cur_k2 != block_size)
-                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -1);
+                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
             if (cur_k2 != 0)
-                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value + 1);//min_upper_outlier
 
 
             if (cur_bits < min_bits) {
@@ -593,15 +593,18 @@ public class Exact_BOS {
 //                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
 //                }
             //int end_value_i = start_value_i;
+            int k_end_value;
+            int cur_bits;
+            int cur_k2;
+            k_end_value = max_delta_value + 1;
 
-            int k_end_value = max_delta_value;
-
-            int cur_bits = 0;
-            int cur_k2 = 0;
+            cur_bits = 0;
+            cur_k2 = 0;
+            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
             if (cur_k1 != 0)
-                cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                cur_bits += cur_k1 * getBitWith(k_start_value + 1);//left_max
             if (cur_k1 + cur_k2 != block_size)
-                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -1);
+                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
             if (cur_k2 != 0)
                 cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 
@@ -618,17 +621,6 @@ public class Exact_BOS {
 
                 cur_bits = 0;
                 cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-
-//                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift);
-//                if (max_normal >= k_end_value) {
-//                    if (max_normal > k_end_value)
-//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
-//                    else {
-//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i], mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
-//                    }
-//                }
-
-
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
