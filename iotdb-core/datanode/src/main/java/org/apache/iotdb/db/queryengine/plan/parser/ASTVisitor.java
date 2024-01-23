@@ -2464,7 +2464,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
-    setTTLStatement.setDatabasePath(path);
+    setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
   }
@@ -2473,7 +2473,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
     UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
-    unSetTTLStatement.setDatabasePath(partialPath);
+    unSetTTLStatement.setPath(partialPath);
     return unSetTTLStatement;
   }
 

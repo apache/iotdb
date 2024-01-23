@@ -912,6 +912,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return this;
   }
 
+  public boolean isPrefixPath() {
+    for (int i = 0; i < nodes.length - 1; i++) {
+      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return false;
+      }
+    }
+
+    if (!nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      return false;
+    }
+    return true;
+  }
+
   /**
    * PartialPath basic total, 52B
    *

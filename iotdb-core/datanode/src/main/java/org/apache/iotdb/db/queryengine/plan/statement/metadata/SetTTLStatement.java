@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class SetTTLStatement extends Statement implements IConfigStatement {
-  protected PartialPath databasePath;
+  protected PartialPath path;
   protected long ttl;
 
   public SetTTLStatement() {
@@ -42,8 +42,8 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
     statementType = StatementType.TTL;
   }
 
-  public PartialPath getDatabasePath() {
-    return databasePath;
+  public PartialPath getPath() {
+    return path;
   }
 
   public long getTTL() {
@@ -55,8 +55,8 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
     return visitor.visitSetTTL(this, context);
   }
 
-  public void setDatabasePath(PartialPath databasePath) {
-    this.databasePath = databasePath;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   public void setTTL(long ttl) {
@@ -70,8 +70,8 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return databasePath != null
-        ? Collections.singletonList(databasePath)
+    return path != null
+        ? Collections.singletonList(path)
         : Collections.singletonList(new PartialPath(new String[] {"root", "**"}));
   }
 

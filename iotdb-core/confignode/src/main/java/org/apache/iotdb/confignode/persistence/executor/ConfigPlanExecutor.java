@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.ttl.TTLManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -105,6 +106,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -164,6 +166,8 @@ public class ConfigPlanExecutor {
 
   private final QuotaInfo quotaInfo;
 
+  private final TTLInfo ttlInfo;
+
   public ConfigPlanExecutor(
       ClusterInfo clusterInfo,
       NodeInfo nodeInfo,
@@ -175,7 +179,8 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
       PipeInfo pipeInfo,
-      QuotaInfo quotaInfo) {
+      QuotaInfo quotaInfo,
+      TTLInfo ttlInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -210,6 +215,9 @@ public class ConfigPlanExecutor {
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
+
+    this.ttlInfo = ttlInfo;
+    this.snapshotProcessorList.add(ttlInfo);
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -318,7 +326,11 @@ public class ConfigPlanExecutor {
       case PreDeleteDatabase:
         return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);
       case SetTTL:
-        return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
+        if (((SetTTLPlan) physicalPlan).getTTL() == TTLManager.NULL_TTL) {
+          return ttlInfo.unsetTTL((SetTTLPlan) physicalPlan);
+        } else {
+          return ttlInfo.setTTL((SetTTLPlan) physicalPlan);
+        }
       case SetSchemaReplicationFactor:
         return clusterSchemaInfo.setSchemaReplicationFactor(
             (SetSchemaReplicationFactorPlan) physicalPlan);

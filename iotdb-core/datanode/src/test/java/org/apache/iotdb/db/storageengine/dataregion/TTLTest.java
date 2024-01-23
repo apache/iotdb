@@ -339,13 +339,13 @@ public class TTLTest {
         (SetTTLStatement)
             StatementGenerator.createStatement(
                 "SET TTL TO " + sg1 + " 10000", ZoneId.systemDefault());
-    assertEquals(sg1, statement1.getDatabasePath().getFullPath());
+    assertEquals(sg1, statement1.getPath().getFullPath());
     assertEquals(10000, statement1.getTTL());
 
     UnSetTTLStatement statement2 =
         (UnSetTTLStatement)
             StatementGenerator.createStatement("UNSET TTL TO " + sg2, ZoneId.systemDefault());
-    assertEquals(sg2, statement2.getDatabasePath().getFullPath());
+    assertEquals(sg2, statement2.getPath().getFullPath());
     assertEquals(Long.MAX_VALUE, statement2.getTTL());
   }
 

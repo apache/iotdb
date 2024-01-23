@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
@@ -227,6 +228,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
@@ -889,8 +891,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<String> databasePathPattern = Arrays.asList(setTTLStatement.getDatabasePath().getNodes());
-    TSetTTLReq setTTLReq = new TSetTTLReq(databasePathPattern, setTTLStatement.getTTL());
+    PartialPath path = setTTLStatement.getPath();
+    if (!path.isPrefixPath() && path.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+      future.setException(new IllegalPathException(path.getFullPath()));
+      return future;
+    }
+
+    List<String> pathPattern = Arrays.asList(path.getNodes());
+    TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL());
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -900,7 +908,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
-            setTTLStatement.getDatabasePath(),
+            setTTLStatement.getPath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {

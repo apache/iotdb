@@ -94,6 +94,7 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -262,6 +263,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
+    TTLInfo ttlInfo = new TTLInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -276,7 +278,8 @@ public class ConfigManager implements IManager {
             triggerInfo,
             cqInfo,
             pipeInfo,
-            quotaInfo);
+            quotaInfo,
+            ttlInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -500,7 +503,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan);
+      return procedureManager.setTTL(setTTLPlan);
     } else {
       return status;
     }
