@@ -391,7 +391,6 @@ public class Exact_BOS {
     }
 
     private static int BOSEncodeBits(int[] ts_block_delta,
-                                     int final_left_max,
                                      int final_k_start_value,
                                      int final_k_end_value,
                                      int max_delta_value,
@@ -413,7 +412,7 @@ public class Exact_BOS {
         int cur_index_bitmap_outlier_bits = 0;
         for (int i = 0; i < block_size; i++) {
             int cur_value = ts_block_delta[i];
-            if ( cur_value< final_k_start_value) {
+            if ( cur_value<= final_k_start_value) {
                 final_left_outlier.add(cur_value);
                 final_left_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
@@ -430,7 +429,7 @@ public class Exact_BOS {
                 k1++;
 
 
-            } else if (cur_value > final_k_end_value) {
+            } else if (cur_value >= final_k_end_value) {
                 final_right_outlier.add(cur_value - final_k_end_value);
                 final_right_outlier_index.add(i);
                 if (cur_index_bitmap_outlier_bits % 8 != 7) {
@@ -447,7 +446,7 @@ public class Exact_BOS {
                 k2++;
 
             } else {
-                final_normal.add(cur_value - final_k_start_value);
+                final_normal.add(cur_value - final_k_start_value-1);
                 index_bitmap_outlier <<= 1;
                 cur_index_bitmap_outlier_bits += 1;
             }
@@ -464,7 +463,7 @@ public class Exact_BOS {
             bitmap_outlier.add(index_bitmap_outlier);
         }
 
-        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
+        int final_alpha = ((k1 + k2) * getBitWith(block_size-1)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
         int k_byte = (k1 << 1);
@@ -481,10 +480,10 @@ public class Exact_BOS {
         encode_pos += 4;
         int2Bytes(final_k_start_value,encode_pos,cur_byte);
         encode_pos += 4;
-        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
+        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
-        int left_bit_width = getBitWith(final_left_max);//final_left_max
+        int left_bit_width = getBitWith(final_k_start_value);//final_left_max
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
         intByte2Bytes(left_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
@@ -498,8 +497,8 @@ public class Exact_BOS {
                 encode_pos += 1;
             }
         } else {
-            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
-            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
         }
         encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
@@ -550,56 +549,46 @@ public class Exact_BOS {
             sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
         }
 
-        int max_delta_value_bit_width = getBitWith(max_delta_value);
-        int[] spread_value = new int[max_delta_value_bit_width-1];
 
-        for (int i = 1; i < max_delta_value_bit_width; i++) {
-            int spread_v = (int) pow(2, i) - 1;
-            spread_value[i-1]= spread_v;
-        }
-
-
-//        int final_k_start_value = ts_block_order_value[0];
-
-        int final_k_start_value = 0;//getUniqueValue(sorted_value_list[0], left_shift);
-        int final_k_end_value = max_delta_value;
+        int final_k_start_value = -1;//getUniqueValue(sorted_value_list[0], left_shift);
+        int final_k_end_value = max_delta_value+1;
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size));
 
-
-        int start_value_size =  unique_value_count-1; //valueMap.size();//start_value.size(); //
-        for (int start_value_i = 1; start_value_i < start_value_size; start_value_i++) { //start_value_size
+        int start_value_size =  unique_value_count; //valueMap.size();//start_value.size(); //
+        for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) { //start_value_size
             int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
 
-
-            int cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
+            int cur_k1 = getCount(sorted_value_list[start_value_i],mask);
 //                if (start_value_i != 0) {
 //                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
 //                }
             //int end_value_i = start_value_i;
-            for (int end_value_i = start_value_i + 1; end_value_i < start_value_size + 1; end_value_i++) {
+            for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
 
-                int k_end_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+                int k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
 
                 int cur_bits = 0;
-                int cur_k2 = 0;
-                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift) ;
-                if (max_normal >= k_end_value) {
-                    if (max_normal > k_end_value)
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
-                    else {
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i], mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
-                    }
-                }
+                int cur_k2;
+                cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+
+//                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+//                if (max_normal >= k_end_value) {
+//                    if (max_normal > k_end_value)
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
+//                    else {
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i], mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
+//                    }
+//                }
 
 
 
-                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
                     cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
                 if (cur_k1 + cur_k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value-2);
                 if (cur_k2 != 0)
                     cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 
@@ -609,11 +598,11 @@ public class Exact_BOS {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if (k_end_value == max_delta_value)
-                    break;
+//                if (k_end_value == max_delta_value)
+//                    break;
             }
         }
-        encode_pos = BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+        encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
         return encode_pos;
@@ -1020,9 +1009,9 @@ public class Exact_BOS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        for (int file_i = 11; file_i < 12; file_i++) {
-
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 6; file_i < 7; file_i++) {
+//
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1072,7 +1061,7 @@ public class Exact_BOS {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 500;
+                int repeatTime2 = 10;
 
                 int length = 0;
 
@@ -1103,7 +1092,7 @@ public class Exact_BOS {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
-                System.out.println(1/ratio);
+                System.out.println(ratio);
 
             }
             writer.close();
