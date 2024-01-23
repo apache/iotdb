@@ -35,7 +35,7 @@ public class RegionGroupCacheTest {
 
   @Test
   public void getRegionStatusTest() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
         new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     regionGroupCache.cacheHeartbeatSample(
@@ -56,7 +56,7 @@ public class RegionGroupCacheTest {
 
   @Test
   public void getRegionGroupStatusTest() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     RegionGroupCache runningRegionGroup =
         new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     runningRegionGroup.cacheHeartbeatSample(
@@ -120,7 +120,7 @@ public class RegionGroupCacheTest {
 
   @Test
   public void forceUpdateTest() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       heartbeatSampleMap.put(

@@ -58,7 +58,7 @@ public class LeaderPriorityBalancerTest {
     }
 
     // Build nodeCacheMap
-    long currentTimeMillis = System.currentTimeMillis();
+    long currentTimeNs = System.nanoTime();
     Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
     for (int i = 0; i < 6; i++) {
       nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
@@ -67,8 +67,8 @@ public class LeaderPriorityBalancerTest {
             .get(i)
             .cacheHeartbeatSample(
                 new NodeHeartbeatSample(
-                    new TDataNodeHeartbeatResp(currentTimeMillis, NodeStatus.Running.getStatus()),
-                    currentTimeMillis));
+                    new TDataNodeHeartbeatResp(currentTimeNs, NodeStatus.Running.getStatus()),
+                    currentTimeNs));
       }
     }
     nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);

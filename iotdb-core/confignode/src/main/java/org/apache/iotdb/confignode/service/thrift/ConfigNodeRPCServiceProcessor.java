@@ -833,7 +833,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
-    resp.setTimestamp(System.currentTimeMillis());
+    resp.setTimestamp(heartbeatReq.getTimestamp());
     return resp;
   }
 
