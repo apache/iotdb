@@ -212,6 +212,10 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    // commons
+    commonDescriptor.loadCommonProps(properties);
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -976,10 +980,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
-
-    // commons
-    commonDescriptor.loadCommonProps(properties);
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
     // timed flush memtable
     loadTimedService(properties);
@@ -1904,6 +1904,85 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForPartitionCache(
         schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
     LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    // Load PBTree mode memory configuration.
+    // Make sure common config is loaded before this.
+    if (commonDescriptor.getConfig().getSchemaEngineMode().equals("PBTree")) {
+      String nodePageProportionInput = properties.getProperty("pbtree_node_page_proportion");
+      if (nodePageProportionInput != null) {
+        String[] proportions = nodePageProportionInput.split(":");
+        int loadedProportionSum = 0;
+        for (String proportion : proportions) {
+          loadedProportionSum += Integer.parseInt(proportion.trim());
+        }
+        if (loadedProportionSum != 0) {
+          conf.setSchemaRegionNodePageProportion(
+              new int[] {
+                Integer.parseInt(proportions[0].trim()), Integer.parseInt(proportions[1].trim())
+              });
+        }
+      }
+      String cacheBufferProportionInput =
+          properties.getProperty("pbtree_page_pool_cache_buffer_proportion");
+      if (cacheBufferProportionInput != null) {
+        String[] proportions = cacheBufferProportionInput.split(":");
+        int loadedProportionSum = 0;
+        for (String proportion : proportions) {
+          loadedProportionSum += Integer.parseInt(proportion.trim());
+        }
+        if (loadedProportionSum != 0) {
+          conf.setPagePoolCacheBufferProportion(
+              new int[] {
+                Integer.parseInt(proportions[0].trim()), Integer.parseInt(proportions[1].trim())
+              });
+        }
+      }
+      proportionSum = 0;
+      for (int proportion : conf.getSchemaRegionNodePageProportion()) {
+        proportionSum += proportion;
+      }
+      long pagePoolSize =
+          conf.getAllocateMemoryForSchemaRegion()
+              * conf.getSchemaRegionNodePageProportion()[1]
+              / proportionSum
+              / (16 * 1024);
+      conf.setAllocateMemoryForSchemaRegionPage(pagePoolSize * 16 * 1024);
+      LOGGER.info(
+          "allocateMemoryForSchemaRegionPage = {}", conf.getAllocateMemoryForSchemaRegionPage());
+      conf.setAllocateMemoryForSchemaRegionNode(
+          conf.getAllocateMemoryForSchemaRegion() - conf.getAllocateMemoryForSchemaRegionPage());
+      LOGGER.info(
+          "allocateMemoryForSchemaRegionNode = {}", conf.getAllocateMemoryForSchemaRegionNode());
+      proportionSum = 0;
+      for (int proportion : conf.getPagePoolCacheBufferProportion()) {
+        proportionSum += proportion;
+      }
+      conf.setPbtreeCachePageNum(
+          (int) (pagePoolSize * conf.getPagePoolCacheBufferProportion()[0] / proportionSum));
+      LOGGER.info("pbtreeCachePageNum = {}", conf.getPbtreeCachePageNum());
+      conf.setPbtreeBufferPageNum((int) (pagePoolSize - conf.getPbtreeCachePageNum()));
+      LOGGER.info("pbtreeBufferPageNum = {}", conf.getPbtreeBufferPageNum());
+      conf.setPbtreeNodeReleaseThresholdRatio(
+          Double.parseDouble(
+              properties.getProperty(
+                  "pbtree_node_release_threshold_ratio",
+                  Double.toString(conf.getPbtreeNodeReleaseThresholdRatio()))));
+      conf.setPbtreeNodeFlushThresholdRatio(
+          Double.parseDouble(
+              properties.getProperty(
+                  "pbtree_node_flush_threshold_ratio",
+                  Double.toString(conf.getPbtreeNodeFlushThresholdRatio()))));
+      conf.setPbtreePageFlushMaxNumber(
+          Integer.parseInt(
+              properties.getProperty(
+                  "pbtree_page_flush_max_number",
+                  Integer.toString(conf.getPbtreePageFlushMaxNumber()))));
+      conf.setPbtreePageFlushMinDirtyRatio(
+          Double.parseDouble(
+              properties.getProperty(
+                  "pbtree_page_flush_min_dirty_ratio",
+                  Double.toString(conf.getPbtreePageFlushMinDirtyRatio()))));
+    }
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

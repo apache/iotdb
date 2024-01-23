@@ -998,6 +998,21 @@ public class IoTDBConfig {
   /** Memory allocated for PartitionCache */
   private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
 
+  private int[] schemaRegionNodePageProportion = new int[] {2, 1};
+  /** Memory allocated for SchemaRegionNode in PBTree Mode */
+  private long allocateMemoryForSchemaRegionNode = allocateMemoryForSchemaRegion;
+
+  /** Memory allocated for SchemaRegionPage in PBTree Mode */
+  private long allocateMemoryForSchemaRegionPage = 16 * 16 * 1024; // 256KB
+
+  private int[] pagePoolCacheBufferProportion = new int[] {1, 3};
+  private int pbtreeCachePageNum = 4;
+  private int pbtreeBufferPageNum = 12;
+  private double pbtreeNodeReleaseThresholdRatio = 0.7;
+  private double pbtreeNodeFlushThresholdRatio = 0.1;
+  private int pbtreePageFlushMaxNumber = 10;
+  private double pbtreePageFlushMinDirtyRatio = 0.3;
+
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
@@ -3229,6 +3244,86 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
     this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
+  }
+
+  public int[] getSchemaRegionNodePageProportion() {
+    return schemaRegionNodePageProportion;
+  }
+
+  public void setSchemaRegionNodePageProportion(int[] schemaRegionNodePageProportion) {
+    this.schemaRegionNodePageProportion = schemaRegionNodePageProportion;
+  }
+
+  public long getAllocateMemoryForSchemaRegionNode() {
+    return allocateMemoryForSchemaRegionNode;
+  }
+
+  public void setAllocateMemoryForSchemaRegionNode(long allocateMemoryForSchemaRegionNode) {
+    this.allocateMemoryForSchemaRegionNode = allocateMemoryForSchemaRegionNode;
+  }
+
+  public long getAllocateMemoryForSchemaRegionPage() {
+    return allocateMemoryForSchemaRegionPage;
+  }
+
+  public void setAllocateMemoryForSchemaRegionPage(long allocateMemoryForSchemaRegionPage) {
+    this.allocateMemoryForSchemaRegionPage = allocateMemoryForSchemaRegionPage;
+  }
+
+  public int[] getPagePoolCacheBufferProportion() {
+    return pagePoolCacheBufferProportion;
+  }
+
+  public void setPagePoolCacheBufferProportion(int[] pagePoolCacheBufferProportion) {
+    this.pagePoolCacheBufferProportion = pagePoolCacheBufferProportion;
+  }
+
+  public int getPbtreeCachePageNum() {
+    return pbtreeCachePageNum;
+  }
+
+  public void setPbtreeCachePageNum(int pbtreeCachePageNum) {
+    this.pbtreeCachePageNum = pbtreeCachePageNum;
+  }
+
+  public int getPbtreeBufferPageNum() {
+    return pbtreeBufferPageNum;
+  }
+
+  public void setPbtreeBufferPageNum(int pbtreeBufferPageNum) {
+    this.pbtreeBufferPageNum = pbtreeBufferPageNum;
+  }
+
+  public double getPbtreeNodeReleaseThresholdRatio() {
+    return pbtreeNodeReleaseThresholdRatio;
+  }
+
+  public void setPbtreeNodeReleaseThresholdRatio(double pbtreeNodeReleaseThresholdRatio) {
+    this.pbtreeNodeReleaseThresholdRatio = pbtreeNodeReleaseThresholdRatio;
+  }
+
+  public double getPbtreeNodeFlushThresholdRatio() {
+    return pbtreeNodeFlushThresholdRatio;
+  }
+
+  public void setPbtreeNodeFlushThresholdRatio(double pbtreeNodeFlushThresholdRatio) {
+    this.pbtreeNodeFlushThresholdRatio = pbtreeNodeFlushThresholdRatio;
+  }
+
+  public int getPbtreePageFlushMaxNumber() {
+    return pbtreePageFlushMaxNumber;
+  }
+
+  public void setPbtreePageFlushMaxNumber(int pbtreePageFlushMaxNumber) {
+    this.pbtreePageFlushMaxNumber = pbtreePageFlushMaxNumber;
+  }
+
+  public double getPbtreePageFlushMinDirtyRatio() {
+    return pbtreePageFlushMinDirtyRatio;
+  }
+
+  public void setPbtreePageFlushMinDirtyRatio(double pbtreePageFlushMinDirtyRatio) {
+    this.pbtreePageFlushMinDirtyRatio = pbtreePageFlushMinDirtyRatio;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {
