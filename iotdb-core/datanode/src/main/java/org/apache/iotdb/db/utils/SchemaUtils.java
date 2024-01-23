@@ -93,7 +93,7 @@ public class SchemaUtils {
    */
   public static List<TSDataType> getAggregatedDataTypes(
       List<TSDataType> measurementDataType, String aggregation) {
-    TSDataType dataType = getAggregationType(aggregation);
+    TSDataType dataType = getBuiltinAggregationTypeByFuncName(aggregation);
     if (dataType != null) {
       return Collections.nCopies(measurementDataType.size(), dataType);
     }
@@ -101,7 +101,7 @@ public class SchemaUtils {
   }
 
   public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
-    TSDataType dataType = getAggregationType(aggregation);
+    TSDataType dataType = getBuiltinAggregationTypeByFuncName(aggregation);
     if (dataType != null) {
       return dataType;
     } else {
@@ -113,7 +113,7 @@ public class SchemaUtils {
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
-  public static TSDataType getAggregationType(String aggregation) {
+  public static TSDataType getBuiltinAggregationTypeByFuncName(String aggregation) {
     if (aggregation == null) {
       return null;
     }
@@ -133,15 +133,22 @@ public class SchemaUtils {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
+        // Partial aggregation names for variance and stddev
+      case SqlConstant.STDDEV + "_partial":
+      case SqlConstant.STDDEV_POP + "_partial":
+      case SqlConstant.STDDEV_SAMP + "_partial":
+      case SqlConstant.VARIANCE + "_partial":
+      case SqlConstant.VAR_POP + "_partial":
+      case SqlConstant.VAR_SAMP + "_partial":
+        return TSDataType.TEXT;
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
       case SqlConstant.MAX_BY:
-        return null;
       default:
-        return TSDataType.TEXT;
+        return null;
     }
   }
 
@@ -247,7 +254,7 @@ public class SchemaUtils {
     }
   }
 
-  public static List<String> splitPartialAggregation(TAggregationType aggregationType) {
+  public static List<String> splitPartialBuiltinAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case FIRST_VALUE:
         return Collections.singletonList(SqlConstant.MIN_TIME);

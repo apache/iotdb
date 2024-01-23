@@ -122,7 +122,8 @@ public class TypeInferenceUtils {
     return TSDataType.TEXT;
   }
 
-  public static TSDataType getBuiltinAggregationDataType(String aggregationFunctionName, TSDataType dataType) {
+  public static TSDataType getBuiltinAggregationDataType(
+      String aggregationFunctionName, TSDataType dataType) {
     if (aggregationFunctionName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
@@ -154,7 +155,8 @@ public class TypeInferenceUtils {
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationFunctionName);
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + aggregationFunctionName);
     }
   }
 
@@ -209,7 +211,7 @@ public class TypeInferenceUtils {
    * <p>.e.g COUNT_IF(s1>1, keep>2, 'ignoreNull'='false'), we bind type {@link TSDataType#INT64} for
    * 'keep'
    */
-  public static void bindTypeForAggregationNonSeriesInputExpressions(
+  public static void bindTypeForBuiltinAggregationNonSeriesInputExpressions(
       String functionName,
       List<Expression> inputExpressions,
       List<List<Expression>> outputExpressionLists) {

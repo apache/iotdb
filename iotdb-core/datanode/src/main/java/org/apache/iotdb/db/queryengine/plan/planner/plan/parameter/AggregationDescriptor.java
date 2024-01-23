@@ -182,6 +182,8 @@ public class AggregationDescriptor {
           break;
         case MAX_BY:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
+        case UDAF:
+          outputAggregationNames.add(addPartialSuffix(aggregationFuncName));
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);
