@@ -419,7 +419,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                 > PipeConfig.getInstance().getPipeMaxAllowedConnectorStuckTime();
         boolean walFull =
             WALManager.getInstance().getTotalDiskUsage()
-                > 1.5 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+                > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
         boolean pinExceeded =
             PipeResourceManager.wal().getPinnedWalCount()
                 >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() * 1.5;
