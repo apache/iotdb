@@ -510,180 +510,180 @@ public class BWS {
 
     }
 
-    private static int BOSBlockEncoder(int[] ts_block, int supple_length, int encode_pos, byte[] cur_byte) {
-
-        int block_size = ts_block.length - 1;
-
-        int[] min_delta = new int[3];
-        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
-//        ArrayList<Integer> min_delta_r = new ArrayList<>();
-//        int[] ts_block_order_value = ts_block_delta.clone();//getAbsDeltaTsBlock(ts_block, min_delta_r,supple_length);
-
-//        long[] frequent_ts_block = new long[block_size+1];
+//    private static int BOSBlockEncoder(int[] ts_block, int supple_length, int encode_pos, byte[] cur_byte) {
 //
-//        for(int i=0;i<=block_size;i++){
+//        int block_size = ts_block.length - 1;
 //
-//        }
-
-//        Arrays.sort(ts_block_order_value);
-
-        block_size += supple_length;
-        int max_delta_value = min_delta[2];
-        int[] value_list = new int[block_size];
-        int unique_value_count = 0;
-        int[] value_count_list = new int[max_delta_value+1];
-
-        for(int value:ts_block_delta){
-            if(value_count_list[value]==0){
-                value_count_list[value] = 1;
-                value_list[unique_value_count] = value;
-                unique_value_count ++;
-            }else{
-                value_count_list[value] ++;
-            }
-        }
-
-        int[] value_c_count_list = new int[max_delta_value+1];
-
-//        int c_count = 0;
-//        for(int temp:value_count_list){
+//        int[] min_delta = new int[3];
+//        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
+////        ArrayList<Integer> min_delta_r = new ArrayList<>();
+////        int[] ts_block_order_value = ts_block_delta.clone();//getAbsDeltaTsBlock(ts_block, min_delta_r,supple_length);
 //
-//        }
-
-//        int left_shift = getBitWith(block_size);
-//        int mask =  (1 << left_shift) - 1; //block_size*2-1; //
-//        long[] alpha_value_list = new long[unique_value_count];
-//        int count = 0;
-////        int[] new_value_list = new int[unique_value_count];
-//        for(int i=0;i<unique_value_count;i++){
-//            int value = value_list[i];
-////            new_value_list[i] = value;
-////            count += value_count_list[value];
-//            sorted_value_list[i] = (((long) value) << left_shift) + value_count_list[value];
+////        long[] frequent_ts_block = new long[block_size+1];
+////
+////        for(int i=0;i<=block_size;i++){
+////
+////        }
+//
+////        Arrays.sort(ts_block_order_value);
+//
+//        block_size += supple_length;
+//        int max_delta_value = min_delta[2];
+//        int[] value_list = new int[block_size];
+//        int unique_value_count = 0;
+//        int[] value_count_list = new int[max_delta_value+1];
+//
+//        for(int value:ts_block_delta){
+//            if(value_count_list[value]==0){
+//                value_count_list[value] = 1;
+//                value_list[unique_value_count] = value;
+//                unique_value_count ++;
+//            }else{
+//                value_count_list[value] ++;
+//            }
 //        }
 //
-//        Arrays.sort(sorted_value_list);
-////        Arrays.sort(new_value_list);
-//        for(int i=0;i<unique_value_count;i++){
-//            count += getCount(sorted_value_list[i], mask);
-//            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
-//        }
-
-        int max_delta_value_bit_width = getBitWith(max_delta_value);
-        int[] spread_value = new int[max_delta_value_bit_width-1];
-
-        for (int i = 1; i < max_delta_value_bit_width; i++) {
-            int spread_v = (int) pow(2, i) - 1;
-            spread_value[i-1]= spread_v;
-        }
+//        int[] value_c_count_list = new int[max_delta_value+1];
 //
-//        int max_delta_value = ts_block_order_value[block_size - 1];
+////        int c_count = 0;
+////        for(int temp:value_count_list){
+////
+////        }
+//
+////        int left_shift = getBitWith(block_size);
+////        int mask =  (1 << left_shift) - 1; //block_size*2-1; //
+////        long[] alpha_value_list = new long[unique_value_count];
+////        int count = 0;
+//////        int[] new_value_list = new int[unique_value_count];
+////        for(int i=0;i<unique_value_count;i++){
+////            int value = value_list[i];
+//////            new_value_list[i] = value;
+//////            count += value_count_list[value];
+////            sorted_value_list[i] = (((long) value) << left_shift) + value_count_list[value];
+////        }
+////
+////        Arrays.sort(sorted_value_list);
+//////        Arrays.sort(new_value_list);
+////        for(int i=0;i<unique_value_count;i++){
+////            count += getCount(sorted_value_list[i], mask);
+////            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
+////        }
+//
 //        int max_delta_value_bit_width = getBitWith(max_delta_value);
-//        ArrayList<Integer> spread_value = new ArrayList<>();
+//        int[] spread_value = new int[max_delta_value_bit_width-1];
+//
 //        for (int i = 1; i < max_delta_value_bit_width; i++) {
 //            int spread_v = (int) pow(2, i) - 1;
-//            spread_value.add(spread_v);
+//            spread_value[i-1]= spread_v;
 //        }
-//        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
+////
+////        int max_delta_value = ts_block_order_value[block_size - 1];
+////        int max_delta_value_bit_width = getBitWith(max_delta_value);
+////        ArrayList<Integer> spread_value = new ArrayList<>();
+////        for (int i = 1; i < max_delta_value_bit_width; i++) {
+////            int spread_v = (int) pow(2, i) - 1;
+////            spread_value.add(spread_v);
+////        }
+////        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
+////
+////
+////        ArrayList<Integer> start_value = new ArrayList<>();
+////        int min_delta_value = ts_block_order_value[0];
+////        start_value.add(min_delta_value);
+////
+////        ArrayList<Integer> tmp_value = new ArrayList<>();
+////        tmp_value.add(min_delta_value);
+////        int count = 1;
+////        int tmp = min_delta_value;
+////        for (int i = 1; i < block_size; i++) {
+////            if (ts_block_order_value[i] != tmp) {
+////                int start_v = ts_block_order_value[i];
+////                tmp_value.add(count);
+////                PDF.add(tmp_value);
+////                tmp_value = new ArrayList<>();
+////                start_value.add(start_v);
+////                tmp_value.add(start_v);
+////                tmp = start_v;
+////
+////            }
+////            count++;
+////
+////        }
+////        tmp_value.add(count);
+////        PDF.add(tmp_value);
 //
 //
-//        ArrayList<Integer> start_value = new ArrayList<>();
-//        int min_delta_value = ts_block_order_value[0];
-//        start_value.add(min_delta_value);
+//        int final_k_start_value = 0;//ts_block_order_value[0];
+//        int final_k_end_value = max_delta_value;
 //
-//        ArrayList<Integer> tmp_value = new ArrayList<>();
-//        tmp_value.add(min_delta_value);
-//        int count = 1;
-//        int tmp = min_delta_value;
-//        for (int i = 1; i < block_size; i++) {
-//            if (ts_block_order_value[i] != tmp) {
-//                int start_v = ts_block_order_value[i];
-//                tmp_value.add(count);
-//                PDF.add(tmp_value);
-//                tmp_value = new ArrayList<>();
-//                start_value.add(start_v);
-//                tmp_value.add(start_v);
-//                tmp = start_v;
+//        int min_bits = 0;
+//        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 //
-//            }
-//            count++;
 //
-//        }
-//        tmp_value.add(count);
-//        PDF.add(tmp_value);
-
-
-        int final_k_start_value = 0;//ts_block_order_value[0];
-        int final_k_end_value = max_delta_value;
-
-        int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
-
-
-        //int start_value_size = unique_value_count-1;//start_value.size();
-
-        for (int alpha = 1; (int) pow(2, alpha) <= max_delta_value + 1; alpha++) { //start_value_size
-            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
-
-
-            int cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
-//                if (start_value_i != 0) {
-//                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
-//                }
-            //int end_value_i = start_value_i;
-            for (int end_value_i = start_value_i; end_value_i < start_value_size + 1; end_value_i++) {
-
-                int k_end_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
-
-                int cur_bits = 0;
-                int cur_k2 = 0;
-                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift) ;
-                if (max_normal >= k_end_value) {
-                    if (max_normal > k_end_value)
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
-                    else {
-                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i], mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
-                    }
-                }
-
-//                while (end_value_i < unique_value_count) {
-//                    max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift) ; // valueMap.get(tmp_j)  ;//PDF.get(tmp_j).get(0);//
-//                    if (max_normal >= k_end_value) {
-//                        if (max_normal > k_end_value)
-//                            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
-//                        else  {
-//                            cur_k2 = block_size - getCount(sorted_value_list[end_value_i],mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
-//                        }
-//                        break;
+//        //int start_value_size = unique_value_count-1;//start_value.size();
+//
+//        for (int alpha = 1; (int) pow(2, alpha) <= max_delta_value + 1; alpha++) { //start_value_size
+//            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
+//
+//
+//            int cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
+////                if (start_value_i != 0) {
+////                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
+////                }
+//            //int end_value_i = start_value_i;
+//            for (int end_value_i = start_value_i; end_value_i < start_value_size + 1; end_value_i++) {
+//
+//                int k_end_value = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+//
+//                int cur_bits = 0;
+//                int cur_k2 = 0;
+//                int max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift) ;
+//                if (max_normal >= k_end_value) {
+//                    if (max_normal > k_end_value)
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
+//                    else {
+//                        cur_k2 = block_size - getCount(sorted_value_list[end_value_i], mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
 //                    }
-//                    end_value_i++;
 //                }
-
-                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
-                if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
-                if (cur_k1 + cur_k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
-                if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
-
-
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k_start_value;
-                    final_k_end_value = k_end_value;
-                }
-                if (k_end_value == max_delta_value)
-                    break;
-            }
-        }
-
-
-        encode_pos=  BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
-                min_delta,encode_pos, cur_byte);
-
-        return encode_pos;
-    }
+//
+////                while (end_value_i < unique_value_count) {
+////                    max_normal = getUniqueValue(sorted_value_list[end_value_i], left_shift) ; // valueMap.get(tmp_j)  ;//PDF.get(tmp_j).get(0);//
+////                    if (max_normal >= k_end_value) {
+////                        if (max_normal > k_end_value)
+////                            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask); // countMap.get(tmp_j-1);// PDF.get(tmp_j - 1).get(1);//
+////                        else  {
+////                            cur_k2 = block_size - getCount(sorted_value_list[end_value_i],mask);  //countMap.get(tmp_j);//PDF.get(tmp_j).get(1);//
+////                        }
+////                        break;
+////                    }
+////                    end_value_i++;
+////                }
+//
+//                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+//                if (cur_k1 != 0)
+//                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+//                if (cur_k1 + cur_k2 != block_size)
+//                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+//                if (cur_k2 != 0)
+//                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+//
+//
+//                if (cur_bits < min_bits) {
+//                    min_bits = cur_bits;
+//                    final_k_start_value = k_start_value;
+//                    final_k_end_value = k_end_value;
+//                }
+//                if (k_end_value == max_delta_value)
+//                    break;
+//            }
+//        }
+//
+//
+//        encode_pos=  BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+//                min_delta,encode_pos, cur_byte);
+//
+//        return encode_pos;
+//    }
 
 
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining ,int encode_pos , byte[] cur_byte) {
