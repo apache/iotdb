@@ -222,6 +222,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
+  public boolean isDiskSpaceCheckPassed() {
+    if (!rewriteFile) {
+      return true;
+    }
+    return super.isDiskSpaceCheckPassed();
+  }
+
+  @Override
   public void handleTaskCleanup() {
     super.handleTaskCleanup();
     if (latch != null) {
