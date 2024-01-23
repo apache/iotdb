@@ -197,9 +197,8 @@ public class LoadTsFileScheduler implements IScheduler {
           isLoadSuccess = false;
           stateMachine.transitionToFailed(e);
           LOGGER.warn(
-              String.format(
-                  "LoadTsFileScheduler loads TsFile %s error",
-                  node.getTsFileResource().getTsFilePath()),
+              "LoadTsFileScheduler loads TsFile {} error",
+              node.getTsFileResource().getTsFilePath(),
               e);
         }
       }
