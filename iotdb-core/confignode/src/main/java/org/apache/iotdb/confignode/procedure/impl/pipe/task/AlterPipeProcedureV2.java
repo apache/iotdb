@@ -222,7 +222,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
+    stream.writeShort(ProcedureType.ALTER_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(alterPipeRequest.getPipeName(), stream);
     ReadWriteIOUtils.write(alterPipeRequest.getExtractorAttributesSize(), stream);
