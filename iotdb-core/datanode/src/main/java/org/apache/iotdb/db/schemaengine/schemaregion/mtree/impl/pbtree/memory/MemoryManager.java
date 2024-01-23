@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
@@ -132,7 +133,7 @@ public class MemoryManager implements IMemoryManager {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(true);
-    memoryStatistics.addVolatileNode();
+    memoryStatistics.addVolatileNode(node);
     // the ancestors must be processed first since the volatileDescendant judgement is of higher
     // priority than
     // children container judgement
@@ -146,10 +147,12 @@ public class MemoryManager implements IMemoryManager {
    * volatile subtree it belonged should be added to nodeBuffer.
    *
    * @param node
+   * @param operation
    */
   @Override
-  public void updateCacheStatusAfterUpdate(ICachedMNode node) {
+  public void updateCacheStatusAndUpdate(ICachedMNode node, Consumer<ICachedMNode> operation) {
     if (node.isDatabase()) {
+      operation.accept(node);
       nodeBuffer.updateDatabaseNodeAfterStatusUpdate(node.getAsDatabaseMNode());
       return;
     }
@@ -157,11 +160,15 @@ public class MemoryManager implements IMemoryManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     synchronized (cacheEntry) {
       if (cacheEntry.isVolatile()) {
+        int rawSize = node.estimateSize();
+        operation.accept(node);
+        memoryStatistics.updateVolatileNodeSize(node.estimateSize() - rawSize);
         return;
       }
       // the status change affects the subTre collect in nodeBuffer
+      operation.accept(node);
       cacheEntry.setVolatile(true);
-      memoryStatistics.addVolatileNode();
+      memoryStatistics.addVolatileNode(node);
       if (!cacheEntry.hasVolatileDescendant()) {
         nodeCache.removeFromNodeCache(cacheEntry);
         removeAncestorsFromCache(node);
@@ -339,7 +346,7 @@ public class MemoryManager implements IMemoryManager {
 
           synchronized (cacheEntry) {
             cacheEntry.setVolatile(false);
-            memoryStatistics.removeVolatileNode();
+            memoryStatistics.removeVolatileNode(node);
             container.moveMNodeToCache(node.getName());
 
             if (cacheEntry.hasVolatileDescendant()
@@ -388,7 +395,7 @@ public class MemoryManager implements IMemoryManager {
       }
       if (cacheEntry.isVolatile()) {
         addAncestorsToCache(node);
-        memoryStatistics.removeVolatileNode();
+        memoryStatistics.removeVolatileNode(node);
         if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
           nodeBuffer.remove(getCacheEntry(node.getParent()));
         }

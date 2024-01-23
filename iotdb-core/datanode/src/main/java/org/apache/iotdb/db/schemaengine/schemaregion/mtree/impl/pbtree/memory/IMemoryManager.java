@@ -26,6 +26,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * This class implemented the cache management, involving the cache status management on per MNode
@@ -59,7 +60,7 @@ public interface IMemoryManager {
 
   void updateCacheStatusAfterAppend(ICachedMNode node);
 
-  void updateCacheStatusAfterUpdate(ICachedMNode node);
+  void updateCacheStatusAndUpdate(ICachedMNode node, Consumer<ICachedMNode> operation);
 
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 

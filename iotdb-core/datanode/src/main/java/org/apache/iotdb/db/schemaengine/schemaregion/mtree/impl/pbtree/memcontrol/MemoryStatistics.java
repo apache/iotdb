@@ -83,11 +83,17 @@ public class MemoryStatistics {
     regionStatistics.updatePinnedMemorySize(deltaSize);
   }
 
-  public void addVolatileNode() {
+  public void addVolatileNode(ICachedMNode node) {
     regionStatistics.updateVolatileMNodeNum(1);
+    regionStatistics.updateVolatileMNodeSize(node.estimateSize());
   }
 
-  public void removeVolatileNode() {
+  public void removeVolatileNode(ICachedMNode node) {
     regionStatistics.updateVolatileMNodeNum(-1);
+    regionStatistics.updateVolatileMNodeSize(-node.estimateSize());
+  }
+
+  public void updateVolatileNodeSize(int deltaSize) {
+    regionStatistics.updateVolatileMNodeSize(deltaSize);
   }
 }

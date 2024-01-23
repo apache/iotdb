@@ -373,8 +373,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       lockManager.threadReadLock(node.getParent(), true);
     }
     try {
-      operation.accept(node);
-      memoryManager.updateCacheStatusAfterUpdate(node);
+      memoryManager.updateCacheStatusAndUpdate(node, operation);
     } finally {
       if (!node.isDatabase()) {
         lockManager.threadReadUnlock(node.getParent());
