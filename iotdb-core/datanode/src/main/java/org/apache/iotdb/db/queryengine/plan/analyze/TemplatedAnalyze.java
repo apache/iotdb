@@ -174,12 +174,12 @@ public class TemplatedAnalyze {
         && analysis.getWhereExpression().equals(ConstantOperand.FALSE)) {
       analyzeOutput(analysis, queryStatement, outputExpressions);
       analysis.setFinishQueryAfterAnalyze(true);
-      return false;
+      return true;
     }
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      return false;
+      return true;
     }
     analysis.setDeviceList(deviceList);
 

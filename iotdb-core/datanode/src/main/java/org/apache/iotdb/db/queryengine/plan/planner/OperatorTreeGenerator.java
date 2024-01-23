@@ -917,7 +917,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    List<java.lang.Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
+    List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
     List<TSDataType> outputColumnTypes =
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
@@ -939,7 +939,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    List<List<java.lang.Integer>> deviceColumnIndex =
+    List<List<Integer>> deviceColumnIndex =
         node.getDevices().stream()
             .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
             .collect(Collectors.toList());

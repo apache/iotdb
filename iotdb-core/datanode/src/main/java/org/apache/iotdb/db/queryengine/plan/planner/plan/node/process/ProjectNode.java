@@ -120,7 +120,7 @@ public class ProjectNode extends SingleChildProcessNode {
       return false;
     }
     ProjectNode that = (ProjectNode) o;
-    return outputColumnNames.equals(that.outputColumnNames);
+    return Objects.equals(outputColumnNames, that.outputColumnNames);
   }
 
   @Override

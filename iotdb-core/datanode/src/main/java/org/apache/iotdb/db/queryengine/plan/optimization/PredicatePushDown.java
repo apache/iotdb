@@ -64,7 +64,7 @@ public class PredicatePushDown implements PlanOptimizer {
         new RewriterContext(
             context.getQueryId(),
             queryStatement.isAlignByDevice(),
-            analysis.isBuildPlanUseTemplate()));
+            analysis.isAllDevicesInOneTemplate()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
