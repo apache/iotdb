@@ -48,6 +48,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReqV2ColumnFormat;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -875,6 +876,15 @@ public class SessionConnection {
   private TSStatus insertRecordsInternal(TSInsertRecordsReq request) throws TException {
     request.setSessionId(sessionId);
     return client.insertRecords(request);
+  }
+
+  protected void insertRecords(TSInsertRecordsReqV2ColumnFormat request) throws TException {
+    request.setSessionId(sessionId);
+    try {
+      client.insertRecordsV2ColumnFormat(request);
+    } catch (TException e) {
+      throw e;
+    }
   }
 
   protected void insertRecords(TSInsertStringRecordsReq request)

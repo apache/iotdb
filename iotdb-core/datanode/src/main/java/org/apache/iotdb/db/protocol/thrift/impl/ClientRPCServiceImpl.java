@@ -142,6 +142,7 @@ import org.apache.iotdb.service.rpc.thrift.TSGroupByQueryIntervalReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReqV2ColumnFormat;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -181,6 +182,8 @@ import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.mine.rpc.InsertRecordsReq;
+import org.mine.rpc.InsertRecordsSerializeInColumnUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1643,6 +1646,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1:  transfer from TSInsertRecordsReq to Statement
       InsertRowsStatement statement = StatementGenerator.createStatement(req);
+      req = null;
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -1691,6 +1695,33 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (quota != null) {
         quota.close();
       }
+    }
+  }
+
+  @Override
+  public TSStatus insertRecordsV2ColumnFormat(TSInsertRecordsReqV2ColumnFormat req) {
+    byte[] buffer = req.getBuffer();
+    if (buffer == null) {
+      return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "Buffer is null");
+    }
+    try {
+      InsertRecordsReq originalReq =
+          InsertRecordsSerializeInColumnUtils.decode(ByteBuffer.wrap(buffer));
+      InsertRowsStatement statement = StatementGenerator.createStatement(originalReq);
+      //      originalReq = null;
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              "",
+              partitionFetcher,
+              schemaFetcher);
+      return result.status;
+    } catch (Exception e) {
+      LOGGER.error("Meet error while inserting will new request", e);
+      return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, e.getMessage());
     }
   }
 

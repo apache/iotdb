@@ -73,6 +73,11 @@
             <artifactId>libthrift</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.mine.rpcutils</groupId>
+            <artifactId>RPC-Utils</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
