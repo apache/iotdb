@@ -195,8 +195,10 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   private long pipeStuckRestartIntervalSeconds = 60;
+
+  // The two parameters shall be modified in extreme scenarios
   private long pipeMaxAllowedTsFileCount = 5000;
-  private long pipeMaxAllowedConnectorStuckTime = (long) 15 * 60 * 1000;
+  private long pipeMaxAllowedConnectorStuckTime = (long) 30 * 60 * 1000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -362,7 +364,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           default:
             break;
         }
-        // Only restart for specific connector
+        // Only restart for specific connector types
         String pluginName =
             pipeMeta
                 .getStaticMeta()
@@ -415,7 +417,13 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         boolean connectorStuck =
             System.currentTimeMillis() - connectorSubtask.getLastSendExecutionTime()
                 > PipeConfig.getInstance().getPipeMaxAllowedConnectorStuckTime();
-        if (tsFileCountExceeded || connectorStuck) {
+        boolean walFull =
+            WALManager.getInstance().getTotalDiskUsage()
+                > 1.5 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+        boolean pinExceeded =
+            PipeResourceManager.wal().getPinnedWalCount()
+                >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount() * 1.5;
+        if (tsFileCountExceeded || connectorStuck || walFull || pinExceeded) {
           restartPipes.add(pipeMeta);
         }
       }
