@@ -51,9 +51,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -80,8 +77,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private Map<String, Integer> measurementSchemaListIndexMap;
   private final FlushDataBlockPolicy flushPolicy;
   private final CompactionTaskSummary summary;
-  private final Logger logger =
-      LoggerFactory.getLogger(ReadChunkAlignedSeriesCompactionExecutor.class);
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
