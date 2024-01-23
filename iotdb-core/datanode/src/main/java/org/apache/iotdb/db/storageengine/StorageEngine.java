@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.ttl.TTLManager;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -756,17 +758,14 @@ public class StorageEngine implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
+  /** Update ttl cache in dataNode. */
   public TSStatus setTTL(TSetTTLReq req) {
-    Map<String, List<DataRegionId>> localDataRegionInfo =
-        StorageEngine.getInstance().getLocalDataRegionInfo();
-    List<DataRegionId> dataRegionIdList = new ArrayList<>();
-    req.storageGroupPathPattern.forEach(
-        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
-    for (DataRegionId dataRegionId : dataRegionIdList) {
-      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-      if (dataRegion != null) {
-        dataRegion.setDataTTLWithTimePrecisionCheck(req.TTL);
-      }
+    String path = req.getStorageGroupPathPattern().get(0);
+    long ttl = req.getTTL();
+    if (ttl == TTLManager.NULL_TTL) {
+      DataNodeTTLCache.getInstance().unsetTTL(path);
+    } else {
+      DataNodeTTLCache.getInstance().setTTL(path, ttl);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

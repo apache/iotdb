@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
 
   private SetTTLPlan plan;
+
+  public SetTTLProcedure(){
+    super();
+  }
 
   public SetTTLProcedure(SetTTLPlan plan) {
     this.plan = plan;
@@ -80,7 +85,11 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_TTL_CACHE, new TSetTTLReq(), dataNodeLocationMap);
+            DataNodeRequestType.SET_TTL,
+            new TSetTTLReq(
+                Collections.singletonList(String.join(".", plan.getDatabasePathPattern())),
+                plan.getTTL()),
+            dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
@@ -112,46 +121,5 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   @Override
   protected SetTTLState getInitialState() {
     return SetTTLState.SET_CONFIGNODE_TTL;
-  }
-
-  private class SetDeviceTTLRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
-    private final String taskName;
-
-    protected SetDeviceTTLRegionTaskExecutor(
-        String taskName,
-        ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        DataNodeRequestType dataNodeRequestType,
-        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
-      this.taskName = taskName;
-    }
-
-    @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        TDataNodeLocation dataNodeLocation,
-        List<TConsensusGroupId> consensusGroupIdList,
-        TSStatus response) {
-      List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
-    protected void onAllReplicasetFailure(
-        TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {}
   }
 }

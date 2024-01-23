@@ -15,6 +15,8 @@ public class TTLManager {
   private final CacheNode ttlCacheTree;
   public static final long NULL_TTL = -1;
 
+  public static final String INFINITE = "INF";
+
   private static final String SEPARATOR = ",";
 
   private static final String STRING_ENCODING = "utf-8";

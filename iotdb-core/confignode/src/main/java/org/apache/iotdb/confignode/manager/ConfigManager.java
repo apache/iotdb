@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateD
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -78,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
@@ -564,6 +566,25 @@ public class ConfigManager implements IManager {
       dataSet.setStatus(status);
       return dataSet;
     }
+  }
+
+  @Override
+  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+    TSStatus status = confirmLeader();
+    ShowTTLResp resp = new ShowTTLResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        resp = (ShowTTLResp) getConsensusManager().read(showTTLPlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+        TSStatus tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+        tsStatus.setMessage(e.getMessage());
+        resp.setStatus(tsStatus);
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
   }
 
   @Override

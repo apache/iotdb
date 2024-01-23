@@ -4,6 +4,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.ttl.TTLManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -17,6 +18,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -51,6 +53,19 @@ public class TTLInfo implements SnapshotProcessor {
       lock.writeLock().unlock();
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public ShowTTLResp showAllTTL() {
+    lock.readLock().lock();
+    ShowTTLResp resp = new ShowTTLResp();
+    try {
+      Map<String, Long> pathTTLMap = ttlManager.getAllPathTTL();
+      resp.setPathTTLMap(pathTTLMap);
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } finally {
+      lock.readLock().unlock();
+    }
+    return resp;
   }
 
   @Override

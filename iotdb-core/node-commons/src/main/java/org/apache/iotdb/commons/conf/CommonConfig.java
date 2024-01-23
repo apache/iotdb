@@ -97,7 +97,7 @@ public class CommonConfig {
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(3);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its

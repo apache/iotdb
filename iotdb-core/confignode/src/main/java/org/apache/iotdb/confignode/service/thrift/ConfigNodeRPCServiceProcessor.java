@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeCo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -62,6 +63,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigura
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
+import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -148,6 +150,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -477,6 +480,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
+  }
+
+  @Override
+  public TShowTTLResp showAllTTL() {
+    ShowTTLResp showTTLResp = (ShowTTLResp) configManager.showAllTTL(new ShowTTLPlan());
+    return showTTLResp.convertToRPCTShowTTLResp();
   }
 
   @Override

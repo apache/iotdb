@@ -80,7 +80,10 @@ public enum ProcedureType {
   ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001),
 
   /** Auth privilege */
-  AUTH_OPERATE_PROCEDURE((short) 1300);
+  AUTH_OPERATE_PROCEDURE((short) 1300),
+
+  /** TTL */
+  SET_TTL_PROCEDURE((short)1400);
 
   private final short typeCode;
 

@@ -58,7 +58,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
@@ -89,6 +88,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -1158,27 +1158,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Map<String, Long> databaseToTTL = new HashMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      ByteBuffer scope = showTTLStatement.getAuthorityScope().serialize();
-      if (showTTLStatement.isAll()) {
-        List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TGetDatabaseReq req = new TGetDatabaseReq(allStorageGroupPathPattern, scope);
-        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-        for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-          databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-        }
-      } else {
-        for (PartialPath databasePath : databasePaths) {
-          List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
-          TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, scope);
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-          for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-            if (!databaseToTTL.containsKey(entry.getKey())) {
-              databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-            }
-          }
-        }
-      }
-    } catch (IOException | ClientManagerException | TException e) {
+      // TODO: need to set user authority scope? Currently all users can query all ttls
+      TShowTTLResp resp = client.showAllTTL();
+      databaseToTTL.putAll(resp.getPathTTLMap());
+    } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock

@@ -117,6 +117,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -468,6 +469,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getMatchedDatabaseSchemas(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowTTLResp showAllTTL() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showAllTTL(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
