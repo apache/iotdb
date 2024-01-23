@@ -51,6 +51,9 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -77,6 +80,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private Map<String, Integer> measurementSchemaListIndexMap;
   private final FlushDataBlockPolicy flushPolicy;
   private final CompactionTaskSummary summary;
+  private final Logger logger =
+      LoggerFactory.getLogger(ReadChunkAlignedSeriesCompactionExecutor.class);
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
@@ -92,6 +97,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.writer = writer;
     this.targetResource = targetResource;
     this.summary = summary;
+    if (device.contains("d_0")) {
+      System.out.println();
+    }
     collectValueColumnSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
@@ -136,7 +144,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
                   chunkHeader.getCompressionType());
           measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), schema);
         }
-        break;
       }
     }
 
@@ -188,6 +195,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       }
       pointNum += chunkMetadata.getStatistics().getCount();
       ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
+      if (!measurementSchemaListIndexMap.containsKey(chunkMetadata.getMeasurementUid())) {
+        System.out.println();
+      }
       int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
       valueChunks.set(idx, valueChunk);
     }
