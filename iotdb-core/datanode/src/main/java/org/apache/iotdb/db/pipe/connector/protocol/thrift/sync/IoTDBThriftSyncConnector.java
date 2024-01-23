@@ -31,7 +31,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftS
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -294,12 +293,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferTabletBatchReq.toTPipeTransferReq(
-                      tabletBatchBuilder.getTPipeTransferReqs()));
+      resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

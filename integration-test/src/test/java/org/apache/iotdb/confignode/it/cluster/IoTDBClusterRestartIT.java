@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.confignode.it.cluster;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
@@ -33,9 +41,11 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -46,7 +56,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
@@ -58,6 +70,8 @@ public class IoTDBClusterRestartIT {
   private static final int testReplicationFactor = 2;
 
   private static final int testConfigNodeNum = 3, testDataNodeNum = 2;
+
+  private static final long testTimePartitionInterval = 604800000;
 
   @Before
   public void setUp() {
@@ -114,6 +128,45 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartAfterUpdateDataNodeTest()
       throws InterruptedException, ClientManagerException, IOException, TException {
+    // Create default Database
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TSStatus status = client.setDatabase(new TDatabaseSchema("root.database"));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
+    // Create some DataPartitions to extend 2 DataRegionGroups
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
+        ConfigNodeTestUtils.constructPartitionSlotsMap(
+            "root.database", 0, 10, 0, 10, testTimePartitionInterval);
+    TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+    TDataPartitionTableResp dataPartitionTableResp = null;
+    for (int retry = 0; retry < 5; retry++) {
+      // Build new Client since it's unstable in Win8 environment
+      try (SyncConfigNodeIServiceClient configNodeClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+        if (dataPartitionTableResp != null) {
+          break;
+        }
+      } catch (Exception e) {
+        // Retry sometimes in order to avoid request timeout
+        logger.error(e.getMessage());
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    Assert.assertNotNull(dataPartitionTableResp);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionTableResp.getStatus().getCode());
+    Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
+    ConfigNodeTestUtils.checkDataPartitionTable(
+        "root.database",
+        0,
+        10,
+        0,
+        10,
+        testTimePartitionInterval,
+        dataPartitionTableResp.getDataPartitionTable());
+
     // Shutdown all DataNodes
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().shutdownDataNode(i);
@@ -151,12 +204,29 @@ public class IoTDBClusterRestartIT {
     // Check DataNode EndPoint
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // Check update in NodeInfo
       TShowClusterResp showClusterResp = client.showCluster();
       ConfigNodeTestUtils.checkNodeConfig(
           showClusterResp.getConfigNodeList(),
           showClusterResp.getDataNodeList(),
           EnvFactory.getEnv().getConfigNodeWrapperList(),
           dataNodeWrapperList);
+
+      // Check update in PartitionInfo
+      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
+      showRegionResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                AtomicBoolean matched = new AtomicBoolean(false);
+                dataNodeWrapperList.forEach(
+                    dataNodeWrapper -> {
+                      if (regionInfo.getClientRpcPort() == dataNodeWrapper.getPort()) {
+                        matched.set(true);
+                      }
+                    });
+                Assert.assertTrue(matched.get());
+              });
     }
   }
 

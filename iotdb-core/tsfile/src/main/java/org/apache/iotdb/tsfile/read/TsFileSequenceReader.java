@@ -2078,7 +2078,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * Get AlignedChunkMetadata of sensors under one device
+   * Get AlignedChunkMetadata of sensors under one device. Notice: if all the value chunks is empty
+   * chunk, then return empty list.
    *
    * @param device device name
    */

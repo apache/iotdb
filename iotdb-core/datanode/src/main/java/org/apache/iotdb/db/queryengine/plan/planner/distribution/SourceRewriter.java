@@ -133,7 +133,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     String device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
-        analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
+        !analysis.useLogicalView()
+            ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
+            : new ArrayList<>(
+                analysis.getPartitionInfo(
+                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
+                    context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
     for (TRegionReplicaSet tRegionReplicaSet : regionReplicaSets) {
@@ -183,7 +188,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.isAllDevicesInOneTemplate()
+          !analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()))
               : new ArrayList<>(
@@ -212,7 +217,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1 || analysis.isHasSort() || analysis.isUseTopKNode()) {
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -288,7 +293,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitSort(SortNode node, DistributionPlanContext context) {
 
-    analysis.setHasSort(true);
+    analysis.setHasSortNode(true);
 
     List<PlanNode> children = rewrite(node.getChild(), context);
     if (children.size() == 1) {
@@ -1210,15 +1215,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByLevelNode newRoot = (GroupByLevelNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               GroupByLevelNode parentOfGroup = (GroupByLevelNode) root.clone();
               parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
@@ -1348,15 +1351,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByTagNode newRoot = (GroupByTagNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               HorizontallyConcatNode horizontallyConcatNode =
                   new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());

@@ -79,7 +79,6 @@ public class SchemaFile implements ISchemaFile {
   // attributes for file
   private File pmtFile;
   private FileChannel channel;
-  private SchemaRegionCachedMetric metric = null;
 
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
@@ -359,7 +358,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
       ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath, metric);
+      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
@@ -374,7 +373,7 @@ public class SchemaFile implements ISchemaFile {
         throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
       }
 
-      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath, metric);
+      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
     }
   }
 
@@ -451,7 +450,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   public void setMetric(SchemaRegionCachedMetric metric) {
-    this.metric = metric;
+    pageManager.setMetric(metric);
   }
 
   // endregion

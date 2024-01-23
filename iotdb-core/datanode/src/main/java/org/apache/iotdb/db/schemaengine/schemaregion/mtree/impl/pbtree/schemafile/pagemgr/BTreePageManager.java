@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
-import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegmentedPage;
@@ -43,14 +42,9 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.sc
 
 public class BTreePageManager extends PageManager {
 
-  public BTreePageManager(
-      FileChannel channel,
-      File pmtFile,
-      int lastPageIndex,
-      String logPath,
-      SchemaRegionCachedMetric metric)
+  public BTreePageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
-    super(channel, pmtFile, lastPageIndex, logPath, metric);
+    super(channel, pmtFile, lastPageIndex, logPath);
   }
 
   @Override
@@ -320,7 +314,7 @@ public class BTreePageManager extends PageManager {
 
   @Override
   public void delete(ICachedMNode node) throws IOException, MetadataException {
-    cacheGuardian();
+    pagePool.cacheGuardian();
     SchemaPageContext cxt = new SchemaPageContext();
     // node is the record deleted from its segment
     entrantLock(node.getParent(), cxt);
@@ -388,7 +382,7 @@ public class BTreePageManager extends PageManager {
       flushDirtyPages(cxt);
     } finally {
       releaseLocks(cxt);
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
     }
   }
 
@@ -487,7 +481,7 @@ public class BTreePageManager extends PageManager {
       return child;
     } finally {
       initPage.getLock().readLock().unlock();
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
       threadContexts.remove(Thread.currentThread().getId(), cxt);
     }
   }
@@ -572,7 +566,7 @@ public class BTreePageManager extends PageManager {
     } finally {
       // safety of iterator should be guaranteed by upper layer
       pageHeldLock.getLock().readLock().unlock();
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
     }
   }
 

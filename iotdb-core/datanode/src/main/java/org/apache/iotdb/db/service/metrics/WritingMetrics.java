@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointTyp
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -221,7 +222,6 @@ public class WritingMetrics implements IMetricSet {
   private Timer globalMemoryTableInfoTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer createMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer flushMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer serializeOneWalInfoEntryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer serializeWalEntryTotalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer syncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer fsyncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -251,14 +251,6 @@ public class WritingMetrics implements IMetricSet {
             MAKE_CHECKPOINT,
             Tag.TYPE.toString(),
             CheckpointType.FLUSH_MEMORY_TABLE.toString());
-    serializeOneWalInfoEntryTimer =
-        metricService.getOrCreateTimer(
-            Metric.WAL_COST.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            SERIALIZE_WAL_ENTRY,
-            Tag.TYPE.toString(),
-            SERIALIZE_ONE_WAL_INFO_ENTRY);
     serializeWalEntryTotalTimer =
         metricService.getOrCreateTimer(
             Metric.WAL_COST.toString(),
@@ -289,7 +281,6 @@ public class WritingMetrics implements IMetricSet {
     globalMemoryTableInfoTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     createMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     flushMemoryTableTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    serializeOneWalInfoEntryTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     serializeWalEntryTotalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     syncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     fsyncTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -306,7 +297,7 @@ public class WritingMetrics implements IMetricSet {
                     MAKE_CHECKPOINT,
                     Tag.TYPE.toString(),
                     type));
-    Arrays.asList(SERIALIZE_ONE_WAL_INFO_ENTRY, SERIALIZE_WAL_ENTRY_TOTAL)
+    Arrays.asList(SERIALIZE_WAL_ENTRY_TOTAL)
         .forEach(
             type ->
                 metricService.remove(
@@ -343,8 +334,8 @@ public class WritingMetrics implements IMetricSet {
       "oldest_mem_table_ram_when_cause_flush";
   public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
-  private Histogram flushThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private Histogram rejectThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
 
   private Timer memtableLiveTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -359,12 +350,12 @@ public class WritingMetrics implements IMetricSet {
     allDataRegionIds.forEach(this::createActiveMemtableCounterMetrics);
     createActiveTimePartitionCounterMetrics();
 
-    flushThreholdHistogram =
+    flushThreholdGauge =
         MetricService.getInstance()
-            .getOrCreateHistogram(Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT);
-    rejectThreholdHistogram =
+            .getOrCreateGauge(Metric.FLUSH_THRESHOLD.toString(), MetricLevel.IMPORTANT);
+    rejectThreholdGauge =
         MetricService.getInstance()
-            .getOrCreateHistogram(Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT);
+            .getOrCreateGauge(Metric.REJECT_THRESHOLD.toString(), MetricLevel.IMPORTANT);
 
     memtableLiveTimer =
         MetricService.getInstance()
@@ -383,8 +374,8 @@ public class WritingMetrics implements IMetricSet {
           removeActiveMemtableCounterMetrics(dataRegionId);
         });
     removeActiveTimePartitionCounterMetrics();
-    MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.FLUSH_THRESHOLD.toString());
-    MetricService.getInstance().remove(MetricType.HISTOGRAM, Metric.REJECT_THRESHOLD.toString());
+    MetricService.getInstance().remove(MetricType.GAUGE, Metric.FLUSH_THRESHOLD.toString());
+    MetricService.getInstance().remove(MetricType.GAUGE, Metric.REJECT_THRESHOLD.toString());
     MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
   }
 
@@ -501,7 +492,7 @@ public class WritingMetrics implements IMetricSet {
 
   public void createActiveTimePartitionCounterMetrics() {
     MetricService.getInstance()
-        .getOrCreateCounter(Metric.ACTIVE_MEMTABLE_COUNT.toString(), MetricLevel.IMPORTANT);
+        .getOrCreateCounter(Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
   public void removeSeriesFullFlushMemTableCounterMetrics(DataRegionId dataRegionId) {
@@ -738,10 +729,6 @@ public class WritingMetrics implements IMetricSet {
     }
   }
 
-  public void recordSerializeOneWALInfoEntryCost(long costTimeInNanos) {
-    serializeOneWalInfoEntryTimer.updateNanos(costTimeInNanos);
-  }
-
   public void recordSerializeWALEntryTotalCost(long costTimeInNanos) {
     serializeWalEntryTotalTimer.updateNanos(costTimeInNanos);
   }
@@ -765,11 +752,11 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void recordFlushThreshold(double flushThreshold) {
-    flushThreholdHistogram.update((long) flushThreshold);
+    flushThreholdGauge.set((long) flushThreshold);
   }
 
   public void recordRejectThreshold(double rejectThreshold) {
-    rejectThreholdHistogram.update((long) rejectThreshold);
+    rejectThreholdGauge.set((long) rejectThreshold);
   }
 
   public void recordMemTableLiveDuration(long durationMillis) {
@@ -781,7 +768,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.TIMED_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -791,7 +778,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.WAL_FLUSH_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -801,7 +788,7 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.SERIES_FULL_FLUSH_MEMTABLE.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
@@ -811,14 +798,14 @@ public class WritingMetrics implements IMetricSet {
         .count(
             number,
             Metric.ACTIVE_MEMTABLE_COUNT.toString(),
-            MetricLevel.CORE,
+            MetricLevel.IMPORTANT,
             Tag.REGION.toString(),
             dataRegionId);
   }
 
   public void recordActiveTimePartitionCount(int number) {
     MetricService.getInstance()
-        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.CORE);
+        .count(number, Metric.ACTIVE_TIME_PARTITION_COUNT.toString(), MetricLevel.IMPORTANT);
   }
 
   // endregion

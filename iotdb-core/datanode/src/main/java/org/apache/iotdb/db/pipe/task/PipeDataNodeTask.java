@@ -23,7 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeDataNodeTask implements PipeTask {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTask.class);
 
   protected final String pipeName;
   protected final TConsensusGroupId regionId;
@@ -48,30 +53,50 @@ public class PipeDataNodeTask implements PipeTask {
 
   @Override
   public void create() {
+    final long startTime = System.currentTimeMillis();
     extractorStage.create();
     processorStage.create();
     connectorStage.create();
+    LOGGER.info(
+        "Create pipe DN task {} successfully within {} ms",
+        this,
+        System.currentTimeMillis() - startTime);
   }
 
   @Override
   public void drop() {
+    final long startTime = System.currentTimeMillis();
     extractorStage.drop();
     processorStage.drop();
     connectorStage.drop();
+    LOGGER.info(
+        "Drop pipe DN task {} successfully within {} ms",
+        this,
+        System.currentTimeMillis() - startTime);
   }
 
   @Override
   public void start() {
+    final long startTime = System.currentTimeMillis();
     extractorStage.start();
     processorStage.start();
     connectorStage.start();
+    LOGGER.info(
+        "Start pipe DN task {} successfully within {} ms",
+        this,
+        System.currentTimeMillis() - startTime);
   }
 
   @Override
   public void stop() {
+    final long startTime = System.currentTimeMillis();
     extractorStage.stop();
     processorStage.stop();
     connectorStage.stop();
+    LOGGER.info(
+        "Stop pipe DN task {} successfully within {} ms",
+        this,
+        System.currentTimeMillis() - startTime);
   }
 
   public TConsensusGroupId getRegionId() {
@@ -80,5 +105,10 @@ public class PipeDataNodeTask implements PipeTask {
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  @Override
+  public String toString() {
+    return pipeName + "@" + regionId;
   }
 }

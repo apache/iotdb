@@ -216,9 +216,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
 
-    FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
-    BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
-    try {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       // for IOTDB 1.2, the username's length will be stored as a negative number.
       byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
       IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
@@ -232,13 +231,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
         IOUtils.writePathPrivilege(
             outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
-
-    } catch (Exception e) {
-      throw new IOException(e);
-    } finally {
       outputStream.flush();
       fileOutputStream.getFD().sync();
-      outputStream.close();
+    } catch (Exception e) {
+      LOGGER.warn("Get exception when save user {}'s privileges", user.getName(), e);
+      throw new IOException(e);
+    } finally {
       encodingBufferLocal.remove();
     }
 
@@ -250,20 +248,19 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    fileOutputStream = new FileOutputStream(roleProfile);
-    outputStream = new BufferedOutputStream(fileOutputStream);
-    try {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       int userNum = user.getRoleList().size();
       for (int i = 0; i < userNum; i++) {
         IOUtils.writeString(
             outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
       }
-    } catch (Exception e) {
-      throw new IOException(e);
-    } finally {
       outputStream.flush();
       fileOutputStream.getFD().sync();
-      outputStream.close();
+    } catch (Exception e) {
+      LOGGER.warn("Get Exception when save user {}'s roles", user.getName(), e);
+      throw new IOException(e);
+    } finally {
       encodingBufferLocal.remove();
     }
 

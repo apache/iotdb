@@ -119,9 +119,8 @@ public class ReleaseFlushMonitor {
                 // 2. if it still exceeds release threshold, it will try to flush node buffer, then
                 // release node cache again
                 if (releaseFlushStrategy.isExceedReleaseThreshold()) {
-                  scheduler.forceFlushAll();
+                  scheduler.scheduleFlushAll();
                   regionToTraverserTime.values().forEach(RecordList::clear);
-                  scheduler.scheduleRelease(false);
                 }
                 synchronized (blockObject) {
                   // invoke the notifyAll() method to wake up the thread waiting for the release
@@ -239,7 +238,7 @@ public class ReleaseFlushMonitor {
         }
       }
       if (needFlush) {
-        scheduler.forceFlushAll();
+        scheduler.scheduleFlushAll().join();
         scheduler.scheduleRelease(true);
       } else {
         break;

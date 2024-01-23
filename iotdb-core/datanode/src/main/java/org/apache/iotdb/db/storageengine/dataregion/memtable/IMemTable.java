@@ -168,6 +168,8 @@ public interface IMemTable extends WALEntryValue {
 
   long getCreatedTime();
 
+  long getUpdateTime();
+
   FlushStatus getFlushStatus();
 
   void setFlushStatus(FlushStatus flushStatus);

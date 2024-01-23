@@ -48,6 +48,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class WALRecoverWriterTest {
   private final File logFile =
@@ -65,7 +66,7 @@ public class WALRecoverWriterTest {
     // prepare file
     logFile.createNewFile();
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
-    WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>());
+    WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // recover
     WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
     walRecoverWriter.recover(walMetaData);
@@ -87,7 +88,7 @@ public class WALRecoverWriterTest {
       stream.write(1);
     }
     long firstSearchIndex = WALFileUtils.parseStartSearchIndex(logFile.getName());
-    WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>());
+    WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // recover
     WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
     walRecoverWriter.recover(walMetaData);
@@ -109,7 +110,7 @@ public class WALRecoverWriterTest {
     int size = walEntry.serializedSize();
     WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
     walEntry.serialize(buffer);
-    walMetaData.add(size, 1);
+    walMetaData.add(size, 1, walEntry.getMemTableId());
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
@@ -133,7 +134,7 @@ public class WALRecoverWriterTest {
     int size = walEntry.serializedSize();
     WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
     walEntry.serialize(buffer);
-    walMetaData.add(size, 1);
+    walMetaData.add(size, 1, walEntry.getMemTableId());
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
     }
