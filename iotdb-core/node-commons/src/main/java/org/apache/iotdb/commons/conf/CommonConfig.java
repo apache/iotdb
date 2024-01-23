@@ -186,6 +186,7 @@ public class CommonConfig {
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private long pipeStuckRestartIntervalSeconds = 60;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
@@ -194,8 +195,6 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
-
-  private long pipeStuckRestartIntervalSeconds = 60;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
