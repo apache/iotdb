@@ -159,7 +159,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   @Override
   public long getFlushedTime(long timePartitionId, String path) {
     return partitionLatestFlushedTimeForEachDevice
-        .get(timePartitionId)
+        .computeIfAbsent(timePartitionId, id -> new HashMap<>())
         .computeIfAbsent(path, k -> recoverFlushTime(timePartitionId, path));
   }
 
