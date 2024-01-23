@@ -97,9 +97,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.writer = writer;
     this.targetResource = targetResource;
     this.summary = summary;
-    if (device.contains("d_0")) {
-      System.out.println();
-    }
     collectValueColumnSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
@@ -195,9 +192,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       }
       pointNum += chunkMetadata.getStatistics().getCount();
       ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
-      if (!measurementSchemaListIndexMap.containsKey(chunkMetadata.getMeasurementUid())) {
-        System.out.println();
-      }
       int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
       valueChunks.set(idx, valueChunk);
     }
