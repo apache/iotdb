@@ -674,13 +674,15 @@ public class BOSTest {
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
-
-
         block_size = remaining-1;
         int max_delta_value = min_delta[2];
+
+        //-------------------------------
+
         int[] value_list = new int[block_size];
         int unique_value_count = 0;
         int[] value_count_list = new int[max_delta_value+1];
+
         for(int value:ts_block_delta){
             if(value_count_list[value]==0){
                 value_count_list[value] = 1;
@@ -708,6 +710,7 @@ public class BOSTest {
             count += getCount(sorted_value_list[i], mask);
             sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
         }
+        //    3 2  -> 110000000010
 
         int max_delta_value_bit_width = getBitWith(max_delta_value);
         int[] spread_value = new int[max_delta_value_bit_width-1];
