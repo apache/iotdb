@@ -57,7 +57,8 @@ public class JlineUtils {
     // Defaulting to a dumb terminal when a supported terminal can not be correctly created
     // see https://github.com/jline/jline3/issues/291
     Terminal terminal;
-    // This check is needed as TerminalBuilder checks if "in" and "out" are set and takes a wrong turn, if they are.
+    // This check is needed as TerminalBuilder checks if "in" and "out" are set and takes a wrong
+    // turn, if they are.
     if (ctx.getIn() == System.in && ctx.getOut() == System.out) {
       terminal = TerminalBuilder.builder().dumb(true).build();
     } else {
