@@ -200,91 +200,91 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     isSubmitted = false;
 
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
       releaseLastEvent(false);
       return;
     }
 
-    // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
-      LOGGER.warn(
-          "PipeConnectionException occurred, retrying to connect to the target system...",
-          throwable);
-
-      int retry = 0;
-      while (retry < MAX_RETRY_TIMES) {
-        try {
-          outputPipeConnector.handshake();
-          LOGGER.info("Successfully reconnected to the target system.");
-          break;
-        } catch (Exception e) {
-          retry++;
-          LOGGER.warn(
-              "Failed to reconnect to the target system, retrying ... "
-                  + "after [{}/{}] time(s) retries.",
-              retry,
-              MAX_RETRY_TIMES,
-              e);
-          try {
-            Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
-          } catch (InterruptedException interruptedException) {
-            LOGGER.info(
-                "Interrupted while sleeping, perhaps need to check "
-                    + "whether the thread is interrupted.",
-                interruptedException);
-            Thread.currentThread().interrupt();
-          }
-        }
-      }
-
-      // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
-      // times
-      if (retry == MAX_RETRY_TIMES) {
-        if (lastEvent instanceof EnrichedEvent) {
-          LOGGER.warn(
-              "Failed to reconnect to the target system after {} times, "
-                  + "stopping current pipe task {}... "
-                  + "Status shown when query the pipe will be 'STOPPED'. "
-                  + "Please restart the task by executing 'START PIPE' manually if needed.",
-              MAX_RETRY_TIMES,
-              taskID,
-              throwable);
-
-          ((EnrichedEvent) lastEvent)
-              .reportException(
-                  new PipeRuntimeConnectorCriticalException(
-                      throwable.getMessage()
-                          + ", root cause: "
-                          + ErrorHandlingUtils.getRootCause(throwable).getMessage()));
-        } else {
-          LOGGER.error(
-              "Failed to reconnect to the target system after {} times, "
-                  + "stopping current pipe task {} locally... "
-                  + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', "
-                  + "but the task is actually stopped. "
-                  + "Please restart the task by executing 'START PIPE' manually if needed.",
-              MAX_RETRY_TIMES,
-              taskID,
-              throwable);
-        }
-
-        // Although the pipe task will be stopped, we still don't release the last event here
-        // Because we need to keep it for the next retry. If user wants to restart the task,
-        // the last event will be processed again. The last event will be released when the task
-        // is dropped or the process is running normally.
-
-        // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      // Retry to connect to the target system if the connection is broken
+      if (onPipeConnectionException(throwable)) {
+        // return if the pipe task should be stopped
         return;
       }
-    } else {
-      LOGGER.warn(
-          "A non-PipeConnectionException occurred, exception message: {}",
-          throwable.getMessage(),
-          throwable);
     }
 
     // Handle other exceptions as usual
-    super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+    super.onFailure(throwable);
+  }
+
+  /** @return true if the pipe task should be stopped, false otherwise */
+  private boolean onPipeConnectionException(Throwable throwable) {
+    LOGGER.warn(
+        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+        outputPipeConnector.getClass().getName(),
+        throwable);
+
+    int retry = 0;
+    while (retry < MAX_RETRY_TIMES) {
+      try {
+        outputPipeConnector.handshake();
+        LOGGER.info(
+            "{} handshakes with the target system successfully.",
+            outputPipeConnector.getClass().getName());
+        break;
+      } catch (Exception e) {
+        retry++;
+        LOGGER.warn(
+            "{} failed to handshake with the target system for {} times, "
+                + "will retry at most {} times.",
+            outputPipeConnector.getClass().getName(),
+            retry,
+            MAX_RETRY_TIMES,
+            e);
+        try {
+          Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+        } catch (InterruptedException interruptedException) {
+          LOGGER.info(
+              "Interrupted while sleeping, will retry to handshake with the target system.",
+              interruptedException);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+
+    // Stop current pipe task if failed to reconnect to
+    // the target system after MAX_RETRY_TIMES times
+    if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
+      ((EnrichedEvent) lastEvent)
+          .reportException(
+              new PipeRuntimeConnectorCriticalException(
+                  throwable.getMessage()
+                      + ", root cause: "
+                      + ErrorHandlingUtils.getRootCause(throwable).getMessage()));
+      LOGGER.warn(
+          "{} failed to handshake with the target system after {} times, "
+              + "stopping current subtask {} (creation time: {}, simple class: {}). "
+              + "Status shown when query the pipe will be 'STOPPED'. "
+              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          outputPipeConnector.getClass().getName(),
+          MAX_RETRY_TIMES,
+          taskID,
+          creationTime,
+          this.getClass().getSimpleName(),
+          throwable);
+
+      // Although the pipe task will be stopped, we still don't release the last event here
+      // Because we need to keep it for the next retry. If user wants to restart the task,
+      // the last event will be processed again. The last event will be released when the task
+      // is dropped or the process is running normally.
+
+      // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      return true;
+    }
+
+    // For non enriched event, forever retry.
+    // For enriched event, retry if connection is set up successfully.
+    return false;
   }
 
   /**

@@ -119,10 +119,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorSelectorNumber();
   }
 
-  public int getPipeAsyncConnectorCoreClientNumber() {
-    return COMMON_CONFIG.getPipeAsyncConnectorCoreClientNumber();
-  }
-
   public int getPipeAsyncConnectorMaxClientNumber() {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
@@ -247,7 +243,6 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
-    LOGGER.info("PipeAsyncConnectorCoreClientNumber: {}", getPipeAsyncConnectorCoreClientNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());

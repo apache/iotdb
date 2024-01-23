@@ -26,6 +26,12 @@ popd
 
 setlocal enabledelayedexpansion
 
+if "%JAVA_HOME%"=="" (
+    echo Please configure JAVA environment variables
+    pause
+    exit /b
+)
+
 set "COLLECTION_DIR_NAME=iotdb-info"
 set "COLLECTION_DIR=%IOTDB_HOME%\%COLLECTION_DIR_NAME%"
 set "COLLECTION_DIR_LOGS=%COLLECTION_DIR%\logs"
@@ -94,13 +100,13 @@ echo user_param: %user_param%
 echo passwd_param: %passwd_param%
 echo host_param: %host_param%
 echo port_param: %port_param%
-echo jdk_path_param: %jdk_path_param%
 echo data_dir_param: %data_dir_param%
 
 set "command=show version"
 
 call :collect_info
-echo "Program execution completed, directory name is %COLLECTION_DIR%"
+echo Program execution completed, directory name is %COLLECTION_DIR%
+pause
 exit /b
 
 :collect_info
@@ -125,29 +131,20 @@ call :execute_command "show regions" >> "%COLLECTION_FILE%" 2>&1
 call :execute_command "show databases" >> "%COLLECTION_FILE%" 2>&1
 call :execute_command "count devices" >> "%COLLECTION_FILE%" 2>&1
 call :execute_command "count timeseries" >> "%COLLECTION_FILE%" 2>&1
-
 exit /b
 
 :collect_system_info
-echo ===================== System Info =====================
+echo ===================== "System Info" =====================
 systeminfo
 exit /b
 
 :collect_jdk_version
-echo ===================== JDK Version =====================
-if not "%jdk_path_param%"=="" (
-    if exist "%jdk_path_param%" (
-        "%jdk_path_param%\bin\java" -version 2>&1
-    ) else (
-        echo Invalid JDK path: %jdk_path_param%
-    )
-) else (
-    java -version 2>&1
-)
+echo ===================== "JDK Version" =====================
+java -version 2>&1
 exit /b
 
 :collect_activation_info
-echo =================== Activation Info ====================
+echo =================== "Activation Info" ====================
 if exist "%~dp0/../activation" (
     if exist "%~dp0/../activation/license" (
         echo Active
@@ -177,7 +174,7 @@ call "%START_CLI_PATH%" -h "%host_param%" -p "%port_param%" -u "%user_param%" -p
 exit /b
 
 :total_file_num
-echo '===================== TsFile Info====================='
+echo ===================== "TsFile Info" =====================
 set "directories=%data_dir_param%"
 set "seqFileCount=0"
 set "unseqFileCount=0"
@@ -197,81 +194,74 @@ for %%d in ("%directories: =" "%") do (
         for /f %%a in ('dir /s /b /a-d "!seqdirectory!\\*.tsfile"  2^>nul ^| find /c /v ""') do (
             set /a "seqFileCount+=%%a"
         )
-     call :processDirectory "!seqdirectory!" seqFileSize
     )
     if exist "!unseqdirectory!\*" (
         for /f %%a in ('dir /s /b /a-d "!unseqdirectory!\\*.tsfile" 2^>nul ^| find /c /v ""') do (
             set /a "unseqFileCount+=%%a"
         )
-     call :processDirectory "!unseqdirectory!" unseqFileSize
     )
-
-
-    set /a "totalSeqFileSize+=!seqFileSize!"
-    set /a "totalUnseqFileSize+=!unseqFileSize!"
 )
 
 echo sequence(tsfile number): %seqFileCount%
 echo unsequence(tsfile number): %unseqFileCount%
-call :convertSize %totalSeqFileSize% convertedSeqSize
-call :convertSize %totalUnseqFileSize% convertedUnSeqSize
+call :directorySize "%data_dir_param%\sequence" convertedSeqSize
+call :directorySize "%data_dir_param%\unsequence" convertedUnSeqSize
 echo sequence(tsfile size): %convertedSeqSize%
 echo unsequence(tsfile size): %convertedUnSeqSize%
 exit /b
 
-:processDirectory
-setlocal enabledelayedexpansion
-set "dir=%~1"
-set "sizeVar=%~2"
+:directorySize
+@echo off
+setlocal
+set "data_dir=%~1"
+set "vbscript=tmp.vbs"
 
-echo Set objFSO = CreateObject("Scripting.FileSystemObject") > tmp.vbs
-echo Set objFolder = objFSO.GetFolder("%dir%") >> tmp.vbs
-echo Dim totalSize >> tmp.vbs
-echo totalSize = 0 >> tmp.vbs
-echo CalculateFolderSize objFolder >> tmp.vbs
-echo WScript.Echo totalSize >> tmp.vbs
-echo Sub CalculateFolderSize(objCurrentFolder) >> tmp.vbs
-echo    For Each objFile In objCurrentFolder.Files >> tmp.vbs
-echo        totalSize = totalSize + objFile.Size >> tmp.vbs
-echo    Next >> tmp.vbs
+echo Option Explicit > "%vbscript%"
+echo. >> "%vbscript%"
 
-echo    For Each objSubFolder In objCurrentFolder.SubFolders >> tmp.vbs
-echo        CalculateFolderSize objSubFolder >> tmp.vbs
-echo    Next >> tmp.vbs
-echo End Sub >> tmp.vbs
+echo Dim directories >> "%vbscript%"
+echo directories = Split("%data_dir%", ",") >> "%vbscript%"
+echo. >> "%vbscript%"
+echo Dim totalSize >> "%vbscript%"
+echo totalSize = 0 >> "%vbscript%"
+echo. >> "%vbscript%"
+echo Dim objFSO >> "%vbscript%"
+echo Set objFSO = CreateObject("Scripting.FileSystemObject") >> "%vbscript%"
+echo. >> "%vbscript%"
+echo Dim directory >> "%vbscript%"
+echo For Each directory In directories >> "%vbscript%"
+echo     directory = Trim(directory) >> "%vbscript%"
+echo     If objFSO.FolderExists(directory) Then >> "%vbscript%"
+echo         Dim objFolder >> "%vbscript%"
+echo         Set objFolder = objFSO.GetFolder(directory) >> "%vbscript%"
+echo         totalSize = totalSize + objFolder.Size >> "%vbscript%"
+echo     End If >> "%vbscript%"
+echo Next >> "%vbscript%"
+echo. >> "%vbscript%"
+echo Set objFSO = Nothing >> "%vbscript%"
+echo. >> "%vbscript%"
+echo Function FormatSize(size) >> "%vbscript%"
+echo     Dim suffixes >> "%vbscript%"
+echo     suffixes = Array("B", "KB", "MB", "GB", "TB") >> "%vbscript%"
+echo     Dim index >> "%vbscript%"
+echo     index = 0 >> "%vbscript%"
+echo     Do While size ^>= 1024 And index ^< UBound(suffixes) >> "%vbscript%"
+echo         size = size / 1024 >> "%vbscript%"
+echo         index = index + 1 >> "%vbscript%"
+echo     Loop >> "%vbscript%"
+echo     FormatSize = FormatNumber(size, 2) ^& " " ^& suffixes(index) >> "%vbscript%"
+echo End Function >> "%vbscript%"
+echo If totalSize ^= 0 Then >> "%vbscript%"
+echo     WScript.Echo "0 B" >> "%vbscript%"
+echo Else >> "%vbscript%"
+echo     WScript.Echo FormatSize(totalSize) >> "%vbscript%"
+echo End If >> "%vbscript%"
 
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size=%%a
-del tmp.vbs
+cscript //nologo "%vbscript%" > "tmp"
 
-endlocal & set "%sizeVar%=%data_size%"
+set /p data_size=<"tmp"
+del tmp
+del %vbscript%
+endlocal & set "%2=%data_size%"
 exit /b
 
-:convertSize
-setlocal enabledelayedexpansion
-set "size=%~1"
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024), 0) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_kb=%%a
-del tmp.vbs
-set data_size_kb=!data_size_kb:,=!
-
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024), 1) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_mb=%%a
-del tmp.vbs
-set data_size_mb=!data_size_mb:,=!
-
-echo wsh.echo FormatNumber(cdbl(%size%)/(1024*1024*1024), 1) > tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo tmp.vbs') do set data_size_gb=%%a
-del tmp.vbs
-set data_size_gb=!data_size_gb:,=!
-
-if !data_size_gb! gtr 1 (
-    set "size=!data_size_gb!GB"
-) else if !data_size_mb! gtr 1 (
-    set "size=!data_size_mb!MB"
-) else if !data_size_kb! gtr 1 (
-    set "size=!data_size_kb!KB"
-) else (
-    set "size=!size!B"
-)
-endlocal & set "%~2=%size%"
-exit /b

@@ -568,7 +568,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
         (dataNodeId, regionStatus) ->
