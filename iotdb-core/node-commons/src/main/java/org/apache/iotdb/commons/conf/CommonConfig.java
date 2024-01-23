@@ -185,6 +185,7 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
+  private long pipeMaxAllowedLinkedTsFileCount = 100;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
@@ -195,8 +196,6 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   private long pipeStuckRestartIntervalSeconds = 60;
-  private long pipeMaxAllowedTsFileCount = 1000;
-  private long pipeMaxAllowedConnectorStuckTime = (long) 15 * 60 * 1000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -758,6 +757,22 @@ public class CommonConfig {
     this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
   }
 
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
+    this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
+    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
   public boolean getPipeMemoryManagementEnabled() {
     return pipeMemoryManagementEnabled;
   }
@@ -814,30 +829,6 @@ public class CommonConfig {
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
-  }
-
-  public long getPipeStuckRestartIntervalSeconds() {
-    return pipeStuckRestartIntervalSeconds;
-  }
-
-  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
-    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
-  }
-
-  public long getPipeMaxAllowedTsFileCount() {
-    return pipeMaxAllowedTsFileCount;
-  }
-
-  public void setPipeMaxAllowedTsFileCount(long pipeMaxAllowedTsFileCount) {
-    this.pipeMaxAllowedTsFileCount = pipeMaxAllowedTsFileCount;
-  }
-
-  public long getPipeMaxAllowedConnectorStuckTime() {
-    return pipeMaxAllowedConnectorStuckTime;
-  }
-
-  public void setPipeMaxAllowedConnectorStuckTime(long pipeMaxAllowedConnectorStuckTime) {
-    this.pipeMaxAllowedConnectorStuckTime = pipeMaxAllowedConnectorStuckTime;
   }
 
   public String getSchemaEngineMode() {

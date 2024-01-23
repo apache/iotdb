@@ -427,6 +427,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pinned_memtable_count",
                 String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
+    config.setPipeMaxAllowedLinkedTsFileCount(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_allowed_linked_tsfile_count",
+                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+    config.setPipeStuckRestartIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_stuck_restart_interval_seconds",
+                String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
@@ -463,21 +473,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
-    config.setPipeStuckRestartIntervalSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_stuck_restart_interval_seconds",
-                String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
-    config.setPipeMaxAllowedTsFileCount(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_max_allowed_tsfile_count",
-                String.valueOf(config.getPipeMaxAllowedTsFileCount()))));
-    config.setPipeMaxAllowedConnectorStuckTime(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_max_allowed_connector_stuck_time",
-                String.valueOf(config.getPipeMaxAllowedConnectorStuckTime()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

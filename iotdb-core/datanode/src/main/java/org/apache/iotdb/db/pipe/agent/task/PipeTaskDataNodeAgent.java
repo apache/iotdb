@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -324,59 +326,106 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
-    if (!tryWriteLockWithTimeOut(0)) {
+    if (!tryWriteLockWithTimeOut(5)) {
       return;
     }
     try {
-      Map<String, IoTDBDataRegionExtractor> pipeName2ExtractorMap =
-          PipeExtractorMetrics.getInstance().getPipeName2ExtractorMap();
-      Map<String, PipeProcessorSubtask> pipeName2ProcessorSubtaskMap =
-          PipeProcessorMetrics.getInstance().getPipeName2ProcessorSubtaskMap();
-      Map<String, PipeConnectorSubtask> attributeSortedStr2PipeConnectorSubtaskMap =
-          PipeConnectorMetrics.getInstance().getAttributeSortedStr2PipeConnectorSubtaskMap();
-
-      Set<PipeMeta> restartPipes = new HashSet<>();
-
-      for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-        if (!pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
-          continue;
-        }
-        String pipeName = pipeMeta.getStaticMeta().getPipeName();
-        IoTDBDataRegionExtractor extractor = pipeName2ExtractorMap.get(pipeName);
-        PipeProcessorSubtask processorSubtask = pipeName2ProcessorSubtaskMap.get(pipeName);
-        PipeConnectorSubtask connectorSubtask =
-            attributeSortedStr2PipeConnectorSubtaskMap.get(
-                PipeConnectorSubtaskManager.getAttributeSortedString(
-                    pipeMeta.getStaticMeta().getConnectorParameters()));
-
-        if (Objects.isNull(extractor)
-            || Objects.isNull(processorSubtask)
-            || Objects.isNull(connectorSubtask)) {
-          continue;
-        }
-
-        boolean tsFileCountExceeded =
-            extractor.getRealtimeTsFileInsertionEventCount()
-                    + processorSubtask.getTsFileInsertionEventCount()
-                    + connectorSubtask.getTsFileInsertionEventCount()
-                > PipeConfig.getInstance().getPipeMaxAllowedTsFileCount();
-        boolean connectorStuck =
-            System.currentTimeMillis() - connectorSubtask.getLastSendExecutionTime()
-                > PipeConfig.getInstance().getPipeMaxAllowedConnectorStuckTime();
-        if (tsFileCountExceeded || connectorStuck) {
-          restartPipes.add(pipeMeta);
-        }
-      }
-
-      restartPipes.parallelStream().forEach(this::restartPipeInternal);
-
+      restartAllStuckPipesInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void restartPipeInternal(PipeMeta pipeMeta) {
+  private void restartAllStuckPipesInternal() {
+    final Map<String, IoTDBDataRegionExtractor> pipeName2ExtractorMap =
+        PipeExtractorMetrics.getInstance().getPipeName2ExtractorMap();
+    final Map<String, PipeProcessorSubtask> pipeName2ProcessorSubtaskMap =
+        PipeProcessorMetrics.getInstance().getPipeName2ProcessorSubtaskMap();
+    final Map<String, PipeConnectorSubtask> attributeSortedStr2PipeConnectorSubtaskMap =
+        PipeConnectorMetrics.getInstance().getAttributeSortedStr2PipeConnectorSubtaskMap();
+
+    final Set<PipeMeta> stuckPipes = new HashSet<>();
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      if (PipeStatus.RUNNING.equals(pipeMeta.getRuntimeMeta().getStatus().get())) {
+        continue;
+      }
+
+      final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+      final IoTDBDataRegionExtractor extractor = pipeName2ExtractorMap.get(pipeName);
+      if (Objects.isNull(extractor)
+          || !extractor.isStreamMode()
+          || !extractor.hasConsumedAllHistoricalTsFiles()) {
+        continue;
+      }
+      final PipeProcessorSubtask processorSubtask = pipeName2ProcessorSubtaskMap.get(pipeName);
+      if (Objects.isNull(processorSubtask)) {
+        continue;
+      }
+      final PipeConnectorSubtask connectorSubtask =
+          attributeSortedStr2PipeConnectorSubtaskMap.get(
+              PipeConnectorSubtaskManager.getAttributeSortedString(
+                  pipeMeta.getStaticMeta().getConnectorParameters()));
+      if (Objects.isNull(connectorSubtask)) {
+        continue;
+      }
+
+      if (isPipeLinkedTsFileEventCountExceededLimit(extractor, processorSubtask, connectorSubtask)
+          || mayLinkedTsFileCountReachDangerousThreshold()
+          || mayMemTablePinnedCountReachDangerousThreshold()
+          || mayWalSizeReachThrottleThreshold()) {
+        LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
+        stuckPipes.add(pipeMeta);
+      }
+    }
+
+    // Restart all stuck pipes
+    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+  }
+
+  private boolean isPipeLinkedTsFileEventCountExceededLimit(
+      IoTDBDataRegionExtractor extractor,
+      PipeProcessorSubtask processorSubtask,
+      PipeConnectorSubtask connectorSubtask) {
+    final int tabletInsertionEventCount =
+        extractor.getTabletInsertionEventCount()
+            + processorSubtask.getTabletInsertionEventCount()
+            + connectorSubtask.getTabletInsertionEventCount();
+    final int tsFileInsertionEventCount =
+        extractor.getRealtimeTsFileInsertionEventCount()
+            + processorSubtask.getTsFileInsertionEventCount()
+            + connectorSubtask.getTsFileInsertionEventCount();
+    return tabletInsertionEventCount > 0
+        && tsFileInsertionEventCount
+            > PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  private boolean mayLinkedTsFileCountReachDangerousThreshold() {
+    return PipeResourceManager.tsfile().getLinkedTsfileCount()
+        >= 2 * PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
+    return PipeResourceManager.wal().getPinnedWalCount()
+        >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+  }
+
+  private boolean mayWalSizeReachThrottleThreshold() {
+    return 3 * WALManager.getInstance().getTotalDiskUsage()
+        > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private void restartStuckPipe(PipeMeta pipeMeta) {
+    LOGGER.warn(
+        "Pipe {} (creation time = {}) will be restarted because of stuck.",
+        pipeMeta.getStaticMeta().getPipeName(),
+        DateTimeUtils.convertLongToDate(pipeMeta.getStaticMeta().getCreationTime(), "ms"));
+    final long startTime = System.currentTimeMillis();
     handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
     handleSinglePipeMetaChangesInternal(pipeMeta);
+    LOGGER.warn(
+        "Pipe {} (creation time = {}) was restarted because of stuck, time cost: {} ms.",
+        pipeMeta.getStaticMeta().getPipeName(),
+        DateTimeUtils.convertLongToDate(pipeMeta.getStaticMeta().getCreationTime(), "ms"),
+        System.currentTimeMillis() - startTime);
   }
 }

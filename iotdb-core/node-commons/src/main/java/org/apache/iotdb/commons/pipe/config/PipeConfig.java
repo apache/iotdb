@@ -127,18 +127,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
-  public long getPipeStuckRestartIntervalSeconds() {
-    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
-  }
-
-  public long getPipeMaxAllowedTsFileCount() {
-    return COMMON_CONFIG.getPipeMaxAllowedTsFileCount();
-  }
-
-  public long getPipeMaxAllowedConnectorStuckTime() {
-    return COMMON_CONFIG.getPipeMaxAllowedConnectorStuckTime();
-  }
-
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -183,6 +171,14 @@ public class PipeConfig {
 
   public int getPipeMaxAllowedPinnedMemTableCount() {
     return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
+  }
+
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
 
   /////////////////////////////// Memory ///////////////////////////////
@@ -253,6 +249,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
+    LOGGER.info(
+        "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
@@ -276,6 +274,8 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
+    LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
@@ -285,9 +285,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
-
-    LOGGER.info(
-        "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
