@@ -155,6 +155,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -3580,7 +3581,34 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException(
-          "Not support for this sql in CREATEPIPE, please enter pipe name.");
+          "Not support for this sql in CREATE PIPE, please enter pipe name.");
+    }
+    if (ctx.extractorAttributesClause() != null) {
+      createPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(ctx.extractorAttributesClause()));
+    } else {
+      createPipeStatement.setExtractorAttributes(new HashMap<>());
+    }
+    if (ctx.processorAttributesClause() != null) {
+      createPipeStatement.setProcessorAttributes(
+          parseProcessorAttributesClause(ctx.processorAttributesClause()));
+    } else {
+      createPipeStatement.setProcessorAttributes(new HashMap<>());
+    }
+    createPipeStatement.setConnectorAttributes(
+        parseConnectorAttributesClause(ctx.connectorAttributesClause()));
+    return createPipeStatement;
+  }
+
+  @Override
+  public Statement visitAlterPipe(IoTDBSqlParser.AlterPipeContext ctx) {
+    final AlterPipeStatement createPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
+
+    if (ctx.pipeName != null) {
+      createPipeStatement.setPipeName(ctx.pipeName.getText());
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
     if (ctx.extractorAttributesClause() != null) {
       createPipeStatement.setExtractorAttributes(

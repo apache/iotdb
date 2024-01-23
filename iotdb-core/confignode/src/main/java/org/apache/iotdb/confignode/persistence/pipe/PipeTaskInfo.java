@@ -32,11 +32,13 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -158,6 +160,27 @@ public class PipeTaskInfo implements SnapshotProcessor {
     throw new PipeException(exceptionMessage);
   }
 
+  public void checkBeforeAlterPipe(TAlterPipeReq alterPipeRequest) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeAlterPipeInternal(alterPipeRequest);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest) throws PipeException {
+    if (isPipeExisted(alterPipeRequest.getPipeName())) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
+    LOGGER.info(exceptionMessage);
+    throw new PipeException(exceptionMessage);
+  }
+
   public void checkBeforeStartPipe(String pipeName) throws PipeException {
     acquireReadLock();
     try {
@@ -274,6 +297,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus createPipe(CreatePipePlanV2 plan) {
     acquireWriteLock();
     try {
+      pipeMetaKeeper.addPipeMeta(
+          plan.getPipeStaticMeta().getPipeName(),
+          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus alterPipe(AlterPipePlanV2 plan) {
+    acquireWriteLock();
+    try {
+      pipeMetaKeeper.removePipeMeta(plan.getPipeStaticMeta().getPipeName());
       pipeMetaKeeper.addPipeMeta(
           plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));

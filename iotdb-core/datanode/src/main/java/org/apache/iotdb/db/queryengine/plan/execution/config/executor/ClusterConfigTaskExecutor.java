@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
@@ -158,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
@@ -1596,6 +1598,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to create PIPE {} in config node, status is {}.",
             createPipeStatement.getPipeName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Validate before creation
+    try {
+      PipeAgent.plugin()
+          .validate(
+              alterPipeStatement.getPipeName(),
+              alterPipeStatement.getExtractorAttributes(),
+              alterPipeStatement.getProcessorAttributes(),
+              alterPipeStatement.getConnectorAttributes());
+    } catch (Exception e) {
+      LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TAlterPipeReq req =
+          new TAlterPipeReq()
+              .setPipeName(alterPipeStatement.getPipeName())
+              .setExtractorAttributes(alterPipeStatement.getExtractorAttributes())
+              .setProcessorAttributes(alterPipeStatement.getProcessorAttributes())
+              .setConnectorAttributes(alterPipeStatement.getConnectorAttributes());
+      TSStatus tsStatus = configNodeClient.alterPipe(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to create PIPE {} in config node, status is {}.",
+            alterPipeStatement.getPipeName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {

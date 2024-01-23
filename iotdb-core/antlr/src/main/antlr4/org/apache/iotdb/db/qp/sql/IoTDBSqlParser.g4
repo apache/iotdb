@@ -53,7 +53,7 @@ ddlStatement
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
     // Pipe Task
-    | createPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
@@ -523,6 +523,13 @@ migrateRegion
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE pipeName=identifier
+        extractorAttributesClause?
+        processorAttributesClause?
+        connectorAttributesClause
+    ;
+
+alterPipe
+    : ALTER PIPE pipeName=identifier
         extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause
