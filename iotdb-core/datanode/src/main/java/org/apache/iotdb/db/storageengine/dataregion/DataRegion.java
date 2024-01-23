@@ -406,7 +406,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
+              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -1680,7 +1680,7 @@ public class DataRegion implements IDataRegionForQuery {
           new ArrayList<>(workSequenceTsFileProcessors.values());
       long timeLowerBound = System.currentTimeMillis() - config.getSeqMemtableFlushInterval();
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
-        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
+        if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
               "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
@@ -1706,7 +1706,7 @@ public class DataRegion implements IDataRegionForQuery {
       long timeLowerBound = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
 
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
-        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
+        if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
               "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
