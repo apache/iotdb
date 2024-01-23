@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -98,8 +99,11 @@ import java.util.stream.IntStream;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
-  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
@@ -251,7 +255,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result =
           dispatchResultFuture.get(
-              LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
+              CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(

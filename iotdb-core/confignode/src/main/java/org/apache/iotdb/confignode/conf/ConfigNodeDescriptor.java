@@ -316,14 +316,6 @@ public class ConfigNodeDescriptor {
                     "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
                 .trim()));
 
-    conf.setCoreClientNumForEachNode(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_core_client_count_for_each_node_in_client_manager",
-                    String.valueOf(conf.getCoreClientNumForEachNode()))
-                .trim()));
-
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
