@@ -3168,7 +3168,8 @@ public class DataRegion implements IDataRegionForQuery {
         // init map
         timePartitionIds[i] = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
-        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i])) {
+        if (config.isEnableSeparateData()
+            && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i])) {
           TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
@@ -3397,8 +3398,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /* Be careful, the thread that calls this method may not hold the write lock!!*/
-  public void releaseFlushTimeMap(long timePartitionId) {
-    lastFlushTimeMap.removePartition(timePartitionId);
+  public void degradeFlushTimeMap(long timePartitionId) {
+    lastFlushTimeMap.degradeLastFlushTime(timePartitionId);
   }
 
   public long getMemCost() {
