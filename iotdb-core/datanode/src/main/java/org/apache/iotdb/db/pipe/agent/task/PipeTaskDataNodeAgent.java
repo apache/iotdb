@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -59,6 +61,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +70,11 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
 
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
@@ -338,7 +346,51 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       Set<PipeMeta> restartPipes = new HashSet<>();
 
       for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        // Only restart running pipe
         if (!pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
+          continue;
+        }
+        // Only restart for hybrid mode
+        switch (pipeMeta
+            .getStaticMeta()
+            .getExtractorParameters()
+            .getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
+          case EXTRACTOR_REALTIME_MODE_FILE_VALUE:
+          case EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE:
+          case EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE:
+            continue;
+          default:
+            break;
+        }
+        // Only restart for specific connector
+        String pluginName =
+            pipeMeta
+                .getStaticMeta()
+                .getConnectorParameters()
+                .getStringOrDefault(
+                    Arrays.asList(
+                        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                    BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+                .toLowerCase();
+        if (!Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())
+            && !Objects.equals(pluginName, BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName())
+            && !Objects.equals(
+                pluginName, BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName())) {
           continue;
         }
         String pipeName = pipeMeta.getStaticMeta().getPipeName();
