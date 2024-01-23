@@ -532,7 +532,7 @@ alterPipe
     : ALTER PIPE pipeName=identifier
         extractorAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause
+        connectorAttributesClause?
     ;
 
 extractorAttributesClause

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -583,6 +584,30 @@ public abstract class PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+  }
+
+  public PipeStaticMeta getPipeStaticMeta(String pipeName) {
+    acquireReadLock();
+    try {
+      return getPipeStaticMetaInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private PipeStaticMeta getPipeStaticMetaInternal(String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.isNull(pipeMeta)) {
+      return null;
+    }
+    final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
+    // deep copy
+    return new PipeStaticMeta(
+        pipeStaticMeta.getPipeName(),
+        pipeStaticMeta.getCreationTime(),
+        new HashMap<>(pipeStaticMeta.getExtractorParameters().getAttribute()),
+        new HashMap<>(pipeStaticMeta.getProcessorParameters().getAttribute()),
+        new HashMap<>(pipeStaticMeta.getConnectorParameters().getAttribute()));
   }
 
   ////////////////////////// Checker //////////////////////////

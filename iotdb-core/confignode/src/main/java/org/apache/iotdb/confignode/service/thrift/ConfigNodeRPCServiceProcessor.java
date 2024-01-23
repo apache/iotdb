@@ -919,8 +919,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterPipe(TAlterPipeReq req) throws TException {
-    return null;
+  public TSStatus alterPipe(TAlterPipeReq req) {
+    return configManager.alterPipe(req);
   }
 
   @Override

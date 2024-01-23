@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -227,6 +228,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -1612,6 +1614,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Get pipe static meta
+    final String pipeName = alterPipeStatement.getPipeName();
+    final PipeStaticMeta pipeStaticMeta = PipeAgent.task().getPipeStaticMeta(pipeName);
+    if (Objects.isNull(pipeStaticMeta)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to alter pipe %s, the pipe does not exist", pipeName),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    // Fill empty attributes
+    if (alterPipeStatement.getExtractorAttributes().isEmpty()) {
+      alterPipeStatement.setExtractorAttributes(
+          pipeStaticMeta.getExtractorParameters().getAttribute());
+    }
+    if (alterPipeStatement.getProcessorAttributes().isEmpty()) {
+      alterPipeStatement.setProcessorAttributes(
+          pipeStaticMeta.getProcessorParameters().getAttribute());
+    }
+    if (alterPipeStatement.getConnectorAttributes().isEmpty()) {
+      alterPipeStatement.setConnectorAttributes(
+          pipeStaticMeta.getConnectorParameters().getAttribute());
+    }
 
     // Validate before creation
     try {
