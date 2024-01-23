@@ -288,18 +288,6 @@ public class PipeProcessorMetrics implements IMetricSet {
     rate.mark();
   }
 
-  //////////////////////////// Getter for RuntimeAgent ////////////////////////////
-
-  public Map<String, PipeProcessorSubtask> getPipeName2ProcessorSubtaskMap() {
-    Map<String, PipeProcessorSubtask> pipeName2ProcessorSubtaskMap = new HashMap<>();
-    processorMap
-        .values()
-        .forEach(
-            processorSubtask ->
-                pipeName2ProcessorSubtaskMap.put(processorSubtask.getPipeName(), processorSubtask));
-    return pipeName2ProcessorSubtaskMap;
-  }
-
   //////////////////////////// singleton ////////////////////////////
 
   private static class PipeProcessorMetricsHolder {

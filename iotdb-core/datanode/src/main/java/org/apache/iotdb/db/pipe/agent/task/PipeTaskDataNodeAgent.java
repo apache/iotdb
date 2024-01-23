@@ -36,17 +36,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
@@ -65,8 +60,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 
@@ -337,40 +332,24 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   }
 
   private void restartAllStuckPipesInternal() {
-    final Map<String, IoTDBDataRegionExtractor> pipeName2ExtractorMap =
-        PipeExtractorMetrics.getInstance().getPipeName2ExtractorMap();
-    final Map<String, PipeProcessorSubtask> pipeName2ProcessorSubtaskMap =
-        PipeProcessorMetrics.getInstance().getPipeName2ProcessorSubtaskMap();
-    final Map<String, PipeConnectorSubtask> attributeSortedStr2PipeConnectorSubtaskMap =
-        PipeConnectorMetrics.getInstance().getAttributeSortedStr2PipeConnectorSubtaskMap();
+    final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
+        PipeExtractorMetrics.getInstance().getExtractorMap();
 
     final Set<PipeMeta> stuckPipes = new HashSet<>();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      if (PipeStatus.RUNNING.equals(pipeMeta.getRuntimeMeta().getStatus().get())) {
-        continue;
-      }
-
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
-      final IoTDBDataRegionExtractor extractor = pipeName2ExtractorMap.get(pipeName);
-      if (Objects.isNull(extractor)
-          || !extractor.isStreamMode()
-          || !extractor.hasConsumedAllHistoricalTsFiles()) {
-        continue;
-      }
-      final PipeProcessorSubtask processorSubtask = pipeName2ProcessorSubtaskMap.get(pipeName);
-      if (Objects.isNull(processorSubtask)) {
-        continue;
-      }
-      final PipeConnectorSubtask connectorSubtask =
-          attributeSortedStr2PipeConnectorSubtaskMap.get(
-              PipeConnectorSubtaskManager.getAttributeSortedString(
-                  pipeMeta.getStaticMeta().getConnectorParameters()));
-      if (Objects.isNull(connectorSubtask)) {
+      final List<IoTDBDataRegionExtractor> extractors =
+          taskId2ExtractorMap.values().stream()
+              .filter(e -> e.getPipeName().equals(pipeName))
+              .collect(Collectors.toList());
+      if (extractors.isEmpty()
+          || !extractors.get(0).isStreamMode()
+          || extractors.stream()
+              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
         continue;
       }
 
-      if (isPipeLinkedTsFileEventCountExceededLimit(extractor, processorSubtask, connectorSubtask)
-          || mayLinkedTsFileCountReachDangerousThreshold()
+      if (mayLinkedTsFileCountReachDangerousThreshold()
           || mayMemTablePinnedCountReachDangerousThreshold()
           || mayWalSizeReachThrottleThreshold()) {
         LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
@@ -380,23 +359,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     // Restart all stuck pipes
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
-  }
-
-  private boolean isPipeLinkedTsFileEventCountExceededLimit(
-      IoTDBDataRegionExtractor extractor,
-      PipeProcessorSubtask processorSubtask,
-      PipeConnectorSubtask connectorSubtask) {
-    final int tabletInsertionEventCount =
-        extractor.getTabletInsertionEventCount()
-            + processorSubtask.getTabletInsertionEventCount()
-            + connectorSubtask.getTabletInsertionEventCount();
-    final int tsFileInsertionEventCount =
-        extractor.getRealtimeTsFileInsertionEventCount()
-            + processorSubtask.getTsFileInsertionEventCount()
-            + connectorSubtask.getTsFileInsertionEventCount();
-    return tabletInsertionEventCount > 0
-        && tsFileInsertionEventCount
-            > PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
   private boolean mayLinkedTsFileCountReachDangerousThreshold() {
@@ -415,17 +377,13 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   }
 
   private void restartStuckPipe(PipeMeta pipeMeta) {
-    LOGGER.warn(
-        "Pipe {} (creation time = {}) will be restarted because of stuck.",
-        pipeMeta.getStaticMeta().getPipeName(),
-        DateTimeUtils.convertLongToDate(pipeMeta.getStaticMeta().getCreationTime(), "ms"));
+    LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
     final long startTime = System.currentTimeMillis();
     handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
     handleSinglePipeMetaChangesInternal(pipeMeta);
     LOGGER.warn(
-        "Pipe {} (creation time = {}) was restarted because of stuck, time cost: {} ms.",
-        pipeMeta.getStaticMeta().getPipeName(),
-        DateTimeUtils.convertLongToDate(pipeMeta.getStaticMeta().getCreationTime(), "ms"),
+        "Pipe {} was restarted because of stuck, time cost: {} ms.",
+        pipeMeta.getStaticMeta(),
         System.currentTimeMillis() - startTime);
   }
 }
