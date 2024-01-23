@@ -136,6 +136,20 @@ public class UDAFAccumulator implements Accumulator {
   }
 
   @Override
+  public void removeIntermediate(Column[] partialResult) {
+    checkArgument(partialResult.length == 1, "partialResult of UDAF should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
+
+    State removedState = udaf.createState();
+    Binary removedStateBinary = partialResult[0].getBinary(0);
+    removedState.deserialize(removedStateBinary.getValues());
+
+    udaf.removeState(state, removedState);
+  }
+
+  @Override
   public void reset() {
     state.reset();
   }
