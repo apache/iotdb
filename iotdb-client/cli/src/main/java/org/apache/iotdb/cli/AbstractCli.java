@@ -779,7 +779,7 @@ public abstract class AbstractCli {
   private static void outputTracingInfo(
       CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
     ctx.getPrinter().println();
-    ctx.getPrinter().println("Tracing Activties:");
+    ctx.getPrinter().println("Tracing Activities:");
     ctx.getPrinter().printBlockLine(maxSizeList);
     ctx.getPrinter().printRow(lists, 0, maxSizeList);
     ctx.getPrinter().printBlockLine(maxSizeList);

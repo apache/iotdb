@@ -67,11 +67,13 @@ public class IoTDBSyntaxHighlighter implements Highlighter {
 
   @Override
   public void setErrorPattern(Pattern errorPattern) {
+    // TODO: Not quite sure what this code should actually do
     new IoTPrinter(System.out).print("");
   }
 
   @Override
   public void setErrorIndex(int errorIndex) {
+    // TODO: Not quite sure what this code should actually do
     new IoTPrinter(System.out).print("");
   }
 
