@@ -133,5 +133,11 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics.updateUnpinnedMNodeNum(-unpinnedMNodeNum.get());
     cachedEngineStatistics.updatePinnedMemorySize(-pinnedMemorySize.get());
     cachedEngineStatistics.updateUnpinnedMemorySize(-unpinnedMemorySize.get());
+    pinnedMNodeNum.set(0L);
+    unpinnedMNodeNum.set(0L);
+    pinnedMemorySize.set(0L);
+    unpinnedMemorySize.set(0L);
+    volatileMNodeNum.set(0L);
+    volatileMNodeSize.set(0L);
   }
 }

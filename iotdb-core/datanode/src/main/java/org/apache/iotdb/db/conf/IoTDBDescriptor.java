@@ -214,7 +214,6 @@ public class IoTDBDescriptor {
   public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
     // commons
     commonDescriptor.loadCommonProps(properties);
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
@@ -980,6 +979,8 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
+
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
     // timed flush memtable
     loadTimedService(properties);
