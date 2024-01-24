@@ -328,6 +328,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
+  public boolean isDiskSpaceCheckPassed() {
+    return true;
+  }
+
+  @Override
   public long getEstimatedMemoryCost() {
     return 0;
   }
