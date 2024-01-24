@@ -29,7 +29,7 @@ public class DeviceLastFlushTime implements ILastFlushTime {
   @Override
   public long getLastFlushTime(String deviceId) {
     if (deviceLastFlushTimeMap.containsKey(deviceId)) {
-      deviceLastFlushTimeMap.get(deviceId);
+      return deviceLastFlushTimeMap.get(deviceId);
     }
     return Long.MIN_VALUE;
   }
