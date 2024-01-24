@@ -22,7 +22,11 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -36,6 +40,10 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -54,6 +62,9 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   private final String pipeName;
   private final int dataRegionId;
 
+  // A queue for events parsed by pattern or time
+  private final EnrichedDeque<Event> parsedEventQueue;
+
   public PipeProcessorSubtask(
       String taskID,
       long creationTime,
@@ -68,6 +79,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    this.parsedEventQueue = new EnrichedDeque<>(new LinkedList<>());
     PipeProcessorMetrics.getInstance().register(this);
   }
 
@@ -97,9 +109,19 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    final Event event;
+    if (lastEvent != null) {
+      event = lastEvent;
+    } else if (!parsedEventQueue.isEmpty()) {
+      event = parsedEventQueue.poll();
+    } else {
+      Event originalEvent = inputEventSupplier.supply();
+      parseEventByPatternAndTime(originalEvent).forEach(parsedEventQueue::offer);
+      event = parsedEventQueue.poll(); // If null is polled, will skip this round of process.
+    }
     // Record the last event for retry when exception occurs
     setLastEvent(event);
+
     if (
     // Though there is no event to process, there may still be some buffered events
     // in the outputEventCollector. Return true if there are still buffered events,
@@ -189,6 +211,46 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   @Override
   public int hashCode() {
     return taskID.hashCode();
+  }
+
+  //////////////////////////// Parsing events ////////////////////////////
+
+  private List<Event> parseEventByPatternAndTime(Event sourceEvent) throws Exception {
+    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+          (PipeTsFileInsertionEvent) sourceEvent;
+      if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
+        LOGGER.warn(
+            "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+            pipeTsFileInsertionEvent.getTsFile());
+        return Collections.emptyList();
+      }
+
+      if (pipeTsFileInsertionEvent.shouldParsePatternOrTime()) {
+        List<Event> parsedEvents = new ArrayList<>();
+        pipeTsFileInsertionEvent.toTabletInsertionEvents().forEach(parsedEvents::add);
+        return parsedEvents;
+      }
+    } else if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) sourceEvent;
+      if (pipeInsertNodeTabletInsertionEvent.shouldParsePatternOrTime()) {
+        return Collections.singletonList(
+            pipeInsertNodeTabletInsertionEvent.parseEventWithPatternOrTime());
+      }
+    } else if (sourceEvent instanceof PipeRawTabletInsertionEvent) {
+      // Just in case, extractors won't extract PipeRawTabletInsertionEvent.
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) sourceEvent;
+      if (pipeRawTabletInsertionEvent.shouldParsePatternOrTime()) {
+        return Collections.singletonList(pipeRawTabletInsertionEvent.parseEventWithPatternOrTime());
+      } else if (pipeRawTabletInsertionEvent.hasNoNeedParsingAndIsEmpty()) {
+        // ignore raw tablet event with zero rows
+        return Collections.emptyList();
+      }
+    }
+
+    return Collections.singletonList(sourceEvent);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

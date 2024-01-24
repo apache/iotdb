@@ -152,25 +152,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                .parseEventWithPatternOrTime());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(
-            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
-      }
-      return;
-    } else {
-      // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-          return;
-        }
-      }
-    }
-
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
@@ -259,24 +240,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-    if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
-      LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
-          pipeTsFileInsertionEvent.getTsFile());
-      return;
-    }
-
-    if ((pipeTsFileInsertionEvent).shouldParsePatternOrTime()) {
-      try {
-        for (final TabletInsertionEvent event :
-            pipeTsFileInsertionEvent.toTabletInsertionEvents()) {
-          transfer(event);
-        }
-      } finally {
-        pipeTsFileInsertionEvent.close();
-      }
-      return;
-    }
 
     // Just in case. To avoid the case that exception occurred when constructing the handler.
     if (!pipeTsFileInsertionEvent.getTsFile().exists()) {

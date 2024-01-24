@@ -30,7 +30,7 @@ public class EnrichedDeque<E extends Event> {
   private final PipeDataRegionEventCounter eventCounter = new PipeDataRegionEventCounter();
   protected final Deque<E> deque;
 
-  protected EnrichedDeque(Deque<E> deque) {
+  public EnrichedDeque(Deque<E> deque) {
     this.deque = deque;
   }
 
