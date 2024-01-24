@@ -3602,34 +3602,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitAlterPipe(IoTDBSqlParser.AlterPipeContext ctx) {
-    final AlterPipeStatement createPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
+    final AlterPipeStatement alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
 
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(ctx.pipeName.getText());
+      alterPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
     if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
+      alterPipeStatement.setExtractorAttributes(
           parseExtractorAttributesClause(ctx.extractorAttributesClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      alterPipeStatement.setExtractorAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
-      createPipeStatement.setProcessorAttributes(
+      alterPipeStatement.setProcessorAttributes(
           parseProcessorAttributesClause(ctx.processorAttributesClause()));
     } else {
-      createPipeStatement.setProcessorAttributes(new HashMap<>());
+      alterPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(ctx.connectorAttributesClause()));
-    } else {
-      createPipeStatement.setConnectorAttributes(new HashMap<>());
-    }
-
-    return createPipeStatement;
+    alterPipeStatement.setConnectorAttributes(
+        parseConnectorAttributesClause(ctx.connectorAttributesClause()));
+    return alterPipeStatement;
   }
 
   private Map<String, String> parseExtractorAttributesClause(

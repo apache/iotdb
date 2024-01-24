@@ -1627,43 +1627,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    // Check empty alter
-    if (alterPipeStatement.getExtractorAttributes().isEmpty()
-        && alterPipeStatement.getProcessorAttributes().isEmpty()
-        && alterPipeStatement.getConnectorAttributes().isEmpty()) {
-      future.setException(
-          new IoTDBException(
-              String.format("Failed to alter pipe %s, nothing to alter", pipeName),
-              TSStatusCode.PIPE_ERROR.getStatusCode()));
-      return future;
-    }
-
-    // Fill empty attributes and check useless alter
+    // check useless alter
     boolean needToAlter = false;
-    if (alterPipeStatement.getExtractorAttributes().isEmpty()) {
-      alterPipeStatement.setExtractorAttributes(
-          pipeStaticMeta.getExtractorParameters().getAttribute());
-    } else if (!(new TreeMap<>(alterPipeStatement.getExtractorAttributes()).toString())
+    if (!(new TreeMap<>(alterPipeStatement.getExtractorAttributes()).toString())
         .equals(new TreeMap<>(pipeStaticMeta.getExtractorParameters().getAttribute()).toString())) {
-      // TODO: detailed consistency semantic checks, such as 'realtime.mode'='file' and
-      // 'realtime.mode'='batch'
+      // TODO: consistency semantic checks, like 'realtime.mode'='file' and 'realtime.mode'='batch'
       needToAlter = true;
     }
-    if (alterPipeStatement.getProcessorAttributes().isEmpty()) {
-      alterPipeStatement.setProcessorAttributes(
-          pipeStaticMeta.getProcessorParameters().getAttribute());
-    } else if (!(new TreeMap<>(alterPipeStatement.getProcessorAttributes()).toString())
+    if (!(new TreeMap<>(alterPipeStatement.getProcessorAttributes()).toString())
         .equals(new TreeMap<>(pipeStaticMeta.getProcessorParameters().getAttribute()).toString())) {
       needToAlter = true;
     }
-    if (alterPipeStatement.getConnectorAttributes().isEmpty()) {
-      alterPipeStatement.setConnectorAttributes(
-          pipeStaticMeta.getConnectorParameters().getAttribute());
-    } else if (!(new TreeMap<>(alterPipeStatement.getConnectorAttributes()).toString())
+    if (!(new TreeMap<>(alterPipeStatement.getConnectorAttributes()).toString())
         .equals(new TreeMap<>(pipeStaticMeta.getConnectorParameters().getAttribute()).toString())) {
       needToAlter = true;
     }
-
     if (!needToAlter) {
       future.setException(
           new IoTDBException(
