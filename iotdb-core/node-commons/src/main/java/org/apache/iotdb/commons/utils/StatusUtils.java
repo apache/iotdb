@@ -47,7 +47,13 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.TIMESERIES_IN_BLACK_LIST.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
   }
 
   /**
