@@ -162,8 +162,9 @@ public class Coordinator {
       execution.start();
       return execution.getStatus();
     } finally {
-      if (queryContext != null && queryContext.getAcquiredLock()) {
-        DataNodeSchemaCache.getInstance().releaseInsertLock();
+      int lockNums = queryContext.getAcquiredLockNum();
+      if (queryContext != null && lockNums > 0) {
+        for (int i = 0; i < lockNums; i++) DataNodeSchemaCache.getInstance().releaseInsertLock();
       }
     }
   }
