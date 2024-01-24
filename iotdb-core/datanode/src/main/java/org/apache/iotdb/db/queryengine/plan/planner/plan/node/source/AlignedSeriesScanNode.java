@@ -191,12 +191,6 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
     for (String node : alignedPath.getNodes()) {
       ReadWriteIOUtils.write(node, stream);
     }
-    if (pushDownPredicate == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      Expression.serialize(pushDownPredicate, stream);
-    }
   }
 
   public static AlignedSeriesScanNode deserializeUseTemplate(
@@ -212,17 +206,11 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
     alignedPath.setMeasurementList(typeProvider.getTemplatedInfo().getMeasurementList());
     alignedPath.addSchemas(typeProvider.getTemplatedInfo().getSchemaList());
 
-    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Expression pushDownPredicate = null;
-    if (isNull == 1) {
-      pushDownPredicate = Expression.deserialize(byteBuffer);
-    }
-
     return new AlignedSeriesScanNode(
         planNodeId,
         alignedPath,
         typeProvider.getTemplatedInfo().getScanOrder(),
-        pushDownPredicate,
+        typeProvider.getTemplatedInfo().getPushDownPredicate(),
         typeProvider.getTemplatedInfo().getLimitValue(),
         typeProvider.getTemplatedInfo().getOffsetValue(),
         null,

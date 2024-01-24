@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.Predicate
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -337,5 +338,9 @@ public class PredicateUtils {
             predicate,
             new PredicateCanPushDownToSourceChecker.Context(
                 checkedSourcePath, isBuildPlanUseTemplate));
+  }
+
+  public static boolean predicateCanPushIntoScan(Expression predicate) {
+    return new PredicatePushIntoScanChecker().process(predicate, null);
   }
 }

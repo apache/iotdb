@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
@@ -151,7 +152,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanValidator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -355,20 +355,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getDriverContext().setInputDriver(true);
 
     if (!predicateCanPushIntoScan) {
-      if (context.isBuildPlanUseTemplate()) {
-        TemplatedInfo templatedInfo = context.getTemplatedInfo();
-        return constructFilterOperator(
-            pushDownPredicate,
-            seriesScanOperator,
-            templatedInfo.getProjectExpressions(),
-            templatedInfo.getDataTypes(),
-            templatedInfo.getLayoutMap(),
-            templatedInfo.isKeepNull(),
-            node.getPlanNodeId(),
-            templatedInfo.getScanOrder(),
-            context);
-      }
-
+      checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
       return constructFilterOperator(
           pushDownPredicate,
           seriesScanOperator,
@@ -393,9 +380,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withAllSensors(
-        context.getTypeProvider().getTemplatedInfo() != null
-            ? context.getTypeProvider().getTemplatedInfo().getAllSensors()
-            : new HashSet<>(seriesPath.getMeasurementList()));
+        new HashSet<>(
+            context.isBuildPlanUseTemplate()
+                ? context.getTemplatedInfo().getMeasurementList()
+                : seriesPath.getMeasurementList()));
 
     Expression pushDownPredicate = node.getPushDownPredicate();
     boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
@@ -469,8 +457,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private boolean canPushIntoScan(Expression pushDownPredicate) {
-    return pushDownPredicate == null
-        || PredicatePushIntoScanValidator.canPushIntoScan(pushDownPredicate);
+    return pushDownPredicate == null || PredicateUtils.predicateCanPushIntoScan(pushDownPredicate);
   }
 
   @Override

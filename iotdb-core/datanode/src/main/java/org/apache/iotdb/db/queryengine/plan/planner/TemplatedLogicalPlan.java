@@ -129,7 +129,6 @@ public class TemplatedLogicalPlan {
                 newSchemaList.stream()
                     .map(IMeasurementSchema::getType)
                     .collect(Collectors.toList()),
-                new HashSet<>(newMeasurementList),
                 queryStatement.getResultTimeOrder(),
                 analysis.isLastLevelUseWildcard(),
                 analysis.getDeviceViewOutputExpressions().stream()
@@ -141,7 +140,8 @@ public class TemplatedLogicalPlan {
                 whereExpression,
                 queryStatement.isGroupByTime(),
                 analysis.getDeviceTemplate().getSchemaMap(),
-                filterLayoutMap));
+                filterLayoutMap,
+                null));
   }
 
   public PlanNode visitQuery() {

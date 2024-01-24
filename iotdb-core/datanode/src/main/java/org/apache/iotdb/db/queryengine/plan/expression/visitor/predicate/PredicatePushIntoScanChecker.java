@@ -41,11 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
-public class PredicatePushIntoScanValidator extends PredicateVisitor<Boolean, Void> {
-
-  public static boolean canPushIntoScan(Expression predicate) {
-    return predicate.accept(new PredicatePushIntoScanValidator(), null);
-  }
+public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void> {
 
   @Override
   public Boolean visitExpression(Expression expression, Void context) {

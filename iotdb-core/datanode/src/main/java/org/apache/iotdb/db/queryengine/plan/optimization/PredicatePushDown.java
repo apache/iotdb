@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -37,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -64,7 +67,8 @@ public class PredicatePushDown implements PlanOptimizer {
         new RewriterContext(
             context.getQueryId(),
             queryStatement.isAlignByDevice(),
-            analysis.isAllDevicesInOneTemplate()));
+            analysis.isAllDevicesInOneTemplate(),
+            context.getTypeProvider().getTemplatedInfo()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -117,6 +121,10 @@ public class PredicatePushDown implements PlanOptimizer {
     @Override
     public PlanNode visitFullOuterTimeJoin(FullOuterTimeJoinNode node, RewriterContext context) {
       if (context.hasNotInheritedPredicate()) {
+        return node;
+      }
+      if (context.isBuildPlanUseTemplate()) {
+        // only support push down to aligned scan
         return node;
       }
 
@@ -251,11 +259,49 @@ public class PredicatePushDown implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitSeriesScanSource(SeriesScanSourceNode node, RewriterContext context) {
+    public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, RewriterContext context) {
       if (context.hasNotInheritedPredicate()) {
         return node;
       }
 
+      if (!context.isBuildPlanUseTemplate()) {
+        return visitSeriesScanSource(node, context);
+      }
+      TemplatedInfo templatedInfo = context.getTemplatedInfo();
+      checkState(templatedInfo != null, "TemplatedInfo should not be null");
+
+      Expression inheritedPredicate = context.getInheritedPredicate();
+      if (context.enablePushDownUseTemplate()
+          || PredicateUtils.predicateCanPushDownToSource(
+              inheritedPredicate, node.getPartitionPath(), context.isBuildPlanUseTemplate())) {
+        node.setPushDownPredicate(inheritedPredicate);
+        if (!templatedInfo.hasPushDownPredicate()) {
+          templatedInfo.setPushDownPredicate(inheritedPredicate);
+        }
+        context.setEnablePushDownUseTemplate(true);
+        context.setEnablePushDown(true);
+
+        return planProject(node, context);
+      }
+
+      // cannot push down
+      return node;
+    }
+
+    @Override
+    public PlanNode visitSeriesScan(SeriesScanNode node, RewriterContext context) {
+      if (context.hasNotInheritedPredicate()) {
+        return node;
+      }
+      if (!context.isBuildPlanUseTemplate()) {
+        return visitSeriesScanSource(node, context);
+      }
+      // only support push down to aligned scan
+      return node;
+    }
+
+    @Override
+    public PlanNode visitSeriesScanSource(SeriesScanSourceNode node, RewriterContext context) {
       Expression inheritedPredicate = context.getInheritedPredicate();
       if (PredicateUtils.predicateCanPushDownToSource(
           inheritedPredicate, node.getPartitionPath(), context.isBuildPlanUseTemplate())) {
@@ -272,10 +318,6 @@ public class PredicatePushDown implements PlanOptimizer {
     }
 
     private PlanNode planTransform(PlanNode resultNode, RewriterContext context) {
-      if (context.isBuildPlanUseTemplate()) {
-        return resultNode;
-      }
-
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();
       Expression[] outputExpressions = pushDownFilterNode.getOutputExpressions();
       boolean needTransform = false;
@@ -322,16 +364,22 @@ public class PredicatePushDown implements PlanOptimizer {
     private final QueryId queryId;
     private final boolean isAlignByDevice;
     private final boolean isBuildPlanUseTemplate;
+    private final TemplatedInfo templatedInfo;
 
     private FilterNode pushDownFilterNode;
 
     private boolean enablePushDown = false;
+    private boolean enablePushDownUseTemplate = false;
 
     private RewriterContext(
-        QueryId queryId, boolean isAlignByDevice, boolean isBuildPlanUseTemplate) {
+        QueryId queryId,
+        boolean isAlignByDevice,
+        boolean isBuildPlanUseTemplate,
+        TemplatedInfo templatedInfo) {
       this.queryId = queryId;
       this.isAlignByDevice = isAlignByDevice;
       this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
+      this.templatedInfo = templatedInfo;
     }
 
     public PlanNodeId genPlanNodeId() {
@@ -344,6 +392,10 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public boolean isBuildPlanUseTemplate() {
       return isBuildPlanUseTemplate;
+    }
+
+    public TemplatedInfo getTemplatedInfo() {
+      return templatedInfo;
     }
 
     public FilterNode getPushDownFilterNode() {
@@ -369,6 +421,14 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public void setEnablePushDown(boolean enablePushDown) {
       this.enablePushDown = enablePushDown;
+    }
+
+    public boolean enablePushDownUseTemplate() {
+      return enablePushDownUseTemplate;
+    }
+
+    public void setEnablePushDownUseTemplate(boolean enablePushDownUseTemplate) {
+      this.enablePushDownUseTemplate = enablePushDownUseTemplate;
     }
 
     public void reset() {
