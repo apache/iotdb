@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.schema.ttl.TTLManager;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -762,7 +762,7 @@ public class StorageEngine implements IService {
   public TSStatus setTTL(TSetTTLReq req) {
     String path = req.getStorageGroupPathPattern().get(0);
     long ttl = req.getTTL();
-    if (ttl == TTLManager.NULL_TTL) {
+    if (ttl == TTLCache.NULL_TTL) {
       DataNodeTTLCache.getInstance().unsetTTL(path);
     } else {
       DataNodeTTLCache.getInstance().setTTL(path, ttl);

@@ -54,6 +54,10 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     return TTL;
   }
 
+  public void setDatabasePathPattern(String[] databasePathPattern) {
+    this.databasePathPattern = databasePathPattern;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());

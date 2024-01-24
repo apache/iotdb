@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class TTLManager {
+public class TTLCache {
 
   private final CacheNode ttlCacheTree;
   public static final long NULL_TTL = -1;
@@ -21,7 +21,7 @@ public class TTLManager {
 
   private static final String STRING_ENCODING = "utf-8";
 
-  public TTLManager() {
+  public TTLCache() {
     ttlCacheTree = new CacheNode(IoTDBConstant.PATH_ROOT);
     ttlCacheTree.addChild(
         IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,

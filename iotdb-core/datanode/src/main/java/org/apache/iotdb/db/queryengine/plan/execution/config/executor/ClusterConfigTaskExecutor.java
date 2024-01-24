@@ -891,13 +891,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    PartialPath path = setTTLStatement.getPath();
-    if (!path.isPrefixPath() && path.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
-      future.setException(new IllegalPathException(path.getFullPath()));
-      return future;
-    }
-
-    List<String> pathPattern = Arrays.asList(path.getNodes());
+    List<String> pathPattern = Arrays.asList(setTTLStatement.getPath().getNodes());
     TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL());
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

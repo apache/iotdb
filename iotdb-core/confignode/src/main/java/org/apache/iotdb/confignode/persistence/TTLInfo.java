@@ -1,7 +1,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.schema.ttl.TTLManager;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
@@ -26,19 +26,19 @@ public class TTLInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILENAME = "ttl_info.bin";
   private static final Logger LOGGER = LoggerFactory.getLogger(TTLInfo.class);
 
-  private TTLManager ttlManager;
+  private TTLCache ttlCache;
 
   private final ReadWriteLock lock;
 
   public TTLInfo() {
-    ttlManager = new TTLManager();
+    ttlCache = new TTLCache();
     lock = new ReentrantReadWriteLock();
   }
 
   public TSStatus setTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {
-      ttlManager.setTTL(plan.getDatabasePathPattern(), plan.getTTL());
+      ttlCache.setTTL(plan.getDatabasePathPattern(), plan.getTTL());
     } finally {
       lock.writeLock().unlock();
     }
@@ -48,7 +48,7 @@ public class TTLInfo implements SnapshotProcessor {
   public TSStatus unsetTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {
-      ttlManager.unsetTTL(plan.getDatabasePathPattern());
+      ttlCache.unsetTTL(plan.getDatabasePathPattern());
     } finally {
       lock.writeLock().unlock();
     }
@@ -59,7 +59,7 @@ public class TTLInfo implements SnapshotProcessor {
     lock.readLock().lock();
     ShowTTLResp resp = new ShowTTLResp();
     try {
-      Map<String, Long> pathTTLMap = ttlManager.getAllPathTTL();
+      Map<String, Long> pathTTLMap = ttlCache.getAllPathTTL();
       resp.setPathTTLMap(pathTTLMap);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } finally {
@@ -80,7 +80,7 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      ttlManager.serialize(outputStream);
+      ttlCache.serialize(outputStream);
       fileOutputStream.getFD().sync();
     } finally {
       lock.writeLock().unlock();
@@ -100,8 +100,8 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
-      ttlManager.clear();
-      ttlManager.deserialize(bufferedInputStream);
+      ttlCache.clear();
+      ttlCache.deserialize(bufferedInputStream);
     } finally {
       lock.writeLock().unlock();
     }

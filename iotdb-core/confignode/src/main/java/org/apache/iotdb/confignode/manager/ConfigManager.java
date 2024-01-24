@@ -246,6 +246,8 @@ public class ConfigManager implements IManager {
   /** Manage quotas */
   private final ClusterQuotaManager clusterQuotaManager;
 
+  private final TTLManager ttlManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -309,6 +311,7 @@ public class ConfigManager implements IManager {
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
+    this.ttlManager = new TTLManager(this);
   }
 
   public void initConsensusManager() throws IOException {
@@ -505,7 +508,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.setTTL(setTTLPlan);
+      return ttlManager.setTTL(setTTLPlan);
     } else {
       return status;
     }
@@ -571,20 +574,13 @@ public class ConfigManager implements IManager {
   @Override
   public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
     TSStatus status = confirmLeader();
-    ShowTTLResp resp = new ShowTTLResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      try {
-        resp = (ShowTTLResp) getConsensusManager().read(showTTLPlan);
-      } catch (ConsensusException e) {
-        LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-        TSStatus tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-        tsStatus.setMessage(e.getMessage());
-        resp.setStatus(tsStatus);
-      }
+      return ttlManager.showAllTTL(showTTLPlan);
     } else {
+      ShowTTLResp resp = new ShowTTLResp();
       resp.setStatus(status);
+      return resp;
     }
-    return resp;
   }
 
   @Override

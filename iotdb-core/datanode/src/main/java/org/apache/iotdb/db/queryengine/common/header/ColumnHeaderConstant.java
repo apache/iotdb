@@ -223,7 +223,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(

@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.commons.schema.ttl.TTLManager;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -328,7 +328,7 @@ public class ConfigPlanExecutor {
       case PreDeleteDatabase:
         return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);
       case SetTTL:
-        if (((SetTTLPlan) physicalPlan).getTTL() == TTLManager.NULL_TTL) {
+        if (((SetTTLPlan) physicalPlan).getTTL() == TTLCache.NULL_TTL) {
           return ttlInfo.unsetTTL((SetTTLPlan) physicalPlan);
         } else {
           return ttlInfo.setTTL((SetTTLPlan) physicalPlan);
