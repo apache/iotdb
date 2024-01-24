@@ -123,9 +123,6 @@ public class StorageEngine implements IService {
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** Database name -> ttl, for region recovery only */
-  private final Map<String, Long> ttlMapForRecover = new ConcurrentHashMap<>();
-
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
@@ -178,19 +175,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void updateTTLInfo(byte[] allTTLInformation) {
-    if (allTTLInformation == null) {
-      return;
-    }
-    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
-    int mapSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < mapSize; i++) {
-      ttlMapForRecover.put(
-          Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
-          ReadWriteIOUtils.readLong(buffer));
-    }
-  }
-
   public boolean isAllSgReady() {
     return isAllSgReady.get();
   }
@@ -223,7 +207,6 @@ public class StorageEngine implements IService {
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
-              ttlMapForRecover.clear();
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -247,7 +230,7 @@ public class StorageEngine implements IService {
                     buildNewDataRegion(
                         sgName,
                         dataRegionId,
-                        ttlMapForRecover.getOrDefault(sgName, Long.MAX_VALUE));
+                        Long.MAX_VALUE);
               } catch (DataRegionException e) {
                 LOGGER.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);

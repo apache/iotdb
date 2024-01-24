@@ -69,6 +69,7 @@ import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.apache.thrift.TException;
@@ -99,6 +101,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -359,7 +362,7 @@ public class DataNode implements DataNodeMBean {
     getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
 
     /* Store ttl information */
-    StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
+    initTTLInformation(runtimeConfiguration.getAllTTLInformation());
   }
 
   /**
@@ -895,6 +898,18 @@ public class DataNode implements DataNodeMBean {
       }
     }
     resourcesInformationHolder.setPipePluginMetaList(list);
+  }
+
+  private void initTTLInformation(byte[] allTTLInformation){
+    if (allTTLInformation == null) {
+      return;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
+    int mapSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < mapSize; i++) {
+      DataNodeTTLCache.getInstance().setTTL(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
+              ReadWriteIOUtils.readLong(buffer));
+    }
   }
 
   private void initSchemaEngine() {

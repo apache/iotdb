@@ -189,6 +189,13 @@ public interface IManager {
   PipeManager getPipeManager();
 
   /**
+   * Get TTLManager.
+   *
+   * @return TTLManager instance
+   */
+  TTLManager getTTLManager();
+
+  /**
    * Get ClusterQuotaManager.
    *
    * @return ClusterQuotaManager instance

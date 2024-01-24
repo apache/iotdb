@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
@@ -52,6 +53,10 @@ public class TTLManager {
             resp.setStatus(tsStatus);
             return resp;
         }
+    }
+
+    public Map<String,Long> getAllTTL(){
+        return ((ShowTTLResp)showAllTTL(new ShowTTLPlan())).getPathTTLMap();
     }
 
     private boolean checkIsPathValidated(PartialPath path){

@@ -905,15 +905,6 @@ public class ProcedureManager {
   }
 
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
-    //
-    PartialPath path = new PartialPath(setTTLPlan.getDatabasePathPattern());
-    if(!path.hasWildcard()) {
-      List<PartialPath> matchedDataBases = configManager.getClusterSchemaManager().getMatchedDatabases(path);
-      if(matchedDataBases.isEmpty()){
-
-      }
-    }
-
     long procedureId = executor.submitProcedure(new SetTTLProcedure(setTTLPlan));
 
     List<TSStatus> procedureStatus = new ArrayList<>();

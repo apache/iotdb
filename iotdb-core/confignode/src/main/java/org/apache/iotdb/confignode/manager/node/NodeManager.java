@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -240,7 +241,7 @@ public class NodeManager {
       runtimeConfiguration.setAllPipeInformation(
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
-          DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
+          DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
@@ -832,5 +833,9 @@ public class NodeManager {
 
   private UDFManager getUDFManager() {
     return configManager.getUDFManager();
+  }
+
+  private TTLManager getTTLManager(){
+    return configManager.getTTLManager();
   }
 }
