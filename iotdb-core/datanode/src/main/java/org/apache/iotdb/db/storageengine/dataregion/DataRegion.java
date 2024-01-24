@@ -310,7 +310,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.error("create database system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    lastFlushTimeMap = new HashLastFlushTimeMap(tsFileManager);
+    lastFlushTimeMap = new HashLastFlushTimeMap();
 
     // recover tsfiles unless consensus protocol is ratis and storage storageengine is not ready
     if (config.isClusterMode()
@@ -2730,7 +2730,7 @@ public class DataRegion implements IDataRegionForQuery {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  private void updateLastFlushTime(TsFileResource newTsFileResource) {
+  protected void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(endTime);

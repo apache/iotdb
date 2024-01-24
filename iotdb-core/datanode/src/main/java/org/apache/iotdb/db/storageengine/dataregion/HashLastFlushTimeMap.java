@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,15 +67,8 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    */
   private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
 
-  /** used for recovering flush time from tsfile resource */
-  TsFileManager tsFileManager;
-
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
-
-  public HashLastFlushTimeMap(TsFileManager tsFileManager) {
-    this.tsFileManager = tsFileManager;
-  }
 
   // For load
   @Override
