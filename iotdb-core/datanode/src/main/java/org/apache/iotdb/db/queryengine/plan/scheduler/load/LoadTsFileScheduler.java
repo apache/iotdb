@@ -143,69 +143,72 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void start() {
-    stateMachine.transitionToRunning();
-    int tsFileNodeListSize = tsFileNodeList.size();
-    boolean isLoadSuccess = true;
+    try {
+      stateMachine.transitionToRunning();
+      int tsFileNodeListSize = tsFileNodeList.size();
+      boolean isLoadSuccess = true;
 
-    for (int i = 0; i < tsFileNodeListSize; ++i) {
-      LoadSingleTsFileNode node = tsFileNodeList.get(i);
-      boolean isLoadSingleTsFileSuccess = true;
-      try {
-        if (node.isTsFileEmpty()) {
-          LOGGER.info(
-              "Load skip TsFile {}, because it has no data.",
-              node.getTsFileResource().getTsFilePath());
+      for (int i = 0; i < tsFileNodeListSize; ++i) {
+        LoadSingleTsFileNode node = tsFileNodeList.get(i);
+        boolean isLoadSingleTsFileSuccess = true;
+        try {
+          if (node.isTsFileEmpty()) {
+            LOGGER.info(
+                "Load skip TsFile {}, because it has no data.",
+                node.getTsFileResource().getTsFilePath());
 
-        } else if (!node.needDecodeTsFile(
-            slotList ->
-                partitionFetcher.queryDataPartition(
-                    slotList,
-                    queryContext.getSession().getUserName()))) { // do not decode, load locally
-          isLoadSingleTsFileSuccess = loadLocally(node);
-          node.clean();
+          } else if (!node.needDecodeTsFile(
+              slotList ->
+                  partitionFetcher.queryDataPartition(
+                      slotList,
+                      queryContext.getSession().getUserName()))) { // do not decode, load locally
+            isLoadSingleTsFileSuccess = loadLocally(node);
+            node.clean();
 
-        } else { // need decode, load locally or remotely, use two phases method
-          String uuid = UUID.randomUUID().toString();
-          dispatcher.setUuid(uuid);
-          allReplicaSets.clear();
+          } else { // need decode, load locally or remotely, use two phases method
+            String uuid = UUID.randomUUID().toString();
+            dispatcher.setUuid(uuid);
+            allReplicaSets.clear();
 
-          boolean isFirstPhaseSuccess = firstPhase(node);
-          boolean isSecondPhaseSuccess =
-              secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+            boolean isFirstPhaseSuccess = firstPhase(node);
+            boolean isSecondPhaseSuccess =
+                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
 
-          node.clean();
-          if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
-            isLoadSingleTsFileSuccess = false;
+            node.clean();
+            if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
+              isLoadSingleTsFileSuccess = false;
+            }
           }
-        }
-        if (isLoadSingleTsFileSuccess) {
-          LOGGER.info(
-              "Load TsFile {} Successfully, load process [{}/{}]",
-              node.getTsFileResource().getTsFilePath(),
-              i + 1,
-              tsFileNodeListSize);
-        } else {
+          if (isLoadSingleTsFileSuccess) {
+            LOGGER.info(
+                "Load TsFile {} Successfully, load process [{}/{}]",
+                node.getTsFileResource().getTsFilePath(),
+                i + 1,
+                tsFileNodeListSize);
+          } else {
+            isLoadSuccess = false;
+            LOGGER.warn(
+                "Can not Load TsFile {}, load process [{}/{}]",
+                node.getTsFileResource().getTsFilePath(),
+                i + 1,
+                tsFileNodeListSize);
+          }
+        } catch (Exception e) {
           isLoadSuccess = false;
+          stateMachine.transitionToFailed(e);
           LOGGER.warn(
-              "Can not Load TsFile {}, load process [{}/{}]",
+              "LoadTsFileScheduler loads TsFile {} error",
               node.getTsFileResource().getTsFilePath(),
-              i + 1,
-              tsFileNodeListSize);
+              e);
         }
-      } catch (Exception e) {
-        isLoadSuccess = false;
-        stateMachine.transitionToFailed(e);
-        LOGGER.warn(
-            String.format(
-                "LoadTsFileScheduler loads TsFile %s error",
-                node.getTsFileResource().getTsFilePath()),
-            e);
       }
+      if (isLoadSuccess) {
+        stateMachine.transitionToFinished();
+      }
+
+    } finally {
+      LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
-    if (isLoadSuccess) {
-      stateMachine.transitionToFinished();
-    }
-    LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
