@@ -90,6 +90,16 @@ public class TsFileManager {
     }
   }
 
+  public List<TsFileResource> getTsFileListSnapshot(long timePartition, boolean sequence) {
+    readLock();
+    try {
+      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
+      return new ArrayList<>(chosenMap.getOrDefault(timePartition, new TsFileResourceList()));
+    } finally {
+      readUnlock();
+    }
+  }
+
   public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
@@ -255,8 +265,7 @@ public class TsFileManager {
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources,
-      long timePartition,
-      boolean isTargetSequence)
+      long timePartition)
       throws IOException {
     writeLock("replace");
     try {
@@ -270,24 +279,20 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      if (isTargetSequence) {
-        // seq inner space compaction or cross space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-            sequenceFiles.get(timePartition).keepOrderInsert(resource);
-          }
-        }
-      } else {
-        // unseq inner space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-            unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+      for (TsFileResource resource : targetFileResources) {
+        if (!resource.isDeleted()) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          if (resource.isSeq()) {
+            sequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
+          } else {
+            unsequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
           }
         }
       }
-
     } finally {
       writeUnlock();
     }
