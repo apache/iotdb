@@ -1132,7 +1132,7 @@ public class BWS {
 
                 String[] record = {
                         f.toString(),
-                        "TS_2DIFF+BOS-O",
+                        "TS_2DIFF+BWS",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
