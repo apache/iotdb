@@ -76,12 +76,12 @@ public class MaxByAccumulator implements Accumulator {
     }
   }
 
-  // partialResult should be like: | partialX | partialY |
+  // partialResult should be like: | partialMaxByBinary |
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 2, "partialResult of MaxBy should be 2");
     // Return if y is null.
-    if (partialResult[1].isNull(0)) {
+    if (partialResult[0].isNull(0)) {
       return;
     }
     switch (yDataType) {

@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+
 public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
@@ -42,6 +44,8 @@ public class TypeProvider {
   public TypeProvider(Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo) {
     this.typeMap = typeMap;
     this.templatedInfo = templatedInfo;
+    // The type of TimeStampOperand is INT64
+    this.typeMap.putIfAbsent(TIMESTAMP_EXPRESSION_STRING, TSDataType.INT64);
   }
 
   public TSDataType getType(String symbol) {

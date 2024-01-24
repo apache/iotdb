@@ -95,7 +95,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
    * <p>The parameter part -> root.*.*.s1, 3
    */
   @Override
-  protected String getParametersString() {
+  public String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder(outputExpression.getExpressionString());
       for (int i = 1; i < expressionNumOfOneInput; i++) {

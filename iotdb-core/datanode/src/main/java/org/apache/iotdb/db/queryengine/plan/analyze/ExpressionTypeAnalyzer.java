@@ -407,25 +407,27 @@ public class ExpressionTypeAnalyzer {
     // based on the data type of their input.
     // Currently, for all aggregate functions without a fixed output type, the output type is
     // determined by the first input.
-    switch (aggregateFunctionName) {
+    switch (aggregateFunctionName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.EXTREME:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
       case SqlConstant.COUNT:
-      case SqlConstant.TIME_DURATION:
-      case SqlConstant.COUNT_TIME:
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.COUNT_IF:
+      case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.STDDEV:
       case SqlConstant.STDDEV_POP:
       case SqlConstant.STDDEV_SAMP:
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.MAX_VALUE:
-      case SqlConstant.MODE:
       case SqlConstant.MAX_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:

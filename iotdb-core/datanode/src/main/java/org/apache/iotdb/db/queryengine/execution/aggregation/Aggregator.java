@@ -79,6 +79,7 @@ public class Aggregator {
             "RawDataAggregateOperator can only process one tsBlock input.");
         int index = inputLocationList.get(0)[i].getValueColumnIndex();
         // for count_time, time column is also its value column
+        // for max_by, the input column can also be time column.
         timeAndValueColumn[1 + i] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
       }
       accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);

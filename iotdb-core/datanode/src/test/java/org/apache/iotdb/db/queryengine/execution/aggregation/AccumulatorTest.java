@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -39,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,12 +57,14 @@ public class AccumulatorTest {
   private void initInputTsBlock() {
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.INT32);
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int i = 0; i < 100; i++) {
       timeColumnBuilder.writeLong(i);
       columnBuilders[0].writeDouble(i * 1.0);
+      columnBuilders[1].writeInt(-i);
       tsBlockBuilder.declarePosition();
     }
     rawData = tsBlockBuilder.build();
@@ -69,10 +73,18 @@ public class AccumulatorTest {
     statistics.update(100L, 100d);
   }
 
-  public Column[] getTimeAndValueColumn(int columnIndex) {
+  private Column[] getTimeAndValueColumn(int columnIndex) {
     Column[] columns = new Column[2];
     columns[0] = rawData.getTimeColumn();
     columns[1] = rawData.getColumn(columnIndex);
+    return columns;
+  }
+
+  private Column[] getTimeAndTwoValueColumns(int columnIndex1, int columnIndex2) {
+    Column[] columns = new Column[3];
+    columns[0] = rawData.getTimeColumn();
+    columns[1] = rawData.getColumn(columnIndex1);
+    columns[2] = rawData.getColumn(columnIndex2);
     return columns;
   }
 
@@ -863,5 +875,45 @@ public class AccumulatorTest {
     finalResult = new DoubleColumnBuilder(null, 1);
     varSampAccumulator.outputFinal(finalResult);
     Assert.assertEquals(841.6666666666666, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void maxByAccumulatorTest() {
+    Accumulator maxByAccumulator =
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MAX_BY,
+            Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE),
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    Assert.assertEquals(TSDataType.INT32, maxByAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.DOUBLE, maxByAccumulator.getIntermediateType()[1]);
+    Assert.assertEquals(TSDataType.INT32, maxByAccumulator.getFinalType());
+    // Returns null if there's no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[2];
+    intermediateResult[0] = new IntColumnBuilder(null, 1);
+    intermediateResult[1] = new DoubleColumnBuilder(null, 1);
+    maxByAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    Assert.assertTrue(intermediateResult[1].build().isNull(0));
+    ColumnBuilder finalResult = new IntColumnBuilder(null, 1);
+    maxByAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndTwoValueColumns(1, 0);
+    maxByAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(maxByAccumulator.hasFinalResult());
+    intermediateResult[0] = new IntColumnBuilder(null, 1);
+    intermediateResult[1] = new DoubleColumnBuilder(null, 1);
+    maxByAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertEquals(-99, intermediateResult[0].build().getInt(0));
+    Assert.assertEquals(99d, intermediateResult[1].build().getDouble(0), 0.001);
+
+    // add intermediate result as input
+    maxByAccumulator.addIntermediate(
+        new Column[] {intermediateResult[0].build(), intermediateResult[1].build()});
+    finalResult = new IntColumnBuilder(null, 1);
+    maxByAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(-99, finalResult.build().getInt(0));
   }
 }

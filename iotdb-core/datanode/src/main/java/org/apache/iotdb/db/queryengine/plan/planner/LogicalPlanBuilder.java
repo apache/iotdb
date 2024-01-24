@@ -700,14 +700,31 @@ public class LogicalPlanBuilder {
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    String inputExpressionStr =
-        aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
     for (TAggregationType aggregation : splitAggregations) {
       String functionName = aggregation.toString().toLowerCase();
       TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
+      String inputExpressionStr =
+          getExpressionStringThatDeterminesReturnType(aggregationDescriptor);
       typeProvider.setType(
-          String.format("%s(%s)", functionName, inputExpressionStr),
+          String.format("%s(%s)", functionName, aggregationDescriptor.getParametersString()),
           aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
+    }
+  }
+
+  /**
+   * For aggregate functions that accept single input, we return the first input Expression. For
+   * aggregate functions that can accept multiple inputs, if the type of intermediate results is
+   * determined by the input Expression, we return the corresponding Expression used to determine
+   * the type of intermediate results.
+   */
+  private static String getExpressionStringThatDeterminesReturnType(
+      AggregationDescriptor aggregationDescriptor) {
+    switch (aggregationDescriptor.getAggregationType()) {
+      case MAX_BY_Y_INPUT:
+        return aggregationDescriptor.getInputExpressions().get(1).getExpressionString();
+      case MAX_BY_X_INPUT:
+      default:
+        return aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
     }
   }
 

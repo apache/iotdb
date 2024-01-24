@@ -205,7 +205,7 @@ public class SchemaUtils {
       case VAR_SAMP:
         return Collections.singletonList(TAggregationType.VAR_SAMP);
       case MAX_BY:
-        return Collections.singletonList(TAggregationType.MAX_BY);
+        return Arrays.asList(TAggregationType.MAX_BY_X_INPUT, TAggregationType.MAX_BY_Y_INPUT);
       case AVG:
         return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
       case TIME_DURATION:
