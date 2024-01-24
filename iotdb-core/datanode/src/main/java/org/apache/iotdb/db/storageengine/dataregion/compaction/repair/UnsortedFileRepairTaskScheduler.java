@@ -280,7 +280,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<String, Long> deviceEndTimeMap = new HashMap<>();
-    Map<String, TsFileResource> deviceLastExistTsFileMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
@@ -314,14 +313,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       // update end time map
       if (!fileHasOverlap) {
         for (String device : devices) {
-          long deviceEndTimeInCurrentFile = deviceTimeIndex.getEndTime(device);
-          if (!deviceLastExistTsFileMap.containsKey(device)) {
-            deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
-            deviceLastExistTsFileMap.put(device, resource);
-            continue;
-          }
-          deviceEndTimeMap.put(device, resource.getEndTime(device));
-          deviceLastExistTsFileMap.put(device, resource);
+          deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device));
         }
       }
     }
