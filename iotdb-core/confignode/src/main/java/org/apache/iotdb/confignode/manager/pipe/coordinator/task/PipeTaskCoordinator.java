@@ -112,7 +112,7 @@ public class PipeTaskCoordinator {
   public TSStatus alterPipe(TAlterPipeReq req) {
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
     }
     return status;
   }
