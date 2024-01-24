@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 
 import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
@@ -50,7 +49,8 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
 
   @Override
   public Boolean visitInExpression(InExpression inExpression, Void context) {
-    return processUnaryExpression(inExpression);
+    Expression inputExpression = inExpression.getExpression();
+    return checkOperand(inputExpression);
   }
 
   @Override
@@ -58,22 +58,29 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
     if (!isNullExpression.isNot()) {
       throw new IllegalArgumentException("IS NULL can be pushed down");
     }
-    return processUnaryExpression(isNullExpression);
+    Expression inputExpression = isNullExpression.getExpression();
+    if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      throw new IllegalArgumentException("TIMESTAMP does not support IS NULL/IS NOT NULL");
+    }
+    return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
 
   @Override
   public Boolean visitLikeExpression(LikeExpression likeExpression, Void context) {
-    return processUnaryExpression(likeExpression);
+    Expression inputExpression = likeExpression.getExpression();
+    if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      throw new IllegalArgumentException("TIMESTAMP does not support LIKE/NOT LIKE");
+    }
+    return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
 
   @Override
   public Boolean visitRegularExpression(RegularExpression regularExpression, Void context) {
-    return processUnaryExpression(regularExpression);
-  }
-
-  private Boolean processUnaryExpression(UnaryExpression unaryExpression) {
-    Expression inputExpression = unaryExpression.getExpression();
-    return checkOperand(inputExpression);
+    Expression inputExpression = regularExpression.getExpression();
+    if (inputExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      throw new IllegalArgumentException("TIMESTAMP does not support REGEXP/NOT REGEXP");
+    }
+    return inputExpression.getExpressionType().equals(ExpressionType.TIMESERIES);
   }
 
   @Override

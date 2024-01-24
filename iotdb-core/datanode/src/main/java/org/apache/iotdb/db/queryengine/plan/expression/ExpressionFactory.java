@@ -40,7 +40,10 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.GroupByTimeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
@@ -175,6 +178,30 @@ public class ExpressionFactory {
 
   public static InExpression notIn(Expression expression, LinkedHashSet<String> values) {
     return new InExpression(expression, true, values);
+  }
+
+  public static IsNullExpression isNull(Expression expression) {
+    return new IsNullExpression(expression, false);
+  }
+
+  public static IsNullExpression isNotNull(Expression expression) {
+    return new IsNullExpression(expression, true);
+  }
+
+  public static LikeExpression like(Expression expression, String patternString) {
+    return new LikeExpression(expression, patternString, false);
+  }
+
+  public static LikeExpression notLike(Expression expression, String patternString) {
+    return new LikeExpression(expression, patternString, true);
+  }
+
+  public static RegularExpression regex(Expression expression, String patternString) {
+    return new RegularExpression(expression, patternString, false);
+  }
+
+  public static RegularExpression notRegex(Expression expression, String patternString) {
+    return new RegularExpression(expression, patternString, true);
   }
 
   public static BetweenExpression between(
