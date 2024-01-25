@@ -72,7 +72,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private int metaReportTimes = 0;
-  private int currentInterval = 0;
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
