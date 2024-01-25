@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -138,7 +139,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 case USING_TSFILE:
                   return TsFileEpoch.State.USING_TSFILE;
                 case USING_TABLET:
-                  return TsFileEpoch.State.USING_TABLET;
+                  if (event.getTsFileEpoch().getMinTime()
+                      > ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime()) {
+                    // There may be lost tablet events due to cancelled flush at historical
+                    // extractor
+                    return TsFileEpoch.State.USING_BOTH;
+                  } else {
+                    return TsFileEpoch.State.USING_TSFILE;
+                  }
                 case USING_BOTH:
                 default:
                   return TsFileEpoch.State.USING_BOTH;

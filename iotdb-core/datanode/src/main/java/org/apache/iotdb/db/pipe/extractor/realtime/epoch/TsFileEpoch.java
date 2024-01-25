@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileEpoch {
@@ -31,6 +32,8 @@ public class TsFileEpoch {
   private final String filePath;
   private final ConcurrentMap<PipeRealtimeDataRegionExtractor, AtomicReference<State>>
       dataRegionExtractor2State;
+
+  private final AtomicLong minTime = new AtomicLong(Long.MAX_VALUE);
 
   public TsFileEpoch(String filePath) {
     this.filePath = filePath;
@@ -57,6 +60,14 @@ public class TsFileEpoch {
                 .setRecentProcessedTsFileEpochState(extractor.getTaskID(), state.get()));
   }
 
+  public long getMinTime() {
+    return minTime.get();
+  }
+
+  public void updateMinTime(long newTime) {
+    this.minTime.updateAndGet(time -> Math.min(time, newTime));
+  }
+
   @Override
   public String toString() {
     return "TsFileEpoch{"
@@ -65,6 +76,9 @@ public class TsFileEpoch {
         + '\''
         + ", dataRegionExtractor2State="
         + dataRegionExtractor2State
+        + '\''
+        + ", minTime="
+        + minTime.get()
         + '}';
   }
 
