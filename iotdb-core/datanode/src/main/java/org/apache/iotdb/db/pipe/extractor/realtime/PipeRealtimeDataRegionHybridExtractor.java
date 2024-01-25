@@ -145,7 +145,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                     // extractor
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
-                    return TsFileEpoch.State.USING_TSFILE;
+                    return TsFileEpoch.State.USING_TABLET;
                   }
                 case USING_BOTH:
                 default:
