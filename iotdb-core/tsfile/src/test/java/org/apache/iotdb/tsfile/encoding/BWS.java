@@ -984,7 +984,7 @@ public class BWS {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 10;
+                int repeatTime2 = 500;
 
                 int length = 0;
 
@@ -999,8 +999,8 @@ public class BWS {
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
-//                for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                    BOSDecoder(encoded_result);
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
@@ -1145,7 +1145,7 @@ public class BWS {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+BOS-O",
+                            "TS_2DIFF+BWS",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
