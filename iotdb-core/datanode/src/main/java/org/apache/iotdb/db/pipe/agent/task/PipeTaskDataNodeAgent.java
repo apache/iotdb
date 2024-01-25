@@ -95,7 +95,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           try {
             stopAllPipesWithCriticalExceptionInternal();
             LOGGER.info("Stopped all pipes with critical exception.");
-            return;
           } finally {
             releaseWriteLock();
           }
