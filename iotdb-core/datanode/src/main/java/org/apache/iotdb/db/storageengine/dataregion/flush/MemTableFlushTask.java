@@ -274,17 +274,22 @@ public class MemTableFlushTask {
           recordFlushPointsMetric();
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
+
+        private void recordFlushPointsMetric() {
+          if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+            return;
+          }
+          int lastIndex = storageGroup.lastIndexOf("-");
+          if (lastIndex == -1) {
+            lastIndex = storageGroup.length();
+          }
+          recordFlushPointsMetricInternal(
+              memTable.getTotalPointsNum(), storageGroup.substring(0, lastIndex), dataRegionId);
+        }
       };
 
-  private void recordFlushPointsMetric() {
-    if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
-      return;
-    }
-    int lastIndex = storageGroup.lastIndexOf("-");
-    if (lastIndex == -1) {
-      lastIndex = storageGroup.length();
-    }
-    String storageGroupName = storageGroup.substring(0, lastIndex);
+  public static void recordFlushPointsMetricInternal(
+      long totalPointsNum, String storageGroupName, String dataRegionId) {
     long currentTime = CommonDateTimeUtils.currentTime();
     // compute the flush points
     long writeTime =
@@ -300,12 +305,12 @@ public class MemTableFlushTask {
     // record the flush points
     MetricService.getInstance()
         .gaugeWithInternalReportAsync(
-            memTable.getTotalPointsNum(),
+            totalPointsNum,
             Metric.POINTS.toString(),
             MetricLevel.CORE,
             writeTime,
             Tag.DATABASE.toString(),
-            storageGroup.substring(0, lastIndex),
+            storageGroupName,
             Tag.TYPE.toString(),
             "flush",
             Tag.REGION.toString(),

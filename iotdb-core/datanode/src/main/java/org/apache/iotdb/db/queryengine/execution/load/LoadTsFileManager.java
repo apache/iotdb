@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -315,11 +316,20 @@ public class LoadTsFileManager {
         writer.endFile();
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
-        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
+
+        TsFileResource resource = generateResource(writer, progressIndex);
+        dataRegion.loadNewTsFile(resource, true, isGeneratedByPipe);
+
+        long writePointCount = getTsFileWritePointCount(writer);
+        // Report load tsFile points to IoTDB flush metrics
+        MemTableFlushTask.recordFlushPointsMetricInternal(
+            writePointCount,
+            resource.getProcessor().getStorageGroupName(),
+            dataRegion.getDataRegionId());
 
         MetricService.getInstance()
             .count(
-                getTsFileWritePointCount(writer),
+                writePointCount,
                 Metric.QUANTITY.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
