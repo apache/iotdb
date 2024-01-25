@@ -999,8 +999,8 @@ public class BWS {
                 double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
-                for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    BOSDecoder(encoded_result);
+//                for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
@@ -1138,8 +1138,8 @@ public class BWS {
                     double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        BOSDecoder(encoded_result);
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                        BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
