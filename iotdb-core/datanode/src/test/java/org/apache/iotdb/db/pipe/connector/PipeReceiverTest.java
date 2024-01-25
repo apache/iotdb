@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,7 +57,7 @@ public class PipeReceiverTest {
               true),
           mock(IPartitionFetcher.class),
           mock(ISchemaFetcher.class));
-    } catch (IOException e) {
+    } catch (IOException | TException | ClientManagerException e) {
       Assert.fail();
     }
   }

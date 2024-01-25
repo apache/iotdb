@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
@@ -44,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -59,7 +61,8 @@ public class PipeDataNodeThriftRequestTest {
   private static final String TIME_PRECISION = "ms";
 
   @Test
-  public void testPipeValidateHandshakeReq() throws IOException {
+  public void testPipeValidateHandshakeReq()
+      throws IOException, TException, ClientManagerException {
     PipeTransferHandshakeReq req = PipeTransferHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
     PipeTransferHandshakeReq deserializeReq = PipeTransferHandshakeReq.fromTPipeTransferReq(req);
 
