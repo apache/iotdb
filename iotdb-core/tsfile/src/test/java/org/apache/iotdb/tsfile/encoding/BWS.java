@@ -526,7 +526,7 @@ public class BWS {
             if (value == 0){
                 alpha_count_list[0]++;
             }
-            else if (value == pow(2,getBitWith(value)-1)){
+            else if (value == pow(2,getBitWith(value)-1) && value != 1){
                 alpha_count_list[getBitWith(value)-1]++;
             }else {
                 alpha_box_count_list[getBitWith(value)-1]++;
@@ -537,7 +537,7 @@ public class BWS {
             if (value == max_delta_value){
                 gamma_count_list[0]++;
             }
-            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
+            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
                 gamma_count_list[getBitWith(max_delta_value-value)-1]++;
             }else {
                 gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
@@ -1287,6 +1287,39 @@ public class BWS {
         }
     }
 
+    @Test
+    public void BWSTest2() throws IOException {
+        int[] testarray = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        int max_delta_value = 15;
+        int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
+        int[] alpha_box_count_list = new int[getBitWith(max_delta_value)];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
+        int[] gamma_count_list = new int[getBitWith(max_delta_value)+1];
+        int[] gamma_box_count_list = new int[getBitWith(max_delta_value)];
+        for(int value:testarray){
+            if (value == 0){
+                alpha_count_list[0]++;
+            }
+            else if (value == pow(2,getBitWith(value)-1) && value != 1){
+                alpha_count_list[getBitWith(value)-1]++;
+            }else {
+                alpha_box_count_list[getBitWith(value)-1]++;
+            }
+        }
 
+        for(int value:testarray){
+            if (value == max_delta_value){
+                gamma_count_list[0]++;
+            }
+            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
+                gamma_count_list[getBitWith(max_delta_value-value)-1]++;
+            }else {
+                gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
+            }
+        }
+
+        for (int value: alpha_box_count_list){
+            System.out.println(value);
+        }
+    }
 
 }
