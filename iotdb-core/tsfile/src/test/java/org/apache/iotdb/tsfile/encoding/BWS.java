@@ -549,7 +549,7 @@ public class BWS {
 
         int alpha_size = getBitWith(max_delta_value);
         int cur_k1_close = 0;
-        for (int alpha = 1; alpha < alpha_size; alpha++) { //start_value_size
+        for (int alpha = 1; alpha <= alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha-1);//close
             cur_k1_close +=  alpha_count_list[alpha-1];
@@ -584,7 +584,7 @@ public class BWS {
                     final_k_end_value = k_end_value_close;
                 }
 
-                //C2
+                //C2 k1open k2open
                 cur_bits = 0;
                 int cur_k1_open = cur_k1_close - alpha_count_list[alpha - 1];
                 int cur_k2_open = cur_k2_close - gamma_count_list[gamma - 1];
@@ -592,11 +592,11 @@ public class BWS {
                 int k_end_value_open = k_end_value_close + 1;
                 cur_bits += Math.min((cur_k1_open + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_open);
                 if (cur_k1_open != 0)
-                    cur_bits += cur_k1_open * (alpha - 1);//left_max
+                    cur_bits += cur_k1_open * (alpha - 1);
                 if (cur_k1_open + cur_k2_open != block_size)
                     cur_bits += (block_size - cur_k1_open - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_open - 2);
                 if (cur_k2_open != 0)
-                    cur_bits += cur_k2_open * (gamma - 1);//min_upper_outlier
+                    cur_bits += cur_k2_open * (gamma - 1);
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
@@ -1187,16 +1187,13 @@ public class BWS {
             if (value == max_delta_value){
                 gamma_count_list[0]++;
             }
-            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
+            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
                 gamma_count_list[getBitWith(max_delta_value-value)-1]++;
             }else {
                 gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
             }
         }
 
-        for (int value: alpha_box_count_list){
-            System.out.println(value);
-        }
     }
 
 }
