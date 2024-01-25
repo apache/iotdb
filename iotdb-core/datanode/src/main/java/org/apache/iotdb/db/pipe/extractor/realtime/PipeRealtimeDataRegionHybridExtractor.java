@@ -145,6 +145,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                     // extractor
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
+                    // If the file start time is larger than or equal to epoch's minTime,
+                    // it implies that the file does not contain information out of extracted
+                    // tablets, simply ignore
                     return TsFileEpoch.State.USING_TABLET;
                   }
                 case USING_BOTH:
