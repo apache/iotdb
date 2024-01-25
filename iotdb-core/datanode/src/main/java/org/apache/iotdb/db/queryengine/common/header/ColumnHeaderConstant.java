@@ -213,13 +213,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
-          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
-          new ColumnHeader(TEMPLATE, TSDataType.TEXT));
+          new ColumnHeader(TEMPLATE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -228,7 +230,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
@@ -236,7 +238,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showStorageGroupsDetailColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),

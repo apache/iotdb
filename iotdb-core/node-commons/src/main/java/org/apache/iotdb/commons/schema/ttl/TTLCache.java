@@ -2,20 +2,21 @@ package org.apache.iotdb.commons.schema.ttl;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class TTLCache {
 
   private final CacheNode ttlCacheTree;
   public static final long NULL_TTL = -1;
-
-  public static final String INFINITE = "INF";
 
   private static final String SEPARATOR = ",";
 
@@ -34,6 +35,9 @@ public class TTLCache {
    * @param nodes should be prefix path or specific device path without wildcard
    */
   public void setTTL(String[] nodes, long ttl) {
+    if(nodes.length<2){
+      return;
+    }
     CacheNode parent = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
       CacheNode child = parent.getChild(nodes[i]);
@@ -46,7 +50,16 @@ public class TTLCache {
     parent.ttl = ttl;
   }
 
-  public boolean unsetTTL(String[] nodes) {
+  public void unsetTTL(String[] nodes) {
+    if(nodes.length<2){
+      return;
+    }else if(nodes.length == 2){
+      // if path equals to root.**, then unset it to configured ttl
+      if(nodes[0].equals(IoTDBConstant.PATH_ROOT) && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)){
+        ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
+        return;
+      }
+    }
     CacheNode parent = ttlCacheTree;
     int index = 0;
     boolean nextToBeRemoved;
@@ -55,7 +68,7 @@ public class TTLCache {
       nextToBeRemoved = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
       CacheNode child = parent.getChild(nodes[i]);
       if (child == null) {
-        return false;
+        return;
       }
       if (nextToBeRemoved) {
         targetNode = parent;
@@ -64,11 +77,16 @@ public class TTLCache {
       parent = child;
     }
 
-    // remove corresponding nodes of this path from cache tree
+    if(!parent.getChildren().isEmpty()){
+      // node to be removed is internal node, then just reset its ttl
+      parent.ttl = NULL_TTL;
+      return;
+    }
+
+    // node to be removed is leaf node, then remove corresponding node of this path from cache tree
     if (targetNode != null) {
       targetNode.removeChild(nodes[index]);
     }
-    return true;
   }
 
   /**
@@ -80,10 +98,9 @@ public class TTLCache {
     long ttl = ttlCacheTree.ttl;
     CacheNode parent = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
-      Map<String, CacheNode> children = parent.getChildren();
-      CacheNode child = children.get(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+      CacheNode child = parent.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
       ttl = child != null ? child.ttl : ttl;
-      parent = children.get(nodes[i]);
+      parent = parent.getChild(nodes[i]);
       if (parent == null) {
         break;
       }
@@ -92,8 +109,35 @@ public class TTLCache {
     return ttl;
   }
 
+
+  public Map<String,Long> getAllTTLUnderOneNode(String[] nodes){
+    Map<String, Long> pathTTLMap = new HashMap<>();
+    CacheNode node = ttlCacheTree;
+    for(int i=1;i< nodes.length;i++){
+      node = node.getChild(nodes[i]);
+      if(node == null){
+        return pathTTLMap;
+      }
+    }
+
+    // get all ttl under current node
+    dfsCacheTree(pathTTLMap, new StringBuilder(new PartialPath(nodes).getFullPath()),node);
+    return pathTTLMap;
+  }
+
+  public long getNodeTTL(String[] nodes){
+    CacheNode node = ttlCacheTree;
+    for(int i=1;i< nodes.length;i++){
+      node = node.getChild(nodes[i]);
+      if(node == null){
+        return NULL_TTL;
+      }
+    }
+    return node.ttl;
+  }
+
   public Map<String, Long> getAllPathTTL() {
-    Map<String, Long> result = new HashMap<>();
+    Map<String, Long> result = new LinkedHashMap<>();
     dfsCacheTree(result, new StringBuilder(IoTDBConstant.PATH_ROOT), ttlCacheTree);
     return result;
   }
@@ -127,7 +171,7 @@ public class TTLCache {
     while (size > 0) {
       String path = ReadWriteIOUtils.readString(bufferedInputStream);
       long ttl = ReadWriteIOUtils.readLong(bufferedInputStream);
-      setTTL(path.split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)), ttl);
+      setTTL(Objects.requireNonNull(path).split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)), ttl);
       size--;
     }
   }
@@ -142,7 +186,7 @@ public class TTLCache {
   static class CacheNode {
     public String name;
     public long ttl;
-    private Map<String, CacheNode> children;
+    private final Map<String, CacheNode> children;
 
     public CacheNode(String name, long ttl) {
       children = new HashMap<>();

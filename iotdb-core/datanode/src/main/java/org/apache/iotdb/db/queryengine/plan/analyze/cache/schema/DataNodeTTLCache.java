@@ -26,7 +26,7 @@ public class DataNodeTTLCache {
   public void setTTL(String path, long ttl) {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(path.split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)), ttl);
+      ttlCache.setTTL(path.split("\\"+IoTDBConstant.PATH_SEPARATOR), ttl);
     } finally {
       lock.writeLock().unlock();
     }
@@ -36,7 +36,7 @@ public class DataNodeTTLCache {
     lock.writeLock().lock();
     try {
       pathTTLs.forEach(
-          (k, v) -> ttlCache.setTTL(k.split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)), v));
+          (k, v) -> ttlCache.setTTL(k.split("\\"+IoTDBConstant.PATH_SEPARATOR), v));
     } finally {
       lock.writeLock().unlock();
     }
@@ -45,9 +45,36 @@ public class DataNodeTTLCache {
   public void unsetTTL(String path) {
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(path.split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)));
+      ttlCache.unsetTTL(path.split("\\"+IoTDBConstant.PATH_SEPARATOR));
     } finally {
       lock.writeLock().unlock();
+    }
+  }
+
+  public long getTTL(String path){
+    lock.readLock().lock();
+    try{
+      return ttlCache.getTTL(path.split("\\"+IoTDBConstant.PATH_SEPARATOR));
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public Map<String,Long> getTTLUnderOneNode(String path){
+    lock.readLock().lock();
+    try{
+      return ttlCache.getAllTTLUnderOneNode(path.split("\\"+IoTDBConstant.PATH_SEPARATOR));
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public long getNodeTTL(String path){
+    lock.readLock().lock();
+    try{
+      return ttlCache.getNodeTTL(path.split("\\"+IoTDBConstant.PATH_SEPARATOR));
+    } finally {
+      lock.readLock().unlock();
     }
   }
 }

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
-import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -2465,7 +2464,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     String ttlStr = ctx.INTEGER_LITERAL().getText();
-    long ttl = ttlStr.equalsIgnoreCase(TTLCache.INFINITE)?Long.MAX_VALUE:Long.parseLong(ttlStr);
+    long ttl = ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)?Long.MAX_VALUE:Long.parseLong(ttlStr);
     setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;

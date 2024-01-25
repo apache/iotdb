@@ -1,9 +1,12 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.TTLException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
@@ -36,6 +39,12 @@ public class TTLManager {
         // if path matches database, then extends to path.**
         if(configManager.getPartitionManager().isDatabaseExist(path.getFullPath())){
             setTTLPlan.setDatabasePathPattern(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).getNodes());
+        }
+        // convert the unit from milliseconds to the parameter configured unit
+        if(setTTLPlan.getTTL() != TTLCache.NULL_TTL) {
+            long ttl = CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                    setTTLPlan.getTTL(), CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+            setTTLPlan.setTTL(ttl);
         }
         return configManager.getProcedureManager().setTTL(setTTLPlan);
     }

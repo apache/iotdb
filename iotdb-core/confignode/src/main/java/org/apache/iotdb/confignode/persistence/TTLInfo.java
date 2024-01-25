@@ -26,7 +26,7 @@ public class TTLInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILENAME = "ttl_info.bin";
   private static final Logger LOGGER = LoggerFactory.getLogger(TTLInfo.class);
 
-  private TTLCache ttlCache;
+  private final TTLCache ttlCache;
 
   private final ReadWriteLock lock;
 

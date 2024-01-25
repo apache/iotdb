@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -68,7 +68,7 @@ public class ShowTTLTask implements IConfigTask {
           .getColumnBuilder(0)
           .writeBinary(new Binary(entry.getKey(), TSFileConfig.STRING_CHARSET));
       if (Long.MAX_VALUE == entry.getValue()) {
-        builder.getColumnBuilder(1).writeBinary(new Binary(TTLCache.INFINITE,TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(1).writeBinary(new Binary(IoTDBConstant.TTL_INFINITE,TSFileConfig.STRING_CHARSET));
       } else {
         builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(entry.getValue()),TSFileConfig.STRING_CHARSET));
       }

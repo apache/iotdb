@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -98,6 +100,8 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
         .getColumnBuilder(0)
         .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     int templateId = device.getTemplateId();
+    long ttl = DataNodeTTLCache.getInstance().getTTL(device.getFullPath());
+    String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE :String.valueOf(ttl);
     if (hasSgCol) {
       builder.getColumnBuilder(1).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
       builder
@@ -114,6 +118,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       } else {
         builder.getColumnBuilder(3).appendNull();
       }
+      builder.getColumnBuilder(4).writeBinary(new Binary(ttlStr,TSFileConfig.STRING_CHARSET));
     } else {
       builder
           .getColumnBuilder(1)
@@ -129,6 +134,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       } else {
         builder.getColumnBuilder(2).appendNull();
       }
+      builder.getColumnBuilder(3).writeBinary(new Binary(ttlStr,TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
   }
