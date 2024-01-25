@@ -1060,7 +1060,7 @@ public class IoTDBConfig {
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
 
-  private boolean enableWALCompression = false;
+  private boolean enableWALCompression = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();

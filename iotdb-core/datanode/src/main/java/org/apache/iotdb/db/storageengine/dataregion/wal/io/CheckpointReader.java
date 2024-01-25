@@ -24,10 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,8 +45,7 @@ public class CheckpointReader {
 
   private void init() {
     checkpoints = new ArrayList<>();
-    try (DataInputStream logStream =
-        new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)))) {
+    try (DataInputStream logStream = new DataInputStream(new WALInputStream(logFile))) {
       maxMemTableId = logStream.readLong();
       while (logStream.available() > 0) {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);

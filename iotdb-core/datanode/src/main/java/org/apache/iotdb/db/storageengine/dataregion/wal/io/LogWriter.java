@@ -47,7 +47,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long size;
-  private final ByteBuffer headerBuffer = ByteBuffer.allocateDirect(Integer.BYTES * 2 + 1);
+  private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
 
   protected LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
@@ -62,7 +62,7 @@ public abstract class LogWriter implements ILogWriter {
     boolean compressed = false;
     int uncompressedSize = bufferSize;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
-        && bufferSize > 1024 * 1024) {
+        && bufferSize > 1024 * 512 /* Do not compress buffer that is less than 512KB */) {
       ICompressor compressor = ICompressor.getCompressor(CompressionType.LZ4);
       ByteBuffer compressedBuffer =
           ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(buffer.limit()));
@@ -82,9 +82,11 @@ public abstract class LogWriter implements ILogWriter {
     headerBuffer.putInt(bufferSize);
     headerBuffer.put((byte) (compressed ? 1 : 0));
     try {
+      logger.error("Channel's offset is {}", logChannel.position());
       if (compressed) {
         headerBuffer.putInt(uncompressedSize);
       }
+      headerBuffer.flip();
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
