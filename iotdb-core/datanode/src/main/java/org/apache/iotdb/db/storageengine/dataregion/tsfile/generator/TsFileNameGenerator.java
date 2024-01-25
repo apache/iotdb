@@ -239,31 +239,34 @@ public class TsFileNameGenerator {
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
     // set target resource to COMPACTING until the end of this task
-    return sequence
-        ? new TsFileResource(
-            new File(
-                tsFileResources.get(0).getTsFile().getParent(),
-                minTime
-                    + FILE_NAME_SEPARATOR
-                    + minVersion
-                    + FILE_NAME_SEPARATOR
-                    + (maxInnerMergeCount + 1)
-                    + FILE_NAME_SEPARATOR
-                    + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
-            TsFileResourceStatus.COMPACTING)
-        : new TsFileResource(
-            new File(
-                tsFileResources.get(0).getTsFile().getParent(),
-                maxTime
-                    + FILE_NAME_SEPARATOR
-                    + maxVersion
-                    + FILE_NAME_SEPARATOR
-                    + (maxInnerMergeCount + 1)
-                    + FILE_NAME_SEPARATOR
-                    + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
-            TsFileResourceStatus.COMPACTING);
+    TsFileResource resource =
+        sequence
+            ? new TsFileResource(
+                new File(
+                    tsFileResources.get(0).getTsFile().getParent(),
+                    minTime
+                        + FILE_NAME_SEPARATOR
+                        + minVersion
+                        + FILE_NAME_SEPARATOR
+                        + (maxInnerMergeCount + 1)
+                        + FILE_NAME_SEPARATOR
+                        + maxCrossMergeCount
+                        + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+                TsFileResourceStatus.COMPACTING)
+            : new TsFileResource(
+                new File(
+                    tsFileResources.get(0).getTsFile().getParent(),
+                    maxTime
+                        + FILE_NAME_SEPARATOR
+                        + maxVersion
+                        + FILE_NAME_SEPARATOR
+                        + (maxInnerMergeCount + 1)
+                        + FILE_NAME_SEPARATOR
+                        + maxCrossMergeCount
+                        + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+                TsFileResourceStatus.COMPACTING);
+    resource.setSeq(sequence);
+    return resource;
   }
 
   public static class TsFileName {

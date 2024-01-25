@@ -989,6 +989,10 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+REPAIR
+    : R E P A I R
+    ;
+
 SCHEMA_REPLICATION_FACTOR
     : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
     ;

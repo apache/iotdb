@@ -65,10 +65,11 @@ public class LoadTsFileMemoryManager {
     throw new LoadRuntimeOutOfMemoryException(
         String.format(
             "forceAllocate: failed to allocate memory from query engine after %d retries, "
-                + "total query memory %s, used memory size %d bytes, "
-                + "requested memory size %d bytes",
+                + "total query memory %s, available memory for load %s bytes, "
+                + "used memory size %d bytes, requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
             IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators(),
+            LocalExecutionPlanner.getInstance().getFreeMemoryForOperators(),
             usedMemorySizeInBytes.get(),
             sizeInBytes));
   }

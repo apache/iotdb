@@ -147,7 +147,6 @@ public class CompactionTaskManager implements IService {
   }
 
   @SuppressWarnings({"squid:S2142", "squid:S135", "VariableDeclarationUsageDistanceCheck"})
-  @TestOnly
   public void waitAllCompactionFinish() {
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
