@@ -447,6 +447,9 @@ public class SPRINTZBWSBOSTest {
 
 
         block_size = remaining-1;
+
+        // RLE need to substitute ---- start
+
         int max_delta_value = min_delta[2];
         int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
         int[] alpha_box_count_list = new int[getBitWith(max_delta_value)];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
@@ -456,18 +459,15 @@ public class SPRINTZBWSBOSTest {
             if (value == 0){
                 alpha_count_list[0]++;
             }
-            else if (value == pow(2,getBitWith(value)-1)){
+            else if (value == pow(2,getBitWith(value)-1) && value != 1){
                 alpha_count_list[getBitWith(value)-1]++;
             }else {
                 alpha_box_count_list[getBitWith(value)-1]++;
             }
-        }
-
-        for(int value:ts_block_delta){
             if (value == max_delta_value){
                 gamma_count_list[0]++;
             }
-            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
+            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
                 gamma_count_list[getBitWith(max_delta_value-value)-1]++;
             }else {
                 gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
@@ -481,32 +481,26 @@ public class SPRINTZBWSBOSTest {
         min_bits += (getBitWith(final_k_end_value - final_k_start_value ) * (block_size));
 
         int alpha_size = getBitWith(max_delta_value);
+        int cur_k1_close = 0;
         for (int alpha = 1; alpha < alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha-1);//close
-
-            int cur_k1_close = 0;
-            for(int exp_start = 0;exp_start<alpha;exp_start++){
-                cur_k1_close += alpha_count_list[exp_start];
-                if(exp_start + 1 < alpha){
-                    cur_k1_close += alpha_box_count_list[exp_start];
-                }
+            cur_k1_close +=  alpha_count_list[alpha-1];
+            if (alpha > 1) {
+                cur_k1_close += alpha_box_count_list[alpha - 2];
             }
-
+            int cur_k2_close = 0;
             int k_end_value_close;
             int cur_bits;
-            int cur_k2_close = 0;
 
             for (int gamma = 1; (int) pow(2,gamma) + (int) pow(2,alpha) <= max_delta_value + 1; gamma++) {
 
                 k_end_value_close = max_delta_value - (int) pow(2,gamma-1);
 
                 cur_bits = 0;
-                for(int exp_end = 0;exp_end<gamma;exp_end++){
-                    cur_k2_close += gamma_count_list[exp_end];
-                    if(exp_end + 1 < gamma){
-                        cur_k2_close += gamma_box_count_list[exp_end];
-                    }
+                cur_k2_close += gamma_count_list[gamma-1];
+                if (gamma > 1){
+                    cur_k2_close += gamma_box_count_list[gamma-2];
                 }
 
                 cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
@@ -579,6 +573,10 @@ public class SPRINTZBWSBOSTest {
 //                    break;
             }
         }
+
+        // RLE need to substitute ----- end
+
+
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
