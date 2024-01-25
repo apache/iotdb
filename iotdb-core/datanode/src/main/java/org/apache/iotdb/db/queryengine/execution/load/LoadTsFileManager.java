@@ -323,9 +323,7 @@ public class LoadTsFileManager {
         long writePointCount = getTsFileWritePointCount(writer);
         // Report load tsFile points to IoTDB flush metrics
         MemTableFlushTask.recordFlushPointsMetricInternal(
-            writePointCount,
-            resource.getProcessor().getStorageGroupName(),
-            dataRegion.getDataRegionId());
+            writePointCount, dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
 
         MetricService.getInstance()
             .count(

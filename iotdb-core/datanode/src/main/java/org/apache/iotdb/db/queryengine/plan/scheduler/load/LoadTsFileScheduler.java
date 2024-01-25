@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
@@ -397,6 +398,11 @@ public class LoadTsFileScheduler implements IScheduler {
                 (DataRegionId)
                     ConsensusGroupId.Factory.createFromTConsensusGroupId(
                         node.getLocalRegionReplicaSet().getRegionId()));
+
+    // Report load tsFile points to IoTDB flush metrics
+    MemTableFlushTask.recordFlushPointsMetricInternal(
+        node.getWritePointCount(), dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
+
     MetricService.getInstance()
         .count(
             node.getWritePointCount(),
