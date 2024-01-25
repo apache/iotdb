@@ -67,11 +67,6 @@ public abstract class LogWriter implements ILogWriter {
       ByteBuffer compressedBuffer =
           ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(buffer.limit()));
       compressor.compress(buffer, compressedBuffer);
-      logger.error(
-          "compressed size: {}, original size: {}, compression ratio is {}",
-          compressedBuffer.position(),
-          bufferSize,
-          (double) bufferSize / compressedBuffer.position());
       buffer = compressedBuffer;
       bufferSize = buffer.position();
       buffer.flip();

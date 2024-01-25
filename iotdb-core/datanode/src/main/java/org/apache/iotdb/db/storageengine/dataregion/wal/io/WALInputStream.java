@@ -59,7 +59,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextSegment() throws IOException {
     headerBuffer.clear();
-    logger.error("channel's offset is {}", channel.position());
     if (channel.read(headerBuffer) != Integer.BYTES + 1) {
       throw new IOException("Unexpected end of file");
     }
