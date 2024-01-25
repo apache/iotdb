@@ -963,14 +963,15 @@ public class Exact_BOS {
         int block_size = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
-        block_size--;
+
 
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
 
 
         int[] value_list = new int[length_all+block_size];
-
+        block_size--;
+        
         int[] value_pos_arr = new int[1];
         for (int k = 0; k < block_num; k++) {
 
@@ -1136,8 +1137,8 @@ public class Exact_BOS {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "block_size_bos";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1181,8 +1182,9 @@ public class Exact_BOS {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 10;
+        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1237,7 +1239,7 @@ public class Exact_BOS {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 500;
+
 
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
