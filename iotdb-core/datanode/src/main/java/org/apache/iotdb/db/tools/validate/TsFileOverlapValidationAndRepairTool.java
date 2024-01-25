@@ -199,12 +199,6 @@ public class TsFileOverlapValidationAndRepairTool {
       // update end time map
       if (!fileHasOverlap) {
         for (String device : devices) {
-          long deviceEndTimeInCurrentFile = resource.getEndTime(device);
-          if (!deviceLastExistTsFileMap.containsKey(device)) {
-            deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
-            deviceLastExistTsFileMap.put(device, resource);
-            continue;
-          }
           deviceEndTimeMap.put(device, resource.getEndTime(device));
           deviceLastExistTsFileMap.put(device, resource);
         }
