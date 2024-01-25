@@ -40,11 +40,11 @@ import java.util.Collections;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 
-public class SchemaRegionMLogRecoverTest extends AbstractSchemaRegionTest {
+public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
 
   private String schemaRegionConsensusProtocolClass;
 
-  public SchemaRegionMLogRecoverTest(SchemaRegionTestParams testParams) {
+  public SchemaRegionSimpleRecoverTest(SchemaRegionTestParams testParams) {
     super(testParams);
   }
 
@@ -89,7 +89,7 @@ public class SchemaRegionMLogRecoverTest extends AbstractSchemaRegionTest {
     Assert.assertTrue(schemaTree.getAllDevices().get(0).isAligned());
 
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion = getSchemaRegion("root.sg1", 0);
     schemaTree =
         schemaRegion.fetchSchema(
             ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
