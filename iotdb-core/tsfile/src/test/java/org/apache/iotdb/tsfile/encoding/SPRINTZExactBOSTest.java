@@ -792,11 +792,12 @@ public class SPRINTZExactBOSTest {
         decode_pos += 4;
         int block_size = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        block_size --;
+
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
 
         int[] value_list = new int[length_all+block_size];
+        block_size --;
 
         int[] value_pos_arr = new int[1];
         for (int k = 0; k < block_num; k++) {
@@ -812,6 +813,7 @@ public class SPRINTZExactBOSTest {
                 value_pos_arr[0]++;
             }
         } else {
+            remain_length --;
             BOSBlockDecoder(encoded, decode_pos, value_list, remain_length, value_pos_arr);
         }
     }

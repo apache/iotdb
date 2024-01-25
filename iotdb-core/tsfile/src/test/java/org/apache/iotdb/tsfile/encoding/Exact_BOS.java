@@ -500,7 +500,8 @@ public class Exact_BOS {
             encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
             encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
         }
-        encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
+//        if(k1+k2!=block_size)
+            encode_pos = encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
             encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
         if (k2 != 0)
@@ -646,120 +647,6 @@ public class Exact_BOS {
         return encode_pos;
     }
 
-//    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size,  int encode_pos, byte[] cur_byte) {
-//
-////        int[] min_delta = new int[3];
-//        int[] min_delta = new int[3];
-//        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block,block_i, block_size, min_delta);
-////        ArrayList<Integer> min_delta_r = new ArrayList<>();
-//        int[] ts_block_order_value = ts_block_delta.clone();//getAbsDeltaTsBlock(ts_block, min_delta_r,supple_length);
-//
-////        long[] frequent_ts_block = new long[block_size+1];
-////
-////        for(int i=0;i<=block_size;i++){
-////
-////        }
-//
-//        Arrays.sort(ts_block_order_value);
-//        block_size --;
-////        block_size += supple_length;
-//
-//        int max_delta_value = ts_block_order_value[block_size - 1];
-//        int max_delta_value_bit_width = getBitWith(max_delta_value);
-//        ArrayList<Integer> spread_value = new ArrayList<>();
-//        for (int i = 1; i < max_delta_value_bit_width; i++) {
-//            int spread_v = (int) pow(2, i) - 1;
-//            spread_value.add(spread_v);
-//        }
-//        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
-//
-//
-//        ArrayList<Integer> start_value = new ArrayList<>();
-//        int min_delta_value = ts_block_order_value[0];
-//        start_value.add(min_delta_value);
-//
-//        ArrayList<Integer> tmp_value = new ArrayList<>();
-//        tmp_value.add(min_delta_value);
-//        int count = 1;
-//        int tmp = min_delta_value;
-//        for (int i = 1; i < block_size; i++) {
-//            if (ts_block_order_value[i] != tmp) {
-//                int start_v = ts_block_order_value[i];
-//                tmp_value.add(count);
-//                PDF.add(tmp_value);
-//                tmp_value = new ArrayList<>();
-//                start_value.add(start_v);
-//                tmp_value.add(start_v);
-//                tmp = start_v;
-//
-//            }
-//            count++;
-//
-//        }
-//        tmp_value.add(count);
-//        PDF.add(tmp_value);
-//
-//
-//        int final_k_start_value = ts_block_order_value[0];
-//        int final_k_end_value = max_delta_value;
-//
-//        int min_bits = 0;
-//        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
-//
-//
-//        int start_value_size = start_value.size();
-//
-//        for (int start_value_i = 0; start_value_i < start_value_size - 1; start_value_i++) {
-//            int k_start_value = start_value.get(start_value_i);
-//            for (int k_spread_value : spread_value) {
-//                int k_end_value = Math.min(k_spread_value + k_start_value, max_delta_value);
-//
-//                int cur_bits = 0;
-//                int cur_k1 = 0;
-//                if (start_value_i != 0) {
-//                    cur_k1 = PDF.get(start_value_i - 1).get(1);
-//                }
-//
-//                int cur_k2 = 0;
-//                int max_normal;
-//                int PDF_size = PDF.size();
-//                for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
-//                    max_normal = PDF.get(tmp_j).get(0);
-//                    if (max_normal >= k_end_value) {
-//                        if (max_normal > k_end_value)
-//                            cur_k2 = block_size - PDF.get(tmp_j - 1).get(1);
-//                        else if (max_normal == k_end_value) {
-//                            cur_k2 = block_size - PDF.get(tmp_j).get(1);
-//                        }
-//                        break;
-//                    }
-//                }
-//
-//                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
-//                if (cur_k1 != 0)
-//                    cur_bits += cur_k1 * getBitWith(k_start_value);
-//                if (cur_k1 + cur_k2 != block_size)
-//                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
-//                if (cur_k2 != 0)
-//                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
-//
-//
-//                if (cur_bits < min_bits) {
-//                    min_bits = cur_bits;
-//                    final_k_start_value = k_start_value;
-//                    final_k_end_value = k_end_value;
-//                }
-//                if (k_end_value == max_delta_value)
-//                    break;
-//            }
-//        }
-//
-//
-//        encode_pos=  BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
-//                min_delta,encode_pos, cur_byte);
-//
-//        return encode_pos;
-//    }
 
     public static int BOSEncoder(
             int[] data, int block_size, byte[] encoded_result) {
@@ -791,8 +678,6 @@ public class Exact_BOS {
 
             int start = block_num * block_size;
             int remaining = length_all-start;
-
-
             encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result);
 
         }
@@ -835,7 +720,7 @@ public class Exact_BOS {
         ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
         ArrayList<Integer> final_left_outlier = new ArrayList<>();
         ArrayList<Integer> final_right_outlier = new ArrayList<>();
-        ArrayList<Integer> final_normal;
+        ArrayList<Integer> final_normal= new ArrayList<>();;
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
 
 
@@ -898,7 +783,8 @@ public class Exact_BOS {
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
+//        if(k1+k2!=block_size)
+            final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
 
         decode_pos = decode_pos_normal.get(0);
         if (k1 != 0) {
@@ -971,7 +857,7 @@ public class Exact_BOS {
 
         int[] value_list = new int[length_all+block_size];
         block_size--;
-        
+
         int[] value_pos_arr = new int[1];
         for (int k = 0; k < block_num; k++) {
 
@@ -988,6 +874,7 @@ public class Exact_BOS {
                 value_pos_arr[0]++;
             }
         } else {
+            remain_length --;
             BOSBlockDecoder(encoded, decode_pos, value_list, remain_length, value_pos_arr);
         }
     }
@@ -1182,9 +1069,9 @@ public class Exact_BOS {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 10;
-        for (int file_i = 0; file_i < 1; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 500;
+//        for (int file_i = 8; file_i < 12; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1232,7 +1119,8 @@ public class Exact_BOS {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
+//                for (int block_size_i = 6; block_size_i > 5; block_size_i--) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
