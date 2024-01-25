@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -158,7 +159,7 @@ public class SeriesScanUtil {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(dataSource.getDataTTL());
+    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice()));
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
