@@ -181,6 +181,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
 
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogIntervalRounds();
+  }
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
+  }
+
   /////////////////////////////// Memory ///////////////////////////////
 
   public boolean getPipeMemoryManagementEnabled() {

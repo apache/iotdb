@@ -188,6 +188,9 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private long pipeStuckRestartIntervalSeconds = 120;
 
+  private int pipeMetaReportMaxLogIntervalRounds = 36;
+  private int pipeMetaReportMaxLogNumPerRound = 10;
+
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
@@ -770,6 +773,22 @@ public class CommonConfig {
 
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public void setPipeMetaReportMaxLogIntervalRounds(int pipeMetaReportMaxLogIntervalRounds) {
+    this.pipeMetaReportMaxLogIntervalRounds = pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
+    this.pipeMetaReportMaxLogNumPerRound = pipeMetaReportMaxLogNumPerRound;
   }
 
   public boolean getPipeMemoryManagementEnabled() {

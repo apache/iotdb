@@ -71,6 +71,9 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private int metaReportTimes = 0;
+  private int currentInterval = 0;
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   @Override
@@ -276,10 +279,22 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final int log_interval =
+          Math.max(
+              Math.min(
+                  (int)
+                      Math.ceil(
+                          (double) pipeMetaKeeper.getPipeMetaCount()
+                              / PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound()),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds()),
+              1);
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        if (LOGGER.isInfoEnabled() && metaReportTimes % log_interval == 0) {
+          LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        }
       }
+      metaReportTimes++;
     } catch (IOException e) {
       throw new TException(e);
     }
@@ -306,10 +321,22 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final int log_interval =
+          Math.max(
+              Math.min(
+                  (int)
+                      Math.ceil(
+                          (double) pipeMetaKeeper.getPipeMetaCount()
+                              / PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound()),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds()),
+              1);
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        if (LOGGER.isInfoEnabled() && metaReportTimes % log_interval == 0) {
+          LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        }
       }
+      metaReportTimes++;
     } catch (IOException e) {
       throw new TException(e);
     }

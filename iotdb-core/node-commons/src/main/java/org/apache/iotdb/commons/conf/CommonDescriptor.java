@@ -438,6 +438,17 @@ public class CommonDescriptor {
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
 
+    config.setPipeMetaReportMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_interval_rounds",
+                String.valueOf(config.getPipeMetaReportMaxLogIntervalRounds()))));
+    config.setPipeMetaReportMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_num_per_round",
+                String.valueOf(config.getPipeMetaReportMaxLogNumPerRound()))));
+
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
