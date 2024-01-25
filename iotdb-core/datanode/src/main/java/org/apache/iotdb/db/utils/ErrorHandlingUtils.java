@@ -64,6 +64,14 @@ public class ErrorHandlingUtils {
     } else {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
+    if (e instanceof SemanticException) {
+      Throwable rootCause = getRootCause(e);
+      if (e.getCause() instanceof IoTDBException) {
+        return RpcUtils.getStatus(
+            ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
+      }
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
+    }
     TSStatus status = RpcUtils.getStatus(statusCode, message + e.getMessage());
     status.setNeedRetry(needRetry(status));
     return status;
