@@ -1269,7 +1269,6 @@ public class Session implements ISession {
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
-        logger.warn("Can not redirect to {}, because session can not connect to it.", endpoint);
       }
     }
   }

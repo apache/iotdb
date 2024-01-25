@@ -1320,7 +1320,7 @@ public class SessionConnection {
             init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
-            logger.error("The current node may have been down {},try next node", endPoint);
+            logger.warn("The current node may have been down {},try next node", endPoint);
             continue;
           }
           break;

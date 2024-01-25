@@ -43,12 +43,17 @@ public class StatusUtils {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   static {
+    NEED_RETRY.add(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISPATCH_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.TIMESERIES_IN_BLACK_LIST.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.WAL_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.DISK_SPACE_INSUFFICIENT.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
     NEED_RETRY.add(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
