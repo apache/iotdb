@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +47,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long size;
+  private final ByteBuffer headerBuffer = ByteBuffer.allocateDirect(Integer.BYTES * 2 + 1);
 
   protected LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
@@ -53,9 +57,35 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public void write(ByteBuffer buffer) throws IOException {
-    size += buffer.position();
+    int bufferSize = buffer.position();
     buffer.flip();
+    boolean compressed = false;
+    int uncompressedSize = bufferSize;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
+        && bufferSize > 1024 * 1024) {
+      ICompressor compressor = ICompressor.getCompressor(CompressionType.LZ4);
+      ByteBuffer compressedBuffer =
+          ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(buffer.limit()));
+      compressor.compress(buffer, compressedBuffer);
+      logger.error(
+          "compressed size: {}, original size: {}, compression ratio is {}",
+          compressedBuffer.position(),
+          bufferSize,
+          (double) bufferSize / compressedBuffer.position());
+      buffer = compressedBuffer;
+      bufferSize = buffer.position();
+      buffer.flip();
+      compressed = true;
+    }
+    size += bufferSize;
+    headerBuffer.clear();
+    headerBuffer.putInt(bufferSize);
+    headerBuffer.put((byte) (compressed ? 1 : 0));
     try {
+      if (compressed) {
+        headerBuffer.putInt(uncompressedSize);
+      }
+      logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
       logger.warn("Cannot write to {}", logFile, e);

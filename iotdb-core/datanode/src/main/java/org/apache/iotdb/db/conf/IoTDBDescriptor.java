@@ -442,6 +442,11 @@ public class IoTDBDescriptor {
                 "enable_seq_space_compaction",
                 Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
 
+    conf.setEnableWALCompression(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_wal_compression", Boolean.toString(conf.isEnableWALCompression()))));
+
     conf.setEnableUnseqSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(

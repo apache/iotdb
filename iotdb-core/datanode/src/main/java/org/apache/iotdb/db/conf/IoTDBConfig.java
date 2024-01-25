@@ -1060,6 +1060,8 @@ public class IoTDBConfig {
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
 
+  private boolean enableWALCompression = false;
+
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -3810,5 +3812,13 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public boolean isEnableWALCompression() {
+    return enableWALCompression;
+  }
+
+  public void setEnableWALCompression(boolean enableWALCompression) {
+    this.enableWALCompression = enableWALCompression;
   }
 }

@@ -74,7 +74,7 @@ public class SessionExample {
             .password("root")
             .version(Version.V_1_0)
             .build();
-    session.open(true);
+    session.open(false);
 
     // set session fetchSize
     session.setFetchSize(10000);
@@ -90,21 +90,21 @@ public class SessionExample {
     //     createTemplate();
     createTimeseries();
     createMultiTimeseries();
-    insertRecord();
-    insertTablet();
+    //    insertRecord();
+    //    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
-    //    insertRecords();
+    insertRecords();
     //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+    //    query();
     //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
