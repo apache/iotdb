@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -67,7 +69,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean[] isHoldingWriteLock;
   protected long maxModsFileSize;
   protected AbstractInnerSpaceEstimator innerSpaceEstimator;
-  protected boolean needRecoverTaskInfoFromLogFile;
 
   public InnerSpaceCompactionTask(
       long timePartition,
@@ -144,8 +145,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       isHoldingWriteLock[i] = false;
     }
     this.hashCode = this.toString().hashCode();
-    this.innerSeqTask = sequence;
-    this.crossTask = false;
     collectSelectedFilesInfo();
     createSummary();
   }
@@ -249,24 +248,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           isHoldingWriteLock[i] = true;
         }
 
-        if (targetTsFileResource.getTsFile().exists()
-            && targetTsFileResource.getTsFile().length()
-                < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
-          // the file size is smaller than magic string and version number
-          throw new TsFileNotCompleteException(
-              String.format(
-                  "target file %s is smaller than magic string and version number size",
-                  targetTsFileResource));
-        }
-
         LOGGER.info(
             "{}-{} [Compaction] compaction finish, start to delete old files",
             storageGroupName,
             dataRegionId);
         CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
             selectedTsFileResourceList, sequence);
-        CompactionUtils.deleteModificationForSourceFile(
-            selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.deleteCompactionModsFile(
+            selectedTsFileResourceList, Collections.emptyList());
 
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
@@ -507,6 +496,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       this.summary = new FastCompactionTaskSummary();
     } else {
       this.summary = new CompactionTaskSummary();
+    }
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    if(sequence){
+      return CompactionTaskType.INNER_SEQ;
+    }else{
+      return CompactionTaskType.INNER_UNSEQ;
     }
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.validate;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
 import java.util.List;
 
@@ -31,7 +33,7 @@ public class TsFileResourceValidator implements TsFileValidator {
 
   @Override
   public boolean validateTsFile(TsFileResource resource) {
-    return TsFileResourceUtils.validateTsFileResourceCorrectness(resource);
+    return TsFileResourceUtils.validateTsFileIsComplete(resource) && TsFileResourceUtils.validateTsFileResourceCorrectness(resource);
   }
 
   @Override

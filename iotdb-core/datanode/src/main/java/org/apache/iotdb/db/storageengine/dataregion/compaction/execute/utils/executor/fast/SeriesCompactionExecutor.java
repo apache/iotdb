@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -93,12 +96,15 @@ public abstract class SeriesCompactionExecutor {
 
   protected boolean isAligned;
 
+  private long deviceTTL;
+
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
       boolean isAligned,
+      long deviceTTL,
       int subTaskId,
       FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
@@ -499,7 +505,15 @@ public abstract class SeriesCompactionExecutor {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications =
         modificationCacheMap.computeIfAbsent(
-            tsFileResource, resource -> new ArrayList<>(resource.getModFile().getModifications()));
+            tsFileResource, resource -> {
+              List<Modification> list = new ArrayList<>(resource.getModFile().getModifications());
+              // add outdated mods from ttl
+              long timeLowerBound = CommonDateTimeUtils.currentTime()-deviceTTL;
+              if(!resource.definitelyNotContains(deviceId) && resource.stillLives(timeLowerBound)) {
+                list.add(new Deletion(path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), Long.MAX_VALUE, Long.MIN_VALUE,timeLowerBound));
+              }
+              return list;
+            });
     List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     while (modificationIterator.hasNext()) {

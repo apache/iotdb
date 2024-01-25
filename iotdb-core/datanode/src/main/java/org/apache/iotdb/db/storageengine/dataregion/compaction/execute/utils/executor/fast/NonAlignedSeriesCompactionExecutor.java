@@ -72,6 +72,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
+      long deviceTTL,
       int subTaskId,
       FastCompactionTaskSummary summary) {
     super(
@@ -80,6 +81,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
         modificationCacheMap,
         deviceId,
         false,
+        deviceTTL,
         subTaskId,
         summary);
     this.sortResources = sortedSourceFiles;

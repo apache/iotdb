@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
@@ -68,12 +69,13 @@ public abstract class AbstractCompactionTask {
   protected int hashCode = -1;
   protected CompactionTaskSummary summary;
   protected long serialId;
-  protected boolean crossTask;
-  protected boolean innerSeqTask;
   protected CompactionTaskStage taskStage;
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
+
+  protected boolean needRecoverTaskInfoFromLogFile;
+
   protected CompactionTaskPriorityType compactionTaskPriorityType;
 
   protected AbstractCompactionTask(
@@ -360,16 +362,8 @@ public abstract class AbstractCompactionTask {
 
   protected abstract void createSummary();
 
-  public boolean isCrossTask() {
-    return crossTask;
-  }
-
   public long getTemporalFileSize() {
     return summary.getTemporalFileSize();
-  }
-
-  public boolean isInnerSeqTask() {
-    return innerSeqTask;
   }
 
   public CompactionTaskPriorityType getCompactionTaskPriorityType() {
@@ -394,7 +388,7 @@ public abstract class AbstractCompactionTask {
     CompactionTaskType taskType = getCompactionTaskType();
     boolean needToValidateTsFileCorrectness = taskType != CompactionTaskType.INSERTION;
     boolean needToValidatePartitionSeqSpaceOverlap =
-        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ;
+        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ && getCompactionTaskType() != CompactionTaskType.SETTLE;
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {
@@ -436,15 +430,6 @@ public abstract class AbstractCompactionTask {
     }
   }
 
-  public CompactionTaskType getCompactionTaskType() {
-    if (this instanceof CrossSpaceCompactionTask) {
-      return CompactionTaskType.CROSS;
-    } else if (this instanceof InsertionCrossSpaceCompactionTask) {
-      return CompactionTaskType.INSERTION;
-    } else if (innerSeqTask) {
-      return CompactionTaskType.INNER_SEQ;
-    } else {
-      return CompactionTaskType.INNER_UNSEQ;
-    }
-  }
+  public abstract CompactionTaskType getCompactionTaskType();
+
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
 
 public enum CompactionTaskPriorityType {
   /** default compaction task type */

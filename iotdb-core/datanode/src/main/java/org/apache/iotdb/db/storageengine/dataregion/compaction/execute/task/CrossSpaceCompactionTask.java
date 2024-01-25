@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -60,8 +62,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
 
-  protected boolean needRecoverTaskInfoFromLogFile;
-
   @SuppressWarnings("squid:S107")
   public CrossSpaceCompactionTask(
       long timePartition,
@@ -83,8 +83,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
-    this.crossTask = true;
-    this.innerSeqTask = false;
     createSummary();
   }
 
@@ -218,21 +216,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         lockWrite(selectedSequenceFiles);
         lockWrite(selectedUnsequenceFiles);
-
-        for (TsFileResource sequenceResource : selectedSequenceFiles) {
-          if (sequenceResource.getModFile().exists()) {
-            FileMetrics.getInstance().decreaseModFileNum(1);
-            FileMetrics.getInstance().decreaseModFileSize(sequenceResource.getModFile().getSize());
-          }
-        }
-
-        for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
-          if (unsequenceResource.getModFile().exists()) {
-            FileMetrics.getInstance().decreaseModFileNum(1);
-            FileMetrics.getInstance()
-                .decreaseModFileSize(unsequenceResource.getModFile().getSize());
-          }
-        }
 
         CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
             selectedSequenceFiles, selectedUnsequenceFiles);
@@ -439,5 +422,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       this.summary = new CompactionTaskSummary();
     }
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    return CompactionTaskType.CROSS;
   }
 }

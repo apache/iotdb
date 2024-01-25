@@ -134,7 +134,7 @@ public class CompactionFileMetrics implements IMetricSet {
     for (AbstractCompactionTask task : runningTasks) {
       CompactionTaskSummary summary = task.getSummary();
       if (task instanceof InnerSpaceCompactionTask) {
-        if (task.isInnerSeqTask()) {
+        if (((InnerSpaceCompactionTask) task).isSequence()) {
           innerSeqCompactionTempFileSize.addAndGet(summary.getTemporalFileSize());
           innerSeqCompactionTempFileNum.addAndGet(1);
         } else {

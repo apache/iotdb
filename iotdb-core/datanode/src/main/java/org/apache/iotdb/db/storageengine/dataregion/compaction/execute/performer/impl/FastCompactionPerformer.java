@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -81,7 +82,7 @@ public class FastCompactionPerformer
 
   private Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
-  private boolean isCrossCompaction;
+  private final boolean isCrossCompaction;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -115,6 +116,7 @@ public class FastCompactionPerformer
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
+        long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
@@ -128,9 +130,9 @@ public class FastCompactionPerformer
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
-          compactAlignedSeries(device, deviceIterator, compactionWriter);
+          compactAlignedSeries(device, deviceTTL, deviceIterator, compactionWriter);
         } else {
-          compactNonAlignedSeries(device, deviceIterator, compactionWriter);
+          compactNonAlignedSeries(device, deviceTTL, deviceIterator, compactionWriter);
         }
 
         compactionWriter.endChunkGroup();
@@ -153,6 +155,7 @@ public class FastCompactionPerformer
 
   private void compactAlignedSeries(
       String deviceId,
+      long deviceTTL,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
@@ -184,6 +187,7 @@ public class FastCompactionPerformer
             sortedSourceFiles,
             measurementSchemas,
             deviceId,
+            deviceTTL,
             taskSummary)
         .call();
     subTaskSummary.increase(taskSummary);
@@ -191,6 +195,7 @@ public class FastCompactionPerformer
 
   private void compactNonAlignedSeries(
       String deviceID,
+      long deviceTTL,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws IOException, InterruptedException {
@@ -232,6 +237,7 @@ public class FastCompactionPerformer
                       sortedSourceFiles,
                       measurementsForEachSubTask[i],
                       deviceID,
+                      deviceTTL,
                       taskSummary,
                       i)));
       taskSummaryList.add(taskSummary);
@@ -290,14 +296,6 @@ public class FastCompactionPerformer
 
   public List<TsFileResource> getSeqFiles() {
     return seqFiles;
-  }
-
-  public Map<TsFileResource, TsFileSequenceReader> getReaderCacheMap() {
-    return readerCacheMap;
-  }
-
-  public Map<TsFileResource, List<Modification>> getModificationCache() {
-    return modificationCache;
   }
 
   @Override

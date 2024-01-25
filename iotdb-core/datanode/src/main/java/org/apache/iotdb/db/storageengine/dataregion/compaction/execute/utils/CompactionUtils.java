@@ -288,15 +288,17 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
-    List<TsFileResource> removeResources = new ArrayList<>();
     for (TsFileResource resource : resources) {
+      if(resource.getModFile().exists()){
+        FileMetrics.getInstance().decreaseModFileNum(1);
+        FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
+      }
       if (!resource.remove()) {
         logger.warn(
             "[Compaction] delete file failed, file path is {}",
             resource.getTsFile().getAbsolutePath());
       } else {
         logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
-        removeResources.add(resource);
       }
     }
     FileMetrics.getInstance().deleteTsFile(seq, resources);

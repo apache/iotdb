@@ -346,7 +346,7 @@ public class CompactionTaskManager implements IService {
       if (task instanceof InnerSpaceCompactionTask) {
         statistic
             .computeIfAbsent(
-                task.isInnerSeqTask()
+                ((InnerSpaceCompactionTask) task).isSequence()
                     ? CompactionTaskType.INNER_SEQ
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
@@ -372,7 +372,7 @@ public class CompactionTaskManager implements IService {
       if (task instanceof InnerSpaceCompactionTask) {
         statistic
             .computeIfAbsent(
-                task.isInnerSeqTask()
+                ((InnerSpaceCompactionTask) task).isSequence()
                     ? CompactionTaskType.INNER_SEQ
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
