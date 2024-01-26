@@ -558,11 +558,12 @@ public class BWS {
             cur_k1_close += alpha_count_list[alpha + 1];
             cur_k1_close += alpha_box_count_list[alpha];
 
-            int cur_k2_close = gamma_count_list[0];
+
             int k_end_value_close;
             int cur_bits;
             int alpha_2_pow = (int)pow(2,alpha);
             int gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2)); // 0 1   2 3 4 5 6
+            int cur_k2_close = gamma_count_list[0];
             cur_k2_close += gamma_count_list[1];
             cur_k2_close += gamma_box_count_list[0];
             for (int gamma = 1;  gamma<=gamma_size;gamma++){//(int) pow(2,gamma) + (int) pow(2,alpha) + 1 <= max_delta_value; gamma++) {
