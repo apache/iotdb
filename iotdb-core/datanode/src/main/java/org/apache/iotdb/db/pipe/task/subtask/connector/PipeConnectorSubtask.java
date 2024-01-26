@@ -214,6 +214,9 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     }
 
     // Handle other exceptions as usual
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
