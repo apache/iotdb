@@ -32,11 +32,11 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -49,7 +49,7 @@ public class QueryContext {
    * Modifications, and we do not want it to create multiple copies within a query.
    */
   private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
-      new HashMap<>();
+      new ConcurrentHashMap<>();
 
   protected long queryId;
 
@@ -62,7 +62,7 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
-  private final Set<TsFileID> nonExistentModFiles = new HashSet<>();
+  private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   public QueryContext() {}
 
