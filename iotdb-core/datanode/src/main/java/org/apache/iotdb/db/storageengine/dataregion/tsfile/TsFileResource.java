@@ -543,6 +543,7 @@ public class TsFileResource {
     }
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.COMPACTION_FILE_SUFFIX));
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -782,6 +783,18 @@ public class TsFileResource {
   /** @return whether the given time falls in ttl */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  }
+
+  /**
+   * Check whether the given device may still alive or not. Return false if the device does not exist or out of dated.
+   */
+  public boolean isDeviceAlive(String device, long ttl){
+    if(definitelyNotContains(device)){
+      return false;
+    }
+    long endTime = timeIndex.getEndTime(device);
+    return !isClosed() || endTime >= CommonDateTimeUtils.currentTime() - ttl;
+
   }
 
   public void setProcessor(TsFileProcessor processor) {

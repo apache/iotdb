@@ -219,7 +219,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
             selectedSequenceFiles, selectedUnsequenceFiles);
-        CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
@@ -333,8 +332,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
       FileMetrics.getInstance().deleteTsFile(true, selectedUnsequenceFiles);
     }
-    deleteCompactionModsFile(selectedSequenceFiles);
-    deleteCompactionModsFile(selectedUnsequenceFiles);
   }
 
   @Override

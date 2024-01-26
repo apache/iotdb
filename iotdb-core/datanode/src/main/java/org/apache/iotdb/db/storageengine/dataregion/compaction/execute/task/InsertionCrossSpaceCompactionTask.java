@@ -158,7 +158,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
-      CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);
       CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
           Collections.singletonList(unseqFileToInsert), false);
 

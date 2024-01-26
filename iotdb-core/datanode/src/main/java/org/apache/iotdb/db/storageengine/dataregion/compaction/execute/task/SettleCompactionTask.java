@@ -1,27 +1,38 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class SettleCompactionTask extends AbstractCompactionTask{
     private List<TsFileResource> allDeletedFiles;
@@ -115,6 +126,7 @@ public class SettleCompactionTask extends AbstractCompactionTask{
             try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
                 compactionLogger.logSourceFiles(allSourceFiles);
                 compactionLogger.logTargetFiles(targetFiles);
+                compactionLogger.logEmptyTargetFiles(allDeletedFiles);
                 compactionLogger.force();
 
                 settleWithAllDeletedFile();
@@ -179,15 +191,9 @@ public class SettleCompactionTask extends AbstractCompactionTask{
                     isSequence
             );
 
-            if(targetResource.isDeleted()){
-                compactionLogger.logEmptyTargetFile(targetResource);
-                compactionLogger.force();
-            }
-
             try{
                 targetResource.writeLock();
                 CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(singleSourceList,isSequence);
-                CompactionUtils.deleteCompactionModsFile(singleSourceList, Collections.emptyList());
 
                 if(!targetResource.isDeleted()){
                     FileMetrics.getInstance()
@@ -198,7 +204,9 @@ public class SettleCompactionTask extends AbstractCompactionTask{
                                     isSequence,
                                     targetResource.getTsFile().getName());
                 }else{
-                    // target resource is empty after compaction, then delete it
+                    // target resource is empty after compaction, then add log and delete it
+                    compactionLogger.logEmptyTargetFile(targetResource);
+                    compactionLogger.force();
                     targetResource.remove();
                 }
             }finally {
@@ -213,15 +221,133 @@ public class SettleCompactionTask extends AbstractCompactionTask{
             if (needRecoverTaskInfoFromLogFile) {
                 recoverTaskInfoFromLogFile();
             }
-            if (shouldRollback()) {
-                rollback();
-            } else {
-                // That finishTask() is revoked means
-                finishTask();
-            }
+            recoverAllDeletedFiles();
+            recoverPartialDeletedFiles();
         } catch (Exception e) {
             handleRecoverException(e);
         }
+    }
+
+    private void recoverAllDeletedFiles(){
+        for(TsFileResource resource: allDeletedFiles){
+            if(checkRelatedFileExists(resource) && !deleteTsFileOnDisk(resource)){
+                throw new CompactionRecoverException(
+                        String.format("failed to delete all_deleted source file %s", resource));
+            }
+        }
+    }
+
+    private void recoverPartialDeletedFiles() throws IOException {
+        for(int i=0;i<partialDeletedFiles.size();i++){
+            TsFileResource resource = partialDeletedFiles.get(i);
+            TsFileResource targetResource = targetFiles.get(i);
+            if(resource.tsFileExists()){
+                // source file exists, then roll back
+                rollback(resource,targetResource);
+            } else{
+                // source file lost, then finish task
+                finishTask(resource,targetResource);
+            }
+        }
+    }
+
+    private void rollback(TsFileResource sourceResource, TsFileResource targetResource) throws IOException {
+        deleteCompactionModsFile(Collections.singletonList(sourceResource));
+        if(targetResource == null || !targetResource.tsFileExists()){
+            return;
+        }
+        if (recoverMemoryStatus) {
+            replaceTsFileInMemory(
+                    Collections.singletonList(targetResource), Collections.singletonList(sourceResource));
+        }
+        // delete target file
+        if (!deleteTsFileOnDisk(targetResource)) {
+            throw new CompactionRecoverException(
+                    String.format("failed to delete target file %s", targetResource));
+        }
+    }
+
+    private void finishTask(TsFileResource sourceResource, TsFileResource targetResource) throws IOException {
+        if(targetResource.isDeleted()){
+            // it means the target file is empty after compaction
+            if (targetResource.remove()) {
+                throw new CompactionRecoverException(
+                        String.format("failed to delete empty target file %s", targetResource));
+            }
+        }else{
+            File targetFile = targetResource.getTsFile();
+            if (targetFile == null || !TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
+                throw new CompactionRecoverException(
+                        String.format("Target file is not completed. %s", targetFile));
+            }
+            if (recoverMemoryStatus) {
+                targetResource.setStatus(TsFileResourceStatus.NORMAL);
+            }
+        }
+        if (!deleteTsFileOnDisk(sourceResource)) {
+            throw new CompactionRecoverException("source files cannot be deleted successfully");
+        }
+        if (recoverMemoryStatus) {
+            FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(sourceResource));
+        }
+    }
+
+    private boolean checkRelatedFileExists(TsFileResource resource){
+        return resource.tsFileExists() || resource.resourceFileExists() || resource.getModFile().exists() || resource.getCompactionModFile().exists() ;
+    }
+
+    private void recoverTaskInfoFromLogFile() throws IOException {
+        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
+        logAnalyzer.analyze();
+        List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+        List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+        List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
+
+        // target version set, it is used to distinguish all_deleted files and partial_deleted files in the log
+        Set<Long> targetVersionSet = new HashSet<>();
+        for(TsFileIdentifier identifier:targetFileIdentifiers){
+            targetVersionSet.add(TsFileNameGenerator.getTsFileName(identifier.getFilename()).getVersion());
+        }
+
+        // recover source files, including all_deleted files and partial_deleted files.
+        sourceFileIdentifiers.forEach(x -> {
+            File sourceFile = new File(x.getFilePath());
+            TsFileResource resource = new TsFileResource(sourceFile);
+            if(!sourceFile.exists()){
+                // source file has been deleted
+                resource.forceMarkDeleted();
+            }
+
+            if(targetVersionSet.contains(resource.getVersion())){
+                partialDeletedFiles.add(resource);
+            }else{
+                allDeletedFiles.add(resource);
+            }
+        });
+
+        // recover target files. Notes that only partial_delete files have target files.
+        targetFileIdentifiers.forEach(x ->{
+            File tmpTargetFile = new File(x.getFilePath());
+            File targetFile = new File(x.getFilePath().replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+            TsFileResource resource;
+            if(tmpTargetFile.exists()){
+                resource = new TsFileResource(tmpTargetFile);
+            }else if(targetFile.exists()){
+                resource = new TsFileResource(targetFile);
+            }else{
+                // target file does not exist, then create empty resource
+                resource = new TsFileResource();
+                // check if target file is deleted after compaction or not
+                x.setFilename(x.getFilename()
+                        .replace( IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                                TsFileConstant.TSFILE_SUFFIX));
+                if(deletedTargetFileIdentifiers.contains(x)){
+                    // target file is deleted after compaction
+                    resource.forceMarkDeleted();
+                }
+            }
+            targetFiles.add(resource);
+        });
     }
 
     @Override

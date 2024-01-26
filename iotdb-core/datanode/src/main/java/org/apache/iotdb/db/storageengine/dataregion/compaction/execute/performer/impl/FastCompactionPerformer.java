@@ -123,8 +123,13 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
-        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
+        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, deviceTTL));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
+
+        if(sortedSourceFiles.isEmpty()){
+          // device is out of dated in all source files
+          continue;
+        }
 
         boolean isAligned = deviceInfo.right;
         compactionWriter.startChunkGroup(device, isAligned);

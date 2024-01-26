@@ -254,8 +254,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             dataRegionId);
         CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
             selectedTsFileResourceList, sequence);
-        CompactionUtils.deleteCompactionModsFile(
-            selectedTsFileResourceList, Collections.emptyList());
 
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
@@ -353,7 +351,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, selectedTsFileResourceList);
     }
-    deleteCompactionModsFile(selectedTsFileResourceList);
   }
 
   private boolean shouldRollback() {
