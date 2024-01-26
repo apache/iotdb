@@ -227,7 +227,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
         LOGGER.info(
             "{} handshakes with the target system successfully.",
             outputPipeConnector.getClass().getName());
-        return;
+        break;
       } catch (Exception e) {
         retry++;
         LOGGER.warn(
