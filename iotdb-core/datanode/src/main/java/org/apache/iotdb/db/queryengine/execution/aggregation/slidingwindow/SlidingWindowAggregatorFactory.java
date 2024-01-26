@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -45,6 +46,9 @@ public class SlidingWindowAggregatorFactory {
   private static final Map<TSDataType, Comparator<Column>> minComparators =
       new EnumMap<>(TSDataType.class);
   private static final Map<TSDataType, Comparator<Column>> extremeComparators =
+      new EnumMap<>(TSDataType.class);
+
+  private static final Map<TSDataType, Comparator<Column>> maxByComparators =
       new EnumMap<>(TSDataType.class);
 
   static {
@@ -115,6 +119,20 @@ public class SlidingWindowAggregatorFactory {
           }
           return -1;
         });
+    // Intermediate Value of maxBy is a byte array: | y | xNull | x |
+    maxByComparators.put(
+        TSDataType.INT32,
+        Comparator.comparingInt(o -> BytesUtils.bytesToInt(o.getBinary(0).getValues(), 0)));
+    maxByComparators.put(
+        TSDataType.INT64,
+        Comparator.comparingLong(
+            o -> BytesUtils.bytesToLongFromOffset(o.getBinary(0).getValues(), Long.BYTES, 0)));
+    maxByComparators.put(
+        TSDataType.FLOAT,
+        Comparator.comparing(o -> BytesUtils.bytesToFloat(o.getBinary(0).getValues(), 0)));
+    maxByComparators.put(
+        TSDataType.DOUBLE,
+        Comparator.comparingDouble(o -> BytesUtils.bytesToDouble(o.getBinary(0).getValues(), 0)));
   }
 
   public static SlidingWindowAggregator createSlidingWindowAggregator(
@@ -159,6 +177,9 @@ public class SlidingWindowAggregatorFactory {
         return !ascending
             ? new NormalQueueSlidingWindowAggregator(accumulator, inputLocationList, step)
             : new EmptyQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
+      case MAX_BY:
+        return new MonotonicQueueSlidingWindowAggregator(
+            accumulator, inputLocationList, step, maxByComparators.get(dataTypes.get(1)));
       case COUNT_IF:
         throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
       case TIME_DURATION:

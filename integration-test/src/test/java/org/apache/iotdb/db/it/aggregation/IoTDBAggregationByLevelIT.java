@@ -282,6 +282,42 @@ public class IoTDBAggregationByLevelIT {
           cnt++;
         }
       }
+
+
+      try (ResultSet resultSet =
+                   statement.executeQuery(
+                           "select max_by(temperature) from root.sg1.* GROUP BY level=0")) {
+        while (resultSet.next()) {
+          String ans =
+                  resultSet.getString(lastValue("root.*.d1.temperature"))
+                          + ","
+                          + resultSet.getString(lastValue("root.*.d2.temperature"))
+                          + ","
+                          + resultSet.getString(maxValue("root.*.d1.temperature"))
+                          + ","
+                          + resultSet.getString(maxValue("root.*.d2.temperature"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+
+
+      try (ResultSet resultSet =
+                   statement.executeQuery(
+                           "select last_value(temperature), max_value(temperature) from root.sg1.* GROUP BY level=2")) {
+        while (resultSet.next()) {
+          String ans =
+                  resultSet.getString(lastValue("root.*.d1.temperature"))
+                          + ","
+                          + resultSet.getString(lastValue("root.*.d2.temperature"))
+                          + ","
+                          + resultSet.getString(maxValue("root.*.d1.temperature"))
+                          + ","
+                          + resultSet.getString(maxValue("root.*.d2.temperature"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
       Assert.assertEquals(retArray.length, cnt);
     }
   }

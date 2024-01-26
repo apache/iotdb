@@ -355,27 +355,33 @@ public class IoTDBMaxByIT {
   public void testMaxByWithSlidingWindow() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] expectedHeader =
-          new String[] {
-            TIMESTAMP_STR,
-            "max_by(root.db.d1.x1, root.db.d1.y2)",
-            "max_by(root.db.d1.x2, root.db.d1.y2)",
-            "max_by(root.db.d1.x3, root.db.d1.y2)",
-            "max_by(root.db.d1.x4, root.db.d1.y2)",
-            "max_by(root.db.d1.x5, root.db.d1.y2)",
-            "max_by(root.db.d1.x6, root.db.d1.y2)",
-          };
       String[] retArray =
           new String[] {
-            "0,3,3,3.0,3.0,false,3,", "4,null,null,null,null,null,null,", "8,3,3,3.0,3.0,false,3,"
+            "0,3,3,3.0,3.0,false,3,",
+            "2,null,null,null,null,null,null,",
+            "4,null,null,null,null,null,null,",
+            "6,3,3,3.0,3.0,false,3,",
+            "8,3,3,3.0,3.0,false,3,"
           };
-      String y = "y2";
-      resultSetEqualTest(
-          String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms)",
-              y, y, y, y, y, y),
-          expectedHeader,
-          retArray);
+      String[] yArray = new String[] {"y1", "y2", "y3", "y4"};
+      for (String y : yArray) {
+        String[] expectedHeader =
+            new String[] {
+              TIMESTAMP_STR,
+              String.format("max_by(root.db.d1.x1, root.db.d1.%s)", y),
+              String.format("max_by(root.db.d1.x2, root.db.d1.%s)", y),
+              String.format("max_by(root.db.d1.x3, root.db.d1.%s)", y),
+              String.format("max_by(root.db.d1.x4, root.db.d1.%s)", y),
+              String.format("max_by(root.db.d1.x5, root.db.d1.%s)", y),
+              String.format("max_by(root.db.d1.x6, root.db.d1.%s)", y),
+            };
+        resultSetEqualTest(
+            String.format(
+                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms,2ms)",
+                y, y, y, y, y, y),
+            expectedHeader,
+            retArray);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

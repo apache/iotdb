@@ -341,25 +341,25 @@ public class MaxByAccumulator implements Accumulator {
     ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
     switch (yDataType) {
       case INT32:
-        int intMaxVal = BytesUtils.bytesToInt(bytes);
+        int intMaxVal = BytesUtils.bytesToInt(bytes, 0);
         offset += Integer.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateIntResult(intMaxVal, columnBuilder.build(), 0);
         break;
       case INT64:
-        long longMaxVal = BytesUtils.bytesToLong(bytes);
+        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
         offset += Long.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateLongResult(longMaxVal, columnBuilder.build(), 0);
         break;
       case FLOAT:
-        float floatMaxVal = BytesUtils.bytesToFloat(bytes);
+        float floatMaxVal = BytesUtils.bytesToFloat(bytes, 0);
         offset += Float.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateFloatResult(floatMaxVal, columnBuilder.build(), 0);
         break;
       case DOUBLE:
-        double doubleMaxVal = BytesUtils.bytesToDouble(bytes);
+        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, 0);
         offset += Long.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
         updateDoubleResult(doubleMaxVal, columnBuilder.build(), 0);
