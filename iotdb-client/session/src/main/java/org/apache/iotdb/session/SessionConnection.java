@@ -107,8 +107,8 @@ public class SessionConnection {
   // TestOnly
   public SessionConnection() {
     availableNodes = Collections::emptyList;
-    this.maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-    this.retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
+    this.maxRetryCount = Math.max(0, SessionConfig.MAX_RETRY_COUNT);
+    this.retryIntervalInMs = Math.max(0, SessionConfig.RETRY_INTERVAL_IN_MS);
   }
 
   public SessionConnection(
@@ -124,8 +124,8 @@ public class SessionConnection {
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.availableNodes = availableNodes;
-    this.maxRetryCount = maxRetryCount;
-    this.retryIntervalInMs = retryIntervalInMs;
+    this.maxRetryCount = Math.max(0, maxRetryCount);
+    this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (IoTDBConnectionException e) {
@@ -144,8 +144,8 @@ public class SessionConnection {
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
     this.availableNodes = availableNodes;
-    this.maxRetryCount = maxRetryCount;
-    this.retryIntervalInMs = retryIntervalInMs;
+    this.maxRetryCount = Math.max(0, maxRetryCount);
+    this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     initClusterConn();
   }
 
@@ -439,8 +439,12 @@ public class SessionConnection {
     TSExecuteStatementReq request = new TSExecuteStatementReq(sessionId, sql, statementId);
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -453,7 +457,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = executeNonQueryStatementInternal(request);
+        status = executeNonQueryStatementInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -467,10 +471,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -702,8 +708,12 @@ public class SessionConnection {
   protected void insertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -716,7 +726,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertRecordInternal(request);
+        status = insertRecordInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -736,10 +746,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -751,8 +763,12 @@ public class SessionConnection {
   protected void insertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -765,7 +781,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertRecordInternal(request);
+        status = insertRecordInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -785,10 +801,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -800,8 +818,12 @@ public class SessionConnection {
   protected void insertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -814,7 +836,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertRecordsInternal(request);
+        status = insertRecordsInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -834,10 +856,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -850,8 +874,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -864,7 +892,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertRecordsInternal(request);
+        status = insertRecordsInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -884,10 +912,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -900,8 +930,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -914,7 +948,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertRecordsOfOneDeviceInternal(request);
+        status = insertRecordsOfOneDeviceInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -934,10 +968,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -951,8 +987,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -965,7 +1005,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertStringRecordsOfOneDeviceInternal(request);
+        status = insertStringRecordsOfOneDeviceInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -985,10 +1025,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -1002,8 +1044,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -1016,7 +1062,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertTabletInternal(request);
+        status = insertTabletInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1036,10 +1082,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -1052,8 +1100,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -1066,7 +1118,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = insertTabletsInternal(request);
+        status = insertTabletsInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1086,10 +1138,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -1102,8 +1156,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -1116,7 +1174,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = client.deleteTimeseries(sessionId, paths);
+        status = client.deleteTimeseries(sessionId, paths);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1130,10 +1188,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
@@ -1141,8 +1201,12 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
 
     TException lastTException = null;
-    for (int i = 0; i < maxRetryCount; i++) {
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
       if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
         // not first time, we need to sleep and then reconnect
         try {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
@@ -1155,7 +1219,7 @@ public class SessionConnection {
         }
       }
       try {
-        TSStatus status = deleteDataInternal(request);
+        status = deleteDataInternal(request);
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1169,10 +1233,12 @@ public class SessionConnection {
       }
     }
 
-    if (lastTException == null) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
-    } else {
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
       throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
     }
   }
 
