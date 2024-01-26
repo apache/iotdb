@@ -44,6 +44,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertNotNull;
@@ -81,6 +82,7 @@ public class IoTDBRepairDataIT {
         if (sorted) {
           return;
         }
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
       }
       Assert.fail();
     } catch (Exception e) {
