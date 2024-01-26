@@ -32,7 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -91,7 +90,7 @@ public class LoadTsFileManager {
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
-            LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND);
+            CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() >> 2);
   }
 
   private void cleanupTasks() {
@@ -138,7 +137,7 @@ public class LoadTsFileManager {
 
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }
@@ -150,7 +149,7 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }

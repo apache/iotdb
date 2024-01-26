@@ -104,7 +104,7 @@ public class NodeStatistics {
   }
 
   public NodeHeartbeatSample convertToNodeHeartbeatSample() {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     return new NodeHeartbeatSample(
         new TDataNodeHeartbeatResp(currentTime, status.getStatus()).setStatusReason(statusReason),
         currentTime);
