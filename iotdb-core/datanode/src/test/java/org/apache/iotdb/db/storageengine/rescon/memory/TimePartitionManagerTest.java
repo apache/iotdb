@@ -133,15 +133,15 @@ public class TimePartitionManagerTest {
         new TimePartitionInfo(new DataRegionId(1), 0L, true, 100, 0, true);
     TimePartitionInfo timePartitionInfo1 =
         new TimePartitionInfo(new DataRegionId(1), 0L, false, 100, 0, true);
-    Assert.assertEquals(timePartitionInfo.comparePriority(timePartitionInfo1), 1);
+    Assert.assertEquals(1, timePartitionInfo.comparePriority(timePartitionInfo1));
     TimePartitionInfo timePartitionInfo2 =
         new TimePartitionInfo(new DataRegionId(1), 1L, true, 100, 0, true);
-    Assert.assertEquals(timePartitionInfo.comparePriority(timePartitionInfo2), -1);
+    Assert.assertEquals(-1, timePartitionInfo.comparePriority(timePartitionInfo2));
     TimePartitionInfo timePartitionInfo3 =
         new TimePartitionInfo(new DataRegionId(1), 0L, true, 100, 0, false);
-    Assert.assertEquals(timePartitionInfo.comparePriority(timePartitionInfo3), 1);
+    Assert.assertEquals(1, timePartitionInfo.comparePriority(timePartitionInfo3));
     TimePartitionInfo timePartitionInfo4 =
         new TimePartitionInfo(new DataRegionId(1), 0L, true, 101, 0, true);
-    Assert.assertEquals(timePartitionInfo.comparePriority(timePartitionInfo4), -1);
+    Assert.assertEquals(-1, timePartitionInfo.comparePriority(timePartitionInfo4));
   }
 }
