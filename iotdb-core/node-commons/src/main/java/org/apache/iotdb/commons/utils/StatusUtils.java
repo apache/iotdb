@@ -206,6 +206,10 @@ public class StatusUtils {
     } else if (status == null) {
       return false;
     }
+    return needRetryHelper(status);
+  }
+
+  public static boolean needRetryHelper(TSStatus status) {
     int code = status.getCode();
     if (code == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (TSStatus subStatus : status.subStatus) {
@@ -218,9 +222,5 @@ public class StatusUtils {
     } else {
       return NEED_RETRY.contains(code);
     }
-  }
-
-  public static boolean needRetry(int statusCode) {
-    return NEED_RETRY.contains(statusCode);
   }
 }
