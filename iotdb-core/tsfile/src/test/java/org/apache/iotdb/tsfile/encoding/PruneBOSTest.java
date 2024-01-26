@@ -780,7 +780,7 @@ public class PruneBOSTest {
 
                                     cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
                                     if (cur_k1_x_l != 0)
-                                        cur_bits += cur_k1_x_l * alpha;//left_max
+                                        cur_bits += cur_k1_x_l * alpha;
                                     if (cur_k1_x_l + cur_k1_x_u != block_size)
                                         cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
                                                 getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
