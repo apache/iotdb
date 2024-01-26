@@ -717,8 +717,8 @@ public class PruneBOSTest {
                     int a_2_pow = (int)pow(2,a);
 
                     int gamma_2_pow = (int)pow(2,gamma);
-                    int beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow);
-                    int beta_2_pow = (int)pow(2,beta);
+                    int beta;
+                    int beta_2_pow;
 
 
                     // prop 4.6
@@ -741,23 +741,6 @@ public class PruneBOSTest {
                             flag = 3;
                         }
 
-//                        switch (minNumberIndex(alpha + a, beta, gamma + a)) {
-//                            case 1:
-//                                if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
-//                                    flag = 1;
-//                                }
-//                                break;
-//                            case 2:
-//                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
-//                                    flag = 2;
-//                                }
-//                                break;
-//                            case 3:
-//                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value) {
-//                                    flag = 3;
-//                                }
-//                                break;
-//                        }
 
                         if (flag==1||flag==2||flag==3) {
                             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -782,13 +765,13 @@ public class PruneBOSTest {
                                 gamma_value_count_list[gamma_value_count_list_end-value] ++;
                             }
                             int cur_k1_x_l =  cur_k1_open - alpha_box_count_list[alpha];
-                            for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
+                            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
                                 int cur_count_alpha = alpha_value_count_list[x_l_i];
                                 if (cur_count_alpha == 0)
                                     continue;
                                 cur_k1_x_l += cur_count_alpha;
                                 int cur_k1_x_u = cur_k2_open - gamma_box_count_list[gamma];
-                                for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
+                                for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
                                     int cur_count_gamma = gamma_value_count_list[x_u_i];
                                     if (cur_count_gamma == 0)
                                         continue;
@@ -1113,8 +1096,8 @@ public class PruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        for (int file_i = 4; file_i < 5; file_i++) {
-//
+        for (int file_i = 0; file_i < 1; file_i++) {
+
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1140,7 +1123,7 @@ public class PruneBOSTest {
             assert tempList != null;
 
             for (File f : tempList) {
-                f= tempList[3];
+//                f= tempList[3];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1198,7 +1181,7 @@ public class PruneBOSTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-break;
+//break;
             }
             writer.close();
 
