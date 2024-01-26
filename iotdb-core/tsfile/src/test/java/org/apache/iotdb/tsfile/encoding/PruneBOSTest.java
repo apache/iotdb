@@ -605,99 +605,104 @@ public class PruneBOSTest {
         min_bits += (getBitWith(final_k_end_value - final_k_start_value -2) * (block_size));
 
         int alpha_size = getBitWith(max_delta_value);
-        int cur_k1_close = 0; //alpha_count_list[0];
-        cur_k1_close += alpha_count_list[0];
-        cur_k1_close += alpha_box_count_list[0];
+        int cur_k1_close = alpha_count_list[0];
         cur_k1_close += alpha_count_list[1];
-        cur_k1_close += alpha_box_count_list[1];
-        for (int alpha = 2; alpha <= alpha_size; alpha++) { //start_value_size
+        cur_k1_close += alpha_box_count_list[0];
+        for (int alpha = 1; alpha +1 <= alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
-            cur_k1_close += alpha_count_list[alpha]; // x_min+2^{alpha_i}
+            cur_k1_close += alpha_count_list[alpha+1]; // x_min+2^{alpha_i}
             cur_k1_close += alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
 
 
             int cur_bits;
             int alpha_2_pow = (int)pow(2,alpha);
-            int gamma_size = getBitWith(max_delta_value - alpha_2_pow - 2);
-            int cur_k2_close = 0;
-            cur_k2_close += gamma_count_list[0]; // x_max-2^{gamma_i}
+            int gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2));
+            int cur_k2_close = gamma_count_list[0];
+            cur_k2_close += gamma_count_list[1];
             cur_k2_close += gamma_box_count_list[0];
-            cur_k2_close += gamma_count_list[1]; // x_max-2^{gamma_i}
-            cur_k2_close += gamma_box_count_list[1];
 
 
-            for (int gamma = 2; gamma <= gamma_size; gamma++) {
+            for (int gamma = 1; gamma <= gamma_size; gamma++) {
 
                 int k_end_value_close = max_delta_value - (int) pow(2,gamma);
 
                 cur_bits = 0;
-                cur_k2_close += gamma_count_list[gamma]; // x_max-2^{gamma_i}
+                cur_k2_close += gamma_count_list[gamma+1]; // x_max-2^{gamma_i}
                 cur_k2_close += gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
-
+                int flag_C = 0;
 
                 cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
                 if (cur_k1_close != 0)
-                    cur_bits += cur_k1_close * alpha;//left_max
+                    cur_bits += cur_k1_close * (alpha + 1);//left_max
                 if (cur_k1_close + cur_k2_close != block_size)
-                    cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close-2);
+                    cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
                 if (cur_k2_close != 0)
-                    cur_bits += cur_k2_close * gamma;//min_upper_outlier
+                    cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    final_k_start_value = k_start_value_close;
-                    final_k_end_value = k_end_value_close;
+                    flag_C = 1;
                 }
 
                 //C2 k1open k2open
                 cur_bits = 0;
-                int cur_k1_open = cur_k1_close - alpha_count_list[alpha];
-                int cur_k2_open = cur_k2_close - gamma_count_list[gamma ];
+                int cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
+                int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
                 int k_start_value_open = k_start_value_close - 1;
                 int k_end_value_open = k_end_value_close + 1;
                 cur_bits += Math.min((cur_k1_open + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_open);
                 if (cur_k1_open != 0)
-                    cur_bits += cur_k1_open * (alpha - 1);
+                    cur_bits += cur_k1_open * alpha;
                 if (cur_k1_open + cur_k2_open != block_size)
                     cur_bits += (block_size - cur_k1_open - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_open - 2);
                 if (cur_k2_open != 0)
-                    cur_bits += cur_k2_open * (gamma - 1);
+                    cur_bits += cur_k2_open * gamma;
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    final_k_start_value = k_start_value_open;
-                    final_k_end_value = k_end_value_open;
+                    flag_C = 2;
                 }
 
                 //C3 k1 open k2 close
                 cur_bits = 0;
                 cur_bits += Math.min((cur_k1_open + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_close);
                 if (cur_k1_open != 0)
-                    cur_bits += cur_k1_open * (alpha - 1);//left_max
+                    cur_bits += cur_k1_open * alpha;//left_max
                 if (cur_k1_open + cur_k2_close != block_size)
                     cur_bits += (block_size - cur_k1_open - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_open - 2);
                 if (cur_k2_close != 0)
-                    cur_bits += cur_k2_close * gamma;//min_upper_outlier
+                    cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    final_k_start_value = k_start_value_open;
-                    final_k_end_value = k_end_value_close;
+                    flag_C = 3;
                 }
 
                 //C4 k1 close k2 open
                 cur_bits = 0;
                 cur_bits += Math.min((cur_k1_close + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_open);
                 if (cur_k1_close != 0)
-                    cur_bits += cur_k1_close * alpha;//left_max
+                    cur_bits += cur_k1_close * (alpha + 1);//left_max
                 if (cur_k1_close + cur_k2_open != block_size)
                     cur_bits += (block_size - cur_k1_close - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_close - 2);
                 if (cur_k2_open != 0)
-                    cur_bits += cur_k2_open * (gamma - 1);//min_upper_outlier
+                    cur_bits += cur_k2_open * gamma;//min_upper_outlier
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
+                    flag_C = 4;
+                }
+                if(flag_C == 1){
+                    final_k_start_value = k_start_value_close;
+                    final_k_end_value = k_end_value_close;
+                } else if (flag_C == 2) {
+                    final_k_start_value = k_start_value_open;
+                    final_k_end_value = k_end_value_open;
+                } else if (flag_C == 3) {
+                    final_k_start_value = k_start_value_open;
+                    final_k_end_value = k_end_value_close;
+                } else if (flag_C == 4) {
                     final_k_start_value = k_start_value_close;
                     final_k_end_value = k_end_value_open;
                 }
@@ -709,7 +714,7 @@ public class PruneBOSTest {
                 int a_2_pow = (int)pow(2,a);
 
                 int gamma_2_pow = (int)pow(2,gamma);
-                int beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow-2);
+                int beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow);
                 int beta_2_pow = (int)pow(2,beta);
                 // prop 4.6
                 if((a_2_pow+1)*alpha_2_pow+gamma_2_pow>max_delta_value
