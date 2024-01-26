@@ -207,14 +207,18 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
 
     if (throwable instanceof PipeConnectionException) {
       // Retry to connect to the target system if the connection is broken
+      // We should reconstruct the client before re-submit the subtask
       if (onPipeConnectionException(throwable)) {
         // return if the pipe task should be stopped
         return;
       }
     }
 
-    // Handle other exceptions as usual
-    super.onFailure(throwable);
+    // Handle exceptions if any available clients exist
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
+    super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
   /** @return true if the pipe task should be stopped, false otherwise */
@@ -252,7 +256,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       }
     }
 
-    // Stop current pipe task if failed to reconnect to
+    // Stop current pipe task directly if failed to reconnect to
     // the target system after MAX_RETRY_TIMES times
     if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
       ((EnrichedEvent) lastEvent)
