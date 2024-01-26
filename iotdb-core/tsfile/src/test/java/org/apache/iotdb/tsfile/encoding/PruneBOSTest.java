@@ -708,165 +708,99 @@ public class PruneBOSTest {
                 }
 
                 // a = getBitWith(block_size-1)
+                int[] a_list = {getBitWith(block_size-1),1};
+                int[] b_list = {0,block_size};
 
-                int a = getBitWith(block_size-1);
-                int b =0;
-                int a_2_pow = (int)pow(2,a);
+                for(int a_i= 0; a_i<2; a_i++){
+                    int a = a_list[a_i];
+                    int b = b_list[a_i];
+                    int a_2_pow = (int)pow(2,a);
 
-                int gamma_2_pow = (int)pow(2,gamma);
-                int beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow);
-                int beta_2_pow = (int)pow(2,beta);
-                // prop 4.6
-                if((a_2_pow+1)*alpha_2_pow+gamma_2_pow>max_delta_value
-                        ||alpha_2_pow+(a_2_pow+1)*gamma_2_pow>max_delta_value){
-                    boolean flag = false; // no need to try xl and xu
-                    switch (minNumberIndex(alpha+a, beta, gamma+a)){
-                        case 1:
-                           if(beta_2_pow+ alpha_2_pow+ gamma_2_pow/2 < max_delta_value){
-                               flag = true;
-                           }
-                            break;
-                        case 2:
-                            if(beta_2_pow+ alpha_2_pow/2 + gamma_2_pow < max_delta_value){
-                                flag = true;
-                            }
-                            break;
-                        case 3:
-                            if(beta_2_pow+ alpha_2_pow/2 + gamma_2_pow/2 <= max_delta_value){
-                                flag = true;
-                            }
-                            break;
-                    }
+                    int gamma_2_pow = (int)pow(2,gamma);
+                    int beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow);
+                    int beta_2_pow = (int)pow(2,beta);
 
-                    if(flag){
-                        Group cur_group_alpha = groupL[alpha];// (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-                        int alpha_value_count_list_start = alpha_2_pow/2;
-                        int gap_alpha = alpha_2_pow/2;
-                        int[] alpha_value_count_list = new int[gap_alpha];
-                        int alpha_value_count = cur_group_alpha.count;
-                        int[] number_alpha = cur_group_alpha.number;
-                        for(int i=0;i<alpha_value_count;i++){
-                            int value = number_alpha[i];
-                            alpha_value_count_list[value-alpha_value_count_list_start] ++;
+
+                    // prop 4.6
+                    if((a_2_pow+1)*alpha_2_pow+gamma_2_pow>max_delta_value
+                            ||alpha_2_pow+(a_2_pow+1)*gamma_2_pow>max_delta_value) {
+                        int flag = 0; // no need to try xl and xu
+                        switch (minNumberIndex(alpha + a, beta, gamma + a)) {
+                            case 1:
+                                if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
+                                    flag = 1;
+                                }
+                                break;
+                            case 2:
+                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
+                                    flag = 2;
+                                }
+                                break;
+                            case 3:
+                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value) {
+                                    flag = 3;
+                                }
+                                break;
                         }
 
-                        Group cur_group_gamma = groupU[gamma];
-                        int gamma_value_count_list_end = max_delta_value - gamma_2_pow/2;
-                        int gap_gamma = gamma_2_pow/2;
-                        int[] gamma_value_count_list = new int[gap_gamma];
-                        int gamma_value_count = cur_group_gamma.count;
-                        int[] number_gamma = cur_group_gamma.number;
-                        for(int i=0;i<gamma_value_count;i++){
-                            int value = number_gamma[i];
-                            gamma_value_count_list[gamma_value_count_list_end-value] ++;
-                        }
-                        int cur_k1_x_l = cur_k1_close;
-                        for(int x_l_i=0;x_l_i<gap_alpha;x_l_i++){
-                            int cur_count_alpha = alpha_value_count_list[x_l_i];
-                            if(cur_count_alpha==0)
-                                continue;
-                            cur_k1_x_l += cur_count_alpha;
-                            int cur_k1_x_u = cur_k2_close;
-                            for(int x_u_i=0;x_u_i<gap_gamma;x_u_i++){
-                                int cur_count_gamma = gamma_value_count_list[x_u_i];
-                                if(cur_count_gamma==0)
+                        if (flag==1||flag==2||flag==3) {
+                            Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
+                            int alpha_value_count_list_start = alpha_2_pow/2;
+                            int gap_alpha = alpha_2_pow/2;
+                            int[] alpha_value_count_list = new int[gap_alpha];
+                            int alpha_value_count = cur_group_alpha.count;
+                            int[] number_alpha = cur_group_alpha.number;
+                            for(int i=0;i<alpha_value_count;i++){
+                                int value = number_alpha[i];
+                                alpha_value_count_list[value-alpha_value_count_list_start] ++;
+                            }
+
+                            Group cur_group_gamma = groupU[gamma];
+                            int gamma_value_count_list_end = max_delta_value - gamma_2_pow/2;
+                            int gap_gamma = gamma_2_pow/2;
+                            int[] gamma_value_count_list = new int[gap_gamma];
+                            int gamma_value_count = cur_group_gamma.count;
+                            int[] number_gamma = cur_group_gamma.number;
+                            for(int i=0;i<gamma_value_count;i++){
+                                int value = number_gamma[i];
+                                gamma_value_count_list[gamma_value_count_list_end-value] ++;
+                            }
+                            int cur_k1_x_l =  cur_k1_open - alpha_box_count_list[alpha];
+                            for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
+                                int cur_count_alpha = alpha_value_count_list[x_l_i];
+                                if (cur_count_alpha == 0)
                                     continue;
-                                cur_k1_x_u += cur_count_gamma;
+                                cur_k1_x_l += cur_count_alpha;
+                                int cur_k1_x_u = cur_k2_open - gamma_box_count_list[gamma];
+                                for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
+                                    int cur_count_gamma = gamma_value_count_list[x_u_i];
+                                    if (cur_count_gamma == 0)
+                                        continue;
+                                    cur_k1_x_u += cur_count_gamma;
 
-                                cur_bits = (cur_k1_x_l + cur_k1_x_u) * a +b;
-                                if (cur_k1_x_l != 0)
-                                    cur_bits += cur_k1_x_l * alpha;//left_max
-                                if (cur_k1_x_l + cur_k1_x_u != block_size)
-                                    cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) * getBitWith(max_delta_value-alpha_2_pow-gamma_2_pow - x_l_i - x_u_i - 2);
-                                if (cur_k1_x_u != 0)
-                                    cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-                                if(cur_bits<min_bits){
-                                    min_bits = cur_bits;
-                                    final_k_start_value = alpha_2_pow+x_l_i;
-                                    final_k_end_value = gamma_2_pow-x_u_i; //need to check again
+                                    cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
+                                    if (cur_k1_x_l != 0)
+                                        cur_bits += cur_k1_x_l * alpha;//left_max
+                                    if (cur_k1_x_l + cur_k1_x_u != block_size)
+                                        cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
+                                                getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
+                                    if (cur_k1_x_u != 0)
+                                        cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
+                                    if (cur_bits < min_bits) {
+                                        min_bits = cur_bits;
+                                        final_k_start_value = alpha_value_count_list_start + x_l_i;
+                                        final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
+                                    }
                                 }
                             }
                         }
                     }
+
                 }
-                // a = 1
 
-                a = 1;
-                b =block_size;
-                a_2_pow = (int)pow(2,a);
-                // prop 4.6
-                if((a_2_pow+1)*alpha_2_pow+gamma_2_pow>max_delta_value
-                        ||alpha_2_pow+(a_2_pow+1)*gamma_2_pow>max_delta_value) {
-                    boolean flag = false; // no need to try xl and xu
-                    switch (minNumberIndex(alpha + a, beta, gamma + a)) {
-                        case 1:
-                            if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
-                                flag = true;
-                            }
-                            break;
-                        case 2:
-                            if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
-                                flag = true;
-                            }
-                            break;
-                        case 3:
-                            if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value) {
-                                flag = true;
-                            }
-                            break;
-                    }
 
-                    if (flag) {
-                        Group cur_group_alpha = groupL[alpha];
-                        int alpha_value_count_list_start = alpha_2_pow/2;
-                        int gap_alpha = alpha_2_pow/2;
-                        int[] alpha_value_count_list = new int[gap_alpha];
-                        int alpha_value_count = cur_group_alpha.count;
-                        int[] number_alpha = cur_group_alpha.number;
-                        for(int i=0;i<alpha_value_count;i++){
-                            int value = number_alpha[i];
-                            alpha_value_count_list[value-alpha_value_count_list_start] ++;
-                        }
 
-                        Group cur_group_gamma = groupU[gamma];
-                        int gamma_value_count_list_end = max_delta_value - gamma_2_pow/2;
-                        int gap_gamma = gamma_2_pow/2;
-                        int[] gamma_value_count_list = new int[gap_gamma];
-                        int gamma_value_count = cur_group_gamma.count;
-                        int[] number_gamma = cur_group_gamma.number;
-                        for(int i=0;i<gamma_value_count;i++){
-                            int value = number_gamma[i];
-                            gamma_value_count_list[gamma_value_count_list_end-value] ++;
-                        }
-                        int cur_k1_x_l = cur_k1_close;
-                        for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
-                            int cur_count_alpha = alpha_value_count_list[x_l_i];
-                            if (cur_count_alpha == 0)
-                                continue;
-                            cur_k1_x_l += cur_count_alpha;
-                            int cur_k1_x_u = cur_k2_close;
-                            for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
-                                int cur_count_gamma = gamma_value_count_list[x_u_i];
-                                if (cur_count_gamma == 0)
-                                    continue;
-                                cur_k1_x_u += cur_count_gamma;
 
-                                cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
-                                if (cur_k1_x_l != 0)
-                                    cur_bits += cur_k1_x_l * alpha;//left_max
-                                if (cur_k1_x_l + cur_k1_x_u != block_size)
-                                    cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) * getBitWith(max_delta_value - alpha_2_pow - gamma_2_pow - x_l_i - x_u_i - 2);
-                                if (cur_k1_x_u != 0)
-                                    cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-                                if (cur_bits < min_bits) {
-                                    min_bits = cur_bits;
-                                    final_k_start_value = alpha_2_pow + x_l_i;
-                                    final_k_end_value = gamma_2_pow - x_u_i; //need to check again
-                                }
-                            }
-                        }
-                    }
-                }
 //                if (k_end_value == max_delta_value)
 //                    break;
             }
@@ -1163,9 +1097,9 @@ public class PruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
 
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1254,177 +1188,177 @@ public class PruneBOSTest {
         }
     }
 
-    @Test
-    public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "block_size_bos";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-
-        for (String value : dataset_name) {
-            input_path_list.add(input_parent_dir + value);
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Block Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-
-
-                loader.readHeaders();
-
-                while (loader.readRecord()) {
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-                inputStream.close();
-                int[] data2_arr = new int[data1.size()];
-                for(int i = 0;i<data2.size();i++){
-                    data2_arr[i] = data2.get(i);
-                }
-                byte[] encoded_result = new byte[data2_arr.length*4];
-
-                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
-                    int block_size = (int) Math.pow(2, block_size_i);
-                    System.out.println(block_size);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 500;
-
-                    long s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
-                    }
-
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                        BOSDecoder(encoded_result);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-
-                    String[] record = {
-                            f.toString(),
-                            "TS_2DIFF+BWS",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(block_size_i),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-
-                }
-
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void BWSTest2() throws IOException {
-        int[] testarray = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-        int max_delta_value = 15;
-        int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
-        int[] alpha_box_count_list = new int[getBitWith(max_delta_value)];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
-        int[] gamma_count_list = new int[getBitWith(max_delta_value)+1];
-        int[] gamma_box_count_list = new int[getBitWith(max_delta_value)];
-        for(int value:testarray){
-            if (value == 0){
-                alpha_count_list[0]++;
-            }
-            else if (value == pow(2,getBitWith(value)-1) && value != 1){
-                alpha_count_list[getBitWith(value)-1]++;
-            }else {
-                alpha_box_count_list[getBitWith(value)-1]++;
-            }
-        }
-
-        for(int value:testarray){
-            if (value == max_delta_value){
-                gamma_count_list[0]++;
-            }
-            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
-                gamma_count_list[getBitWith(max_delta_value-value)-1]++;
-            }else {
-                gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
-            }
-        }
-
-    }
+//    @Test
+//    public void BOSVaryBlockSize() throws IOException {
+//        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+//        String output_parent_dir = parent_dir + "block_size_bos";
+//        String input_parent_dir = parent_dir + "trans_data/";
+//        ArrayList<String> input_path_list = new ArrayList<>();
+//        ArrayList<String> output_path_list = new ArrayList<>();
+//        ArrayList<String> dataset_name = new ArrayList<>();
+//        dataset_name.add("CS-Sensors");
+//        dataset_name.add("Metro-Traffic");
+//        dataset_name.add("USGS-Earthquakes");
+//        dataset_name.add("YZ-Electricity");
+//        dataset_name.add("GW-Magnetic");
+//        dataset_name.add("TY-Fuel");
+//        dataset_name.add("Cyber-Vehicle");
+//        dataset_name.add("Vehicle-Charge");
+//        dataset_name.add("Nifty-Stocks");
+//        dataset_name.add("TH-Climate");
+//        dataset_name.add("TY-Transport");
+//        dataset_name.add("EPM-Education");
+//
+//        for (String value : dataset_name) {
+//            input_path_list.add(input_parent_dir + value);
+//        }
+//
+//        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//
+//        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+//
+//        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+//
+//        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//
+//        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//
+//        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//
+//        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//
+//        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//
+//        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//
+//        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//
+//            String inputPath = input_path_list.get(file_i);
+//            System.out.println(inputPath);
+//            String Output = output_path_list.get(file_i);
+//
+//
+//            File file = new File(inputPath);
+//            File[] tempList = file.listFiles();
+//
+//            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+//
+//            String[] head = {
+//                    "Input Direction",
+//                    "Encoding Algorithm",
+//                    "Encoding Time",
+//                    "Decoding Time",
+//                    "Points",
+//                    "Compressed Size",
+//                    "Block Size",
+//                    "Compression Ratio"
+//            };
+//            writer.writeRecord(head); // write header to output file
+//
+//            assert tempList != null;
+//
+//            for (File f : tempList) {
+//                System.out.println(f);
+//                InputStream inputStream = Files.newInputStream(f.toPath());
+//
+//                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+//                ArrayList<Integer> data1 = new ArrayList<>();
+//                ArrayList<Integer> data2 = new ArrayList<>();
+//
+//
+//                loader.readHeaders();
+//
+//                while (loader.readRecord()) {
+//                    data1.add(Integer.valueOf(loader.getValues()[0]));
+//                    data2.add(Integer.valueOf(loader.getValues()[1]));
+//                }
+//                inputStream.close();
+//                int[] data2_arr = new int[data1.size()];
+//                for(int i = 0;i<data2.size();i++){
+//                    data2_arr[i] = data2.get(i);
+//                }
+//                byte[] encoded_result = new byte[data2_arr.length*4];
+//
+//                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
+//                    int block_size = (int) Math.pow(2, block_size_i);
+//                    System.out.println(block_size);
+//                    long encodeTime = 0;
+//                    long decodeTime = 0;
+//                    double ratio = 0;
+//                    double compressed_size = 0;
+//                    int repeatTime2 = 500;
+//
+//                    long s = System.nanoTime();
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+//                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
+//                    }
+//
+//                    long e = System.nanoTime();
+//                    encodeTime += ((e - s) / repeatTime2);
+//                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
+//                    ratio += ratioTmp;
+//                    s = System.nanoTime();
+////                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+////                        BOSDecoder(encoded_result);
+//                    e = System.nanoTime();
+//                    decodeTime += ((e - s) / repeatTime2);
+//
+//                    String[] record = {
+//                            f.toString(),
+//                            "TS_2DIFF+BWS",
+//                            String.valueOf(encodeTime),
+//                            String.valueOf(decodeTime),
+//                            String.valueOf(data1.size()),
+//                            String.valueOf(compressed_size),
+//                            String.valueOf(block_size_i),
+//                            String.valueOf(ratio)
+//                    };
+//                    writer.writeRecord(record);
+//                    System.out.println(ratio);
+//
+//                }
+//
+//            }
+//            writer.close();
+//
+//        }
+//    }
+//
+//    @Test
+//    public void BWSTest2() throws IOException {
+//        int[] testarray = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+//        int max_delta_value = 15;
+//        int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
+//        int[] alpha_box_count_list = new int[getBitWith(max_delta_value)];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
+//        int[] gamma_count_list = new int[getBitWith(max_delta_value)+1];
+//        int[] gamma_box_count_list = new int[getBitWith(max_delta_value)];
+//        for(int value:testarray){
+//            if (value == 0){
+//                alpha_count_list[0]++;
+//            }
+//            else if (value == pow(2,getBitWith(value)-1) && value != 1){
+//                alpha_count_list[getBitWith(value)-1]++;
+//            }else {
+//                alpha_box_count_list[getBitWith(value)-1]++;
+//            }
+//        }
+//
+//        for(int value:testarray){
+//            if (value == max_delta_value){
+//                gamma_count_list[0]++;
+//            }
+//            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
+//                gamma_count_list[getBitWith(max_delta_value-value)-1]++;
+//            }else {
+//                gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
+//            }
+//        }
+//
+//    }
 
 }
