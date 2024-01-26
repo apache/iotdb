@@ -175,4 +175,5 @@ public enum StatementType {
   ALTER_LOGICAL_VIEW,
 
   PIPE_ENRICHED,
+  REPAIR_DATA
 }

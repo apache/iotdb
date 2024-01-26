@@ -17,26 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-public enum CompactionTaskPriorityType {
-  /** default compaction task type */
-  NORMAL(10),
-
-  /**
-   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
-   * 2. the TsFile has .mods file and the disk availability rate is lower than the
-   * disk_space_warning_threshold.
-   */
-  MOD_SETTLE(20),
-  REPAIR_DATA(30);
-  private final int value;
-
-  CompactionTaskPriorityType(int value) {
-    this.value = value;
-  }
-
-  public int getValue() {
-    return value;
-  }
+public enum TsFileRepairStatus {
+  NORMAL,
+  NEED_TO_REPAIR,
+  CAN_NOT_REPAIR
 }
