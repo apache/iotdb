@@ -206,15 +206,19 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
     }
 
     if (throwable instanceof PipeConnectionException) {
-      onPipeConnectionException(throwable);
-      return;
+      // Retry to connect to the target system if the connection is broken
+      if (onPipeConnectionException(throwable)) {
+        // return if the pipe exception is handled
+        return;
+      }
     }
 
     // Handle other exceptions as usual
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
-  private void onPipeConnectionException(Throwable throwable) {
+  /** @return true if the pipe exception is handled, false otherwise */
+  private boolean onPipeConnectionException(Throwable throwable) {
     LOGGER.warn(
         "PipeConnectionException occurred, {} retries to handshake with the target system.",
         outputPipeConnector.getClass().getName(),
@@ -227,7 +231,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
         LOGGER.info(
             "{} handshakes with the target system successfully.",
             outputPipeConnector.getClass().getName());
-        break;
+        return true;
       } catch (Exception e) {
         retry++;
         LOGGER.warn(
@@ -275,7 +279,12 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       // is dropped or the process is running normally.
 
       // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      return true;
     }
+
+    // For non enriched event, forever retry.
+    // For enriched event, retry if connection is set up successfully.
+    return false;
   }
 
   /**
