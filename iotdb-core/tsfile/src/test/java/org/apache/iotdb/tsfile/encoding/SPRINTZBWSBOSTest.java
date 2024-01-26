@@ -439,7 +439,7 @@ public class SPRINTZBWSBOSTest {
 
     }
 
-
+    // sprintz need to substitute ---- start
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining ,int encode_pos , byte[] cur_byte) {
 
         int[] min_delta = new int[3];
@@ -448,7 +448,7 @@ public class SPRINTZBWSBOSTest {
 
         block_size = remaining-1;
 
-        // RLE need to substitute ---- start
+
 
         int max_delta_value = min_delta[2];
         int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)

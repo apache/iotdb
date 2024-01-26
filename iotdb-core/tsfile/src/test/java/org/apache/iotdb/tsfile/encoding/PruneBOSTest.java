@@ -576,24 +576,24 @@ public class PruneBOSTest {
             groupU[i] = new Group(numbers, count);
         }
         for(int value:ts_block_delta){
-            int alpha_i =getBitWith(value)-1;
+            int alpha_i = getBitWith(value);
             if (value == 0){
                 alpha_count_list[0]++;
             }
-            else if (value == pow(2,alpha_i) && value != 1){
+            else if (value == pow(2,alpha_i+1) && value != 1){ // x_min+2^{alpha_i}
                 alpha_count_list[alpha_i]++;
             }else {
-                groupL[alpha_i].addNumber(value);// [x_min+2^{alpha_i},x_min+2^{alpha_i+1})
+                groupL[alpha_i].addNumber(value); // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
                 alpha_box_count_list[alpha_i]++;
             }
-            int gamma_i = getBitWith(max_delta_value-value)-1;
+            int gamma_i = getBitWith(max_delta_value-value);
             if (value == max_delta_value){
                 gamma_count_list[0]++;
             }
             else if (max_delta_value - value == pow(2,gamma_i) && max_delta_value - value != 1){
                 gamma_count_list[gamma_i]++;
             }else {
-                groupU[gamma_i].addNumber(value);// [x_max-2^{gamma_i+1},x_max-2^{gamma_i})
+                groupU[gamma_i].addNumber(value);// [x_max-2^{gamma_i},x_max-2^{gamma_i-1})
                 gamma_box_count_list[gamma_i]++;
             }
         }
