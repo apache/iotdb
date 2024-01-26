@@ -940,7 +940,7 @@ settle
 
 // Explain
 explain
-    : EXPLAIN selectStatement
+    : EXPLAIN (ANALYZE)? selectStatement
     ;
 
 // Set System To readonly/running/error

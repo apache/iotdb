@@ -200,7 +200,9 @@ public enum PlanNodeType {
   PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
 
   INNER_TIME_JOIN((short) 87),
-  LEFT_OUTER_TIME_JOIN((short) 88);
+  LEFT_OUTER_TIME_JOIN((short) 88),
+
+  EXPLAIN_ANALYZE((short) 89);
 
   public static final int BYTES = Short.BYTES;
 
@@ -425,6 +427,8 @@ public enum PlanNodeType {
         return InnerTimeJoinNode.deserialize(buffer);
       case 88:
         return LeftOuterTimeJoinNode.deserialize(buffer);
+      case 89:
+        return ExplainAnalyzeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

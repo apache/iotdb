@@ -180,6 +180,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -2529,7 +2530,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
     QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
-    return new ExplainStatement(queryStatement);
+    if (ctx.ANALYZE() == null) {
+      return new ExplainStatement(queryStatement);
+    }
+    return new ExplainAnalyzeStatement(queryStatement);
   }
 
   @Override

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
@@ -87,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPath
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -121,6 +123,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + node.getClass().getName());
+  }
+
+  @Override
+  public PlanNode visitExplainAnalyze(
+      ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
+    PlanNode root = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
+    root =
+        new ExplainAnalyzeNode(
+            context.getQueryId().genPlanNodeId(), root, explainAnalyzeStatement.isVerbose());
+    context.getTypeProvider().setType("Explain Analyze", TSDataType.TEXT);
+    return root;
   }
 
   @Override

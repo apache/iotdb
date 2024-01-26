@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -229,6 +230,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
     analysis.setStatement(explainStatement);
     analysis.setFinishQueryAfterAnalyze(true);
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitExplainAnalyze(
+      ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
+    Analysis analysis = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
+    analysis.setStatement(explainAnalyzeStatement);
+    analysis.setRespDatasetHeader(
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader("Explain Analyze", TSDataType.TEXT, null)),
+            true));
     return analysis;
   }
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildren
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -184,6 +185,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         });
 
     if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ExplainAnalyzeStatement
         || analysis.getStatement() instanceof ShowQueriesStatement
         || (analysis.getStatement() instanceof ShowTimeSeriesStatement
             && ((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat())) {
