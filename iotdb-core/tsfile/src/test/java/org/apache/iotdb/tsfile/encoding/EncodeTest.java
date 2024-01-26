@@ -27,7 +27,8 @@ public class EncodeTest {
 
   public static void main(@NotNull String[] args) throws IOException {
 
-    String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";
+    //String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";
+    String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
     String output_parent_dir = parent_dir + "vldb/compression_ratio/sota_ratio/";
     String input_parent_dir = parent_dir + "trans_data/";
     ArrayList<String> input_path_list = new ArrayList<>();
@@ -75,8 +76,8 @@ public class EncodeTest {
 
     output_path_list.add(output_parent_dir + "EPM-Education_ratio.csv");//11
 
-    for (int file_i = 7; file_i < 8; file_i++) {
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 7; file_i < 8; file_i++) {
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
 
