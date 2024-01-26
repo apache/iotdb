@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
@@ -37,7 +38,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final FileChannel channel;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
-  private ByteBuffer dataBuffer = null;
+  private ByteBuffer dataBuffer =
+      ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
@@ -72,13 +74,17 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       compressedHeader.flip();
       int uncompressedSize = compressedHeader.getInt();
-      dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
+      if (uncompressedSize > dataBuffer.capacity()) {
+        // enlarge buffer
+        dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
+      }
       ByteBuffer compressedData = ByteBuffer.allocateDirect(dataSize);
       if (channel.read(compressedData) != dataSize) {
         throw new IOException("Unexpected end of file");
       }
       compressedData.flip();
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.LZ4);
+      dataBuffer.clear();
       unCompressor.uncompress(compressedData, dataBuffer);
     } else {
       dataBuffer = ByteBuffer.allocateDirect(dataSize);

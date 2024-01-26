@@ -48,11 +48,21 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileChannel logChannel;
   protected long size;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
+  private final ICompressor compressor = ICompressor.getCompressor(CompressionType.LZ4);
+  private final ByteBuffer compressedByteBuffer;
 
   protected LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()) {
+      compressedByteBuffer =
+          ByteBuffer.allocate(
+              compressor.getMaxBytesForCompression(
+                  IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()));
+    } else {
+      compressedByteBuffer = null;
+    }
   }
 
   @Override
@@ -63,11 +73,9 @@ public abstract class LogWriter implements ILogWriter {
     int uncompressedSize = bufferSize;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
         && bufferSize > 1024 * 512 /* Do not compress buffer that is less than 512KB */) {
-      ICompressor compressor = ICompressor.getCompressor(CompressionType.LZ4);
-      ByteBuffer compressedBuffer =
-          ByteBuffer.allocateDirect(compressor.getMaxBytesForCompression(buffer.limit()));
-      compressor.compress(buffer, compressedBuffer);
-      buffer = compressedBuffer;
+      compressedByteBuffer.clear();
+      compressor.compress(buffer, compressedByteBuffer);
+      buffer = compressedByteBuffer;
       bufferSize = buffer.position();
       buffer.flip();
       compressed = true;
