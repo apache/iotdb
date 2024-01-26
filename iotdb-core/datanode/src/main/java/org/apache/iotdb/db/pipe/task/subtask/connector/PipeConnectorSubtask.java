@@ -214,7 +214,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       }
     }
 
-    // Handle all exceptions, there should be available clients here
+    // Handle exceptions if any available clients exist
     // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
     // because the upper layer relies on this to stop all the related pipe tasks
     // Other exceptions may cause the subtask to stop forever and can not be restarted
