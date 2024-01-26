@@ -162,8 +162,8 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void degradeLastFlushTime(long partitionId) {
-    ILastFlushTime lastFlushTime = partitionLatestFlushedTime.get(partitionId);
-    partitionLatestFlushedTime.put(partitionId, lastFlushTime.degradeLastFlushTime());
+    partitionLatestFlushedTime.computeIfPresent(
+        partitionId, (id, lastFlushTime) -> lastFlushTime.degradeLastFlushTime());
     memCostForEachPartition.put(partitionId, (long) Long.BYTES);
   }
 
