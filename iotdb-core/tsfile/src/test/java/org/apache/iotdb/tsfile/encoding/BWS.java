@@ -519,10 +519,10 @@ public class BWS {
         block_size = remaining-1;
         int max_delta_value = min_delta[2];
         int max_bit = getBitWith(max_delta_value);
-        int[] alpha_count_list = new int[max_bit+1];//count(xmin) count(xmin + 1) count(xmin + 2)... count(xmin + 8)
-        int[] alpha_box_count_list = new int[max_bit+1];// count(xmin, xmin + 1), count(xmin +1, xmin + 2)...
-        int[] gamma_count_list = new int[max_bit+1];
-        int[] gamma_box_count_list = new int[max_bit+1];
+        int[] alpha_count_list = new int[max_bit+1];//count(xmin) count(xmin + 1) count(xmin + 2)... count(xmin + 8) ... count(xmin + 2^(i - 1))
+        int[] alpha_box_count_list = new int[max_bit+1];// count(xmin, xmin + 1), count(xmin +1, xmin + 2)... count (xmin + 2^(i - 1), xmin + 2^i)
+        int[] gamma_count_list = new int[max_bit+1];//count(xmax) count(xmax - 1)... count(xmax - 2^(i - 1))
+        int[] gamma_box_count_list = new int[max_bit+1]; // count (xmax - 2^i, xmin - 2^(i-1))
         for(int value:ts_block_delta){
             if (value == 0){
                 alpha_count_list[0]++;
@@ -548,16 +548,14 @@ public class BWS {
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value -2) * (block_size));
 
-        int cur_k1_close = 0;
-        for (int alpha = 0; alpha <= max_bit; alpha++) { //start_value_size
+        int cur_k1_close = alpha_count_list[0];
+        for (int alpha = 0; alpha + 1 <= max_bit; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
-            cur_k1_close += alpha_count_list[alpha];
-            if (alpha > 0) {
-                cur_k1_close += alpha_box_count_list[alpha - 1];
-            }
+            cur_k1_close += alpha_count_list[alpha + 1];
+            cur_k1_close += alpha_box_count_list[alpha];
             // todo
-            int cur_k2_close = 0;
+            int cur_k2_close = gamma_count_list[0];
             int k_end_value_close;
             int cur_bits;
 
@@ -565,10 +563,8 @@ public class BWS {
                 int flag = 0;
                 k_end_value_close = max_delta_value - (int) pow(2,gamma);
                 cur_bits = 0;
-                cur_k2_close += gamma_count_list[gamma];
-                if (gamma > 0){
-                    cur_k2_close += gamma_box_count_list[gamma-1];
-                }
+                cur_k2_close += gamma_count_list[gamma+1];
+                cur_k2_close += gamma_box_count_list[gamma];
 
                 cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
                 if (cur_k1_close != 0)
