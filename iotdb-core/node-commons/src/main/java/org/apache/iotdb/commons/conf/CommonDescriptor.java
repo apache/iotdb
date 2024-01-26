@@ -134,14 +134,6 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
-    config.setCoreClientNumForEachNode(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_core_client_count_for_each_node_in_client_manager",
-                    String.valueOf(config.getCoreClientNumForEachNode()))
-                .trim()));
-
     config.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
@@ -171,14 +163,6 @@ public class CommonDescriptor {
                 .getProperty(
                     "dn_selector_thread_nums_of_client_manager",
                     String.valueOf(config.getSelectorNumOfClientManager()))
-                .trim()));
-
-    config.setCoreClientNumForEachNode(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_core_client_count_for_each_node_in_client_manager",
-                    String.valueOf(config.getCoreClientNumForEachNode()))
                 .trim()));
 
     config.setMaxClientNumForEachNode(
@@ -384,13 +368,6 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_selector_number",
                         String.valueOf(config.getPipeAsyncConnectorSelectorNumber())))));
-    config.setPipeAsyncConnectorCoreClientNumber(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_sink_core_client_number"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_async_connector_core_client_number",
-                        String.valueOf(config.getPipeAsyncConnectorCoreClientNumber())))));
     config.setPipeAsyncConnectorMaxClientNumber(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_max_client_number"))
@@ -450,6 +427,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pinned_memtable_count",
                 String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
+    config.setPipeMaxAllowedLinkedTsFileCount(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_max_allowed_linked_tsfile_count",
+                String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+    config.setPipeStuckRestartIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_stuck_restart_interval_seconds",
+                String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(

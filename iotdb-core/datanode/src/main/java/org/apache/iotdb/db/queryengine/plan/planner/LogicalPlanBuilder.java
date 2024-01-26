@@ -698,46 +698,35 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<TAggregationType> splitAggregations =
+    List<String> partialAggregationsNames =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    for (TAggregationType aggregation : splitAggregations) {
-      String functionName = aggregation.toString().toLowerCase();
-      TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
-      String inputExpressionStr =
-          getExpressionStringThatDeterminesReturnType(aggregationDescriptor);
+    String inputExpressionStr = getInputExpressionString(aggregationDescriptor);
+    for (String partialAggregationName : partialAggregationsNames) {
+      TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
       typeProvider.setType(
-          String.format("%s(%s)", functionName, aggregationDescriptor.getParametersString()),
+          String.format("%s(%s)", partialAggregationName, inputExpressionStr),
           aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
     }
   }
 
-  /**
-   * For aggregate functions that accept single input, we return the first input Expression. For
-   * aggregate functions that can accept multiple inputs, if the type of intermediate results is
-   * determined by the input Expression, we return the corresponding Expression used to determine
-   * the type of intermediate results.
-   */
-  private static String getExpressionStringThatDeterminesReturnType(
-      AggregationDescriptor aggregationDescriptor) {
-    switch (aggregationDescriptor.getAggregationType()) {
-      case MAX_BY_Y_INPUT:
-        return aggregationDescriptor.getInputExpressions().get(1).getExpressionString();
-      case MAX_BY_X_INPUT:
-      default:
-        return aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
+  private static String getInputExpressionString(AggregationDescriptor aggregationDescriptor) {
+    // We just process first input Expression of Count_IF
+    if (TAggregationType.COUNT_IF.equals(aggregationDescriptor.getAggregationType())) {
+      return aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
+    } else {
+      return aggregationDescriptor.getParametersString();
     }
   }
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<TAggregationType> splitAggregations =
+    List<String> partialAggregationsNames =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (TAggregationType aggregationType : splitAggregations) {
-      String functionName = aggregationType.toString().toLowerCase();
+    for (String partialAggregationName : partialAggregationsNames) {
       typeProvider.setType(
-          String.format("%s(%s)", functionName, path.getFullPath()),
-          SchemaUtils.getSeriesTypeByPath(path, functionName));
+          String.format("%s(%s)", partialAggregationName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
     }
   }
 

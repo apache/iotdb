@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
@@ -827,11 +828,12 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     for (Pair<String, Short> pair : keyAddressList) {
       bufferR.position(pair.right + pair.left.getBytes().length + 4);
       if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
+        Boolean isAligned = RecordUtils.getAlignment(bufferR);
         builder.append(
             String.format(
                 "(%s, %s, %s),",
                 pair.left,
-                RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
+                isAligned == null ? "null" : isAligned ? "aligned" : "not_aligned",
                 RecordUtils.getRecordSegAddr(bufferR) == -1
                     ? -1
                     : Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
@@ -845,6 +847,15 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
                 TSEncoding.values()[schemaBytes[1]],
                 CompressionType.deserialize(schemaBytes[2]),
                 RecordUtils.getRecordAlias(bufferR)));
+      } else if (RecordUtils.getRecordType(bufferR) == 5) {
+        int oriPos = bufferR.position();
+        bufferR.position(oriPos + 3);
+        long of = ReadWriteIOUtils.readLong(bufferR);
+        boolean pred = ReadWriteIOUtils.readBool(bufferR);
+        ViewExpression viewExpression = ViewExpression.deserialize(bufferR);
+        // view
+        builder.append(
+            String.format("view(%s, %s, %s, %s),", pair.left, of, pred, viewExpression.toString()));
       } else {
         throw new BufferUnderflowException();
       }

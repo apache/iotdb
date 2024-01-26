@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -131,6 +132,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
       } finally {
+        // friendly for gc, clear the plan node tree, for some queries select all devices, it will
+        // release lots of memory
+        instance.getFragment().clearUselessField();
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }
@@ -296,9 +300,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
             logger.warn(sendFragmentInstanceResp.message);
-            throw new FragmentInstanceDispatchException(
-                RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+            if (sendFragmentInstanceResp.message.contains(
+                RatisReadUnavailableException.RATIS_READ_UNAVAILABLE)) {
+              throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
+            } else {
+              throw new FragmentInstanceDispatchException(
+                  RpcUtils.getStatus(
+                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+            }
           }
           break;
         case WRITE:
@@ -339,9 +348,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
                   String.format("unknown read type [%s]", instance.getType())));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       logger.warn(
-          "can't connect to node {}, error msg is {}.",
+          "can't execute request on node {}, error msg is {}.",
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
       TSStatus status = new TSStatus();
@@ -389,10 +398,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
-          logger.warn(
-              "write locally failed. TSStatus: {}, message: {}",
-              writeResult.getStatus(),
-              writeResult.getMessage());
+          // DO NOT LOG READ_ONLY ERROR
+          if (writeResult.getStatus().getCode() != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+            logger.warn(
+                "write locally failed. TSStatus: {}, message: {}",
+                writeResult.getStatus(),
+                writeResult.getMessage());
+          }
           if (writeResult.getStatus() == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));

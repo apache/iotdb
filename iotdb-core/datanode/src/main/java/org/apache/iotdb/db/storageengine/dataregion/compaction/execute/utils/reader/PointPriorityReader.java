@@ -88,8 +88,8 @@ public class PointPriorityReader {
     pointElementsWithSameTimestamp.add(pointQueue.poll());
 
     TsPrimitiveType[] currentValues = currentPoint.getValue().getVector();
-    int nullValueNum = currentValues.length;
     while (!pointQueue.isEmpty()) {
+      int nullValueNum = currentValues.length;
       if (pointQueue.peek().timestamp > lastTime) {
         // the smallest time of all pages is later than the last time, then break the loop
         break;

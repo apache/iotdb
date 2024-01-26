@@ -146,7 +146,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
    */
   @Override
   public int estimateSize() {
-    return 8 + 8 + 1 + 32 + 64;
+    return 8 + 8 + 1 + 32 + ViewExpression.getSerializeSize(schema.getExpression());
   }
 
   @Override

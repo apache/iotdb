@@ -198,6 +198,4 @@ enum TAggregationType {
   VAR_POP,
   VAR_SAMP,
   MAX_BY,
-  MAX_BY_X_INPUT,
-  MAX_BY_Y_INPUT
 }

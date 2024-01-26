@@ -144,7 +144,7 @@ public class LoadCache {
    * @param resp the heartbeat response
    */
   public void cacheConfigNodeHeartbeatSample(int nodeId, TConfigNodeHeartbeatResp resp) {
-    long receiveTime = System.currentTimeMillis();
+    long receiveTime = System.nanoTime();
     nodeCacheMap
         .computeIfAbsent(nodeId, empty -> new ConfigNodeHeartbeatCache(nodeId))
         .cacheHeartbeatSample(new NodeHeartbeatSample(resp, receiveTime));

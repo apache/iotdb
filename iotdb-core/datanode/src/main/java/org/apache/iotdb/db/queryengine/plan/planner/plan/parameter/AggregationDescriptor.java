@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
+
 public class AggregationDescriptor {
 
   // aggregation function type
@@ -152,27 +154,25 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.MIN_TIME);
           break;
         case STDDEV:
-          outputAggregationNames.add(SqlConstant.STDDEV);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.STDDEV));
           break;
         case STDDEV_POP:
-          outputAggregationNames.add(SqlConstant.STDDEV_POP);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.STDDEV_POP));
           break;
         case STDDEV_SAMP:
-          outputAggregationNames.add(SqlConstant.STDDEV_SAMP);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.STDDEV_SAMP));
           break;
         case VARIANCE:
-          outputAggregationNames.add(SqlConstant.VARIANCE);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.VARIANCE));
           break;
         case VAR_POP:
-          outputAggregationNames.add(SqlConstant.VAR_POP);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.VAR_POP));
           break;
         case VAR_SAMP:
-          outputAggregationNames.add(SqlConstant.VAR_SAMP);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.VAR_SAMP));
           break;
         case MAX_BY:
-          // max_by(x, y) takes x and y as the input
-          outputAggregationNames.add(SqlConstant.MAX_BY_INPUT_X);
-          outputAggregationNames.add(SqlConstant.MAX_BY_INPUT_Y);
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);

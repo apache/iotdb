@@ -319,6 +319,7 @@ public abstract class BasicUserManager implements IUserManager {
       try {
         userMap.put(name, accessor.loadUser(name));
       } catch (IOException e) {
+        LOGGER.warn("Get exception when load user {}", name);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }

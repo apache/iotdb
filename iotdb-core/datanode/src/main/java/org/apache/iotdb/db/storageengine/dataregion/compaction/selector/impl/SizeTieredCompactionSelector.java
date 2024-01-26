@@ -118,24 +118,39 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
-      LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
-      selectedFileList.add(currentFile);
-      selectedFileSize += currentFile.getTsFileSize();
-      LOGGER.debug(
-          "Add tsfile {}, current select file num is {}, size is {}",
-          currentFile,
-          selectedFileList.size(),
-          selectedFileSize);
-      // if the file size or file num reach threshold
-      if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
-        // submit the task
+
+      long totalSizeIfSelectCurrentFile = selectedFileSize + currentFile.getTsFileSize();
+      boolean canNotAddCurrentFileIntoCurrentTask =
+          totalSizeIfSelectCurrentFile > targetCompactionFileSize
+              || selectedFileList.size() >= config.getFileLimitPerInnerTask();
+      if (canNotAddCurrentFileIntoCurrentTask) {
+        // total file size or num will beyond the threshold if select current file, stop the
+        // selection of current task
         if (selectedFileList.size() > 1) {
+          // submit the task
           taskList.add(new ArrayList<>(selectedFileList));
         }
+        // add current file in a new selected file list
         selectedFileList = new ArrayList<>();
-        selectedFileSize = 0L;
+        selectedFileList.add(currentFile);
+        selectedFileSize = currentFile.getTsFileSize();
+      } else {
+        LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
+        selectedFileList.add(currentFile);
+        selectedFileSize += currentFile.getTsFileSize();
+        LOGGER.debug(
+            "Add tsfile {}, current select file num is {}, size is {}",
+            currentFile,
+            selectedFileList.size(),
+            selectedFileSize);
       }
+    }
+
+    // if the selected file size reach the condition to submit
+    if (selectedFileList.size() == config.getFileLimitPerInnerTask()) {
+      taskList.add(new ArrayList<>(selectedFileList));
+      selectedFileList.clear();
+      selectedFileSize = 0;
     }
 
     // if next time partition exists

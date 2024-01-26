@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -33,6 +35,7 @@ import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -50,7 +53,6 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
-import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
@@ -74,11 +76,12 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private static final int STARTUP_RETRY_NUM = 10;
-  private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
-
+  private static final int SCHEDULE_WAITING_RETRY_NUM =
+      (int) (COMMON_CONFIG.getConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
   private static final int SEED_CONFIG_NODE_ID = 0;
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
@@ -423,11 +426,6 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public ConfigManager getConfigManager() {
     return configManager;
-  }
-
-  public void addMetrics() {
-    // Add some Metrics for configManager
-    configManager.addMetrics();
   }
 
   protected void addShutDownHook() {
