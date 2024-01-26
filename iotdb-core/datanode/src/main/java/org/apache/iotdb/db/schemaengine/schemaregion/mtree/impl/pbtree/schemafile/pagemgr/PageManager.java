@@ -172,6 +172,7 @@ public abstract class PageManager implements IPageManager {
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
+    long res; // result of write
     ICachedMNode child;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
@@ -207,10 +208,16 @@ public abstract class PageManager implements IPageManager {
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress), cxt);
 
-      try {
-        curPage
-            .getAsSegmentedPage()
-            .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      res =
+          curPage
+              .getAsSegmentedPage()
+              .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      if (res >= 0) {
+        if (res != 0) {
+          // spare size increased, buckets need to update
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
+        }
+
         interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
@@ -218,8 +225,9 @@ public abstract class PageManager implements IPageManager {
         if (alias != null && subIndex >= 0) {
           insertSubIndexEntry(subIndex, alias, entry.getKey(), cxt);
         }
-
-      } catch (SchemaPageOverflowException e) {
+      } else {
+        // page overflow
+        // current page is not enough for coming record
         if (curPage.getAsSegmentedPage().getSegmentSize(SchemaFile.getSegIndex(actualAddress))
             == SchemaFileConfig.SEG_MAX_SIZ) {
           // curPage might be replaced so unnecessary to mark it here
@@ -273,6 +281,7 @@ public abstract class PageManager implements IPageManager {
     ICachedMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
+    long res; // result of update
     for (Map.Entry<String, ICachedMNode> entry :
         ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
       child = entry.getValue();
@@ -319,10 +328,15 @@ public abstract class PageManager implements IPageManager {
         insertNewSubEntry = removeOldSubEntry = false;
       }
 
-      try {
-        curPage
-            .getAsSegmentedPage()
-            .update(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      res =
+          curPage
+              .getAsSegmentedPage()
+              .update(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      if (res >= 0) {
+        if (res != 0) {
+          // spare size increased, buckets need to update
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
+        }
         interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
@@ -336,7 +350,8 @@ public abstract class PageManager implements IPageManager {
             insertSubIndexEntry(subIndex, alias, entry.getKey(), cxt);
           }
         }
-      } catch (SchemaPageOverflowException e) {
+      } else {
+        // page overflow
         if (curPage.getAsSegmentedPage().getSegmentSize(SchemaFile.getSegIndex(actualAddress))
             == SchemaFileConfig.SEG_MAX_SIZ) {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer, cxt);
@@ -544,7 +559,13 @@ public abstract class PageManager implements IPageManager {
   private long preAllocateSegment(short size, SchemaPageContext cxt)
       throws IOException, MetadataException {
     ISegmentedPage page = getMinApplSegmentedPageInMem(size, cxt);
-    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    short sparePrev = page.getSpareSize();
+    long res = SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    if (sparePrev < page.getSpareSize()) {
+      // a compaction trigger by allocNewSegment had increased spare size
+      cxt.indexBuckets.sortIntoBucket(page, (short) -1);
+    }
+    return res;
   }
 
   protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageContext cxt) {
