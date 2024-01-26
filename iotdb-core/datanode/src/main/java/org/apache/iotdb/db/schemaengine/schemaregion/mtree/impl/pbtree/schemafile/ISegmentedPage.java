@@ -29,18 +29,6 @@ import java.util.Queue;
 
 /** Interface for a {@link SchemaPage} manages one or more {@link WrappedSegment}. */
 public interface ISegmentedPage extends ISchemaPage {
-
-  /**
-   * Insert a content directly into specified segment. If not enough spare within the segment,
-   * reallocate inside the page, or throw exception for new page then.
-   *
-   * @return return 0 if write succeed
-   * @throws SchemaPageOverflowException no spare space inside page
-   */
-  default long write_old(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
-    return 0;
-  }
-
   /**
    * Insert a content directly into specified segment. If not enough spare within the segment,
    * reallocate inside the page, return negative if not spare enough yet.
