@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.TreeMap;
 
 
+import static java.lang.Math.log;
 import static java.lang.Math.pow;
 
 public class BWS {
@@ -549,17 +550,22 @@ public class BWS {
         min_bits += (getBitWith(final_k_end_value - final_k_start_value -2) * (block_size));
 
         int cur_k1_close = alpha_count_list[0];
-        for (int alpha = 0; alpha + 1 <= max_bit; alpha++) { //start_value_size
+        cur_k1_close += alpha_count_list[1];
+        cur_k1_close += alpha_box_count_list[0];
+        for (int alpha = 1; alpha + 1 <= max_bit; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
             cur_k1_close += alpha_count_list[alpha + 1];
             cur_k1_close += alpha_box_count_list[alpha];
-            // todo
+
             int cur_k2_close = gamma_count_list[0];
             int k_end_value_close;
             int cur_bits;
-
-            for (int gamma = 0; (int) pow(2,gamma) + (int) pow(2,alpha) + 1 <= max_delta_value; gamma++) {
+            int alpha_2_pow = (int)pow(2,alpha);
+            int gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2)); // 0 1   2 3 4 5 6
+            cur_k2_close += gamma_count_list[1];
+            cur_k2_close += gamma_box_count_list[0];
+            for (int gamma = 1;  gamma<=gamma_size;gamma++){//(int) pow(2,gamma) + (int) pow(2,alpha) + 1 <= max_delta_value; gamma++) {
                 int flag = 0;
                 k_end_value_close = max_delta_value - (int) pow(2,gamma);
                 cur_bits = 0;
@@ -581,8 +587,8 @@ public class BWS {
 
                 //C2 k1open k2open
                 cur_bits = 0;
-                int cur_k1_open = cur_k1_close - alpha_count_list[alpha];
-                int cur_k2_open = cur_k2_close - gamma_count_list[gamma];
+                int cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
+                int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
                 int k_start_value_open = k_start_value_close - 1;
                 int k_end_value_open = k_end_value_close + 1;
                 cur_bits += Math.min((cur_k1_open + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_open);
@@ -885,8 +891,8 @@ public class BWS {
 
     @Test
     public void BWSTest() throws IOException {
-        //String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/bws";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -935,8 +941,8 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 6; file_i < input_path_list.size(); file_i++) {
-//
+//        for (int file_i = 0; file_i < 1; file_i++) {
+
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
