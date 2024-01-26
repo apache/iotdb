@@ -88,8 +88,10 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
     Assert.assertTrue(schemaTree.getAllDevices().get(0).isAligned());
 
+    System.out.println("=====restart=====");
     simulateRestart();
-    schemaRegion = getSchemaRegion("root.sg1", 0);
+    System.out.println("=====restart end=====");
+    schemaRegion = getSchemaRegion("root.sg", 0);
     schemaTree =
         schemaRegion.fetchSchema(
             ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
