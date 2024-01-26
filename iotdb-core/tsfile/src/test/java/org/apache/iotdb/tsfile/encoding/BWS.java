@@ -230,7 +230,7 @@ public class BWS {
             int block_size,
             int remaining,
             int[] min_delta) {
-        int[] ts_block_delta = new int[block_size-1];
+        int[] ts_block_delta = new int[remaining-1];
 
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
@@ -942,9 +942,9 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 0; file_i < 1; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < 1; file_i++) {
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);

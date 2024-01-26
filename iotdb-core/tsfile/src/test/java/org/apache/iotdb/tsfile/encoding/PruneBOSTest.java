@@ -225,7 +225,7 @@ public class PruneBOSTest {
             int block_size,
             int remaining,
             int[] min_delta) {
-        int[] ts_block_delta = new int[block_size-1];
+        int[] ts_block_delta = new int[remaining-1];
 
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
@@ -725,23 +725,39 @@ public class PruneBOSTest {
                     if((a_2_pow+1)*alpha_2_pow+gamma_2_pow>max_delta_value
                             ||alpha_2_pow+(a_2_pow+1)*gamma_2_pow>max_delta_value) {
                         int flag = 0; // no need to try xl and xu
-                        switch (minNumberIndex(alpha + a, beta, gamma + a)) {
-                            case 1:
-                                if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
-                                    flag = 1;
-                                }
-                                break;
-                            case 2:
-                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
-                                    flag = 2;
-                                }
-                                break;
-                            case 3:
-                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value) {
-                                    flag = 3;
-                                }
-                                break;
+                        beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow/2-1);
+                        beta_2_pow = (int)pow(2,beta);
+                        if(!(alpha + a<=beta && beta<= gamma + a && beta_2_pow + alpha_2_pow + gamma_2_pow / 2 >= max_delta_value)){
+                            flag = 1;
                         }
+                        beta = getBitWith( max_delta_value-alpha_2_pow/2-gamma_2_pow-1);
+                        beta_2_pow = (int)pow(2,beta);
+                        if(!(alpha + a>=beta && beta>= gamma + a && beta_2_pow + alpha_2_pow/2 + gamma_2_pow >= max_delta_value)){
+                            flag = 2;
+                        }
+                        beta = getBitWith( max_delta_value-alpha_2_pow/2-gamma_2_pow/2-2);
+                        beta_2_pow = (int)pow(2,beta);
+                        if(!(alpha + a>=beta && beta<= gamma + a && beta_2_pow + alpha_2_pow/2 + gamma_2_pow/2 >= max_delta_value)){
+                            flag = 3;
+                        }
+
+//                        switch (minNumberIndex(alpha + a, beta, gamma + a)) {
+//                            case 1:
+//                                if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
+//                                    flag = 1;
+//                                }
+//                                break;
+//                            case 2:
+//                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
+//                                    flag = 2;
+//                                }
+//                                break;
+//                            case 3:
+//                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value) {
+//                                    flag = 3;
+//                                }
+//                                break;
+//                        }
 
                         if (flag==1||flag==2||flag==3) {
                             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -1097,9 +1113,9 @@ public class PruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 0; file_i < 1; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 4; file_i < 5; file_i++) {
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1124,6 +1140,7 @@ public class PruneBOSTest {
             assert tempList != null;
 
             for (File f : tempList) {
+                f= tempList[3];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1181,7 +1198,7 @@ public class PruneBOSTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-
+break;
             }
             writer.close();
 
@@ -1329,36 +1346,6 @@ public class PruneBOSTest {
 //        }
 //    }
 //
-//    @Test
-//    public void BWSTest2() throws IOException {
-//        int[] testarray = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-//        int max_delta_value = 15;
-//        int[] alpha_count_list = new int[getBitWith(max_delta_value)+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
-//        int[] alpha_box_count_list = new int[getBitWith(max_delta_value)];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
-//        int[] gamma_count_list = new int[getBitWith(max_delta_value)+1];
-//        int[] gamma_box_count_list = new int[getBitWith(max_delta_value)];
-//        for(int value:testarray){
-//            if (value == 0){
-//                alpha_count_list[0]++;
-//            }
-//            else if (value == pow(2,getBitWith(value)-1) && value != 1){
-//                alpha_count_list[getBitWith(value)-1]++;
-//            }else {
-//                alpha_box_count_list[getBitWith(value)-1]++;
-//            }
-//        }
-//
-//        for(int value:testarray){
-//            if (value == max_delta_value){
-//                gamma_count_list[0]++;
-//            }
-//            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1) && max_delta_value - value != 1){
-//                gamma_count_list[getBitWith(max_delta_value-value)-1]++;
-//            }else {
-//                gamma_box_count_list[getBitWith(max_delta_value-value)-1]++;
-//            }
-//        }
-//
-//    }
+
 
 }
