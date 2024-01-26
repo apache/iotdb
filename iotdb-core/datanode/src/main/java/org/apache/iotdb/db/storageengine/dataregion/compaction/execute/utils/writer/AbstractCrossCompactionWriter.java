@@ -28,8 +28,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -141,8 +140,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   /** Write data in batch, only used for aligned device. */
   @Override
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException;
+  public abstract void write(TsBlock tsBlock, int subTaskId) throws IOException;
 
   @Override
   public void endFile() throws IOException {

@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -43,8 +44,10 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {
+  public void write(TsBlock tsBlock, int subTaskId) throws IOException {
+    TimeColumn timestamps = tsBlock.getTimeColumn();
+    Column[] columns = tsBlock.getValueColumns();
+    int batchSize = tsBlock.getPositionCount();
     // Since a batch of data is written, the end time of the current aligned device may exceed the
     // end time of the device in the source file, but no error will be caused
     checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);

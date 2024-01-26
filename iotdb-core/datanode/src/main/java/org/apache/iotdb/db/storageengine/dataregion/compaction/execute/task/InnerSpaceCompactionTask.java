@@ -62,7 +62,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected int sumOfCompactionCount;
   protected long maxFileVersion;
   protected int maxCompactionCount;
-  private File logFile;
+  protected File logFile;
   protected List<TsFileResource> targetTsFileList;
   protected boolean[] isHoldingWriteLock;
   protected long maxModsFileSize;
@@ -150,7 +150,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
-  private void prepare() throws IOException {
+  protected void prepare() throws IOException {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
@@ -203,17 +203,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
-        CompactionUtils.updateProgressIndex(
-            targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
-        CompactionUtils.moveTargetFile(
-            targetTsFileList, true, storageGroupName + "-" + dataRegionId);
-
-        LOGGER.info(
-            "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
-            storageGroupName,
-            dataRegionId);
-        CompactionUtils.combineModsInInnerCompaction(
-            selectedTsFileResourceList, targetTsFileResource);
+        prepareTargetFiles();
 
         if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
           throw new InterruptedException(
@@ -230,8 +220,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             sequence ? selectedTsFileResourceList : Collections.emptyList(),
             sequence ? Collections.emptyList() : selectedTsFileResourceList,
             targetTsFileList,
-            timePartition,
-            sequence);
+            timePartition);
 
         if (targetTsFileResource.isDeleted()) {
           compactionLogger.logEmptyTargetFile(targetTsFileResource);
@@ -275,7 +264,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                   targetTsFileResource.getDatabaseName(),
                   targetTsFileResource.getDataRegionId(),
                   targetTsFileResource.getTsFile().length(),
-                  sequence,
+                  targetTsFileResource.isSeq(),
                   targetTsFileResource.getTsFile().getName());
         } else {
           // target resource is empty after compaction, then delete it
@@ -303,12 +292,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();
     }
     return isSuccess;
+  }
+
+  protected void prepareTargetFiles() throws IOException {
+    CompactionUtils.updateProgressIndex(
+        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+    CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+
+    LOGGER.info(
+        "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+        storageGroupName,
+        dataRegionId);
+    CompactionUtils.combineModsInInnerCompaction(selectedTsFileResourceList, targetTsFileResource);
   }
 
   public void recover() {

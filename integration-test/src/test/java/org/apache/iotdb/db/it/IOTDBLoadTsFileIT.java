@@ -220,6 +220,15 @@ public class IOTDBLoadTsFileIT {
         }
       }
     }
+
+    // try delete after loading. Expect no deadlock
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "delete timeseries %s.%s",
+              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
+    }
   }
 
   @Test

@@ -57,6 +57,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -1316,6 +1317,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus repairData() throws TException {
+    if (!storageEngine.isAllSgReady()) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
+    }
+    IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+    if (!iotdbConfig.isEnableSeqSpaceCompaction() || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "cannot start repair task because inner space compaction is not enabled");
+    }
+    try {
+      if (storageEngine.repairData()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+      }
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override

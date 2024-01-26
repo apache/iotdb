@@ -390,25 +390,25 @@ public class IoTDBConfig {
   private boolean enableTimedFlushSeqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 10 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
-  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+  private long seqMemtableFlushCheckInterval = 30 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
   private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 10 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 30 * 1000L;
 
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
@@ -931,12 +931,6 @@ public class IoTDBConfig {
       Runtime.getRuntime().availableProcessors() / 4 > 0
           ? Runtime.getRuntime().availableProcessors() / 4
           : 1;
-
-  /**
-   * The maximum number of clients that can be idle for a node in a clientManager. When the number
-   * of idle clients on a node exceeds this number, newly returned clients will be released
-   */
-  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
 
   /**
    * The maximum number of clients that can be allocated for a node in a clientManager. When the
@@ -3041,14 +3035,6 @@ public class IoTDBConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
-  }
-
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   public int getSelectorNumOfClientManager() {
