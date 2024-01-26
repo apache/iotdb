@@ -31,6 +31,9 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -42,6 +45,8 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -169,6 +174,21 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
                     ((PipeUnsetSchemaTemplatePlan) plan).getName(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getPath())
                 .setIsGeneratedByPipe(true));
+      case PipeDeleteTimeSeries:
+        return configManager.deleteTimeSeries(
+            new TDeleteTimeSeriesReq(
+                    getPseudoQueryId(), ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                .setIsGeneratedByPipe(true));
+      case PipeDeleteLogicalView:
+        return configManager.deleteLogicalView(
+            new TDeleteLogicalViewReq(
+                    getPseudoQueryId(), ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                .setIsGeneratedByPipe(true));
+      case PipeDeactivateTemplate:
+        return configManager
+            .getProcedureManager()
+            .deactivateTemplate(
+                getPseudoQueryId(), ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(), true);
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

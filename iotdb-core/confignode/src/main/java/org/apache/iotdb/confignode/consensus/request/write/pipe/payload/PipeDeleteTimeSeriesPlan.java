@@ -21,51 +21,41 @@ package org.apache.iotdb.confignode.consensus.request.write.pipe.payload;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * This plan is the transmitted version of {@link UnsetSchemaTemplatePlan} to carry adequate message
- * to the receiver. Note that this plan will not be executed by the consensus layer directly.
- */
-public class PipeUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
-  private String name;
-  private String path;
+public class PipeDeleteTimeSeriesPlan extends ConfigPhysicalPlan {
 
-  public PipeUnsetSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.PipeUnsetTemplate);
+  private ByteBuffer patternTreeBytes;
+
+  public PipeDeleteTimeSeriesPlan() {
+    super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
   }
 
-  public PipeUnsetSchemaTemplatePlan(String name, String path) {
-    super(ConfigPhysicalPlanType.PipeUnsetTemplate);
-    this.name = name;
-    this.path = path;
+  public PipeDeleteTimeSeriesPlan(ByteBuffer patternTreeBytes) {
+    super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
+    patternTreeBytes.flip();
+    this.patternTreeBytes = patternTreeBytes;
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public String getPath() {
-    return path;
+  public ByteBuffer getPatternTreeBytes() {
+    return patternTreeBytes;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(name, stream);
-    ReadWriteIOUtils.write(path, stream);
+    ReadWriteIOUtils.write(patternTreeBytes, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    name = ReadWriteIOUtils.readString(buffer);
-    path = ReadWriteIOUtils.readString(buffer);
+    patternTreeBytes = ByteBuffer.wrap(ReadWriteIOUtils.readBinary(buffer).getValues());
   }
 
   @Override
@@ -76,17 +66,20 @@ public class PipeUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeUnsetSchemaTemplatePlan that = (PipeUnsetSchemaTemplatePlan) obj;
-    return name.equals(that.name) && path.equals(that.path);
+    PipeDeleteTimeSeriesPlan that = (PipeDeleteTimeSeriesPlan) obj;
+    return Arrays.equals(patternTreeBytes.array(), that.patternTreeBytes.array());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, path);
+    return Objects.hash(patternTreeBytes);
   }
 
   @Override
   public String toString() {
-    return "PipeUnsetSchemaTemplatePlan{" + "name='" + name + "'path='" + path + "'}";
+    return "PipeDeleteTimeSeriesPlan{"
+        + "patternTreeBytes='"
+        + Arrays.toString(patternTreeBytes.array())
+        + "'}";
   }
 }

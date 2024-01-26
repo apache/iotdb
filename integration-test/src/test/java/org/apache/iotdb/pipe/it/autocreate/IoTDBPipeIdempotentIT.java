@@ -155,6 +155,19 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
+  public void testDeleteTimeSeriesIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
+            "create timeseries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN"),
+        "delete timeseries root.**",
+        "create timeseries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("1,"));
+  }
+
+  @Test
   public void testCreateTemplateIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
@@ -228,6 +241,22 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         "count timeseries",
         "count(timeseries),",
         Collections.singleton("6,"));
+  }
+
+  @Test
+  public void testDeactivateTemplateIdempotent() throws Exception {
+    testIdempotent(
+        Arrays.asList(
+            "create schema template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
+            "create database root.sg1",
+            "set schema template t1 to root.sg1",
+            "create timeseries using device template on root.sg1.d1",
+            "create timeseries using device template on root.sg1.d2"),
+        "delete timeseries of schema template t1 from root.sg1.*",
+        "create timeseries using device template on root.sg1.d3",
+        "count timeseries",
+        "count(timeseries),",
+        Collections.singleton("3,"));
   }
 
   @Test

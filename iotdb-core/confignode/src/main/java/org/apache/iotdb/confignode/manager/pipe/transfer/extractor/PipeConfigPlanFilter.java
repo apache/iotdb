@@ -87,6 +87,16 @@ public class PipeConfigPlanFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeUnsetTemplate));
 
       PLAN_MAP.put(
+          new PartialPath("schema.timeseries.ordinary.delete"),
+          Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteTimeSeries));
+      PLAN_MAP.put(
+          new PartialPath("schema.timeseries.view.drop"),
+          Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteLogicalView));
+      PLAN_MAP.put(
+          new PartialPath("schema.timeseries.template.deactivate"),
+          Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
+
+      PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
 
       PLAN_MAP.put(
