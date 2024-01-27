@@ -119,7 +119,7 @@ public class MaxValueAggrResult extends AggregateResult {
   protected void serializeSpecificFields(OutputStream outputStream) {}
 
   /** @author Yuyuan Kang */
-  private void updateResult(MinMaxInfo maxInfo) {
+  public void updateResult(MinMaxInfo maxInfo) {
     if (maxInfo == null || maxInfo.val == null) {
       return;
     }

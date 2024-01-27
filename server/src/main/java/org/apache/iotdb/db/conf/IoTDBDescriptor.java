@@ -539,6 +539,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty("enable_CPV", Boolean.toString(conf.isEnableCPV())).trim()));
 
+      conf.setEnableTri(properties.getProperty("enable_Tri", conf.getEnableTri()).trim());
+
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(
               properties

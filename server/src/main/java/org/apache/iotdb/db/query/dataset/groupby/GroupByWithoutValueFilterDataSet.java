@@ -113,7 +113,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
               getGroupByExecutor(
                   path,
                   groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                  dataTypes.get(i),
+                  dataTypes.get(
+                      i), // fix bug: here use the aggregation type as the series data type
                   context,
                   timeFilter.copy(),
                   null,
@@ -200,7 +201,29 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    if (CONFIG.isEnableCPV()) {
+    if (CONFIG.getEnableTri().equals("MinMax")) {
+      // TODO
+      return new LocalGroupByExecutorTri_MinMax(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
+      // TODO
+      return new LocalGroupByExecutor(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
+      // TODO
+      return new LocalGroupByExecutor(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("LTTB")) {
+      // TODO
+      return new LocalGroupByExecutor(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    } else if (CONFIG.getEnableTri().equals("ILTS")) {
+      // TODO
+      return new LocalGroupByExecutor(
+          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    }
+    // deprecated below
+    else if (CONFIG.isEnableCPV()) {
       if (TSFileDescriptor.getInstance().getConfig().isEnableMinMaxLSM()) { // MinMax-LSM
         IOMonitor2.dataSetType =
             DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_EnableMinMaxLSM;

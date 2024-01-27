@@ -76,9 +76,10 @@ public class MyTest1 {
     //    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
 
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
-    TSFileDescriptor.getInstance().getConfig().setUseMad(true);
 
+    TSFileDescriptor.getInstance().getConfig().setUseMad(true);
     TSFileDescriptor.getInstance().getConfig().setErrorParam(10);
+    TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
 
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);

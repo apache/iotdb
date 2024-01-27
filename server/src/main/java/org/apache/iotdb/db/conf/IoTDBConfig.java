@@ -431,7 +431,9 @@ public class IoTDBConfig {
   /** Is performance tracing enable. */
   private boolean enablePerformanceTracing = false;
 
-  private boolean enableCPV = true;
+  private boolean enableCPV = false;
+
+  private String enableTri = ""; // MinMax, MinMaxLTTB, M4LTTB, LTTB, ILTS
 
   /** The display of stat performance interval in ms. */
   private long performanceStatDisplayInterval = 60000;
@@ -1386,12 +1388,20 @@ public class IoTDBConfig {
     return enableCPV;
   }
 
+  public String getEnableTri() {
+    return enableTri;
+  }
+
   public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
     this.enablePerformanceTracing = enablePerformanceTracing;
   }
 
   public void setEnableCPV(boolean enableCPV) {
     this.enableCPV = enableCPV;
+  }
+
+  public void setEnableTri(String enableTri) {
+    this.enableTri = enableTri;
   }
 
   public long getPerformanceStatDisplayInterval() {

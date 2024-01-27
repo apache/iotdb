@@ -123,7 +123,7 @@ public class MinValueAggrResult extends AggregateResult {
   protected void serializeSpecificFields(OutputStream outputStream) {}
 
   /** @author Yuyuan Kang */
-  private void updateResult(MinMaxInfo minInfo) {
+  public void updateResult(MinMaxInfo minInfo) {
     if (minInfo == null || minInfo.val == null) {
       return;
     }
