@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 import static java.lang.Math.pow;
 
-public class RLEExactBOSTest {
+public class RLEExactBOSTestAllValue {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -546,8 +546,8 @@ public class RLEExactBOSTest {
         int final_k_end_value = max_delta_value+1;
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value ) * (block_size));
-        //int end_value_i = start_value_i;
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value -2) * (block_size));
+        //int k_start_value = -1;
         for (int end_value_i = 1; end_value_i < unique_value_count; end_value_i++) {
 
             int k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
@@ -558,8 +558,6 @@ public class RLEExactBOSTest {
             int k_start_value = -1;
             cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
             cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
-            if (cur_k1 != 0)
-                cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
             if (cur_k1 + cur_k2 != block_size)
                 cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
             if (cur_k2 != 0)
@@ -568,7 +566,6 @@ public class RLEExactBOSTest {
 
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
-                final_k_start_value = k_start_value;
                 final_k_end_value = k_end_value;
             }
 //                if (k_end_value == max_delta_value)
@@ -577,50 +574,26 @@ public class RLEExactBOSTest {
 
 
         int start_value_size =  unique_value_count; //valueMap.size();//start_value.size(); //
-        for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) { //start_value_size
-            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
-
+        int k_start_value_cur_end = getUniqueValue(sorted_value_list[0], left_shift) ;
+        for (int start_value_i = 0; start_value_i < start_value_size-1; start_value_i++) { //start_value_size
+            int k_start_value_start = k_start_value_cur_end; //getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
+            k_start_value_cur_end = getUniqueValue(sorted_value_list[start_value_i+1], left_shift);
             int cur_k1 = getCount(sorted_value_list[start_value_i],mask);
-//                if (start_value_i != 0) {
-//                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
-//                }
-            //int end_value_i = start_value_i;
-            int k_end_value;
-            int cur_bits;
-            int cur_k2;
-            k_end_value = max_delta_value + 1;
+            for(int k_start_value = k_start_value_start;k_start_value<k_start_value_cur_end;k_start_value++){
+                int k_end_value;
+                int cur_bits;
+                int cur_k2;
 
-            cur_bits = 0;
-            cur_k2 = 0;
-            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
-            if (cur_k1 != 0)
-                cur_bits += cur_k1 * getBitWith(k_start_value + 1);//left_max
-            if (cur_k1 + cur_k2 != block_size)
-                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
-            if (cur_k2 != 0)
-                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
-
-
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value;
-                final_k_end_value = k_end_value;
-            }
-
-            for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
-
-                k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+                // ----------------------------------------x_u=x_max+1
+                k_end_value = max_delta_value + 1;
 
                 cur_bits = 0;
-                cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-
-                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
+                cur_k2 = 0;
+                cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
                 if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                    cur_bits += cur_k1 * getBitWith(k_start_value + 1);//left_max
                 if (cur_k1 + cur_k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value-2);
-                if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
 
 
                 if (cur_bits < min_bits) {
@@ -628,10 +601,42 @@ public class RLEExactBOSTest {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
+               // ---------x_u <= x_max
+
+
+                int end_value_i_cur_start = getUniqueValue(sorted_value_list[unique_value_count - 1], left_shift) ;
+                for (int end_value_i = unique_value_count - 1; end_value_i > start_value_i ; end_value_i--) {
+                    int k_end_value_end =end_value_i_cur_start;
+                    end_value_i_cur_start = getUniqueValue(sorted_value_list[end_value_i-1], left_shift);
+
+
+                    cur_k2 = block_size - getCount(sorted_value_list[end_value_i],mask);
+                    for(k_end_value = k_end_value_end;k_end_value> end_value_i_cur_start;k_end_value--) {
+                        cur_bits = 0;
+                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
+                        if (cur_k1 != 0)
+                            cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                        if (cur_k1 + cur_k2 != block_size)
+                            cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value - 2);
+                        if (cur_k2 != 0)
+                            cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+
+
+                        if (cur_bits < min_bits) {
+                            min_bits = cur_bits;
+                            final_k_start_value = k_start_value;
+                            final_k_end_value = k_end_value;
+                        }
+                    }
+                }
+
+
+
 //                if (k_end_value == max_delta_value)
 //                    break;
             }
         }
+
 //        if(block_i==3){
 //            System.out.println(final_k_start_value);
 //            System.out.println(final_k_end_value);
@@ -958,10 +963,10 @@ public class RLEExactBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 500;
-//        for (int file_i = 0; file_i < 1; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 1;
+        for (int file_i = 0; file_i < 1; file_i++) {
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
