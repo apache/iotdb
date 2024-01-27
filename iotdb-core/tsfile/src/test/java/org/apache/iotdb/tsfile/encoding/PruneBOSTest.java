@@ -611,8 +611,13 @@ public class PruneBOSTest {
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-            cur_k1_close += alpha_count_list[alpha+1]; // x_min+2^{alpha_i}
-            cur_k1_close += cur_group_alpha.count;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
+            int pow_2_alpha_i = alpha_count_list[alpha+1];
+            int pow_2_alpha_i_1_to_2_alpha_i = cur_group_alpha.count;
+            if(pow_2_alpha_i_1_to_2_alpha_i+pow_2_alpha_i==0)
+                continue;
+
+            cur_k1_close += pow_2_alpha_i; // x_min+2^{alpha_i}
+            cur_k1_close += pow_2_alpha_i_1_to_2_alpha_i;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
 
 
             int cur_bits;
@@ -627,9 +632,14 @@ public class PruneBOSTest {
 
                 int k_end_value_close = max_delta_value - (int) pow(2,gamma);
                 Group cur_group_gamma = groupU[gamma];
+                int pow_2_gamma_i = gamma_count_list[gamma+1];
+                int pow_2_gamma_i_1_to_2_gamma_i = cur_group_gamma.count;
+                if(pow_2_gamma_i_1_to_2_gamma_i+pow_2_gamma_i==0)
+                    continue;
+                cur_k2_close += pow_2_gamma_i; // x_max-2^{gamma_i}
+                cur_k2_close += pow_2_gamma_i_1_to_2_gamma_i;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
+
                 cur_bits = 0;
-                cur_k2_close += gamma_count_list[gamma+1]; // x_max-2^{gamma_i}
-                cur_k2_close += cur_group_gamma.count;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
                 int flag_C = 0;
 
                 cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
@@ -1055,8 +1065,8 @@ public class PruneBOSTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();

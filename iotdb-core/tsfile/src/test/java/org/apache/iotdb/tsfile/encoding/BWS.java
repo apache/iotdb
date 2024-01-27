@@ -646,8 +646,13 @@ public class BWS {
         for (int alpha = 1; alpha  <= max_bit-1; alpha++) { //start_value_size
             //C1 k1 close k2 close
             k_start_value_close = (int) pow(2,alpha);//close
-            cur_k1_close += alpha_count_list[alpha + 1];
-            cur_k1_close += alpha_box_count_list[alpha];
+            int pow_2_alpha_i = alpha_count_list[alpha+1];
+            int pow_2_alpha_i_1_to_2_alpha_i = alpha_box_count_list[alpha];
+//            if(pow_2_alpha_i_1_to_2_alpha_i+pow_2_alpha_i==0)
+//                continue;
+
+            cur_k1_close += pow_2_alpha_i; // x_min+2^{alpha_i}
+            cur_k1_close += pow_2_alpha_i_1_to_2_alpha_i;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
 
 
             int k_end_value_close;
@@ -718,8 +723,12 @@ public class BWS {
                 int flag = 0;
                 k_end_value_close = max_delta_value - (int) pow(2,gamma);
                 cur_bits = 0;
-                cur_k2_close += gamma_count_list[gamma+1];
-                cur_k2_close += gamma_box_count_list[gamma];
+                int pow_2_gamma_i = gamma_count_list[gamma+1];
+                int pow_2_gamma_i_1_to_2_gamma_i = gamma_box_count_list[gamma];
+//                if(pow_2_gamma_i_1_to_2_gamma_i+pow_2_gamma_i==0)
+//                    continue;
+                cur_k2_close += pow_2_gamma_i; // x_max-2^{gamma_i}
+                cur_k2_close += pow_2_gamma_i_1_to_2_gamma_i;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
 
                 cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
                 if (cur_k1_close != 0)
@@ -1090,7 +1099,7 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 1;
+        int repeatTime2 = 500;
         for (int file_i = 0; file_i < 1; file_i++) {
 
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
