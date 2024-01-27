@@ -365,7 +365,7 @@ public class IoTDBMaxByIT {
           };
       resultSetEqualTest(
           String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,13),4ms) order by time desc",
+              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,14),4ms) order by time desc",
               y, y, y, y, y, y),
           expectedHeader,
           retArray2);
