@@ -1068,7 +1068,7 @@ public class BWS {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 10;
+                int repeatTime2 = 500;
 
                 int length = 0;
 
