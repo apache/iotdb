@@ -73,6 +73,10 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(4, 4, 4, 4, 4, false, \"4\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(8, 3, 3, 3, 3, false, \"3\")",
         "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(8, 8, 8, 8, 8, false, \"4\")",
+        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(12, 3, 3, 3, 3, false, \"3\")",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(12, 9, 9, 9, 9, false, \"4\")",
+        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(13, 4, 4, 4, 4, false, \"4\")",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(13, 9, 9, 9, 9, false, \"4\")",
         "flush",
 
         // For Align By Device
@@ -96,6 +100,10 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(2, 2, 2, 2, 2, true, \"4\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(3, 3, 3, 3, 3, false, \"3\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(4, 1, 1, 1, 1, false, \"1\")",
+        "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(12, 3, 3, 3, 3, false, \"3\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(12, 9, 9, 9, 9, false, \"1\")",
+        "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(13, 4, 4, 4, 4, false, \"4\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(13, 9, 9, 9, 9, false, \"1\")",
         "flush"
       };
 
@@ -321,7 +329,7 @@ public class IoTDBMaxByIT {
   }
 
   @Test
-  public void testMaxByWithGroupBy() {
+  public void testMaxByWithGroupByTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] expectedHeader =
@@ -334,17 +342,33 @@ public class IoTDBMaxByIT {
             "max_by(root.db.d1.x5, root.db.d1.y2)",
             "max_by(root.db.d1.x6, root.db.d1.y2)",
           };
-      String[] retArray =
+      String y = "y2";
+      // order by time ASC
+      String[] retArray1 =
           new String[] {
             "0,3,3,3.0,3.0,false,3,", "4,null,null,null,null,null,null,", "8,3,3,3.0,3.0,false,3,"
           };
-      String y = "y2";
       resultSetEqualTest(
           String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms)",
+              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms) ",
               y, y, y, y, y, y),
           expectedHeader,
-          retArray);
+          retArray1);
+
+      // order by time DESC
+      String[] retArray2 =
+          new String[] {
+            "12,3,3,3.0,3.0,false,3,",
+            "8,3,3,3.0,3.0,false,3,",
+            "4,null,null,null,null,null,null,",
+            "0,3,3,3.0,3.0,false,3,"
+          };
+      resultSetEqualTest(
+          String.format(
+              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,13),4ms) order by time desc",
+              y, y, y, y, y, y),
+          expectedHeader,
+          retArray2);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -377,7 +401,7 @@ public class IoTDBMaxByIT {
             };
         resultSetEqualTest(
             String.format(
-                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms,2ms)",
+                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms,2ms) ",
                 y, y, y, y, y, y),
             expectedHeader,
             retArray);
@@ -388,16 +412,62 @@ public class IoTDBMaxByIT {
     }
   }
 
-  // test max_by different types of x
-  // test max_by time
-  // test max_by with expression
-  // test max_by align by device
-  // test max_by group by time
-  // test max_by sliding window
-  // test max_by aligned series
-  // test max_by multi data region
-  // test max_by group by level
-  // test max_by having
+  @Test
+  public void testMaxByWithHaving() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] expectedHeader =
+          new String[] {
+            TIMESTAMP_STR,
+            "max_by(root.db.d1.x1, root.db.d1.y2)",
+            "max_by(root.db.d1.x2, root.db.d1.y2)",
+            "max_by(root.db.d1.x3, root.db.d1.y2)",
+            "max_by(root.db.d1.x4, root.db.d1.y2)",
+            "max_by(root.db.d1.x5, root.db.d1.y2)",
+            "max_by(root.db.d1.x6, root.db.d1.y2)",
+          };
+      String[] retArray = new String[] {"8,3,3,3.0,3.0,false,3,"};
+      String y = "y2";
+      resultSetEqualTest(
+          String.format(
+              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms) having max_by(time, %s) > 4",
+              y, y, y, y, y, y, y),
+          expectedHeader,
+          retArray);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMaxByWithGroupByLevel() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] retArray = new String[] {"3,3,3.0,3.0,false,3,"};
+      String[] yArray = new String[] {"y1", "y2", "y3", "y4"};
+      for (String y : yArray) {
+        String[] expectedHeader =
+            new String[] {
+              String.format("max_by(root.*.*.x1, root.*.*.%s)", y),
+              String.format("max_by(root.*.*.x2, root.*.*.%s)", y),
+              String.format("max_by(root.*.*.x3, root.*.*.%s)", y),
+              String.format("max_by(root.*.*.x4, root.*.*.%s)", y),
+              String.format("max_by(root.*.*.x5, root.*.*.%s)", y),
+              String.format("max_by(root.*.*.x6, root.*.*.%s)", y),
+            };
+        resultSetEqualTest(
+            String.format(
+                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.** group by level = 0",
+                y, y, y, y, y, y),
+            expectedHeader,
+            retArray);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
   /** @return yInput -> expectedHeader */
   private Map<String, String[]> generateExpectedHeadersForMaxByTest(

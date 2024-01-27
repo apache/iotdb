@@ -265,6 +265,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -1477,9 +1478,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getGroupByLevelDescriptors();
     for (CrossSeriesAggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+      // Use the first set of InputExpression
       List<TSDataType> inputDataTypes =
-          descriptor.getInputExpressions().stream()
-              .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+          IntStream.range(0, descriptor.getExpressionNumOfOneInput())
+              .mapToObj(
+                  x ->
+                      context
+                          .getTypeProvider()
+                          .getType(descriptor.getInputExpressions().get(x).getExpressionString()))
               .collect(Collectors.toList());
       aggregators.add(
           new Aggregator(

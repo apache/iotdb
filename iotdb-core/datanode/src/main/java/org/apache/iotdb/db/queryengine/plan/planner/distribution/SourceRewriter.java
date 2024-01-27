@@ -1117,9 +1117,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (Expression exp : originalDescriptor.getInputExpressions()) {
         columnNameToExpression.put(exp.getExpressionString(), exp);
       }
-      columnNameToExpression.put(
-          originalDescriptor.getOutputExpression().getExpressionString(),
-          originalDescriptor.getOutputExpression());
+      originalDescriptor
+          .getOutputExpressions()
+          .forEach(x -> columnNameToExpression.put(x.getExpressionString(), x));
     }
 
     context.setColumnNameToExpression(columnNameToExpression);
@@ -1285,9 +1285,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
 
-        if (childrenExpressionSet.contains(originalDescriptor.getOutputExpression())) {
-          descriptorExpressions.add(originalDescriptor.getOutputExpression());
-        }
+        originalDescriptor
+            .getOutputExpressions()
+            .forEach(
+                x -> {
+                  if (childrenExpressionSet.contains(x)) {
+                    descriptorExpressions.add(x);
+                  }
+                });
 
         for (Expression exp : originalDescriptor.getInputExpressions()) {
           if (childrenExpressionSet.contains(exp)) {

@@ -122,17 +122,21 @@ public class SlidingWindowAggregatorFactory {
     // Intermediate Value of maxBy is a byte array: | y | xNull | x |
     maxByComparators.put(
         TSDataType.INT32,
-        Comparator.comparingInt(o -> BytesUtils.bytesToInt(o.getBinary(0).getValues(), 0)));
+        Comparator.comparingInt(
+            o -> BytesUtils.bytesToInt(o.getBinary(0).getValues(), Long.BYTES)));
     maxByComparators.put(
         TSDataType.INT64,
         Comparator.comparingLong(
-            o -> BytesUtils.bytesToLongFromOffset(o.getBinary(0).getValues(), Long.BYTES, 0)));
+            o ->
+                BytesUtils.bytesToLongFromOffset(
+                    o.getBinary(0).getValues(), Long.BYTES, Long.BYTES)));
     maxByComparators.put(
         TSDataType.FLOAT,
-        Comparator.comparing(o -> BytesUtils.bytesToFloat(o.getBinary(0).getValues(), 0)));
+        Comparator.comparing(o -> BytesUtils.bytesToFloat(o.getBinary(0).getValues(), Long.BYTES)));
     maxByComparators.put(
         TSDataType.DOUBLE,
-        Comparator.comparingDouble(o -> BytesUtils.bytesToDouble(o.getBinary(0).getValues(), 0)));
+        Comparator.comparingDouble(
+            o -> BytesUtils.bytesToDouble(o.getBinary(0).getValues(), Long.BYTES)));
   }
 
   public static SlidingWindowAggregator createSlidingWindowAggregator(

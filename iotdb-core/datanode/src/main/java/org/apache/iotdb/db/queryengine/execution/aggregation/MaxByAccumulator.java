@@ -52,6 +52,8 @@ public class MaxByAccumulator implements Accumulator {
 
   private boolean initResult;
 
+  private long yTimeStamp = Long.MAX_VALUE;
+
   private static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy: %s";
 
   public MaxByAccumulator(TSDataType xDataType, TSDataType yDataType) {
@@ -138,6 +140,7 @@ public class MaxByAccumulator implements Accumulator {
     xNull = true;
     this.xResult.reset();
     this.yMaxValue.reset();
+    yTimeStamp = Long.MAX_VALUE;
   }
 
   @Override
@@ -161,14 +164,17 @@ public class MaxByAccumulator implements Accumulator {
         continue;
       }
       if (!column[2].isNull(i)) {
-        updateIntResult(column[2].getInt(i), column[1], i);
+        updateIntResult(column[0].getLong(i), column[2].getInt(i), column[1], i);
       }
     }
   }
 
-  private void updateIntResult(int yMaxVal, Column xColumn, int xIndex) {
-    if (!initResult || yMaxVal > yMaxValue.getInt()) {
+  private void updateIntResult(long time, int yMaxVal, Column xColumn, int xIndex) {
+    if (!initResult
+        || yMaxVal > yMaxValue.getInt()
+        || (yMaxVal == yMaxValue.getInt() && time < yTimeStamp)) {
       initResult = true;
+      yTimeStamp = time;
       yMaxValue.setInt(yMaxVal);
       updateX(xColumn, xIndex);
     }
@@ -180,14 +186,17 @@ public class MaxByAccumulator implements Accumulator {
         continue;
       }
       if (!column[2].isNull(i)) {
-        updateLongResult(column[2].getLong(i), column[1], i);
+        updateLongResult(column[0].getLong(i), column[2].getLong(i), column[1], i);
       }
     }
   }
 
-  private void updateLongResult(long yMaxVal, Column xColumn, int xIndex) {
-    if (!initResult || yMaxVal > yMaxValue.getLong()) {
+  private void updateLongResult(long time, long yMaxVal, Column xColumn, int xIndex) {
+    if (!initResult
+        || yMaxVal > yMaxValue.getLong()
+        || (yMaxVal == yMaxValue.getLong() && time < yTimeStamp)) {
       initResult = true;
+      yTimeStamp = time;
       yMaxValue.setLong(yMaxVal);
       updateX(xColumn, xIndex);
     }
@@ -199,14 +208,17 @@ public class MaxByAccumulator implements Accumulator {
         continue;
       }
       if (!column[2].isNull(i)) {
-        updateFloatResult(column[2].getFloat(i), column[1], i);
+        updateFloatResult(column[0].getLong(i), column[2].getFloat(i), column[1], i);
       }
     }
   }
 
-  private void updateFloatResult(float yMaxVal, Column xColumn, int xIndex) {
-    if (!initResult || yMaxVal > yMaxValue.getFloat()) {
+  private void updateFloatResult(long time, float yMaxVal, Column xColumn, int xIndex) {
+    if (!initResult
+        || yMaxVal > yMaxValue.getFloat()
+        || (yMaxVal == yMaxValue.getFloat() && time < yTimeStamp)) {
       initResult = true;
+      yTimeStamp = time;
       yMaxValue.setFloat(yMaxVal);
       updateX(xColumn, xIndex);
     }
@@ -218,14 +230,17 @@ public class MaxByAccumulator implements Accumulator {
         continue;
       }
       if (!column[2].isNull(i)) {
-        updateDoubleResult(column[2].getDouble(i), column[1], i);
+        updateDoubleResult(column[0].getLong(i), column[2].getDouble(i), column[1], i);
       }
     }
   }
 
-  private void updateDoubleResult(double yMaxVal, Column xColumn, int xIndex) {
-    if (!initResult || yMaxVal > yMaxValue.getDouble()) {
+  private void updateDoubleResult(long time, double yMaxVal, Column xColumn, int xIndex) {
+    if (!initResult
+        || yMaxVal > yMaxValue.getDouble()
+        || (yMaxVal == yMaxValue.getDouble() && time < yTimeStamp)) {
       initResult = true;
+      yTimeStamp = time;
       yMaxValue.setDouble(yMaxVal);
       updateX(xColumn, xIndex);
     }
@@ -295,6 +310,7 @@ public class MaxByAccumulator implements Accumulator {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
+      dataOutputStream.writeLong(yTimeStamp);
       writeIntermediateToStream(yDataType, yMaxValue, dataOutputStream);
       dataOutputStream.writeBoolean(xNull);
       if (!xNull) {
@@ -335,34 +351,35 @@ public class MaxByAccumulator implements Accumulator {
   }
 
   private void updateFromBytesIntermediateInput(byte[] bytes) {
-    int offset = 0;
+    long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
+    int offset = Long.BYTES;
     // Use Column to store x value
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(xDataType));
     ColumnBuilder columnBuilder = builder.getValueColumnBuilders()[0];
     switch (yDataType) {
       case INT32:
-        int intMaxVal = BytesUtils.bytesToInt(bytes, 0);
+        int intMaxVal = BytesUtils.bytesToInt(bytes, offset);
         offset += Integer.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateIntResult(intMaxVal, columnBuilder.build(), 0);
+        updateIntResult(time, intMaxVal, columnBuilder.build(), 0);
         break;
       case INT64:
-        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
+        long longMaxVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
         offset += Long.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateLongResult(longMaxVal, columnBuilder.build(), 0);
+        updateLongResult(time, longMaxVal, columnBuilder.build(), 0);
         break;
       case FLOAT:
-        float floatMaxVal = BytesUtils.bytesToFloat(bytes, 0);
+        float floatMaxVal = BytesUtils.bytesToFloat(bytes, offset);
         offset += Float.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateFloatResult(floatMaxVal, columnBuilder.build(), 0);
+        updateFloatResult(time, floatMaxVal, columnBuilder.build(), 0);
         break;
       case DOUBLE:
-        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, 0);
+        double doubleMaxVal = BytesUtils.bytesToDouble(bytes, offset);
         offset += Long.BYTES;
         readXFromBytesIntermediateInput(bytes, offset, columnBuilder);
-        updateDoubleResult(doubleMaxVal, columnBuilder.build(), 0);
+        updateDoubleResult(time, doubleMaxVal, columnBuilder.build(), 0);
         break;
       case TEXT:
       case BOOLEAN:

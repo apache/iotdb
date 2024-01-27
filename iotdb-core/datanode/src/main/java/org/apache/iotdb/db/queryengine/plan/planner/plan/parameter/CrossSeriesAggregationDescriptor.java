@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 
 public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
-  private final Expression outputExpression;
+  private final List<Expression> outputExpressions;
 
   /**
    * Records how many Expressions are in one input, used for calculation of inputColumnNames
@@ -51,9 +52,9 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
       List<Expression> inputExpressions,
       int numberOfInput,
       Map<String, String> inputAttributes,
-      Expression outputExpression) {
+      List<Expression> outputExpressions) {
     super(aggregationFuncName, step, inputExpressions, inputAttributes);
-    this.outputExpression = outputExpression;
+    this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = inputExpressions.size() / numberOfInput;
   }
 
@@ -66,23 +67,23 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
       AggregationStep step,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      Expression outputExpression) {
+      List<Expression> outputExpressions) {
     super(aggregationFuncName, step, inputExpressions, inputAttributes);
-    this.outputExpression = outputExpression;
+    this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = 1;
   }
 
   public CrossSeriesAggregationDescriptor(
       AggregationDescriptor aggregationDescriptor,
-      Expression outputExpression,
+      List<Expression> outputExpressions,
       int expressionNumOfOneInput) {
     super(aggregationDescriptor);
-    this.outputExpression = outputExpression;
+    this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = expressionNumOfOneInput;
   }
 
-  public Expression getOutputExpression() {
-    return outputExpression;
+  public List<Expression> getOutputExpressions() {
+    return outputExpressions;
   }
 
   /**
@@ -97,11 +98,16 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   @Override
   public String getParametersString() {
     if (parametersString == null) {
-      StringBuilder builder = new StringBuilder(outputExpression.getExpressionString());
-      for (int i = 1; i < expressionNumOfOneInput; i++) {
-        builder.append(", ").append(inputExpressions.get(i).getExpressionString());
+      StringBuilder builder;
+      if (TAggregationType.COUNT_IF.equals(aggregationType)) {
+        builder = new StringBuilder(outputExpressions.get(0).getExpressionString());
+        for (int i = 1; i < expressionNumOfOneInput; i++) {
+          builder.append(", ").append(inputExpressions.get(i).getExpressionString());
+        }
+        appendAttributes(builder);
+      } else {
+        builder = getOutputExpressionsAsBuilder();
       }
-      appendAttributes(builder);
       parametersString = builder.toString();
     }
     return parametersString;
@@ -151,31 +157,48 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return builder.toString();
   }
 
+  public StringBuilder getOutputExpressionsAsBuilder() {
+    StringBuilder builder = new StringBuilder(outputExpressions.get(0).getExpressionString());
+    for (int i = 1; i < outputExpressions.size(); i++) {
+      builder.append(", ").append(outputExpressions.get(i).getExpressionString());
+    }
+    appendAttributes(builder);
+    return builder;
+  }
+
   @Override
   public CrossSeriesAggregationDescriptor deepClone() {
-    return new CrossSeriesAggregationDescriptor(this, outputExpression, expressionNumOfOneInput);
+    return new CrossSeriesAggregationDescriptor(this, outputExpressions, expressionNumOfOneInput);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    Expression.serialize(outputExpression, byteBuffer);
+    ReadWriteIOUtils.write(outputExpressions.size(), byteBuffer);
+    outputExpressions.forEach(x -> Expression.serialize(x, byteBuffer));
     ReadWriteIOUtils.write(expressionNumOfOneInput, byteBuffer);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    Expression.serialize(outputExpression, stream);
+    ReadWriteIOUtils.write(outputExpressions.size(), stream);
+    for (Expression x : outputExpressions) {
+      Expression.serialize(x, stream);
+    }
     ReadWriteIOUtils.write(expressionNumOfOneInput, stream);
   }
 
   public static CrossSeriesAggregationDescriptor deserialize(ByteBuffer byteBuffer) {
     AggregationDescriptor aggregationDescriptor = AggregationDescriptor.deserialize(byteBuffer);
-    Expression outputExpression = Expression.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Expression> outputExpressions = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      outputExpressions.add(Expression.deserialize(byteBuffer));
+    }
     int expressionNumOfOneInput = ReadWriteIOUtils.readInt(byteBuffer);
     return new CrossSeriesAggregationDescriptor(
-        aggregationDescriptor, outputExpression, expressionNumOfOneInput);
+        aggregationDescriptor, outputExpressions, expressionNumOfOneInput);
   }
 
   @Override
@@ -190,11 +213,15 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
       return false;
     }
     CrossSeriesAggregationDescriptor that = (CrossSeriesAggregationDescriptor) o;
-    return Objects.equals(outputExpression, that.outputExpression);
+    return Objects.equals(outputExpressions, that.outputExpressions);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), outputExpression);
+    return Objects.hash(super.hashCode(), outputExpressions);
+  }
+
+  public int getExpressionNumOfOneInput() {
+    return expressionNumOfOneInput;
   }
 }

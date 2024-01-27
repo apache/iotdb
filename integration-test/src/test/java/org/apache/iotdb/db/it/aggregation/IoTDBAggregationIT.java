@@ -992,7 +992,7 @@ public class IoTDBAggregationIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "SELECT max_value(time, s0) "
+              "SELECT max_by(time, s0) "
                   + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000")) {
         cnt = 0;
         while (resultSet.next()) {
@@ -1005,8 +1005,7 @@ public class IoTDBAggregationIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery(
-              "SELECT max_value(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
+          statement.executeQuery("SELECT max_by(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("time", d0s0));

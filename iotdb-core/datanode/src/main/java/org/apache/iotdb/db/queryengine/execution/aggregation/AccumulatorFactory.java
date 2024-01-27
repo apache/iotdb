@@ -133,7 +133,7 @@ public class AccumulatorFactory {
     }
   }
 
-  private static boolean isMultiInputAggregation(TAggregationType aggregationType) {
+  public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case MAX_BY:
         return true;
