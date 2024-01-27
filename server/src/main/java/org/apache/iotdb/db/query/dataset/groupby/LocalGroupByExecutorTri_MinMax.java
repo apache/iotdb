@@ -333,9 +333,9 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
             TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
             Object v;
             switch (dataType) {
-              case INT64:
-                v = valueBuffer.getLong(pageReader.timeBufferLength + i * 8);
-                break;
+                //              case INT64:
+                //                v = valueBuffer.getLong(pageReader.timeBufferLength + i * 8);
+                //                break;
               case DOUBLE:
                 v = valueBuffer.getDouble(pageReader.timeBufferLength + i * 8);
                 break;

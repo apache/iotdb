@@ -256,6 +256,11 @@ public class IOMonitor2 {
     //    M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
   }
 
+  public static double calculateTri(
+      double t1, double v1, double t2, double v2, double t3, double v3) {
+    return Math.abs((t1 - t3) * (v2 - v3) - (t2 - t3) * (v1 - v3)) / 2;
+  }
+
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
     switch (operation) {
       case DCP_Server_Query_Execute:
