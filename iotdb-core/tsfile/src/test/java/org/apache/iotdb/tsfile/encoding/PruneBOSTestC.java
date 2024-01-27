@@ -560,8 +560,10 @@ public class PruneBOSTestC {
 
         block_size = remaining-1;
         int max_delta_value = min_delta[2];
+
+
         int max_bit_width = getBitWith(max_delta_value)+1;
-        int[] alpha_count_list = new int[max_bit_width];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
+        int[] alpha_count_list = new int[max_bit_width];//count(xmin) count(xmin + 2) count(xmin + 4)...
 //        int[] alpha_box_count_list = new int[max_bit_width];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
         int[] gamma_count_list = new int[max_bit_width];
 //        int[] gamma_box_count_list = new int[max_bit_width];
@@ -571,15 +573,15 @@ public class PruneBOSTestC {
             int[] numbers = new int[block_size];
             int count = 0;
             groupL[i] = new Group(numbers, count);
-            numbers = new int[block_size];
-            groupU[i] = new Group(numbers, count);
+           int[] numbersU = new int[block_size];
+            groupU[i] = new Group(numbersU, count);
         }
         for(int value:ts_block_delta){
             int alpha_i = getBitWith(value); // 0 1 2 3 4
             if (value == 0){
                 alpha_count_list[0]++;
             }
-            else if (value == pow(2,alpha_i-1)){ // x_min+2^{alpha_i}
+            else if (value == pow(2,alpha_i-1)){ // x_min+2^{alpha_i-1}
                 alpha_count_list[alpha_i]++;
             }else {
                 groupL[alpha_i].addNumber(value); // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -948,13 +950,13 @@ public class PruneBOSTestC {
                                 gamma_value_count_list[gamma_value_count_list_end-value] ++;
                             }
                             int cur_k1_x_l =  cur_k1_open - cur_group_alpha.count;// alpha_box_count_list[alpha];
-                            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
+                            for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
                                 int cur_count_alpha = alpha_value_count_list[x_l_i];
                                 if (cur_count_alpha == 0)
                                     continue;
                                 cur_k1_x_l += cur_count_alpha;
                                 int cur_k1_x_u = cur_k2_open -cur_group_gamma.count;// gamma_box_count_list[gamma];
-                                for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
+                                for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
                                     int cur_count_gamma = gamma_value_count_list[x_u_i];
                                     if (cur_count_gamma == 0)
                                         continue;
@@ -968,6 +970,9 @@ public class PruneBOSTestC {
                                                 getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
                                     if (cur_k1_x_u != 0)
                                         cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
+//                                    if(alpha_value_count_list_start + x_l_i== 2685 && gamma_value_count_list_end - x_u_i==2693){
+//                                        System.out.println("cur_bits:"+cur_bits);
+//                                    }
                                     if (cur_bits < min_bits) {
                                         min_bits = cur_bits;
                                         final_k_start_value = alpha_value_count_list_start + x_l_i;
@@ -986,7 +991,13 @@ public class PruneBOSTestC {
 //                if (k_end_value == max_delta_value)
 //                    break;
             }
+
+
+            Group cur_group_gamma = groupU[gamma_size+1]; // find value > max_delta_value - alpha_2_pow
+
+
         }
+        // 2047 3705 12477   2685 2693 6175
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1279,7 +1290,7 @@ public class PruneBOSTestC {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 500;
+        int repeatTime2 = 1;
         for (int file_i = 0; file_i < 1; file_i++) {
 //
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -1364,7 +1375,7 @@ public class PruneBOSTestC {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
-                System.out.println(1/ratio);
+                System.out.println(ratio);
 //break;
             }
             writer.close();
