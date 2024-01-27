@@ -727,18 +727,26 @@ public class PruneBOSTest {
                         int flag = 0; // no need to try xl and xu
                         beta = getBitWith( max_delta_value-alpha_2_pow-gamma_2_pow/2-1);
                         beta_2_pow = (int)pow(2,beta);
-                        if(!(alpha + a<=beta && beta<= gamma + a && beta_2_pow + alpha_2_pow + gamma_2_pow / 2 >= max_delta_value)){
-                            flag = 1;
-                        }
-                        beta = getBitWith( max_delta_value-alpha_2_pow/2-gamma_2_pow-1);
-                        beta_2_pow = (int)pow(2,beta);
-                        if(!(alpha + a>=beta && beta>= gamma + a && beta_2_pow + alpha_2_pow/2 + gamma_2_pow >= max_delta_value)){
-                            flag = 2;
-                        }
-                        beta = getBitWith( max_delta_value-alpha_2_pow/2-gamma_2_pow/2-2);
-                        beta_2_pow = (int)pow(2,beta);
-                        if(!(alpha + a>=beta && beta<= gamma + a && beta_2_pow + alpha_2_pow/2 + gamma_2_pow/2 >= max_delta_value)){
-                            flag = 3;
+                        if(alpha + a<=beta && beta<= gamma + a ) {
+                            if (beta_2_pow + alpha_2_pow + gamma_2_pow / 2 < max_delta_value) {
+                                flag = 1;
+                            }
+                        }else {
+                            beta = getBitWith(max_delta_value - alpha_2_pow / 2 - gamma_2_pow - 1);
+                            beta_2_pow = (int) pow(2, beta);
+                            if (alpha + a >= beta && beta >= gamma + a) {
+                                if (beta_2_pow + alpha_2_pow / 2 + gamma_2_pow < max_delta_value) {
+                                    flag = 2;
+                                }
+                            } else {
+                                beta = getBitWith(max_delta_value - alpha_2_pow / 2 - gamma_2_pow / 2 - 2);
+                                beta_2_pow = (int) pow(2, beta);
+                                if (alpha + a >= beta && beta <= gamma + a ){
+                                   if( beta_2_pow + alpha_2_pow / 2 + gamma_2_pow / 2 <= max_delta_value){
+                                    flag = 3;
+                                    }
+                                }
+                            }
                         }
 
 
@@ -1097,8 +1105,9 @@ public class PruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
+        int repeatTime2 = 1;
         for (int file_i = 0; file_i < 1; file_i++) {
-
+//
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1150,7 +1159,7 @@ public class PruneBOSTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+
 
                 int length = 0;
 
@@ -1181,7 +1190,7 @@ public class PruneBOSTest {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
-                System.out.println(ratio);
+                System.out.println(1/ratio);
 //break;
             }
             writer.close();
