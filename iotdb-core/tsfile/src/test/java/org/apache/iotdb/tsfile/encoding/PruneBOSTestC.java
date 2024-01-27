@@ -612,6 +612,7 @@ public class PruneBOSTestC {
         for (int alpha = 1; alpha + 1 <= alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
+//            System.out.println(k_start_value_close);
             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
             cur_k1_close += alpha_count_list[alpha+1]; // x_min+2^{alpha_i}
             cur_k1_close += cur_group_alpha.count;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -1025,6 +1026,7 @@ public class PruneBOSTestC {
                     int b = b_list[a_i];
 
                     for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
+                        System.out.println(x_l_i + alpha_value_count_list_start);
                         int cur_count_alpha = alpha_value_count_list[x_l_i];
                         if (cur_count_alpha == 0)
                             continue;
@@ -1044,9 +1046,9 @@ public class PruneBOSTestC {
                                         getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
                             if (cur_k1_x_u != 0)
                                 cur_bits += cur_k1_x_u * (gamma_size + 1);//min_upper_outlier
-//                            if(alpha_value_count_list_start + x_l_i== 2685){
-//                                System.out.println(gamma_value_count_list_end - x_u_i);
-//                            }
+                            if(alpha_value_count_list_start + x_l_i== 2685){
+                                System.out.println(gamma_value_count_list_end - x_u_i);
+                            }
                             if (cur_bits < min_bits) {
                                 min_bits = cur_bits;
                                 final_k_start_value = alpha_value_count_list_start + x_l_i;
@@ -1354,9 +1356,9 @@ public class PruneBOSTestC {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 1;
-//        for (int file_i = 0; file_i < 1; file_i++) {
+        for (int file_i = 9; file_i < 10; file_i++) {
 //
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
