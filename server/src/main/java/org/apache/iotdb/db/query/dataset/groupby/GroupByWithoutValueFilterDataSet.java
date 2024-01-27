@@ -132,8 +132,96 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
   }
 
+  /** Each row correspond to result of a bucket */
+  public List<List<AggregateResult>> getAll() throws IOException, QueryProcessException {
+    List<List<AggregateResult>> resultsAllBuckets = new ArrayList<>();
+    GroupByExecutor executor = null;
+    for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+      executor = pathToExecutorEntry.getValue(); // assume only one series here
+      break;
+    }
+    for (long localCurStartTime = startTime;
+        localCurStartTime < endTime;
+        localCurStartTime += interval) { // not change real curStartTime&curEndTime
+      List<AggregateResult> aggregations =
+          executor.calcResult(
+              localCurStartTime, localCurStartTime + interval, startTime, endTime, interval);
+      resultsAllBuckets.add(aggregations); // needs deep copy!!
+    }
+
+    // make the next hasNextWithoutConstraint() false
+    curStartTime = endTime;
+    hasCachedTimeInterval = false;
+
+    return resultsAllBuckets;
+  }
+
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
+    if (CONFIG.getEnableTri().equals("MinMax")) {
+      return nextWithoutConstraintTri_MinMax();
+    }
+    //    } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
+    //      // TODO
+    //    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
+    //      // TODO
+    //    } else if (CONFIG.getEnableTri().equals("LTTB")) {
+    //      // TODO
+    //    } else if (CONFIG.getEnableTri().equals("ILTS")) {
+    //      // TODO
+    //    }
+    else {
+      return nextWithoutConstraint_raw();
+    }
+  }
+
+  public RowRecord nextWithoutConstraintTri_MinMax() throws IOException {
+    RowRecord record;
+    try {
+      GroupByExecutor executor = null;
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        executor = pathToExecutorEntry.getValue(); // assume only one series here
+        break;
+      }
+
+      // concat results into a string
+      record = new RowRecord(0);
+      StringBuilder series = new StringBuilder();
+
+      for (long localCurStartTime = startTime;
+          localCurStartTime < endTime;
+          localCurStartTime += interval) { // not change real curStartTime&curEndTime
+        // attention the returned aggregations need deep copy if using directly
+        List<AggregateResult> aggregations =
+            executor.calcResult(
+                localCurStartTime,
+                localCurStartTime + interval,
+                startTime,
+                endTime,
+                interval); // attention
+        for (AggregateResult aggregation : aggregations) {
+          // Each row correspond to (bucketLeftBound, minV[bottomT], maxV[topT]) of a MinMax bucket
+          series.append(aggregation.getResult()).append(",");
+        }
+      }
+
+      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      record.addField(series, TSDataType.MIN_MAX_INT64);
+
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
+    }
+
+    // in the end, make the next hasNextWithoutConstraint() false
+    // as we already fetch all here
+    curStartTime = endTime;
+    hasCachedTimeInterval = false;
+
+    return record;
+  }
+
+  public RowRecord nextWithoutConstraint_raw() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException(
           "need to call hasNext() before calling next() " + "in GroupByWithoutValueFilterDataSet.");

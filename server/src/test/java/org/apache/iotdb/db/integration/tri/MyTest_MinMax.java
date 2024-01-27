@@ -98,9 +98,10 @@ public class MyTest_MinMax {
   @Test
   public void test1() throws Exception {
     prepareData1();
-
-    String[] res =
-        new String[] {"0,1[20],15[2]", "25,8[25],8[25]", "50,3[54],3[54]", "75,null,null"};
+    //    String[] res = new String[]{"0,1[20],15[2]", "25,8[25],8[25]", "50,3[54],3[54]",
+    // "75,null,null"};
+    String res = "0,1[20],15[2],8[25],8[25],3[54],3[54],null,null,";
+    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -112,14 +113,10 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(String.format("min_value(%s)", d0s0))
-                  + ","
-                  + resultSet.getString(String.format("max_value(%s)", d0s0));
+          // 注意从1开始编号，所以第一列是无意义时间戳
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           System.out.println(ans);
-          Assert.assertEquals(res[i++], ans);
+          Assert.assertEquals(res, ans);
         }
       }
       System.out.println(((IoTDBStatement) statement).executeFinish());
@@ -160,8 +157,10 @@ public class MyTest_MinMax {
   public void test3() {
     prepareData3();
 
-    String[] res =
-        new String[] {"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]", "75,1[90],11[80]"};
+    //    String[] res = new String[]{"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]",
+    // "75,1[90],11[80]"};
+    String res = "0,1[10],10[2],2[40],8[30],4[72],20[62],1[90],11[80],";
+    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -175,14 +174,9 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(String.format("min_value(%s)", d0s0))
-                  + ","
-                  + resultSet.getString(String.format("max_value(%s)", d0s0));
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           System.out.println(ans);
-          Assert.assertEquals(res[i++], ans);
+          Assert.assertEquals(res, ans);
         }
       }
     } catch (Exception e) {
@@ -235,8 +229,10 @@ public class MyTest_MinMax {
   public void test3_2() {
     prepareData3_2();
 
-    String[] res =
-        new String[] {"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]", "75,1[90],11[80]"};
+    //    String[] res = new String[]{"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]",
+    // "75,1[90],11[80]"};
+    String res = "0,1[10],10[2],null,null,4[72],20[62],1[90],11[80],";
+    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -250,14 +246,9 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(String.format("min_value(%s)", d0s0))
-                  + ","
-                  + resultSet.getString(String.format("max_value(%s)", d0s0));
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           System.out.println(ans);
-          Assert.assertEquals(res[i++], ans);
+          Assert.assertEquals(res, ans);
         }
       }
     } catch (Exception e) {

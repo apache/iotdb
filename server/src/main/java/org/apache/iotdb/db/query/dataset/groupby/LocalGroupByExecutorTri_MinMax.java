@@ -257,12 +257,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
     }
   }
 
-  /**
-   * @param curStartTime closed
-   * @param curEndTime open
-   * @param startTime closed
-   * @param endTime open
-   */
   @Override
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
