@@ -633,11 +633,11 @@ public class RLEExactBOSTest {
             }
         }
 
-        if(block_i==4){
-            System.out.println(final_k_start_value);
-            System.out.println(final_k_end_value);
-            System.out.println(min_bits);
-        }
+//        if(block_i==4){
+//            System.out.println(final_k_start_value);
+//            System.out.println(final_k_end_value);
+//            System.out.println(min_bits);
+//        }
         encode_pos = BOSEncodeBits(ts_block_delta,init_block_size,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta,repeat_count, encode_pos , cur_byte);
 
@@ -959,9 +959,10 @@ public class RLEExactBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        for (int file_i = 0; file_i < 1; file_i++) {
-//
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 500;
+//        for (int file_i = 0; file_i < 1; file_i++) {
+
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1011,7 +1012,7 @@ public class RLEExactBOSTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+
 
                 int length = 0;
 
