@@ -616,8 +616,6 @@ public class PruneBosTestD {
             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
             cur_k1_close += alpha_count_list[alpha+1]; // x_min+2^{alpha_i}
             cur_k1_close += cur_group_alpha.count;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-
-
             int cur_bits;
             int alpha_2_pow = (int)pow(2,alpha);
             int cur_k2_close = gamma_count_list[0];
@@ -770,13 +768,14 @@ public class PruneBosTestD {
                                 cur_bits += cur_k1_x_l * alpha;
                             if (cur_k1_x_l + cur_k1_x_u != block_size)
                                 cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
-                                        getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 1);
+                                        getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
                             if (cur_k1_x_u != 0)
                                 cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-//                            if(alpha_value_count_list_start + x_l_i== 114 && gamma_value_count_list_end - x_u_i == 117){
-//                                System.out.println(alpha);
-//                                System.out.println("cur_bits:"+cur_bits);
-//                            }
+                            if(alpha_value_count_list_start + x_l_i== 143){
+                                System.out.println(gamma_value_count_list_end - x_u_i);
+                                System.out.println(alpha);
+                                System.out.println("cur_bits:"+cur_bits);
+                            }
                             if (cur_bits < min_bits) {
                                 min_bits = cur_bits;
                                 final_k_start_value = alpha_value_count_list_start + x_l_i;
@@ -787,7 +786,7 @@ public class PruneBosTestD {
                 }
             }
         }
-        // 127 192 14518 179 182 10080
+        // 126 159 13059 143 146 9763
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 

@@ -983,7 +983,7 @@ public class Exact_BOS {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 500;
+                int repeatTime2 = 1;
 
                 int length = 0;
 
