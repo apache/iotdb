@@ -194,6 +194,8 @@ public interface ITimeIndex {
    */
   boolean definitelyNotContains(String device);
 
+  boolean isDeviceAlive(String device, long ttl);
+
   /**
    * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
    */

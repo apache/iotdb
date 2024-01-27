@@ -792,8 +792,7 @@ public class TsFileResource {
     if(definitelyNotContains(device)){
       return false;
     }
-    long endTime = timeIndex.getEndTime(device);
-    return !isClosed() || endTime >= CommonDateTimeUtils.currentTime() - ttl;
+    return !isClosed() || timeIndex.isDeviceAlive(device,ttl);
 
   }
 

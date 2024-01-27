@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -226,6 +227,11 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public boolean definitelyNotContains(String device) {
     return false;
+  }
+
+  @Override
+  public boolean isDeviceAlive(String device, long ttl) {
+    return endTime >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override

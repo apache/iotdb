@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
@@ -55,6 +56,10 @@ public interface ICompactionSelector {
     {
       throw new RuntimeException("This kind of selector cannot be used to select cross space task");
     }
+  }
+
+  default List<AbstractCompactionTask> selectSettleTask(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles){
+    throw new RuntimeException("This kind of selector cannot be used to select settle task");
   }
 
   default List<Long> getCompactionMemoryCost() {
