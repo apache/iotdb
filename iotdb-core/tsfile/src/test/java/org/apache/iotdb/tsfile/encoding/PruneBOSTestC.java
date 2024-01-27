@@ -609,7 +609,7 @@ public class PruneBOSTestC {
         int cur_k1_close = alpha_count_list[0];
         cur_k1_close += alpha_count_list[1];
         cur_k1_close += groupL[0].count ;//alpha_box_count_list[0];
-        for (int alpha = 1; alpha +1 <= alpha_size; alpha++) { //start_value_size
+        for (int alpha = 1; alpha + 1 <= alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
             Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -984,16 +984,79 @@ public class PruneBOSTestC {
 //                    }
 
                 }
-
-
-
-
 //                if (k_end_value == max_delta_value)
 //                    break;
             }
 
+            if (gamma_size+1 < max_bit_width && gamma_size > 0) {
+                Group cur_group_gamma = groupU[gamma_size + 1]; // find value >= max_delta_value - alpha_2_pow (/2?)
+                int gap_alpha = alpha_2_pow / 2;
+                int alpha_value_count_list_start = gap_alpha;
+                int[] alpha_value_count_list = new int[gap_alpha];
+                int alpha_value_count = cur_group_alpha.count;
+                int[] number_alpha = cur_group_alpha.number;
+                for (int i = 0; i < alpha_value_count; i++) {
+                    int value = number_alpha[i];
+                    alpha_value_count_list[value - alpha_value_count_list_start]++;
+                }
 
-            Group cur_group_gamma = groupU[gamma_size+1]; // find value > max_delta_value - alpha_2_pow
+                //int gap_gamma = gamma_2_pow/2;
+                int gamma_2_pow = (int) pow(2, gamma_size);
+                int gamma_value_count_list_end = max_delta_value - gamma_2_pow;
+
+                int[] gamma_value_count_list = new int[max_delta_value - gamma_2_pow - gap_alpha];
+                int gamma_value_count = cur_group_gamma.count;
+                int[] number_gamma = cur_group_gamma.number;
+                for (int i = 0; i < gamma_value_count; i++) {
+                    int value = number_gamma[i];
+                    if (value > gap_alpha) {
+                        gamma_value_count_list[gamma_value_count_list_end - value]++;
+                    }
+                }
+                int cur_k1_open = cur_k1_close - alpha_count_list[alpha + 1];
+                //int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
+                int cur_k1_x_l = cur_k1_open - cur_group_alpha.count;// alpha_box_count_list[alpha];
+
+                int[] a_list = {getBitWith(block_size - 1), 1};
+                int[] b_list = {0, block_size};
+
+                for (int a_i = 0; a_i < 2; a_i++) {
+                    int a = a_list[a_i];
+                    int b = b_list[a_i];
+
+                    for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
+                        int cur_count_alpha = alpha_value_count_list[x_l_i];
+                        if (cur_count_alpha == 0)
+                            continue;
+                        cur_k1_x_l += cur_count_alpha;
+                        int cur_k1_x_u = cur_k2_close - gamma_value_count_list[0]; //-cur_group_gamma.count;// gamma_box_count_list[gamma];
+                        for (int x_u_i = 0; x_u_i <= max_delta_value - gamma_2_pow - gap_alpha - x_l_i - 1; x_u_i++) {
+                            int cur_count_gamma = gamma_value_count_list[x_u_i];
+                            if (cur_count_gamma == 0)
+                                continue;
+                            cur_k1_x_u += cur_count_gamma;
+
+                            cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
+                            if (cur_k1_x_l != 0)
+                                cur_bits += cur_k1_x_l * alpha;
+                            if (cur_k1_x_l + cur_k1_x_u != block_size)
+                                cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
+                                        getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
+                            if (cur_k1_x_u != 0)
+                                cur_bits += cur_k1_x_u * (gamma_size + 1);//min_upper_outlier
+//                            if(alpha_value_count_list_start + x_l_i== 2685){
+//                                System.out.println(gamma_value_count_list_end - x_u_i);
+//                            }
+                            if (cur_bits < min_bits) {
+                                min_bits = cur_bits;
+                                final_k_start_value = alpha_value_count_list_start + x_l_i;
+                                final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
+                            }
+                        }
+                    }
+                }
+            }
+//
 
 
         }
@@ -1240,8 +1303,8 @@ public class PruneBOSTestC {
 
     @Test
     public void PruneBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1291,9 +1354,9 @@ public class PruneBOSTestC {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 1;
-        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
 //
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
