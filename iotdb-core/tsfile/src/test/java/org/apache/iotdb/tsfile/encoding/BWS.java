@@ -550,20 +550,94 @@ public class BWS {
         min_bits += (getBitWith(final_k_end_value - final_k_start_value -2) * (block_size));
 
         int cur_k1_close = alpha_count_list[0];
+        int k_start_value_close = 0;
+
+        int cur_bits;
+        int alpha_2_pow = 1;
+        int gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2));
+        int cur_k2_close = gamma_count_list[0];
+        cur_k2_close += gamma_count_list[1];
+        cur_k2_close += gamma_box_count_list[0];
+        for (int gamma = 1;  gamma<=gamma_size;gamma++){
+            int k_end_value_close = max_delta_value - (int) pow(2,gamma);
+
+            cur_k2_close += gamma_count_list[gamma+1];
+            cur_k2_close += gamma_box_count_list[gamma];
+            cur_bits = cur_k1_close;
+            cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
+            if (cur_k1_close + cur_k2_close != block_size)
+                cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
+            if (cur_k2_close != 0)
+                cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
+
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value_close;
+                final_k_end_value = k_end_value_close;
+            }
+
+            int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
+            int k_end_value_open = k_end_value_close + 1;
+
+            //C4 k1 close k2 open
+            cur_bits = cur_k1_close;
+            cur_bits += Math.min((cur_k1_close + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_open);
+
+            if (cur_k1_close + cur_k2_open != block_size)
+                cur_bits += (block_size - cur_k1_close - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_close - 2);
+            if (cur_k2_open != 0)
+                cur_bits += cur_k2_open * gamma;//min_upper_outlier
+
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value_close;
+                final_k_end_value = k_end_value_open;
+            }
+        }
+
+
         cur_k1_close += alpha_count_list[1];
         cur_k1_close += alpha_box_count_list[0];
-        for (int alpha = 1; alpha + 1 <= max_bit; alpha++) { //start_value_size
+        for (int alpha = 1; alpha  <= max_bit-1; alpha++) { //start_value_size
             //C1 k1 close k2 close
-            int k_start_value_close = (int) pow(2,alpha);//close
+            k_start_value_close = (int) pow(2,alpha);//close
             cur_k1_close += alpha_count_list[alpha + 1];
             cur_k1_close += alpha_box_count_list[alpha];
 
 
             int k_end_value_close;
-            int cur_bits;
-            int alpha_2_pow = (int)pow(2,alpha);
-            int gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2)); // 0 1   2 3 4 5 6
-            int cur_k2_close = gamma_count_list[0];
+
+            alpha_2_pow = (int)pow(2,alpha);
+            gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2));
+            cur_k2_close = gamma_count_list[0];
+            k_end_value_close = max_delta_value;
+
+            cur_bits=cur_k2_close;
+            cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
+            if (cur_k1_close != 0)
+                cur_bits += cur_k1_close * (alpha + 1);//left_max
+            if (cur_k1_close + cur_k2_close != block_size)
+                cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value_close;
+                final_k_end_value = k_end_value_close;
+            }
+
+            int cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
+            int k_start_value_open = k_start_value_close - 1;
+            cur_bits=cur_k2_close;
+            cur_bits += Math.min((cur_k1_open + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_close);
+            if (cur_k1_open != 0)
+                cur_bits += cur_k1_open * (alpha);//left_max
+            if (cur_k1_open + cur_k2_close != block_size)
+                cur_bits += (block_size - cur_k1_open - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value_open;
+                final_k_end_value = k_end_value_close;
+            }
+
             cur_k2_close += gamma_count_list[1];
             cur_k2_close += gamma_box_count_list[0];
             for (int gamma = 1;  gamma<=gamma_size;gamma++){//(int) pow(2,gamma) + (int) pow(2,alpha) + 1 <= max_delta_value; gamma++) {
@@ -588,9 +662,9 @@ public class BWS {
 
                 //C2 k1open k2open
                 cur_bits = 0;
-                int cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
+                 cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
                 int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
-                int k_start_value_open = k_start_value_close - 1;
+                 k_start_value_open = k_start_value_close - 1;
                 int k_end_value_open = k_end_value_close + 1;
                 cur_bits += Math.min((cur_k1_open + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_open);
                 if (cur_k1_open != 0)
@@ -942,9 +1016,9 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 0; file_i < 1; file_i++) {
+        for (int file_i = 0; file_i < 1; file_i++) {
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
