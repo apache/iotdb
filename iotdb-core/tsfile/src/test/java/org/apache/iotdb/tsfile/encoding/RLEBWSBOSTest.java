@@ -802,7 +802,7 @@ public class RLEBWSBOSTest {
 
         // RLE need to substitute ----- end
 
-//        if(block_i==3){
+//        if(block_i==4){
 //            System.out.println(final_k_start_value);
 //            System.out.println(final_k_end_value);
 //            System.out.println(min_bits);
