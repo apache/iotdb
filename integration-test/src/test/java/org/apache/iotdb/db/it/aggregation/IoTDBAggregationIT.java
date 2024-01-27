@@ -985,7 +985,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void maxByTest() {
-    String[] retArray = new String[] {"8499,500.0"};
+    String[] retArray = new String[] {"0,8499", "0,2499", "0,8499"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -997,7 +997,7 @@ public class IoTDBAggregationIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("time", d0s0));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -1008,7 +1008,7 @@ public class IoTDBAggregationIT {
           statement.executeQuery("SELECT max_by(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("time", d0s0));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -1022,7 +1022,7 @@ public class IoTDBAggregationIT {
               "SELECT max_by(time,s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("time", d0s0));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
