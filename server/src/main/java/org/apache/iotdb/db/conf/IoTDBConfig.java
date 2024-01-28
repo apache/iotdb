@@ -442,6 +442,16 @@ public class IoTDBConfig {
 
   private int rps;
 
+  public int getNumIterations() {
+    return numIterations;
+  }
+
+  public void setNumIterations(int numIterations) {
+    this.numIterations = numIterations;
+  }
+
+  private int numIterations = 8;
+
   public long getP1t() {
     return p1t;
   }

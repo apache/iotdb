@@ -547,6 +547,9 @@ public class IoTDBDescriptor {
       conf.setPnv(
           Double.parseDouble(properties.getProperty("pnv", Double.toString(conf.getPnv()))));
       conf.setRps(Integer.parseInt(properties.getProperty("rps", Integer.toString(conf.getRps()))));
+      conf.setNumIterations(
+          Integer.parseInt(
+              properties.getProperty("numIterations", Integer.toString(conf.getNumIterations()))));
 
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(

@@ -73,6 +73,7 @@ public class MyTest_ILTS {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("ILTS");
+    config.setNumIterations(4);
 
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);

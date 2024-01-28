@@ -62,10 +62,6 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
 
-  //  private List<ChunkSuit4Tri> currentChunkList;
-
-  //  private final List<ChunkSuit4Tri> futureChunkList = new ArrayList<>();
-
   // keys: 0,1,...,(int) Math.floor((endTime * 1.0 - startTime) / interval)-1
   private final Map<Integer, List<ChunkSuit4Tri>> splitChunkList = new HashMap<>();
 

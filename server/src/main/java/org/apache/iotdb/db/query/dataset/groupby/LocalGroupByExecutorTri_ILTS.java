@@ -62,10 +62,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
 
-  //  private List<ChunkSuit4Tri> currentChunkList;
-
-  //  private final List<ChunkSuit4Tri> futureChunkList = new ArrayList<>();
-
   // keys: 0,1,...,(int) Math.floor((endTime * 1.0 - startTime) / interval)-1
   private final Map<Integer, List<ChunkSuit4Tri>> splitChunkList = new HashMap<>();
 
@@ -79,7 +75,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
 
   private final int N1; // 分桶数
 
-  private static final int numIterations = 8;
+  private static final int numIterations = CONFIG.getNumIterations();
 
   private Filter timeFilter;
 
@@ -169,9 +165,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     long[] lastIter_t = new long[N1]; // N1不包括全局首尾点
     double[] lastIter_v = new double[N1]; // N1不包括全局首尾点
     for (int num = 0; num < numIterations; num++) {
-      StringBuilder series = new StringBuilder();
+      //      StringBuilder series = new StringBuilder();
       // 全局首点
-      series.append(p1v).append("[").append(p1t).append("]").append(",");
+      //      series.append(p1v).append("[").append(p1t).append("]").append(",");
       // 遍历分桶 Assume no empty buckets
       for (int b = 0; b < N1; b++) {
         long rt = 0; // must initialize as zero, because may be used as sum for average
@@ -273,7 +269,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           }
         }
         // 记录结果
-        series.append(select_v).append("[").append(select_t).append("]").append(",");
+        //        series.append(select_v).append("[").append(select_t).append("]").append(",");
 
         // 更新lt,lv
         // 下一个桶自然地以select_t, select_v作为左桶固定点
@@ -283,10 +279,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         lastIter_t[b] = select_t;
         lastIter_v[b] = select_v;
       } // 遍历分桶结束
-      // 全局尾点
-      series.append(pnv).append("[").append(pnt).append("]").append(",");
 
-      System.out.println(series);
+      // 全局尾点
+      //      series.append(pnv).append("[").append(pnt).append("]").append(",");
+      //      System.out.println(series);
+
     } // end Iterations
 
     // 全局首点
