@@ -89,21 +89,23 @@ public class TemplatedLogicalPlan {
   }
 
   private void initCommonVariables() {
-    if (!analysis.isTemplateWildCardQuery()) {
-      newMeasurementList = new ArrayList<>(measurementList);
-      newSchemaList = new ArrayList<>(schemaList);
-      Set<String> selectExpressions = new HashSet<>(measurementList);
-      List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
-      for (Expression expression : whereSourceExpressions) {
-        if (expression instanceof TimeSeriesOperand) {
-          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-          if (!analysis.getDeviceTemplate().getSchemaMap().containsKey(measurement)) {
-            continue;
-          }
-          if (!selectExpressions.contains(measurement)) {
-            selectExpressions.add(measurement);
-            newMeasurementList.add(measurement);
-            newSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
+    if (whereExpression != null) {
+      if (!analysis.isTemplateWildCardQuery()) {
+        newMeasurementList = new ArrayList<>(measurementList);
+        newSchemaList = new ArrayList<>(schemaList);
+        Set<String> selectExpressions = new HashSet<>(measurementList);
+        List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
+        for (Expression expression : whereSourceExpressions) {
+          if (expression instanceof TimeSeriesOperand) {
+            String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+            if (!analysis.getDeviceTemplate().getSchemaMap().containsKey(measurement)) {
+              continue;
+            }
+            if (!selectExpressions.contains(measurement)) {
+              selectExpressions.add(measurement);
+              newMeasurementList.add(measurement);
+              newSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
+            }
           }
         }
       }
