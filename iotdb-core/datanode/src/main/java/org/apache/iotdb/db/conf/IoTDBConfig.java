@@ -1061,6 +1061,9 @@ public class IoTDBConfig {
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
+  private boolean enableMultiThreadingInsert = true;
+  private int insertThreadNum = Runtime.getRuntime().availableProcessors();
+
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
@@ -3800,5 +3803,21 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public boolean isEnableMultiThreadingInsert() {
+    return enableMultiThreadingInsert;
+  }
+
+  public void setEnableMultiThreadingInsert(boolean enableMultiThreadingInsert) {
+    this.enableMultiThreadingInsert = enableMultiThreadingInsert;
+  }
+
+  public int getInsertThreadNum() {
+    return insertThreadNum;
+  }
+
+  public void setInsertThreadNum(int insertThreadNum) {
+    this.insertThreadNum = insertThreadNum;
   }
 }

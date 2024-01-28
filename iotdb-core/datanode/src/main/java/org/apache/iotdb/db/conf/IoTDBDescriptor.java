@@ -663,6 +663,16 @@ public class IoTDBDescriptor {
                 "inner_compaction_task_selection_mods_file_threshold",
                 Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
 
+    conf.setEnableMultiThreadingInsert(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_multi_threading_insert",
+                String.valueOf(conf.isEnableMultiThreadingInsert()))));
+    conf.setInsertThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "insert_thread_num", Integer.toString(conf.getInsertThreadNum()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(

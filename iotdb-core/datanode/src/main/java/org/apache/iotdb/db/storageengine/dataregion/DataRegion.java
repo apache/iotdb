@@ -49,6 +49,8 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.experiment.InsertTask;
+import org.apache.iotdb.db.experiment.InsertWorkers;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -144,6 +146,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
@@ -3199,12 +3202,71 @@ public class DataRegion implements IDataRegionForQuery {
                     > lastFlushTimeMap.getFlushedTime(
                         timePartitionIds[i], insertRowNode.getDevicePath().getFullPath());
       }
-      insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableMultiThreadingInsert()) {
+        insertToTsFileProcessorsParallel(insertRowsNode, areSequence, timePartitionIds);
+      } else {
+        insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
+      }
       if (!insertRowsNode.getResults().isEmpty()) {
         throw new BatchProcessException("Partial failed inserting rows");
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  public void insertToTsFileProcessorsParallel(
+      InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
+    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+    AtomicLong[] costsForMetrics = new AtomicLong[4];
+    for (int i = 0; i < costsForMetrics.length; i++) {
+      costsForMetrics[i] = new AtomicLong(0);
+    }
+    Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
+    CountDownLatch latch = new CountDownLatch(insertRowsNode.getInsertRowNodeList().size());
+    for (int i = 0; i < areSequence.length; i++) {
+      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+      if (insertRowNode.allMeasurementFailed()) {
+        latch.countDown();
+        continue;
+      }
+      TsFileProcessor tsFileProcessor =
+          getOrCreateTsFileProcessor(timePartitionIds[i], areSequence[i]);
+      if (tsFileProcessor == null) {
+        latch.countDown();
+        continue;
+      }
+      tsFileProcessorMapForFlushing.put(tsFileProcessor, areSequence[i]);
+      InsertWorkers.submit(
+          new InsertTask(
+              tsFileProcessor, insertRowNode, costsForMetrics, latch, executedInsertRowNodeList));
+    }
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      logger.error("Insertion is interrupted", e);
+      return;
+    }
+    // check memtable size and may asyncTryToFlush the work memtable
+    for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
+      if (entry.getKey().shouldFlush()) {
+        fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+      }
+    }
+
+    PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0].get());
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1].get());
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2].get());
+    PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3].get());
+    if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && insertRowsNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+        return;
+      }
+      // disable updating last cache on follower
+      long startTime = System.nanoTime();
+      tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
   }
 

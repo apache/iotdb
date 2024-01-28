@@ -163,6 +163,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -213,6 +214,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
+  public static final AtomicLong partitionSettingTimeInTotal = new AtomicLong(0);
+  public static final AtomicLong partitionSettingTimeCount = new AtomicLong(0);
+  public static final AtomicLong partitionFetchingTimeInTotal = new AtomicLong(0);
+  public static final AtomicLong partitionFetchingTimeCount = new AtomicLong(0);
 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
@@ -2526,6 +2532,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Analysis computeAnalysisForInsertRows(
       Analysis analysis, InsertRowsStatement insertRowsStatement, String userName) {
+    final long startTime = System.nanoTime();
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
@@ -2541,7 +2548,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
-
+    long timeCost = System.nanoTime() - startTime;
+    long time = partitionSettingTimeInTotal.addAndGet(timeCost);
+    long count = partitionSettingTimeCount.incrementAndGet();
+    if (count % 1000 == 0) {
+      logger.info(
+          String.format(
+              "The average time cost of setting partition is %.2f ms",
+              (double) time / count / 1000000));
+    }
     return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName);
   }
 
@@ -2703,7 +2718,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /** get analysis according to statement and params */
   private Analysis getAnalysisForWriting(
       Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-
+    final long startTime = System.nanoTime();
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
     if (dataPartition.isEmpty()) {
@@ -2715,6 +2730,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   + "because enable_auto_create_schema is FALSE."));
     }
     analysis.setDataPartitionInfo(dataPartition);
+    long timeCost = System.nanoTime() - startTime;
+    long time = partitionFetchingTimeCount.addAndGet(timeCost);
+    long count = partitionFetchingTimeCount.incrementAndGet();
+    if (count % 1000 == 0) {
+      logger.info(
+          String.format(
+              "Average time cost of fetching partition is %.2f ms", (double) time / count / 1e6));
+    }
     return analysis;
   }
 

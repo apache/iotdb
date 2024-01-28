@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PrimitiveMemTable extends AbstractMemTable {
   // this constructor only used when deserialize
@@ -39,7 +39,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   @Override
   public IMemTable copy() {
-    Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
+    Map<IDeviceID, IWritableMemChunkGroup> newMap = new ConcurrentHashMap<>(getMemTableMap());
 
     return new PrimitiveMemTable(getDatabase(), getDataRegionId(), newMap);
   }

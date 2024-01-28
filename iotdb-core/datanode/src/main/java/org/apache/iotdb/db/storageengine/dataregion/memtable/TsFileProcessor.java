@@ -139,7 +139,7 @@ public class TsFileProcessor {
   private volatile boolean shouldClose;
 
   /** working memtable. */
-  private IMemTable workMemTable;
+  private volatile IMemTable workMemTable;
 
   /** last flush time to flush the working memtable. */
   private long lastWorkMemtableFlushTime;
@@ -239,12 +239,16 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     if (workMemTable == null) {
-      long startTime = System.nanoTime();
-      createNewWorkingMemTable();
-      // recordCreateMemtableBlockCost
-      costsForMetrics[0] += System.nanoTime() - startTime;
-      WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+      synchronized (this) {
+        if (workMemTable == null) {
+          long startTime = System.nanoTime();
+          createNewWorkingMemTable();
+          // recordCreateMemtableBlockCost
+          costsForMetrics[0] += System.nanoTime() - startTime;
+          WritingMetrics.getInstance()
+              .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+        }
+      }
     }
 
     long[] memIncrements = null;

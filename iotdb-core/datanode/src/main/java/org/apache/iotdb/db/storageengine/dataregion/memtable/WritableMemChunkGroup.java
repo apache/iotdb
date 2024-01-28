@@ -29,18 +29,18 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
 
   public WritableMemChunkGroup() {
-    memChunkMap = new HashMap<>();
+    memChunkMap = new ConcurrentHashMap<>();
   }
 
   @Override

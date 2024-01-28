@@ -59,28 +59,30 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
-    switch (schema.getType()) {
-      case BOOLEAN:
-        putBoolean(insertTime, (boolean) objectValue);
-        break;
-      case INT32:
-        putInt(insertTime, (int) objectValue);
-        break;
-      case INT64:
-        putLong(insertTime, (long) objectValue);
-        break;
-      case FLOAT:
-        putFloat(insertTime, (float) objectValue);
-        break;
-      case DOUBLE:
-        putDouble(insertTime, (double) objectValue);
-        break;
-      case TEXT:
-        return putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
-      default:
-        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
+    synchronized (this) {
+      switch (schema.getType()) {
+        case BOOLEAN:
+          putBoolean(insertTime, (boolean) objectValue);
+          break;
+        case INT32:
+          putInt(insertTime, (int) objectValue);
+          break;
+        case INT64:
+          putLong(insertTime, (long) objectValue);
+          break;
+        case FLOAT:
+          putFloat(insertTime, (float) objectValue);
+          break;
+        case DOUBLE:
+          putDouble(insertTime, (double) objectValue);
+          break;
+        case TEXT:
+          return putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
+        default:
+          throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
+      }
+      return false;
     }
-    return false;
   }
 
   @Override
