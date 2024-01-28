@@ -54,6 +54,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
  * will be responsible for the lifecycle of a query. A query request will be represented as a
@@ -135,7 +137,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && sql.length() > 0) {
+      if (sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
       queryContext =
@@ -160,7 +162,12 @@ public class Coordinator {
         queryContext.setTimeOut(Long.MAX_VALUE);
       }
       execution.start();
-      return execution.getStatus();
+      ExecutionResult result = execution.getStatus();
+      if (!execution.isQuery() && result.status != null && needRetry(result.status)) {
+        // if it's write request and the result status needs to retry
+        result.status.setNeedRetry(true);
+      }
+      return result;
     } finally {
       int lockNums = queryContext.getAcquiredLockNum();
       if (queryContext != null && lockNums > 0) {
