@@ -506,6 +506,22 @@ public class FinalPruneBOSTest {
 
     }
 
+    private static void calculateBits(int k1, int k2, int block_size, int alpha, int gamma, int k1_start, int k2_end, int min_bits, int[] result){
+        int cur_bits = 0;
+        cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+        if(k1!=0)
+            cur_bits += k1*alpha;
+        if (k1 + k2 != block_size)
+            cur_bits += (block_size - k1 - k2) *
+                    getBitWith(k2_end -k1_start - 2);
+        if(k2!=0)
+            cur_bits += k2 * gamma;
+        if (cur_bits < min_bits) {
+            result[0] = cur_bits;
+            result[1] = k1_start;
+            result[2] = k2_end;
+        }
+    }
     public static class Group {
         private int[] number;
         private int count;
@@ -567,7 +583,7 @@ public class FinalPruneBOSTest {
             int alpha_i = getBitWith(value); // 0 1 2 3 4
             if (value == 0) {
                 alpha_count_list[0]++;
-            } else if (value == pow(2, alpha_i - 1)) { // x_min+2^{alpha_i-1}
+            } else if (value == pow(2, alpha_i - 1)) { // x_min+2^{alpha_i-1} = alpha_count_list[alpha_i]
                 alpha_count_list[alpha_i]++;
             } else {
                 groupL[alpha_i].addNumber(value); // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
@@ -629,7 +645,7 @@ public class FinalPruneBOSTest {
 //            final_k_end_value = k2_end;
 //        }
         // lower: x_min
-        // upper: x_max -2 ...
+        // upper:  x_max - 1, x_max - 2, x_max - 4  ... gamma_count_list[1] gamma_count_list[2] gamma_count_list[3]
         //(x_max - 2^{gamma}, x_max - 2^{gamma-1} ]
 
         for (int gamma = 1; gamma < alpha_size; gamma++) {
@@ -637,16 +653,15 @@ public class FinalPruneBOSTest {
             int gap_gamma = (int) pow(2, gamma - 1);
             k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1}  gamma : 1 to alpha_size-1
 
-
             Group cur_group_gamma = groupU[gamma];
-            // x_max - 2^{gamma-1}
-            k2 += gamma_count_list[gamma - 1];
+            // x_max - 2^{gamma-1} =gamma_count_list[gamma]
+            k2 += gamma_count_list[gamma];
             cur_bits = 0;
             cur_bits = k1;
             cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
             if (k1 + k2 != block_size)
                 cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-            cur_bits += k2 * (gamma + 1);
+            cur_bits += k2 * gamma;
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
                 final_k_start_value = k1_start;
@@ -676,14 +691,14 @@ public class FinalPruneBOSTest {
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
-                    final_k_end_value = k2_end - x_u_i; //need to check again
+                    final_k_end_value = k2_end - x_u_i;
                 }
             }
         }
 
         // x_max - 2^{alpha_size-1}
         k2_end = max_delta_value - (int)pow(2,alpha_size-1);
-        k2 += gamma_count_list[alpha_size - 1];
+        k2 += gamma_count_list[alpha_size]; //  x_max - 2^{alpha_size-1}
         cur_bits = 0;
         cur_bits = k1;
         cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
@@ -764,14 +779,14 @@ public class FinalPruneBOSTest {
 
 
                 cur_group_gamma = groupU[gamma];
-                // x_max - 2^{gamma-1}
-                k2 += gamma_count_list[gamma - 1];
+                k2 += gamma_count_list[gamma]; //= x_max - 2^{gamma-1}
                 cur_bits = 0;
-                cur_bits = k1;
+
                 cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += k1 * alpha;
                 if (k1 + k2 != block_size)
                     cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-                cur_bits += k2 * (gamma + 1);
+                cur_bits += k2 * gamma;
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
@@ -794,9 +809,10 @@ public class FinalPruneBOSTest {
                     if (cur_count_gamma == 0)
                         continue;
                     k2 += cur_count_gamma;
-                    cur_bits = k1;
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
 
+                    cur_bits = 0;
+                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                    cur_bits += k1 * alpha;
                     if (k1 + k2 != block_size)
                         cur_bits += (block_size - k1 - k2) *
                                 getBitWith(k2_end - x_u_i - 2);
@@ -814,9 +830,9 @@ public class FinalPruneBOSTest {
 
             int gap_gamma = (int) pow(2, gamma_size_smaller);
             k2_end = max_delta_value - gap_gamma;
-            k2 += gamma_count_list[gamma_size_smaller];
+            k2 += gamma_count_list[gamma_size_smaller+1]; // = x_max - 2^{gamma_size_smaller}
             cur_bits = 0;
-            cur_bits = k1;
+            cur_bits += k1*alpha;
             cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
             if (k1 + k2 != block_size)
                 cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
@@ -845,13 +861,13 @@ public class FinalPruneBOSTest {
                 if (cur_count_gamma == 0)
                     continue;
                 k2 += cur_count_gamma;
-                cur_bits = k1;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits = 0;
 
+                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += k1 * alpha;
                 if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) *
-                            getBitWith(k2_end - x_u_i - 2);
-                cur_bits += k2 * alpha_size;//min_upper_outlier
+                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
+                cur_bits += k2 * gamma_size_smaller;
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
@@ -861,625 +877,172 @@ public class FinalPruneBOSTest {
 
 
 
-            // lower: (x_min+2^{alpha-1},x_min+2^{alpha})
+            // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper: x_max
-
-
-
-
-            // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
-
-            // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
-            int gamma_size = (int) (log(max_delta_value - (int) pow(2,alpha))/log(2));
-
-            // gamma: 1 to gamma_size : x_min+2^{alpha}
-            for (int gamma = 1; gamma <= gamma_size; gamma++) {
-
-                int gap_gamma = (int) pow(2, gamma - 1);
-                k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
-
-
-                cur_group_gamma = groupU[gamma];
-                // x_max - 2^{gamma-1}
-                k2 += gamma_count_list[gamma - 1];
-                cur_bits = 0;
-                cur_bits = k1;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-                cur_bits += k2 * (gamma + 1);
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k1_start;
-                    final_k_end_value = k2_end;
-                }
-                //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                gamma_value_count_list = new int[gap_gamma];
-                gamma_value_count = cur_group_gamma.count;
-                number_gamma = cur_group_gamma.number;
-                for (int i = 0; i < gamma_value_count; i++) {
-                    int value = number_gamma[i];
-                    gamma_value_count_list[k2_end - value]++;
-                }
-
-                for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
-//                    if (k2_end - x_u_i <= 0) {
-//                        break;
-//                    }
-                    int cur_count_gamma = gamma_value_count_list[x_u_i];
-                    if (cur_count_gamma == 0)
-                        continue;
-                    k2 += cur_count_gamma;
-                    cur_bits = k1;
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-
-                    if (k1 + k2 != block_size)
-                        cur_bits += (block_size - k1 - k2) *
-                                getBitWith(k2_end - x_u_i - 2);
-                    cur_bits += k2 * gamma;//min_upper_outlier
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        final_k_start_value = k1_start;
-                        final_k_end_value = k2_end - x_u_i; //need to check again
-                    }
-                }
+            int gap_alpha = (int) pow(2,alpha-1);
+            int[] alpha_value_count_list = new int[gap_alpha];
+            int alpha_value_count = cur_group_alpha.count;
+            int[] number_alpha = cur_group_alpha.number;
+            for(int i=0;i<alpha_value_count;i++){
+                int value = number_alpha[i];
+                alpha_value_count_list[value-k1_start] ++;
             }
 
-            // lower: [x_min+2^{alpha-1},x_min+2^{alpha})
-            // k2_end = x_max - 2^{gamma_size}
-            // (x_min+2^{alpha-1},x_max - 2^{alpha_size-1})
-            k2_end = max_delta_value - (int) pow(2, gamma_size);
+            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
+                int cur_count_alpha = alpha_value_count_list[x_l_i];
+                if (cur_count_alpha == 0)
+                    continue;
+                k1 += cur_count_alpha;// gamma_box_count_list[gamma];
 
-            // gamma: gamma_size+1  to gamma_size_smaller ( 2^{gamma} <= x_max - 2^{alpha-1})
-
-            for (int gamma = gamma_size+1; gamma <= gamma_size_smaller; gamma++) {
-
-                int gap_gamma = (int) pow(2, gamma - 1);
-                k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
-
-
-                cur_group_gamma = groupU[gamma];
-                // x_max - 2^{gamma-1}
-                k2 += gamma_count_list[gamma - 1];
-                cur_bits = 0;
-                cur_bits = k1;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                // upper: x_max
+                k2=gamma_count_list[0];
+                k2_end = max_delta_value;
+                cur_bits = Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += k1*alpha;
+                cur_bits += k2;
                 if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-                cur_bits += k2 * (gamma + 1);
+                   cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start -x_l_i - 2);
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    final_k_start_value = k1_start;
+                    final_k_start_value = k1_start +  x_l_i;
                     final_k_end_value = k2_end;
                 }
-                //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                gamma_value_count_list = new int[gap_gamma];
-                gamma_value_count = cur_group_gamma.count;
-                number_gamma = cur_group_gamma.number;
-                for (int i = 0; i < gamma_value_count; i++) {
-                    int value = number_gamma[i];
-                    gamma_value_count_list[k2_end - value]++;
+
+                // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
+
+                // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
+                int gamma_size = (int) (log(max_delta_value - (int) pow(2,alpha))/log(2));
+
+                for (int gamma = 1; gamma <= gamma_size; gamma++) {
+
+                    gap_gamma = (int) pow(2, gamma - 1);
+                    k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
+
+
+                    cur_group_gamma = groupU[gamma];
+                    k2 += gamma_count_list[gamma];// = x_max - 2^{gamma-1}
+
+                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                    // upper:  x_max - 2^{gamma-1}
+                    cur_bits = 0;
+                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                    cur_bits += k1*alpha;
+                    if (k1 + k2 != block_size)
+                        cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
+                    cur_bits += k2 * gamma;
+                    if (cur_bits < min_bits) {
+                        min_bits = cur_bits;
+                        final_k_start_value = k1_start+  x_l_i;
+                        final_k_end_value = k2_end;
+                    }
+
+                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                    // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
+                    gamma_value_count_list = new int[gap_gamma];
+                    gamma_value_count = cur_group_gamma.count;
+                    number_gamma = cur_group_gamma.number;
+                    for (int i = 0; i < gamma_value_count; i++) {
+                        int value = number_gamma[i];
+                        gamma_value_count_list[k2_end - value]++;
+                    }
+                    for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
+                        int cur_count_gamma = gamma_value_count_list[x_u_i];
+                        if (cur_count_gamma == 0)
+                            continue;
+                        k2 += cur_count_gamma;
+
+                        cur_bits = 0;
+                        cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                        cur_bits += k1*alpha;
+                        if (k1 + k2 != block_size)
+                            cur_bits += (block_size - k1 - k2) *
+                                    getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
+                        cur_bits += k2 * gamma;
+                        if (cur_bits < min_bits) {
+                            min_bits = cur_bits;
+                            final_k_start_value = k1_start + x_l_i;
+                            final_k_end_value = k2_end - x_u_i;
+                        }
+                    }
                 }
 
-                for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
-                    if (k2_end - x_u_i <= 0) {
+                // gamma:  gamma_size+1 to ....
+                // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
+                // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
+                gap_gamma = (int) pow(2, gamma_size);
+                k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
+                for (int gamma = gamma_size+1; gamma <= alpha_size; gamma++) {
+
+                    cur_group_gamma = groupU[gamma];
+                    k2 += gamma_count_list[gamma];// = x_max - 2^{gamma-1}
+
+                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                    // upper:  x_max - 2^{gamma-1}
+                    cur_bits = 0;
+                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                    cur_bits += k1*alpha;
+                    if (k1 + k2 != block_size)
+                        cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
+                    cur_bits += k2 * gamma;
+                    if (cur_bits < min_bits) {
+                        min_bits = cur_bits;
+                        final_k_start_value = k1_start+  x_l_i;
+                        final_k_end_value = k2_end;
+                    }
+
+                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                    // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
+
+                    gamma_value_count_list = new int[gap_gamma];
+                    gamma_value_count = cur_group_gamma.count;
+                    number_gamma = cur_group_gamma.number;
+                    for (int i = 0; i < gamma_value_count; i++) {
+                        int value = number_gamma[i];
+                        gamma_value_count_list[k2_end - value]++;
+                    }
+
+                    for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
+                        if(k2_end - x_u_i < k1_start+x_l_i){
+                            break;
+                        }
+                        int cur_count_gamma = gamma_value_count_list[x_u_i];
+                        if (cur_count_gamma == 0)
+                            continue;
+                        k2 += cur_count_gamma;
+
+                        cur_bits = 0;
+                        cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                        cur_bits += k1*alpha;
+                        if (k1 + k2 != block_size)
+                            cur_bits += (block_size - k1 - k2) *
+                                    getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
+                        cur_bits += k2 * gamma;
+                        if (cur_bits < min_bits) {
+                            min_bits = cur_bits;
+                            final_k_start_value = k1_start + x_l_i;
+                            final_k_end_value = k2_end - x_u_i;
+                        }
+                    }
+
+                    gap_gamma = (int) pow(2, gamma);
+                    k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ; gamma :  gamma_size to ....
+                    if(k2_end<=k1_start){
                         break;
                     }
-                    int cur_count_gamma = gamma_value_count_list[x_u_i];
-                    if (cur_count_gamma == 0)
-                        continue;
-                    k2 += cur_count_gamma;
-                    cur_bits = k1;
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-
-                    if (k1 + k2 != block_size)
-                        cur_bits += (block_size - k1 - k2) *
-                                getBitWith(k2_end - x_u_i - 2);
-                    cur_bits += k2 * gamma;//min_upper_outlier
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        final_k_start_value = k1_start;
-                        final_k_end_value = k2_end - x_u_i; //need to check again
-                    }
                 }
+
             }
 
-            //(x_max - 2^{gamma}, x_max - 2^{gamma-1}] ; gamma : gamma_size+1 to
+
+
 
 
         }
 
 
-
-
-        // lower: x_min
-        //  -------------------------------
-
-        // lower: x_min +1
-        //  -------------------------------
-        cur_k1_close += alpha_count_list[1]; // lower outliers: x_min +1
-        cur_k1_close += groupU[0].count;
-
-        k_start_value_close = 1;
-        cur_k2_close = gamma_count_list[0];
-        cur_k2_close += gamma_count_list[1];
-        cur_k2_close += groupU[0].count;
-        for (int gamma = 1;  gamma<=alpha_size;gamma++){
-            int k_end_value_close = max_delta_value - (int) pow(2,gamma);
-            if(k_end_value_close<k_start_value_close){
-                break;
-            }
-              Group cur_group_gamma = groupU[gamma];
-            cur_k2_close += gamma_count_list[gamma+1];
-            cur_k2_close += cur_group_gamma.count;
-            cur_bits = cur_k1_close;
-            cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
-            if (cur_k1_close + cur_k2_close != block_size)
-                cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
-            if (cur_k2_close != 0)
-                cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
-
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_close;
-                final_k_end_value = k_end_value_close;
-            }
-
-            int cur_k2_open = cur_k2_close - gamma_count_list[gamma+1];
-            int k_end_value_open = k_end_value_close + 1;
-
-            //C4 k1 close k2 open
-            cur_bits = cur_k1_close;
-            cur_bits += Math.min((cur_k1_close + cur_k2_open) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_open);
-
-            if (cur_k1_close + cur_k2_open != block_size)
-                cur_bits += (block_size - cur_k1_close - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_close - 2);
-            if (cur_k2_open != 0)
-                cur_bits += cur_k2_open * gamma;//min_upper_outlier
-
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_close;
-                final_k_end_value = k_end_value_open;
-            }
-
-            int gap_gamma = (int)pow(2,gamma-1);
-            int gamma_value_count_list_end = max_delta_value - gap_gamma;
-            if (gamma_value_count_list_end <= 0){
-                break;
-            }
-            int[] gamma_value_count_list = new int[gap_gamma];
-            int gamma_value_count = cur_group_gamma.count;
-            int[] number_gamma = cur_group_gamma.number;
-            for(int i=0;i<gamma_value_count;i++){
-                int value = number_gamma[i];
-                gamma_value_count_list[gamma_value_count_list_end-value] ++;
-            }
-
-            int cur_k1_x_u = cur_k2_open -cur_group_gamma.count;
-            for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
-                if (gamma_value_count_list_end - x_u_i <= 0 ){
-                    break;
-                }
-                int cur_count_gamma = gamma_value_count_list[x_u_i];
-                if (cur_count_gamma == 0)
-                    continue;
-                cur_k1_x_u += cur_count_gamma;
-                cur_bits = cur_k1_close;
-                cur_bits += Math.min((cur_k1_close + cur_k1_x_u) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k1_x_u);
-
-                if (cur_k1_close + cur_k1_x_u != block_size)
-                    cur_bits += (block_size - cur_k1_close - cur_k1_x_u) *
-                            getBitWith(gamma_value_count_list_end - x_u_i - 2);
-                if (cur_k1_x_u != 0)
-                    cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k_start_value_close;
-                    final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
-                }
-            }
-
-        }
-
-        {
-              Group cur_group_gamma = groupU[alpha_size];
-            cur_bits = cur_k1_close;
-            int gap_gamma = (int) pow(2, alpha_size - 1);
-            int gamma_value_count_list_end = max_delta_value - gap_gamma;
-            int[] gamma_value_count_list = new int[gap_gamma];
-            int gamma_value_count = cur_group_gamma.count;
-            int[] number_gamma = cur_group_gamma.number;
-            for (int i = 0; i < gamma_value_count; i++) {
-                int value = number_gamma[i];
-                gamma_value_count_list[gamma_value_count_list_end - value]++;
-            }
-            int cur_k1_x_u = cur_k2_close;
-            for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
-                if (gamma_value_count_list_end - x_u_i <= 0) {
-                    break;
-                }
-                int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                if (cur_count_gamma == 0)
-//                    continue;
-                cur_k1_x_u += cur_count_gamma;
-                cur_bits = cur_k1_close;
-                cur_bits += Math.min((cur_k1_close + cur_k1_x_u) * getBitWith(block_size - 1), block_size + cur_k1_close + cur_k1_x_u);
-
-                if (cur_k1_close + cur_k1_x_u != block_size)
-                    cur_bits += (block_size - cur_k1_close - cur_k1_x_u) *
-                            getBitWith(gamma_value_count_list_end - x_u_i - 2);
-                if (cur_k1_x_u != 0)
-                    cur_bits += cur_k1_x_u * alpha_size;//min_upper_outlier
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-                    final_k_start_value = k_start_value_close;
-                    final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
-                }
-            }
-        }
-
-        // lower: x_min + 2 ^alpha
-        //  -------------------------------
-
-
-//        cur_k1_close = alpha_count_list[0];
-//        cur_k1_close += alpha_count_list[1];
-//        cur_k1_close += groupL[0].count ;//alpha_box_count_list[0];
-        for (int alpha = 1; alpha + 1 <= alpha_size; alpha++) {
-
-            //C1 k1 close k2 close
-            k_start_value_close = (int) pow(2,alpha);//close
-
-//            System.out.println(k_start_value_close);
-              Group cur_group_alpha = groupL[alpha]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-            cur_k1_close += alpha_count_list[alpha+1]; // x_min+2^{alpha_i}
-            cur_k1_close += cur_group_alpha.count;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-            cur_bits = 0;
-            alpha_2_pow = (int)pow(2,alpha);
-            cur_k2_close = gamma_count_list[0];
-            int  k_end_value_close = max_delta_value;
-
-            cur_bits=cur_k2_close;
-            cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
-            if (cur_k1_close != 0)
-                cur_bits += cur_k1_close * (alpha + 1);//left_max
-            if (cur_k1_close + cur_k2_close != block_size)
-                cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_close;
-                final_k_end_value = k_end_value_close;
-            }
-
-            int cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
-            int k_start_value_open = k_start_value_close - 1;
-            cur_bits=cur_k2_close;
-            cur_bits += Math.min((cur_k1_open + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_close);
-            if (cur_k1_open != 0)
-                cur_bits += cur_k1_open * (alpha);//left_max
-            if (cur_k1_open + cur_k2_close != block_size)
-                cur_bits += (block_size - cur_k1_open - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_open - 2);
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_open;
-                final_k_end_value = k_end_value_close;
-            }
-
-            // upper outliers:  x_max -1
-            cur_k2_close += gamma_count_list[1];
-            cur_k2_close += groupU[0].count ;//gamma_box_count_list[0];
-            k_end_value_close = max_delta_value-1;
-            cur_bits=cur_k2_close;
-            cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
-            if (cur_k1_close != 0)
-                cur_bits += cur_k1_close * (alpha + 1);//left_max
-            if (cur_k1_close + cur_k2_close != block_size)
-                cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_close;
-                final_k_end_value = k_end_value_close;
-            }
-
-            cur_k1_open = cur_k1_close - alpha_count_list[alpha+1];
-            k_start_value_open = k_start_value_close - 1;
-            cur_bits=cur_k2_close;
-            cur_bits += Math.min((cur_k1_open + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_open + cur_k2_close);
-            if (cur_k1_open != 0)
-                cur_bits += cur_k1_open * (alpha);//left_max
-            if (cur_k1_open + cur_k2_close != block_size)
-                cur_bits += (block_size - cur_k1_open - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_open - 2);
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value_open;
-                final_k_end_value = k_end_value_close;
-            }
-
-            
-
-            // upper outliers:  x_max -2^gamma
-            for (int gamma = 1; gamma + 1 <= alpha_size; gamma++) {
-                k_end_value_close = max_delta_value - (int) pow(2,gamma);
-                  Group cur_group_gamma = groupU[gamma];
-                cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
-                cur_k2_close += cur_group_gamma.count;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
-//                if(cur_group_gamma.count==0){
-//
-//                }
-                cur_k1_open = cur_k1_close - alpha_count_list[alpha + 1];
-                int cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
-                k_start_value_open = k_start_value_close - 1;
-                int k_end_value_open = k_end_value_close + 1;
-                if (k_end_value_close > k_start_value_close) {
-                    cur_bits = 0;
-                    int flag_C = 0;
-
-                    // prop 4.5
-                    cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size - 1), block_size + cur_k1_close + cur_k2_close);
-                    if (cur_k1_close != 0)
-                        cur_bits += cur_k1_close * (alpha + 1);
-                    if (cur_k1_close + cur_k2_close != block_size)
-                        cur_bits += (block_size - cur_k1_close - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_close - 2);
-                    if (cur_k2_close != 0)
-                        cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
-
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        flag_C = 1;
-                    }
-
-                    // prop 4.2
-                    //C2 k1open k2 open
-                    cur_bits = 0;
-                    cur_bits += Math.min((cur_k1_open + cur_k2_open) * getBitWith(block_size - 1), block_size + cur_k1_open + cur_k2_open);
-                    if (cur_k1_open != 0)
-                        cur_bits += cur_k1_open * alpha;
-                    if (cur_k1_open + cur_k2_open != block_size)
-                        cur_bits += (block_size - cur_k1_open - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_open - 2);
-                    if (cur_k2_open != 0)
-                        cur_bits += cur_k2_open * gamma;
-
-
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        flag_C = 2;
-                    }
-
-                    // prop 4.3
-                    //C3 k1 open k2 close
-                    cur_bits = 0;
-                    cur_bits += Math.min((cur_k1_open + cur_k2_close) * getBitWith(block_size - 1), block_size + cur_k1_open + cur_k2_close);
-                    if (cur_k1_open != 0)
-                        cur_bits += cur_k1_open * alpha;
-                    if (cur_k1_open + cur_k2_close != block_size)
-                        cur_bits += (block_size - cur_k1_open - cur_k2_close) * getBitWith(k_end_value_close - k_start_value_open - 2);
-                    if (cur_k2_close != 0)
-                        cur_bits += cur_k2_close * (gamma + 1);//min_upper_outlier
-
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        flag_C = 3;
-                    }
-
-                    // prop 4.4
-                    //C4 k1 close k2 open
-                    cur_bits = 0;
-                    cur_bits += Math.min((cur_k1_close + cur_k2_open) * getBitWith(block_size - 1), block_size + cur_k1_close + cur_k2_open);
-                    if (cur_k1_close != 0)
-                        cur_bits += cur_k1_close * (alpha + 1);
-                    if (cur_k1_close + cur_k2_open != block_size)
-                        cur_bits += (block_size - cur_k1_close - cur_k2_open) * getBitWith(k_end_value_open - k_start_value_close - 2);
-                    if (cur_k2_open != 0)
-                        cur_bits += cur_k2_open * gamma;//min_upper_outlier
-
-                    if (cur_bits < min_bits) {
-                        min_bits = cur_bits;
-                        flag_C = 4;
-                    }
-                    if (flag_C == 1) {
-                        final_k_start_value = k_start_value_close;
-                        final_k_end_value = k_end_value_close;
-                    } else if (flag_C == 2) {
-                        final_k_start_value = k_start_value_open;
-                        final_k_end_value = k_end_value_open;
-                    } else if (flag_C == 3) {
-                        final_k_start_value = k_start_value_open;
-                        final_k_end_value = k_end_value_close;
-                    } else if (flag_C == 4) {
-                        final_k_start_value = k_start_value_close;
-                        final_k_end_value = k_end_value_open;
-                    }
-                }
-
-
-                int gap_alpha = alpha_2_pow/2;
-                int alpha_value_count_list_start = gap_alpha;
-
-                int[] alpha_value_count_list = new int[gap_alpha];
-                int alpha_value_count = cur_group_alpha.count;
-                int[] number_alpha = cur_group_alpha.number;
-                for(int i=0;i<alpha_value_count;i++){
-                    int value = number_alpha[i];
-                    alpha_value_count_list[value-alpha_value_count_list_start] ++;
-                }
-
-                int gamma_2_pow = (int)pow(2,gamma);
-
-                int gap_gamma = gamma_2_pow/2;
-                int gamma_value_count_list_end = max_delta_value - gap_gamma;
-                if (gamma_value_count_list_end <= alpha_value_count_list_start){
-                    break;
-                }
-                int[] gamma_value_count_list = new int[gap_gamma];
-                int gamma_value_count = cur_group_gamma.count;
-                int[] number_gamma = cur_group_gamma.number;
-
-                int[] a_list = {getBitWith(block_size-1),1};
-                int[] b_list = {0,block_size};
-                for(int i=0;i<gamma_value_count;i++){
-                    int value = number_gamma[i];
-                    gamma_value_count_list[gamma_value_count_list_end-value] ++;
-                }
-
-                for(int a_i= 0; a_i<2; a_i++){
-                    int a = a_list[a_i];
-                    int b = b_list[a_i];
-
-                    // pruning
-                    int beta = getBitWith(max_delta_value-alpha_2_pow-gamma_2_pow/2-1);
-                    int beta_pow_2 = (int) pow(2,beta);
-                    if(beta >= a+alpha && beta <= gamma+a)
-                        if(beta_pow_2 + alpha_2_pow+gamma_2_pow/2 < max_delta_value){
-                            continue;
-                        }
-                    beta = getBitWith(max_delta_value-alpha_2_pow/2-gamma_2_pow-1);
-                    beta_pow_2 = (int) pow(2,beta);
-                    if(beta <= a+alpha && beta >= gamma+a){
-                        if(beta_pow_2 +alpha_2_pow/2+gamma_2_pow < max_delta_value){
-                            continue;
-                        }
-                    }
-                    beta = getBitWith(max_delta_value-alpha_2_pow/2-gamma_2_pow/2-2);
-                    beta_pow_2 = (int) pow(2,beta);
-                    if(beta <= a+alpha && beta <= gamma+a){
-                        if(beta_pow_2 +alpha_2_pow/2+gamma_2_pow/2 <= max_delta_value){
-                            continue;
-                        }
-                    }
-
-                    int cur_k1_x_l =  cur_k1_open - cur_group_alpha.count;
-                    for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
-                        int cur_count_alpha = alpha_value_count_list[x_l_i];
-                        if (cur_count_alpha == 0)
-                            continue;
-                        cur_k1_x_l += cur_count_alpha;// gamma_box_count_list[gamma];
-                        int cur_k1_x_u = cur_k2_open -cur_group_gamma.count;
-                        for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
-                            if (gamma_value_count_list_end - x_u_i <= alpha_value_count_list_start + x_l_i){
-                                break;
-                            }
-                            int cur_count_gamma = gamma_value_count_list[x_u_i];
-                            if (cur_count_gamma == 0)
-                                continue;
-                            cur_k1_x_u += cur_count_gamma;
-
-                            cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
-
-//                            if(alpha_value_count_list_start + x_l_i==49952 && gamma_value_count_list_end - x_u_i==54044){
-//                                System.out.println(cur_bits);
-//                            }
-
-                            if (cur_k1_x_l != 0)
-                                cur_bits += cur_k1_x_l * alpha;
-                            if (cur_k1_x_l + cur_k1_x_u != block_size)
-                                cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
-                                        getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
-                            if (cur_k1_x_u != 0)
-                                cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-                            if (cur_bits < min_bits) {
-                                min_bits = cur_bits;
-                                final_k_start_value = alpha_value_count_list_start + x_l_i;
-                                final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
-                            }
-                        }
-                    }
-                }
-
-
-            }
-        }
-
-        {
-            // groupL[alpha_size];
-              Group cur_group_alpha = groupL[alpha_size]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-            k_start_value_close = max_delta_value;
-            cur_k1_close += cur_group_alpha.count;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
-            cur_bits=0;
-            alpha_2_pow = (int)pow(2,alpha_size);
-            cur_k2_close = gamma_count_list[0];
-            cur_k2_close += gamma_count_list[1];
-            cur_k2_close += groupU[0].count ;//gamma_box_count_list[0];
-            for (int gamma = 1; gamma + 1 <= alpha_size; gamma++) {
-                int k_end_value_close = max_delta_value - (int) pow(2, gamma);
-                  Group cur_group_gamma = groupU[gamma];
-                cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
-                cur_k2_close += cur_group_gamma.count;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
-                int cur_k1_open = cur_k1_close;
-                int cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
-                int k_start_value_open = k_start_value_close - 1;
-                int k_end_value_open = k_end_value_close + 1;
-                int gamma_2_pow = (int) pow(2, gamma);
-
-                int gap_alpha = alpha_2_pow / 2;
-                int alpha_value_count_list_start = gap_alpha;
-
-                int[] alpha_value_count_list = new int[gap_alpha];
-                int alpha_value_count = cur_group_alpha.count;
-                int[] number_alpha = cur_group_alpha.number;
-                for (int i = 0; i < alpha_value_count; i++) {
-                    int value = number_alpha[i];
-                    alpha_value_count_list[value - alpha_value_count_list_start]++;
-                }
-
-                int gap_gamma = gamma_2_pow / 2;
-                int gamma_value_count_list_end = max_delta_value - gap_gamma;
-                if (gamma_value_count_list_end <= alpha_value_count_list_start) {
-                    break;
-                }
-                int[] gamma_value_count_list = new int[gap_gamma];
-                int gamma_value_count = cur_group_gamma.count;
-                int[] number_gamma = cur_group_gamma.number;
-
-                int[] a_list = {getBitWith(block_size - 1), 1};
-                int[] b_list = {0, block_size};
-                for (int i = 0; i < gamma_value_count; i++) {
-                    int value = number_gamma[i];
-                    gamma_value_count_list[gamma_value_count_list_end - value]++;
-                }
-
-                for (int a_i = 0; a_i < 2; a_i++) {
-                    int a = a_list[a_i];
-                    int b = b_list[a_i];
-                    int cur_k1_x_l = cur_k1_open - cur_group_alpha.count;
-                    for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
-                        int cur_count_alpha = alpha_value_count_list[x_l_i];
-                        if (cur_count_alpha == 0)
-                            continue;
-                        cur_k1_x_l += cur_count_alpha;// gamma_box_count_list[gamma];
-                        int cur_k1_x_u = cur_k2_open - cur_group_gamma.count;
-                        for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
-                            if (gamma_value_count_list_end - x_u_i <= alpha_value_count_list_start + x_l_i) {
-                                break;
-                            }
-                            int cur_count_gamma = gamma_value_count_list[x_u_i];
-                            if (cur_count_gamma == 0)
-                                continue;
-                            cur_k1_x_u += cur_count_gamma;
-
-                            cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
-                            if (cur_k1_x_l != 0)
-                                cur_bits += cur_k1_x_l * alpha_size;
-                            if (cur_k1_x_l + cur_k1_x_u != block_size)
-                                cur_bits += (block_size - cur_k1_x_l - cur_k1_x_u) *
-                                        getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
-                            if (cur_k1_x_u != 0)
-                                cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-//                            if(alpha_value_count_list_start + x_l_i== 143){
-//                                System.out.println(gamma_value_count_list_end - x_u_i);
-//                                System.out.println(alpha);
-//                                System.out.println("cur_bits:"+cur_bits);
-//                            }
-                            if (cur_bits < min_bits) {
-                                min_bits = cur_bits;
-                                final_k_start_value = alpha_value_count_list_start + x_l_i;
-                                final_k_end_value = gamma_value_count_list_end - x_u_i; //need to check again
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        
 
 
         //
