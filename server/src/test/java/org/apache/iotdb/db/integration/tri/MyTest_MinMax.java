@@ -62,7 +62,7 @@ public class MyTest_MinMax {
   private final String d0s0 = "root.vehicle.d0.s0";
 
   private static final String insertTemplate =
-      "INSERT INTO root.vehicle.d0(timestamp,s0)" + " VALUES(%d,%d)";
+      "INSERT INTO root.vehicle.d0(timestamp,s0)" + " VALUES(%d,%f)";
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -100,7 +100,7 @@ public class MyTest_MinMax {
     prepareData1();
     //    String[] res = new String[]{"0,1[20],15[2]", "25,8[25],8[25]", "50,3[54],3[54]",
     // "75,null,null"};
-    String res = "0,1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,";
+    String res = "1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,";
     // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -114,7 +114,7 @@ public class MyTest_MinMax {
         int i = 0;
         while (resultSet.next()) {
           // 注意从1开始编号，所以第一列是无意义时间戳
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -140,12 +140,12 @@ public class MyTest_MinMax {
         statement.execute(sql);
       }
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 3));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 1.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 8.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 3.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8.0));
       statement.execute("FLUSH");
 
     } catch (Exception e) {
@@ -159,7 +159,7 @@ public class MyTest_MinMax {
 
     //    String[] res = new String[]{"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]",
     // "75,1[90],11[80]"};
-    String res = "0,1.0[10],10.0[2],2.0[40],8.0[30],4.0[72],20.0[62],1.0[90],11.0[80],";
+    String res = "1.0[10],10.0[2],2.0[40],8.0[30],4.0[72],20.0[62],1.0[90],11.0[80],";
     // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -174,7 +174,7 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -197,28 +197,28 @@ public class MyTest_MinMax {
         statement.execute(sql);
       }
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5.0));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5.0));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18.0));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7.0));
       statement.execute("FLUSH");
     } catch (Exception e) {
       e.printStackTrace();
@@ -231,7 +231,7 @@ public class MyTest_MinMax {
 
     //    String[] res = new String[]{"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]",
     // "75,1[90],11[80]"};
-    String res = "0,1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],";
+    String res = "1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],";
     // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -246,7 +246,7 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -270,28 +270,28 @@ public class MyTest_MinMax {
         statement.execute(sql);
       }
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5.0));
       statement.execute("FLUSH");
 
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5));
-      //      statement.execute("FLUSH");
+      //            statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4.0));
+      //            statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8.0));
+      //            statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2.0));
+      //            statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5.0));
+      //            statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18.0));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1.0));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7.0));
       statement.execute("FLUSH");
     } catch (Exception e) {
       e.printStackTrace();

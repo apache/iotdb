@@ -129,7 +129,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
         curStartTime += curSlidingStep;
       }
       // This is an open interval , [0-100)
-      if (curStartTime + interval >= endTime) {
+      if (curStartTime + interval > endTime) {
+        // 注意没有等号！因为左闭右开
         // + interval to make the last bucket complete
         // e.g, T=11,nout=3,interval=floor(11/3)=3,
         // [0,3),[3,6),[6,9), no need incomplete [9,11)

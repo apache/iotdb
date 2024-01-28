@@ -39,7 +39,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
-public class MyTest_MinMaxLTTB {
+public class MyTest_LTTB {
 
   /*
    * Sql format: SELECT min_value(s0), max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength).
@@ -48,6 +48,7 @@ public class MyTest_MinMaxLTTB {
    * (2) Assume each chunk has only one page.
    * (3) Assume all chunks are sequential and no deletes.
    * (4) Assume plain encoding, UNCOMPRESSED, Long or Double data type, no compaction
+   * (5) Assume no empty bucket
    */
   private static final String TIMESTAMP_STR = "Time";
 
@@ -71,7 +72,7 @@ public class MyTest_MinMaxLTTB {
     config.setTimestampPrecision("ms");
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
-    config.setEnableTri("MinMaxLTTB");
+    config.setEnableTri("LTTB");
     //    config.setP1t(0);
     //    config.setP1v(-1.2079272);
     //    config.setPnt(2100);
@@ -92,43 +93,105 @@ public class MyTest_MinMaxLTTB {
   }
 
   @Test
-  public void test2() throws Exception {
-    prepareData2();
-    config.setP1t(0);
-    config.setP1v(-1.2079272);
-    config.setPnt(2100);
-    config.setPnv(-0.0211206);
-    config.setRps(4);
-    String res =
-        "-1.2079272[0],1.101946[200],-1.014322[700],0.809559[1500],-0.785419[1600],-0.0211206[2100],";
+  public void test3_2() {
+    prepareData3_2();
+
+    String res = "5.0[1],10.0[2],2.0[40],20.0[62],1.0[90],7.0[106],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([100,2100),250ms)");
-      // rps=4,nout=6,minmaxInterval=floor((tn-t2)/((nout-2)*rps/2))=250ms
+              "SELECT min_value(s0)"
+                  // TODO not real min_value here, actually controlled by enableTri
+                  + " FROM root.vehicle.d0 group by ([2,106),26ms)");
+
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          // 注意从1开始编号，所以第一列是无意义时间戳
           String ans = resultSet.getString(2);
+          // for LTTB all results are in the value string of MinValueAggrResult
+          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
+          ans = ans.substring(0, ans.length() - 3);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
       }
-      //      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private static void prepareData2() {
+  private static void prepareData3_2() {
     // data:
-    // no overlap, no delete
+    // https://user-images.githubusercontent.com/33376433/152003603-6b4e7494-00ff-47e4-bf6e-cab3c8600ce2.png
+    // slightly modified
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : creationSqls) {
+        statement.execute(sql);
+      }
+
+      long[] t = new long[] {1, 2, 10, 20, 22, 30, 40, 55, 60, 62, 65, 70, 72, 80, 90, 106};
+      double[] v = new double[] {5, 10, 1, 5, 4, 8, 2, 5, 15, 20, 8, 18, 4, 11, 1, 7};
+      config.setP1t(t[0]);
+      config.setP1v(v[0]);
+      config.setPnt(t[t.length - 1]);
+      config.setPnv(v[v.length - 1]);
+
+      for (int i = 0; i < t.length; i++) {
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, t[i], v[i]));
+        if ((i + 1) % 4 == 0) {
+          statement.execute("FLUSH");
+        }
+      }
+      statement.execute("FLUSH");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void test3() {
+    prepareData3();
+
+    String res =
+        "-1.2079272[0],1.101946[200],-0.359703[400],-1.014322[700],0.532565[900],"
+            + "-0.676077[1300],0.809559[1500],-0.785419[1600],-0.413534[1900],-0.0211206[2100],";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_value(s0)"
+                  // TODO not real min_value here, actually controlled by enableTri
+                  + " FROM root.vehicle.d0 group by ([100,2100),250ms)");
+      // (tn-t2)/(nout-2)=(2100-100)/(10-2)=2000/8=250
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int i = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2);
+          // for LTTB all results are in the value string of MinValueAggrResult
+          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
+          ans = ans.substring(0, ans.length() - 3);
+          System.out.println(ans);
+          Assert.assertEquals(res, ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareData3() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -168,11 +231,18 @@ public class MyTest_MinMaxLTTB {
             -0.21019539,
             -0.0211206
           };
+      config.setP1t(t[0]);
+      config.setP1v(v[0]);
+      config.setPnt(t[t.length - 1]);
+      config.setPnv(v[v.length - 1]);
+
       for (int i = 0; i < t.length; i++) {
         statement.execute(String.format(Locale.ENGLISH, insertTemplate, t[i], v[i]));
+        if ((i + 1) % 4 == 0) {
+          statement.execute("FLUSH");
+        }
       }
       statement.execute("FLUSH");
-
     } catch (Exception e) {
       e.printStackTrace();
     }

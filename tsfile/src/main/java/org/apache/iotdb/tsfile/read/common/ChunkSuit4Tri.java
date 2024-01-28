@@ -26,8 +26,9 @@ public class ChunkSuit4Tri {
 
   public ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
 
-  public int lastReadPos =
-      0; // dynamic maintained globally, starting from 0, incremental, never decrease
+  // dynamic maintained globally, starting from 0, incremental, never decrease.
+  // only used in LocalGroupByExecutorTri_MinMax as it never reads backward
+  public int lastReadPos = 0;
 
   // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
   //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.

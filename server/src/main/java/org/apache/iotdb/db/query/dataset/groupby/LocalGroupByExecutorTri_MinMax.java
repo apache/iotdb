@@ -298,12 +298,16 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
             new MinMaxInfo<>(statistics.getMaxValue(), statistics.getTopTimestamp()));
       } else { // cannot use statistics directly
 
-        Comparable<Object> minVal = null;
+        double minVal = Double.MAX_VALUE;
         long bottomTime = -1;
-        Comparable<Object> maxVal = null;
+        double maxVal = Double.MIN_VALUE;
         long topTime = -1;
 
         // 1. load page data if it hasn't been loaded
+        TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
+        if (dataType != TSDataType.DOUBLE) {
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        }
         if (chunkSuit4Tri.pageReader == null) {
           chunkSuit4Tri.pageReader =
               FileLoaderUtils.loadPageReaderList4CPV(chunkSuit4Tri.chunkMetadata, this.timeFilter);
@@ -330,30 +334,19 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
           } else {
             // 4. update MinMax by traversing points fallen within this bucket
             ByteBuffer valueBuffer = pageReader.valueBuffer;
-            TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
-            Object v;
-            switch (dataType) {
-                //              case INT64:
-                //                v = valueBuffer.getLong(pageReader.timeBufferLength + i * 8);
-                //                break;
-              case DOUBLE:
-                v = valueBuffer.getDouble(pageReader.timeBufferLength + i * 8);
-                break;
-              default:
-                throw new UnSupportedDataTypeException(String.valueOf(dataType));
-            }
-            if (minVal == null || minVal.compareTo(v) > 0) {
-              minVal = (Comparable<Object>) v;
+            double v = valueBuffer.getDouble(pageReader.timeBufferLength + i * 8);
+            if (v < minVal) {
+              minVal = v;
               bottomTime = timestamp;
             }
-            if (maxVal == null || maxVal.compareTo(v) < 0) {
-              maxVal = (Comparable<Object>) v;
+            if (v > maxVal) {
+              maxVal = v;
               topTime = timestamp;
             }
           }
         }
         // 4. update MinMax by traversing points fallen within this bucket
-        if (minVal != null) {
+        if (topTime >= 0) {
           // update BP
           MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
           minValueAggrResult.updateResult(new MinMaxInfo<>(minVal, bottomTime));

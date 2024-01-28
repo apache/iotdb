@@ -142,14 +142,50 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     //    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
     //      // TODO
-    //    } else if (CONFIG.getEnableTri().equals("LTTB")) {
-    //      // TODO
+    else if (CONFIG.getEnableTri().equals("LTTB")) {
+      // TODO
+      return nextWithoutConstraintTri_LTTB();
+    }
     //    } else if (CONFIG.getEnableTri().equals("ILTS")) {
     //      // TODO
     //    }
     else {
       return nextWithoutConstraint_raw();
     }
+  }
+
+  public RowRecord nextWithoutConstraintTri_LTTB() throws IOException {
+    RowRecord record;
+    try {
+      GroupByExecutor executor = null;
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        executor = pathToExecutorEntry.getValue(); // assume only one series here
+        break;
+      }
+
+      // concat results into a string
+      record = new RowRecord(0);
+      StringBuilder series = new StringBuilder();
+
+      // all bucket results as string in value of MinValueAggrResult
+      List<AggregateResult> aggregations =
+          executor.calcResult(startTime, startTime + interval, startTime, endTime, interval);
+      series.append(aggregations.get(0).getResult());
+
+      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      record.addField(series, TSDataType.MIN_MAX_INT64);
+
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
+    }
+
+    // in the end, make the next hasNextWithoutConstraint() false
+    // as we already fetch all here
+    curStartTime = endTime;
+    hasCachedTimeInterval = false;
+
+    return record;
   }
 
   public RowRecord nextWithoutConstraintTri_MinMaxLTTB() throws IOException {
@@ -171,7 +207,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     try {
       // First step: get the MinMax preselection result
       List<Long> times = new ArrayList<>();
-      List<Object> values = new ArrayList<>();
+      List<Double> values = new ArrayList<>();
       GroupByExecutor executor = null;
       for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
         executor = pathToExecutorEntry.getValue(); // assume only one series here
@@ -179,7 +215,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       for (long localCurStartTime = startTime;
           localCurStartTime + interval <= endTime;
-          // 注意有等号！
+          // 注意有等号！因为左闭右开
           // + interval to make the last bucket complete
           // e.g, T=11,nout=3,interval=floor(11/3)=3,
           // [0,3),[3,6),[6,9), no need incomplete [9,11)
@@ -199,7 +235,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             values.add(null);
           } else {
             times.add(minMaxInfo.timestamp);
-            values.add(minMaxInfo.val);
+            values.add((Double) minMaxInfo.val);
           }
         }
       }
@@ -265,7 +301,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
           if (times.get(j) != null) {
             long t = times.get(j);
-            double v = (double) values.get(j); // TODO
+            double v = values.get(j);
             double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
             //            System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area,
             // lt);
@@ -279,6 +315,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         if (select_t < 0) {
           throw new IOException("something is wrong");
         }
+        // 记录结果
         series.append(select_v).append("[").append(select_t).append("]").append(",");
 
         // 现在更新当前桶和左边固定点，并且把结果点加到series里
@@ -296,7 +333,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
         if (times.get(j) != null) {
           long t = times.get(j);
-          double v = (double) values.get(j); // TODO
+          double v = values.get(j);
           double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
           //          System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area, lt);
           if (area > maxArea) {
@@ -344,7 +381,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       StringBuilder series = new StringBuilder();
 
       for (long localCurStartTime = startTime;
-          localCurStartTime + interval < endTime; // + interval to make the last bucket complete
+          localCurStartTime + interval <= endTime;
+          // 注意有等号！因为左闭右开
+          // + interval to make the last bucket complete
           // e.g, T=11,nout=3,interval=floor(11/3)=3,
           // [0,3),[3,6),[6,9), no need incomplete [9,11)
           // then the number of buckets must be Math.floor((endTime-startTime)/interval)
@@ -456,7 +495,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("LTTB")) {
       // TODO
-      return new LocalGroupByExecutor(
+      return new LocalGroupByExecutorTri_LTTB(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("ILTS")) {
       // TODO
