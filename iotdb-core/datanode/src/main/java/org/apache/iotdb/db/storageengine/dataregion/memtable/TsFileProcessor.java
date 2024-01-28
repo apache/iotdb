@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -272,7 +273,7 @@ public class TsFileProcessor {
     WALFlushListener walFlushListener;
     try {
       walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
-      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
