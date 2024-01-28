@@ -222,7 +222,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
       LOGGER.info(
           "Pipe {}@{}: '{}' is set to false, use fake realtime extractor.",
           pipeName,
-          dataRegionId,
+          regionId,
           EXTRACTOR_REALTIME_ENABLE_KEY);
       return;
     }
@@ -233,7 +233,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
       LOGGER.info(
           "Pipe {}@{}: '{}' is not set, use hybrid mode by default.",
           pipeName,
-          dataRegionId,
+          regionId,
           EXTRACTOR_REALTIME_MODE_KEY);
       return;
     }
@@ -257,7 +257,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
           LOGGER.warn(
               "Pipe {}@{}: Unsupported extractor realtime mode: {}, create a hybrid extractor.",
               pipeName,
-              dataRegionId,
+              regionId,
               parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
@@ -331,7 +331,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
       LOGGER.warn(
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
-          dataRegionId,
+          regionId,
           historicalExtractor,
           realtimeExtractor,
           e);
