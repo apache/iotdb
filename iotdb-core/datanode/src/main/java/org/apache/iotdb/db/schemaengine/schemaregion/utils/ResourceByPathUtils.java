@@ -88,7 +88,7 @@ public abstract class ResourceByPathUtils {
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context);
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context, long timeLowerBound);
 
   /** get modifications from a memtable. */
   protected List<Modification> getModificationsForMemtable(
@@ -268,7 +268,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context, long timeLowerBound) {
     List<List<Modification>> modifications =
         context.getPathModifications(tsFileResource, partialPath);
 
@@ -306,7 +306,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime()<timeLowerBound);
     return new ArrayList<>(chunkMetadataList);
   }
 }
@@ -420,7 +420,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context, long timeLowerBound) {
     List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
@@ -431,7 +431,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
                 partialPath.getSeriesType()));
 
     ModificationUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime()< timeLowerBound);
     return chunkMetadataList;
   }
 }

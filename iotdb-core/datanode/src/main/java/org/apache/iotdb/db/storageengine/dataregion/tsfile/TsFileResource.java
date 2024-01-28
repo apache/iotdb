@@ -675,47 +675,8 @@ public class TsFileResource {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
-  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
-  public boolean isSatisfied(
-      String deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (deviceId == null) {
-      return isSatisfied(globalTimeFilter, isSeq, ttl, debug);
-    }
-
-    long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
-
-    // doesn't contain this device
-    if (startAndEndTime == null) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
-      }
-      return false;
-    }
-
-    long startTime = startAndEndTime[0];
-    long endTime = isClosed() || !isSeq ? startAndEndTime[1] : Long.MAX_VALUE;
-
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
-      }
-      return false;
-    }
-
-    if (globalTimeFilter != null) {
-      boolean res = globalTimeFilter.satisfyStartEndTime(startTime, endTime);
-      if (debug && !res) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
-      }
-      return res;
-    }
-    return true;
-  }
-
-  /** @return true if the TsFile lives beyond TTL */
-  private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+  /** @return true if the TsFile lives beyond timeFilter */
+  private boolean isSatisfied(Filter timeFilter, boolean isSeq, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
     if (startTime > endTime) {
@@ -729,13 +690,6 @@ public class TsFileResource {
       return false;
     }
 
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
-      }
-      return false;
-    }
-
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
@@ -746,8 +700,11 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return true if the device is contained in the TsFile */
+  /** @return true if the device is contained in the TsFile, and it lives beyond timeFilter. */
   public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
+    if (deviceId == null) {
+      return isSatisfied(timeFilter, isSeq, debug);
+    }
     if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(

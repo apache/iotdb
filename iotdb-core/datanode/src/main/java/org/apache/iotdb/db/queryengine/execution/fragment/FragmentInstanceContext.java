@@ -337,8 +337,6 @@ public class FragmentInstanceContext extends QueryContext {
         pathList.add(path);
         selectedDeviceIdSet.add(path.getDevice());
       }
-      // TODO
-      SeriesScanOptions.updateFilterUsingTTL()
 
       this.sharedQueryDataSource =
           dataRegion.query(

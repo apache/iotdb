@@ -1836,13 +1836,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
-
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -2884,19 +2880,6 @@ public class DataRegion implements IDataRegionForQuery {
     return workUnsequenceTsFileProcessors.values();
   }
 
-  public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
-    if (dataTTL != Long.MAX_VALUE) {
-      dataTTL =
-          CommonDateTimeUtils.convertMilliTimeWithPrecision(
-              dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    }
-    this.dataTTL = dataTTL;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
-  }
-
   public List<TsFileResource> getSequenceFileList() {
     return tsFileManager.getTsFileList(true);
   }
@@ -3017,10 +3000,11 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
+      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowsOfOneDeviceNode.getDevicePath().getFullPath());
       Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        if (!isAlive(insertRowNode.getTime())) {
+        if (!isAlive(insertRowNode.getTime(),deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
           insertRowsOfOneDeviceNode
@@ -3033,7 +3017,7 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - dataTTL))));
+                              CommonDateTimeUtils.currentTime() - deviceTTL))));
           continue;
         }
         // init map
@@ -3098,7 +3082,8 @@ public class DataRegion implements IDataRegionForQuery {
       long[] timePartitionIds = new long[insertRowsNode.getInsertRowNodeList().size()];
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-        if (!isAlive(insertRowNode.getTime())) {
+        long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()
               .put(
@@ -3109,7 +3094,7 @@ public class DataRegion implements IDataRegionForQuery {
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(
-                              CommonDateTimeUtils.currentTime() - dataTTL))));
+                              CommonDateTimeUtils.currentTime() - deviceTTL))));
           continue;
         }
         // init map
@@ -3365,11 +3350,6 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (IOException e) {
       logger.error("Failed to rename {} to {},", originFileName, newFileName, e);
     }
-  }
-
-  @Override
-  public long getDataTTL() {
-    return dataTTL;
   }
 
   @TestOnly

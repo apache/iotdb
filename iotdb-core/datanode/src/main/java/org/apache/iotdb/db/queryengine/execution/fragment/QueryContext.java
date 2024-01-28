@@ -53,8 +53,6 @@ public class QueryContext {
 
   protected long queryId;
 
-  private long queryTimeLowerBound = Long.MIN_VALUE;
-
   private boolean debug;
 
   private long startTime;
@@ -126,18 +124,6 @@ public class QueryContext {
 
   public boolean isDebug() {
     return debug;
-  }
-
-  public long getQueryTimeLowerBound() {
-    return queryTimeLowerBound;
-  }
-
-  public void setQueryTimeLowerBound(long queryTimeLowerBound) {
-    this.queryTimeLowerBound = queryTimeLowerBound;
-  }
-
-  public boolean chunkNotSatisfy(IChunkMetadata chunkMetaData) {
-    return chunkMetaData.getEndTime() < queryTimeLowerBound;
   }
 
   public long getStartTime() {

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
+import java.util.Map;
 
 /** It's an interface that storage engine must provide for query engine */
 public interface IDataRegionForQuery {
@@ -42,9 +43,6 @@ public interface IDataRegionForQuery {
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException;
-
-  /** Get TTL of this DataRegion */
-  long getDataTTL();
 
   /** Get database name of this DataRegion */
   String getDatabaseName();

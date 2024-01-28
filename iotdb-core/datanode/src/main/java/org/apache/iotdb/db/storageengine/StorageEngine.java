@@ -413,7 +413,6 @@ public class StorageEngine implements IService {
     WRITING_METRICS.createWalFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createTimedFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
-    dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
     return dataRegion;
@@ -537,15 +536,6 @@ public class StorageEngine implements IService {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
-  }
-
-  public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
-      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-      if (dataRegion != null) {
-        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
-      }
-    }
   }
 
   /**
