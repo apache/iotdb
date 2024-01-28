@@ -288,6 +288,35 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
       Statistics statistics = chunkSuit4Tri.chunkMetadata.getStatistics();
 
       if (canUseStatistics(chunkSuit4Tri, curStartTime, curEndTime)) {
+        // min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),last_value(s0)
+        // update min_time
+        results
+            .get(2)
+            .updateResultUsingValues(
+                new long[] {chunkSuit4Tri.chunkMetadata.getStartTime()},
+                1,
+                new Object[] {statistics.getFirstValue()});
+        // update first_value
+        results
+            .get(4)
+            .updateResultUsingValues(
+                new long[] {chunkSuit4Tri.chunkMetadata.getStartTime()},
+                1,
+                new Object[] {statistics.getFirstValue()});
+        // update max_time
+        results
+            .get(3)
+            .updateResultUsingValues(
+                new long[] {chunkSuit4Tri.chunkMetadata.getEndTime()},
+                1,
+                new Object[] {statistics.getLastValue()});
+        // update last_value
+        results
+            .get(5)
+            .updateResultUsingValues(
+                new long[] {chunkSuit4Tri.chunkMetadata.getEndTime()},
+                1,
+                new Object[] {statistics.getLastValue()});
         // update BP
         MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
         minValueAggrResult.updateResult(
@@ -357,8 +386,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
         }
         // 4. update MinMax by traversing points fallen within this bucket
         if (topTime >= 0) {
-          //  min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),
-          // last_value(s0)
+          // min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),last_value(s0)
           // update min_time
           results
               .get(2)
@@ -388,10 +416,9 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
   public boolean canUseStatistics(ChunkSuit4Tri chunkSuit4Tri, long curStartTime, long curEndTime) {
     return false;
-    //    long TP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp();
-    //    long BP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp();
-    //    return TP_t >= curStartTime && TP_t < curEndTime && BP_t >= curStartTime && BP_t <
-    // curEndTime;
+    //    long minT = chunkSuit4Tri.chunkMetadata.getStartTime();
+    //    long maxT = chunkSuit4Tri.chunkMetadata.getEndTime();
+    //    return minT >= curStartTime && maxT < curEndTime;
   }
 
   @Override
