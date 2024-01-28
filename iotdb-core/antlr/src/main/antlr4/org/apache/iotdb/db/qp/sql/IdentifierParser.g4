@@ -182,6 +182,7 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPAIR
     | REPLACE
     | REVOKE
     | ROLE

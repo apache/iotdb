@@ -1138,6 +1138,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     try {
+      plan.setAligned(template.isDirectAligned());
       getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
       mtree.activateTemplate(plan.getActivatePath(), template);

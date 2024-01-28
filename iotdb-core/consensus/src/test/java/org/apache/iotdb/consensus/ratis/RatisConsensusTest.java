@@ -131,14 +131,14 @@ public class RatisConsensusTest {
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
 
+    doConsensus(0, 10, 20);
+
     for (int i = 0; i < 3; i++) {
       if (servers.get(i).isLeaderReady(gid)) {
         Assert.assertEquals(
             3, ((TestUtils.IntegerCounter) stateMachines.get(i)).getConfiguration().size());
       }
     }
-
-    doConsensus(0, 10, 20);
   }
 
   @Test

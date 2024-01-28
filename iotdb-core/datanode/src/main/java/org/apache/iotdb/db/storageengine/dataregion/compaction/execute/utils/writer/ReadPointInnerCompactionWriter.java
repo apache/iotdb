@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -38,8 +39,10 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {
+  public void write(TsBlock tsBlock, int subTaskId) throws IOException {
+    TimeColumn timestamps = tsBlock.getTimeColumn();
+    Column[] columns = tsBlock.getValueColumns();
+    int batchSize = tsBlock.getPositionCount();
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;

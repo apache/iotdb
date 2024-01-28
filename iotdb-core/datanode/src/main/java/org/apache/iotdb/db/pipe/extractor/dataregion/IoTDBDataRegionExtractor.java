@@ -220,14 +220,21 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
       LOGGER.info(
-          "'{}' is set to false, use fake realtime extractor.", EXTRACTOR_REALTIME_ENABLE_KEY);
+          "Pipe {}@{}: '{}' is set to false, use fake realtime extractor.",
+          pipeName,
+          regionId,
+          EXTRACTOR_REALTIME_ENABLE_KEY);
       return;
     }
 
     // Use hybrid mode by default
     if (!parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
-      LOGGER.info("'{}' is not set, use hybrid mode by default.", EXTRACTOR_REALTIME_MODE_KEY);
+      LOGGER.info(
+          "Pipe {}@{}: '{}' is not set, use hybrid mode by default.",
+          pipeName,
+          regionId,
+          EXTRACTOR_REALTIME_MODE_KEY);
       return;
     }
 
@@ -248,7 +255,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
-              "Unsupported extractor realtime mode: {}, create a hybrid extractor.",
+              "Pipe {}@{}: Unsupported extractor realtime mode: {}, create a hybrid extractor.",
+              pipeName,
+              regionId,
               parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
@@ -320,9 +329,11 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
     } catch (Exception e) {
       exceptionHolder.set(e);
       LOGGER.warn(
-          String.format(
-              "Start historical extractor %s and realtime extractor %s error.",
-              historicalExtractor, realtimeExtractor),
+          "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
+          pipeName,
+          regionId,
+          historicalExtractor,
+          realtimeExtractor,
           e);
     }
   }
@@ -364,6 +375,17 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
     if (Objects.nonNull(taskID)) {
       PipeExtractorMetrics.getInstance().deregister(taskID);
     }
+  }
+
+  //////////////////////////// APIs provided for detecting stuck ////////////////////////////
+
+  public boolean isStreamMode() {
+    return realtimeExtractor instanceof PipeRealtimeDataRegionHybridExtractor
+        || realtimeExtractor instanceof PipeRealtimeDataRegionLogExtractor;
+  }
+
+  public boolean hasConsumedAllHistoricalTsFiles() {
+    return historicalExtractor.hasConsumedAll();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

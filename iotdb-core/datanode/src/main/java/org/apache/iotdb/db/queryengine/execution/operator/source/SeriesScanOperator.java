@@ -103,7 +103,8 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return Math.max(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+    return Math.max(
+        maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
   }
 
   @Override

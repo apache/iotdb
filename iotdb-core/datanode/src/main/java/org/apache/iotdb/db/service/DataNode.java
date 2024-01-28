@@ -124,7 +124,7 @@ public class DataNode implements DataNodeMBean {
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
    * times before returning a failure to the client.
    */
-  private static final int DEFAULT_RETRY = 10;
+  private static final int DEFAULT_RETRY = 50;
 
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
 
@@ -280,9 +280,11 @@ public class DataNode implements DataNodeMBean {
         || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
-          "Cannot pull system configurations from ConfigNode-leader after {} retries",
+          "Cannot pull system configurations from ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
-      throw new StartupException("Cannot pull system configurations from ConfigNode-leader");
+      throw new StartupException(
+          "Cannot pull system configurations from ConfigNode-leader. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     /* Load system configurations */
@@ -399,11 +401,10 @@ public class DataNode implements DataNodeMBean {
     }
     if (dataNodeRegisterResp == null) {
       // All tries failed
-      logger.error(
-          "Cannot register into cluster after {} retries. "
-              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
-          DEFAULT_RETRY);
-      throw new StartupException("Cannot register into the cluster.");
+      logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
+      throw new StartupException(
+          "Cannot register into the cluster. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -462,10 +463,11 @@ public class DataNode implements DataNodeMBean {
     if (dataNodeRestartResp == null) {
       // All tries failed
       logger.error(
-          "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
-              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
+          "Cannot send restart DataNode request to ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
-      throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
+      throw new StartupException(
+          "Cannot send restart DataNode request to ConfigNode-leader. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
