@@ -747,8 +747,8 @@ public class PruneBosTestD {
                     int cur_k1_x_l =  cur_k1_open - cur_group_alpha.count;
                     for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
                         int cur_count_alpha = alpha_value_count_list[x_l_i];
-//                        if (cur_count_alpha == 0)
-//                            continue;
+                        if (cur_count_alpha == 0)
+                            continue;
                         cur_k1_x_l += cur_count_alpha;// gamma_box_count_list[gamma];
                         int cur_k1_x_u = cur_k2_open -cur_group_gamma.count;
                         for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
@@ -756,8 +756,8 @@ public class PruneBosTestD {
                                 break;
                             }
                             int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                            if (cur_count_gamma == 0)
-//                                continue;
+                            if (cur_count_gamma == 0)
+                                continue;
                             cur_k1_x_u += cur_count_gamma;
 
                             cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
@@ -835,8 +835,8 @@ public class PruneBosTestD {
                 int cur_k1_x_l = cur_k1_open - cur_group_alpha.count;
                 for (int x_l_i = 0; x_l_i < gap_alpha; x_l_i++) {
                     int cur_count_alpha = alpha_value_count_list[x_l_i];
-//                        if (cur_count_alpha == 0)
-//                            continue;
+                        if (cur_count_alpha == 0)
+                            continue;
                     cur_k1_x_l += cur_count_alpha;// gamma_box_count_list[gamma];
                     int cur_k1_x_u = cur_k2_open - cur_group_gamma.count;
                     for (int x_u_i = 0; x_u_i < gap_gamma; x_u_i++) {
@@ -844,8 +844,8 @@ public class PruneBosTestD {
                             break;
                         }
                         int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                            if (cur_count_gamma == 0)
-//                                continue;
+                            if (cur_count_gamma == 0)
+                                continue;
                         cur_k1_x_u += cur_count_gamma;
 
                         cur_bits = (cur_k1_x_l + cur_k1_x_u) * a + b;
