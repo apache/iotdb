@@ -609,7 +609,7 @@ public class PruneBosTestD {
         int cur_k1_close = alpha_count_list[0];
         cur_k1_close += alpha_count_list[1];
         cur_k1_close += groupL[0].count ;//alpha_box_count_list[0];
-        for (int alpha = 1; alpha + 1 <= alpha_size; alpha++) { //start_value_size
+        for (int alpha = 0; alpha + 1 <= alpha_size; alpha++) { //start_value_size
             //C1 k1 close k2 close
             int k_start_value_close = (int) pow(2,alpha);//close
 //            System.out.println(k_start_value_close);
@@ -622,13 +622,21 @@ public class PruneBosTestD {
             cur_k2_close += gamma_count_list[1];
             cur_k2_close += groupU[0].count ;//gamma_box_count_list[0];
 
-            for (int gamma = 1; gamma + 1 <= alpha_size; gamma++) {
-                int k_end_value_close = max_delta_value - (int) pow(2,gamma);
+            for (int gamma = 0; gamma <= alpha_size; gamma++) {
+                int k_end_value_close = max_delta_value - (int) pow(2, gamma);
+                if (max_delta_value - (int) pow(2, gamma) < 0){
+                    k_end_value_close = 0;
+                }
                 Group cur_group_gamma = groupU[gamma];
-                cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
+                if (gamma + 1 <= alpha_size) {
+                    cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
+                }
                 cur_k2_close += cur_group_gamma.count;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
                 int cur_k1_open = cur_k1_close - alpha_count_list[alpha + 1];
-                int cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
+                int cur_k2_open = cur_k2_close;
+                if (gamma + 1 <= alpha_size) {
+                    cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
+                }
                 int k_start_value_open = k_start_value_close - 1;
                 int k_end_value_open = k_end_value_close + 1;
                 if (k_end_value_close > k_start_value_close) {
@@ -768,11 +776,11 @@ public class PruneBosTestD {
                                         getBitWith(gamma_value_count_list_end - alpha_value_count_list_start - x_l_i - x_u_i - 2);
                             if (cur_k1_x_u != 0)
                                 cur_bits += cur_k1_x_u * gamma;//min_upper_outlier
-//                            if(alpha_value_count_list_start + x_l_i== 143){
-//                                System.out.println(gamma_value_count_list_end - x_u_i);
-//                                System.out.println(alpha);
-//                                System.out.println("cur_bits:"+cur_bits);
-//                            }
+                            if(alpha_value_count_list_start == 1){
+                                System.out.println(gamma_value_count_list_end - x_u_i);
+                                System.out.println(alpha);
+                                System.out.println("cur_bits:"+cur_bits);
+                            }
                             if (cur_bits < min_bits) {
                                 min_bits = cur_bits;
                                 final_k_start_value = alpha_value_count_list_start + x_l_i;
@@ -782,6 +790,7 @@ public class PruneBosTestD {
                     }
                 }
             }
+
         }
         Group cur_group_alpha = groupL[alpha_size]; // (x_min+2^{alpha_i-1},x_min+2^{alpha_i})
         int k_start_value_close = max_delta_value;
@@ -791,20 +800,29 @@ public class PruneBosTestD {
         int cur_k2_close = gamma_count_list[0];
         cur_k2_close += gamma_count_list[1];
         cur_k2_close += groupU[0].count ;//gamma_box_count_list[0];
-        for (int gamma = 1; gamma + 1 <= alpha_size; gamma++) {
+        for (int gamma = 0; gamma <= alpha_size; gamma++) {
             int k_end_value_close = max_delta_value - (int) pow(2, gamma);
             Group cur_group_gamma = groupU[gamma];
-            cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
+            if (gamma + 1 <= alpha_size) {
+                cur_k2_close += gamma_count_list[gamma + 1]; // x_max-2^{gamma_i}
+            }
             cur_k2_close += cur_group_gamma.count;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
             int cur_k1_open = cur_k1_close;
-            int cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
+            int cur_k2_open = cur_k2_close;
+            if (gamma + 1 <= alpha_size) {
+                cur_k2_open = cur_k2_close - gamma_count_list[gamma + 1];
+            }
             int k_start_value_open = k_start_value_close - 1;
             int k_end_value_open = k_end_value_close + 1;
             int gamma_2_pow = (int) pow(2, gamma);
 
             int gap_alpha = alpha_2_pow / 2;
             int alpha_value_count_list_start = gap_alpha;
-
+            int gap_gamma = gamma_2_pow / 2;
+            int gamma_value_count_list_end = max_delta_value - gap_gamma;
+            if (gamma_value_count_list_end <= alpha_value_count_list_start) {
+                break;
+            }
             int[] alpha_value_count_list = new int[gap_alpha];
             int alpha_value_count = cur_group_alpha.count;
             int[] number_alpha = cur_group_alpha.number;
@@ -813,11 +831,6 @@ public class PruneBosTestD {
                 alpha_value_count_list[value - alpha_value_count_list_start]++;
             }
 
-            int gap_gamma = gamma_2_pow / 2;
-            int gamma_value_count_list_end = max_delta_value - gap_gamma;
-            if (gamma_value_count_list_end <= alpha_value_count_list_start) {
-                break;
-            }
             int[] gamma_value_count_list = new int[gap_gamma];
             int gamma_value_count = cur_group_gamma.count;
             int[] number_gamma = cur_group_gamma.number;
@@ -870,7 +883,7 @@ public class PruneBosTestD {
                 }
             }
         }
-        // 126 159 13059 143 146 9763
+        // 48159 64437 15532 1 6 5868
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1164,9 +1177,9 @@ public class PruneBosTestD {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 1;
-//        for (int file_i = 9; file_i < 10; file_i++) {
+        for (int file_i = 4; file_i < 5; file_i++) {
 //
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
