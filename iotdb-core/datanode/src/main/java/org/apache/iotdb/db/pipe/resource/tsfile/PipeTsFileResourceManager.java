@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -313,10 +314,13 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void pinTsFileResource(TsFileResource resource) throws IOException {
+  public void pinTsFileResource(TsFileResource resource, boolean withMods) throws IOException {
     lock.lock();
     try {
       increaseFileReference(resource.getTsFile(), true);
+      if (withMods && resource.getModFile().exists()) {
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+      }
     } finally {
       lock.unlock();
     }
@@ -325,7 +329,13 @@ public class PipeTsFileResourceManager {
   public void unpinTsFileResource(TsFileResource resource) throws IOException {
     lock.lock();
     try {
-      decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+      File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
+      decreaseFileReference(pinnedFile);
+
+      File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);
+      if (modFile.exists()) {
+        decreaseFileReference(modFile);
+      }
     } finally {
       lock.unlock();
     }

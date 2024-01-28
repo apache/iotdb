@@ -367,11 +367,29 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    // 1. Transfer file piece by piece
+    // 1. Transfer mod file if exists
+    if (Objects.nonNull(pipeTsFileInsertionEvent.getModFile())) {
+      transferFilePieces(pipeTsFileInsertionEvent.getModFile(), socket);
+    }
+
+    // 2. Transfer file piece by piece
+    transferFilePieces(tsFile, socket);
+
+    // 3. Transfer file seal signal, which means the file is transferred completely
+    if (!send(
+        socket,
+        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
+    } else {
+      LOGGER.info("Successfully transferred file {}.", tsFile);
+    }
+  }
+
+  private void transferFilePieces(File file, Socket socket) throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -381,26 +399,17 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         if (!send(
             socket,
             PipeTransferFilePieceReq.toTPipeTransferBytes(
-                tsFile.getName(),
+                file.getName(),
                 position,
                 readLength == readFileBufferSize
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
           throw new PipeException(
-              String.format("Transfer file %s error. Socket %s.", tsFile, socket));
+              String.format("Transfer file %s error. Socket %s.", file, socket));
         } else {
           position += readLength;
         }
       }
-    }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
-    if (!send(
-        socket,
-        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
-      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
-    } else {
-      LOGGER.info("Successfully transferred file {}.", tsFile);
     }
   }
 

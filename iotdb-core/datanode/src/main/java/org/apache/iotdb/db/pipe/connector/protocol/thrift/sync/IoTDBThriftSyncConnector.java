@@ -62,6 +62,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -399,58 +400,15 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final PipeTransferFilePieceResp resp;
-        try {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          PipeTransferFilePieceReq.toTPipeTransferReq(
-                              tsFile.getName(),
-                              position,
-                              readLength == readFileBufferSize
-                                  ? readBuffer
-                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer file %s, because %s.", tsFile, e.getMessage()),
-              e);
-        }
-
-        position += readLength;
-
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
-          continue;
-        }
-
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(
-              String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
-        }
-      }
+    // 1. Transfer mod file if exists
+    if (Objects.nonNull(pipeTsFileInsertionEvent.getModFile())) {
+      transferFilePieces(pipeTsFileInsertionEvent.getModFile(), clientAndStatus);
     }
 
-    // 2. Transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file piece by piece
+    transferFilePieces(tsFile, clientAndStatus);
+
+    // 3. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp;
     try {
       resp =
@@ -469,6 +427,60 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);
+    }
+  }
+
+  private void transferFilePieces(
+      File file, Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final PipeTransferFilePieceResp resp;
+        try {
+          resp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(
+                  clientAndStatus
+                      .getLeft()
+                      .pipeTransfer(
+                          PipeTransferFilePieceReq.toTPipeTransferReq(
+                              file.getName(),
+                              position,
+                              readLength == readFileBufferSize
+                                  ? readBuffer
+                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
+        } catch (Exception e) {
+          clientAndStatus.setRight(false);
+          throw new PipeConnectionException(
+              String.format(
+                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+              e);
+        }
+
+        position += readLength;
+
+        // This case only happens when the connection is broken, and the connector is reconnected
+        // to the receiver, then the receiver will redirect the file position to the last position
+        if (resp.getStatus().getCode()
+            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+          position = resp.getEndWritingOffset();
+          reader.seek(position);
+          LOGGER.info("Redirect file position to {}.", position);
+          continue;
+        }
+
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new PipeException(
+              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()));
+        }
+      }
     }
   }
 

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -46,6 +47,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
+  boolean withMod;
+  private File modFile;
+
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
@@ -54,13 +58,23 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(resource, isLoaded, isGeneratedByPipe, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        false,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
       boolean isLoaded,
       boolean isGeneratedByPipe,
+      boolean withMod,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
@@ -73,6 +87,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.withMod = withMod;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
@@ -112,6 +127,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
+  public File getModFile() {
+    return modFile;
+  }
+
   public boolean getIsLoaded() {
     return isLoaded;
   }
@@ -122,6 +141,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
+      if (withMod && resource.getModFile().exists()) {
+        modFile =
+            PipeResourceManager.tsfile()
+                .increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -137,6 +161,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.tsfile().decreaseFileReference(tsFile);
+      if (Objects.nonNull(modFile)) {
+        PipeResourceManager.tsfile().decreaseFileReference(modFile);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -166,7 +193,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeTsFileInsertionEvent(
-        resource, isLoaded, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern, startTime, endTime);
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        withMod,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override

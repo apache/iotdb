@@ -40,6 +40,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTransferTsFileInsertionEventHandler
@@ -52,11 +53,14 @@ public class PipeTransferTsFileInsertionEventHandler
   private final IoTDBThriftAsyncConnector connector;
 
   private final File tsFile;
+  private final File modFile;
+  private File currentFile;
+
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
 
-  private final RandomAccessFile reader;
+  private RandomAccessFile reader;
 
   private final AtomicBoolean isSealSignalSent;
 
@@ -69,11 +73,17 @@ public class PipeTransferTsFileInsertionEventHandler
     this.connector = connector;
 
     tsFile = event.getTsFile();
+    modFile = event.getModFile();
+    currentFile = Objects.nonNull(modFile) ? modFile : tsFile;
+
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
-    reader = new RandomAccessFile(tsFile, "r");
+    reader =
+        Objects.nonNull(modFile)
+            ? new RandomAccessFile(modFile, "r")
+            : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
 
@@ -87,15 +97,21 @@ public class PipeTransferTsFileInsertionEventHandler
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
-      isSealSignalSent.set(true);
-      client.pipeTransfer(
-          PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      if (currentFile == modFile) {
+        currentFile = tsFile;
+        position = 0;
+        reader = new RandomAccessFile(tsFile, "r");
+      } else if (currentFile == tsFile) {
+        isSealSignalSent.set(true);
+        client.pipeTransfer(
+            PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      }
       return;
     }
 
     client.pipeTransfer(
         PipeTransferFilePieceReq.toTPipeTransferReq(
-            tsFile.getName(),
+            currentFile.getName(),
             position,
             readLength == readFileBufferSize
                 ? readBuffer
