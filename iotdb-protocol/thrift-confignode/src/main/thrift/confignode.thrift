@@ -624,6 +624,7 @@ struct TRegionInfo {
   8: optional string status
   9: optional string roleType
   10: optional i64 createTime
+  11: optional string internalAddress
 }
 
 struct TShowRegionResp {
@@ -1223,6 +1224,9 @@ service IConfigNodeRPCService {
 
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
   common.TSStatus clearCache()
+
+  /** Check and repair unsorted tsfile by compaction */
+  common.TSStatus repairData()
 
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()

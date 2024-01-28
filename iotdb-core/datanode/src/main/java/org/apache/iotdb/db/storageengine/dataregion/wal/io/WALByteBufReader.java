@@ -46,23 +46,8 @@ public class WALByteBufReader implements Closeable {
   public WALByteBufReader(File logFile, FileChannel channel) throws IOException {
     this.logFile = logFile;
     this.channel = channel;
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic().equals(WALWriter.MAGIC_STRING)) {
-      throw new IOException(String.format("Broken wal file %s", logFile));
-    }
-    // load metadata size
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
-    channel.read(metadataSizeBuf, position);
-    metadataSizeBuf.flip();
-    // load metadata
-    int metadataSize = metadataSizeBuf.getInt();
-    ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-    channel.read(metadataBuf, position - metadataSize);
-    metadataBuf.flip();
-    metaData = WALMetaData.deserialize(metadataBuf);
-    // init iterator
-    sizeIterator = metaData.getBuffersSize().iterator();
+    this.metaData = WALMetaData.readFromWALFile(logFile, channel);
+    this.sizeIterator = metaData.getBuffersSize().iterator();
     channel.position(0);
   }
 
@@ -84,11 +69,8 @@ public class WALByteBufReader implements Closeable {
     return buffer;
   }
 
-  private String readTailMagic() throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
-    magicStringBytes.flip();
-    return new String(magicStringBytes.array());
+  public WALMetaData getMetaData() {
+    return metaData;
   }
 
   @Override

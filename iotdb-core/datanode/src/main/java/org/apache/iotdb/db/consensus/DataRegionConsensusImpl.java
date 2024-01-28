@@ -86,7 +86,6 @@ public class DataRegionConsensusImpl {
                                     .setThriftServerAwaitTimeForStopService(
                                         CONF.getThriftServerAwaitTimeForStopService())
                                     .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
-                                    .setCoreClientNumForEachNode(CONF.getCoreClientNumForEachNode())
                                     .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                                     .build())
                             .setReplication(
@@ -167,7 +166,6 @@ public class DataRegionConsensusImpl {
                                         CONF.getDataRatisConsensusInitialSleepTimeMs())
                                     .setClientRetryMaxSleepTimeMs(
                                         CONF.getDataRatisConsensusMaxSleepTimeMs())
-                                    .setCoreClientNumForEachNode(CONF.getCoreClientNumForEachNode())
                                     .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                                     .build())
                             .setImpl(

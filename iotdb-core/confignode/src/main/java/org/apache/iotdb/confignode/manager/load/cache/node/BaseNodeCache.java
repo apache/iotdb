@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class BaseNodeCache {
 
   // When the response time of heartbeat is more than 20s, the Node is considered as down
-  public static final int HEARTBEAT_TIMEOUT_TIME = 20_000;
+  public static final long HEARTBEAT_TIMEOUT_TIME_IN_NS = 20_000_000_000L;
 
   // Max heartbeat cache samples store size
   public static final int MAXIMUM_WINDOW_SIZE = 100;
