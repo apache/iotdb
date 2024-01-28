@@ -155,6 +155,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return getAlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
   }
 
+  /** Notice: if all the value chunks is empty chunk, then return empty list. */
   private List<AlignedChunkMetadata> getAlignedChunkMetadata(
       List<IChunkMetadata> timeChunkMetadata, List<List<IChunkMetadata>> valueChunkMetadataList) {
     List<AlignedChunkMetadata> res = new ArrayList<>();

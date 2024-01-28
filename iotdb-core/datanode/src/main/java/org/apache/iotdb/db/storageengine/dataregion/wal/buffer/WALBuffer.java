@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -40,14 +41,23 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -101,6 +111,9 @@ public class WALBuffer extends AbstractWALBuffer {
   private final ExecutorService serializeThread;
   // single thread to sync syncingBuffer to disk
   private final ExecutorService syncBufferThread;
+
+  // manage wal files which have MemTableIds
+  private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
     this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
@@ -183,6 +196,7 @@ public class WALBuffer extends AbstractWALBuffer {
   /** This info class traverses some extra info from serializeThread to syncBufferThread. */
   private static class SerializeInfo {
     final WALMetaData metaData = new WALMetaData();
+    final Map<Long, Long> memTableId2WalDiskUsage = new HashMap<>();
     final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
@@ -279,10 +293,11 @@ public class WALBuffer extends AbstractWALBuffer {
         return;
       }
 
-      int size = byteBufferView.position();
+      int startPosition = byteBufferView.position();
+      int size;
       try {
         walEntry.serialize(byteBufferView);
-        size = byteBufferView.position() - size;
+        size = byteBufferView.position() - startPosition;
       } catch (Exception e) {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
@@ -304,7 +319,9 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       // update related info
       totalSize += size;
-      info.metaData.add(size, searchIndex);
+      info.metaData.add(size, searchIndex, walEntry.getMemTableId());
+      info.memTableId2WalDiskUsage.compute(
+          walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
       walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
@@ -509,6 +526,12 @@ public class WALBuffer extends AbstractWALBuffer {
         switchSyncingBufferToIdle();
       }
 
+      // update info
+      memTableIdsOfWal
+          .computeIfAbsent(currentWALFileVersion, memTableIds -> new HashSet<>())
+          .addAll(info.metaData.getMemTablesId());
+      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage);
+
       boolean forceSuccess = false;
       // try to roll log writer
       if (info.rollWALFileWriterListener != null
@@ -681,5 +704,33 @@ public class WALBuffer extends AbstractWALBuffer {
 
   public CheckpointManager getCheckpointManager() {
     return checkpointManager;
+  }
+
+  public void removeMemTableIdsOfWal(Long walVersionId) {
+    this.memTableIdsOfWal.remove(walVersionId);
+  }
+
+  public Set<Long> getMemTableIds(long fileVersionId) {
+    if (fileVersionId >= currentWALFileVersion) {
+      return Collections.emptySet();
+    }
+    return memTableIdsOfWal.computeIfAbsent(
+        fileVersionId,
+        id -> {
+          try {
+            File file = WALFileUtils.getWALFile(new File(logDirectory), id);
+            return WALMetaData.readFromWALFile(
+                    file, FileChannel.open(file.toPath(), StandardOpenOption.READ))
+                .getMemTablesId();
+          } catch (IOException e) {
+            logger.error("Fail to read memTable ids from the wal file {}.", id);
+            return new HashSet<>();
+          }
+        });
+  }
+
+  @TestOnly
+  public Map<Long, Set<Long>> getMemTableIdsOfWal() {
+    return memTableIdsOfWal;
   }
 }

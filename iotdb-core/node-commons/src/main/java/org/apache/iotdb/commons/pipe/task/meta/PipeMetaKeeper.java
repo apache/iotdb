@@ -59,6 +59,10 @@ public class PipeMetaKeeper {
     pipeMetaKeeperLock.writeLock().lock();
   }
 
+  public boolean tryWriteLock(long timeOut) throws InterruptedException {
+    return pipeMetaKeeperLock.writeLock().tryLock(timeOut, TimeUnit.SECONDS);
+  }
+
   public void releaseWriteLock() {
     pipeMetaKeeperLock.writeLock().unlock();
   }

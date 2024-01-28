@@ -949,12 +949,9 @@ public class DataRegionTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     boolean originEnableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    boolean originEnableInsertionCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
     long finishedCompactionTaskNumWhenTestStart =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
@@ -1014,9 +1011,6 @@ public class DataRegionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(originEnableCrossSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableInsertionCrossSpaceCompaction(originEnableInsertionCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
@@ -1105,6 +1099,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the sequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushSeqMemTable();
 
     // wait until memtable flush task is done
@@ -1160,6 +1156,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the unsequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushUnseqMemTable();
 
     // wait until memtable flush task is done

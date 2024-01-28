@@ -373,6 +373,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private void applyModificationForAlignedChunkMetadataList(
       TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList)
       throws IllegalPathException {
+    if (alignedChunkMetadataList.isEmpty()) {
+      // all the value chunks is empty chunk
+      return;
+    }
     ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
     if (!modificationFile.exists()) {
       return;

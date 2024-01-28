@@ -17,22 +17,23 @@
 @REM under the License.
 @REM
 @echo off
-
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
 set "reCheck=%1"
 if not "%reCheck%" == "-f" (
-    echo -n "Do you want to clean all the data in the IoTDB ? y/n (default n): "
+    echo "Do you want to clean the data of confignode in the IoTDB ? y/n (default n): "
     set /p CLEAN_SERVICE=
 )
 
 if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
   echo "Exiting..."
-  exit 0
+  goto finally
 )
 
+start cmd /c "%IOTDB_HOME%\\sbin\\stop-confignode.bat -f"
+timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\confignode\" 2>nul
 set IOTDB_CONFIGNODE_CONFIG=%IOTDB_HOME%\conf\iotdb-confignode.properties
 set "delimiter=,;"
@@ -41,7 +42,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_system_dir"
   set cn_system_dir=%%i
 )
 if "%cn_system_dir%"=="" (
-    set "cn_system_dir=data\confignode\system"
+  set "cn_system_dir=data\confignode\system"
 )
 
 setlocal enabledelayedexpansion
@@ -49,11 +50,11 @@ set "cn_system_dir=!cn_system_dir:%delimiter%= !"
 for %%i in (%cn_system_dir%) do (
   set "var=%%i"
   if "!var:~0,2!"=="\\" (
-      rmdir /s /q "%%i" 2>nul
+     rmdir /s /q "%%i" 2>nul
   ) else if "!var:~1,3!"==":\\" (
-      rmdir /s /q "%%i" 2>nul
+     rmdir /s /q "%%i" 2>nul
   ) else (
-      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+     rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
   )
 )
 
@@ -68,15 +69,18 @@ set "cn_consensus_dir=data\confignode\consensus"
 set "cn_consensus_dir=!cn_consensus_dir:%delimiter%= !"
 for %%i in (%cn_consensus_dir%) do (
   set "var=%%i"
-    if "!var:~0,2!"=="\\" (
-        rmdir /s /q "%%i" 2>nul
-    ) else if "!var:~1,3!"==":\\" (
-        rmdir /s /q "%%i" 2>nul
-    ) else (
-        rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
-    )
+  if "!var:~0,2!"=="\\" (
+      rmdir /s /q "%%i" 2>nul
+  ) else if "!var:~1,3!"==":\\" (
+      rmdir /s /q "%%i" 2>nul
+  ) else (
+      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+  )
 )
 
 endlocal
 
 echo "ConfigNode clean done ..."
+
+:finally
+exit /b

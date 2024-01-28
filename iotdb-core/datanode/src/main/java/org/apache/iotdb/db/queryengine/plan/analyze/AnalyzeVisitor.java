@@ -2686,12 +2686,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     long startTime = System.nanoTime();
-    Analysis analysis =
-        new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
-            .analyzeFileByFile();
-    LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+    LoadTsfileAnalyzer loadTsfileAnalyzer =
+        new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher);
+    try {
+      return loadTsfileAnalyzer.analyzeFileByFile();
+    } finally {
+      loadTsfileAnalyzer.close();
+      LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
         LoadTsFileMetricSet.LOAD_TSFILE_ANALYSIS_PHASE, System.nanoTime() - startTime);
-    return analysis;
+    }
   }
 
   /** get analysis according to statement and params */
