@@ -35,7 +35,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +45,7 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private AbstractMetricService metricService;
 
-  private final Map<String, IoTDBDataRegionExtractor> extractorMap = new HashMap<>();
+  private final Map<String, IoTDBDataRegionExtractor> extractorMap = new ConcurrentHashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -55,6 +54,10 @@ public class PipeExtractorMetrics implements IMetricSet {
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
   private final Map<String, Gauge> recentProcessedTsFileEpochStateMap = new ConcurrentHashMap<>();
+
+  public Map<String, IoTDBDataRegionExtractor> getExtractorMap() {
+    return extractorMap;
+  }
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 

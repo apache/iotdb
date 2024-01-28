@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +101,22 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
               dataSize);
       return chunk;
     }
+  }
+
+  public ChunkHeader readChunkHeader(long position) throws IOException {
+    return ChunkHeader.deserializeFrom(tsFileInput, position);
+  }
+
+  public InputStream wrapAsInputStream() throws IOException {
+    return this.tsFileInput.wrapAsInputStream();
+  }
+
+  public ByteBuffer readPageWithoutUnCompressing(long startOffset, int pageSize)
+      throws IOException {
+    if (pageSize == 0) {
+      return null;
+    }
+    return readData(startOffset, pageSize);
   }
 
   @Override

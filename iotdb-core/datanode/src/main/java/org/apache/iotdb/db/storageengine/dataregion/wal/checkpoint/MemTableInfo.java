@@ -37,6 +37,12 @@ import java.util.Objects;
 public class MemTableInfo implements WALEntryValue {
   // memTable id 8 bytes, first version id 8 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES * 2;
+  // memTable id
+  private long memTableId;
+  // path of the tsFile which this memTable will be flushed to
+  private String tsFilePath;
+  // version id of the file where this memTable's first WALEntry is located
+  private volatile long firstFileVersionId;
 
   // memTable
   private IMemTable memTable;
@@ -44,14 +50,10 @@ public class MemTableInfo implements WALEntryValue {
   private int pinCount;
   // memTable is flushed or not
   private boolean flushed;
-  // memTable id
-  private long memTableId;
   // data region id
   private int dataRegionId;
-  // path of the tsFile which this memTable will be flushed to
-  private String tsFilePath;
-  // version id of the file where this memTable's first WALEntry is located
-  private volatile long firstFileVersionId;
+  // total wal usage of this memTable
+  private long walDiskUsage;
 
   private MemTableInfo() {}
 
@@ -157,5 +159,13 @@ public class MemTableInfo implements WALEntryValue {
 
   public void setFirstFileVersionId(long firstFileVersionId) {
     this.firstFileVersionId = firstFileVersionId;
+  }
+
+  public long getWalDiskUsage() {
+    return walDiskUsage;
+  }
+
+  public void addWalDiskUsage(long size) {
+    walDiskUsage += size;
   }
 }

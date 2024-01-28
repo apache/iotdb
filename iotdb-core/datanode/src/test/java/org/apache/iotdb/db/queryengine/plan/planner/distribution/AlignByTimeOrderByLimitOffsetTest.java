@@ -54,7 +54,6 @@ public class AlignByTimeOrderByLimitOffsetTest {
   DistributedQueryPlan plan;
   PlanNode firstFiRoot;
   PlanNode firstFiTopNode;
-  PlanNode mergeSortNode;
 
   /*
    * IdentitySinkNode-63
@@ -154,6 +153,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
   @Test
   public void orderByExpressionTest2() {
     // select s1 order by s2 + limit N
+    // use TopKNode to replace SortNode + LimitNode
     sql =
         String.format(
             "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC LIMIT %s", LIMIT_VALUE);
@@ -170,6 +170,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
         firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
 
     // select s1 order by s2 + offset M + limit N
+    // use TopKNode to replace SortNode
     sql =
         String.format(
             "select s1 from root.sg.d1 ORDER BY root.sg.d22.s2 DESC OFFSET 5 LIMIT %s",
@@ -257,6 +258,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
    */
   @Test
   public void orderByFillTest() {
+    // previous and constant fill can use TopKNode
     sql =
         String.format(
             "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(previous) LIMIT %s",
@@ -290,6 +292,7 @@ public class AlignByTimeOrderByLimitOffsetTest {
      *                   ├──ExchangeNode-58: [SourceAddress:192.0.2.1/test.7.0/61]
      *                   └──ExchangeNode-59: [SourceAddress:192.0.4.1/test.8.0/62]
      */
+    // linear fill can not use TopKNode
     sql =
         String.format(
             "select * from root.sg.d1,root.sg.d22,root.sg.d333 ORDER BY root.sg.d1.s1 DESC fill(linear) LIMIT %s",

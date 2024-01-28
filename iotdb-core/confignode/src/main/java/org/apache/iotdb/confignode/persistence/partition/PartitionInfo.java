@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
@@ -138,6 +139,24 @@ public class PartitionInfo implements SnapshotProcessor {
   // ======================================================
   // Consensus read/write interfaces
   // ======================================================
+
+  /**
+   * Thread-safely update DataNodeLocation in RegionGroup.
+   *
+   * @param updateDataNodePlan UpdateDataNodePlan
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the DataNodeLocations are updated successfully.
+   */
+  public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
+    TDataNodeLocation newDataNodeLocation =
+        updateDataNodePlan.getDataNodeConfiguration().getLocation();
+    databasePartitionTables.forEach(
+        (database, databasePartitionTable) -> {
+          if (isDatabaseExisted(database)) {
+            databasePartitionTable.updateDataNode(newDataNodeLocation);
+          }
+        });
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
   /**
    * Thread-safely create new DatabasePartitionTable.

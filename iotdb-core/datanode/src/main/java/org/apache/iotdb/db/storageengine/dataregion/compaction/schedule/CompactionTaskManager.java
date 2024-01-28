@@ -96,8 +96,7 @@ public class CompactionTaskManager implements IService {
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction()
-            || config.isEnableInsertionCrossSpaceCompaction())) {
+            || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
@@ -148,7 +147,6 @@ public class CompactionTaskManager implements IService {
   }
 
   @SuppressWarnings({"squid:S2142", "squid:S135", "VariableDeclarationUsageDistanceCheck"})
-  @TestOnly
   public void waitAllCompactionFinish() {
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;

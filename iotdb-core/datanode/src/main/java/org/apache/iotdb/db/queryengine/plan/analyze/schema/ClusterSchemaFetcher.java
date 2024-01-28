@@ -166,7 +166,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeInsertLock();
-    context.setAcquiredLock(true);
+    context.addAcquiredLockNum();
     schemaCache.takeReadLock();
     try {
       Pair<Template, PartialPath> templateSetInfo =
@@ -204,7 +204,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeInsertLock();
-    context.setAcquiredLock(true);
+    context.addAcquiredLockNum();
     schemaCache.takeReadLock();
     try {
 
@@ -248,7 +248,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeInsertLock();
-    context.setAcquiredLock(true);
+    context.addAcquiredLockNum();
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();

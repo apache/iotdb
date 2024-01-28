@@ -45,13 +45,24 @@ public class ClientPoolProperty<V> {
      */
     private long waitClientTimeoutMs = DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
-    /** the maximum number of clients that can be allocated for a node. */
-    private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
     /**
-     * the maximum number of clients that can be idle for a node. When the number of idle clients on
-     * a node exceeds this number, newly returned clients will be released.
+     * the maximum number of clients that can be allocated for a node. When some clients are idle
+     * for more than {@code maxIdleTimeForClient}, they will be cleaned up.
      */
-    private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+    private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+    /**
+     * the minimum amount of time a client may sit idle in the pool before it is eligible for
+     * eviction by the idle object evictor.
+     */
+    private long minIdleTimeForClient = DefaultProperty.MIN_IDLE_TIME_FOR_CLIENT_MS;
+
+    /**
+     * the duration to sleep between runs of the idle object evictor thread. When non-positive, no
+     * idle object evictor thread will be run, which means clients that are idle for more than
+     * {@code minIdleTimeForClient} will never be cleaned up.
+     */
+    private long timeBetweenEvictionRuns = DefaultProperty.TIME_BETWEEN_EVICTION_RUNS_MS;
 
     public Builder<V> setWaitClientTimeoutMs(long waitClientTimeoutMs) {
       this.waitClientTimeoutMs = waitClientTimeoutMs;
@@ -63,15 +74,22 @@ public class ClientPoolProperty<V> {
       return this;
     }
 
-    public Builder<V> setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-      this.coreClientNumForEachNode = coreClientNumForEachNode;
+    public Builder<V> setMinIdleTimeForClient(long minIdleTimeForClient) {
+      this.minIdleTimeForClient = minIdleTimeForClient;
+      return this;
+    }
+
+    public Builder<V> setTimeBetweenEvictionRuns(long timeBetweenEvictionRuns) {
+      this.timeBetweenEvictionRuns = timeBetweenEvictionRuns;
       return this;
     }
 
     public ClientPoolProperty<V> build() {
       GenericKeyedObjectPoolConfig<V> poolConfig = new GenericKeyedObjectPoolConfig<>();
       poolConfig.setMaxTotalPerKey(maxClientNumForEachNode);
-      poolConfig.setMaxIdlePerKey(coreClientNumForEachNode);
+      poolConfig.setMaxIdlePerKey(maxClientNumForEachNode);
+      poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
+      poolConfig.setMinEvictableIdleTime(Duration.ofMillis(minIdleTimeForClient));
       poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMs));
       poolConfig.setTestOnReturn(true);
       poolConfig.setTestOnBorrow(true);
@@ -84,7 +102,8 @@ public class ClientPoolProperty<V> {
     private DefaultProperty() {}
 
     public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
+    public static final long MIN_IDLE_TIME_FOR_CLIENT_MS = TimeUnit.MINUTES.toMillis(1);
+    public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.MINUTES.toMillis(1);
     public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 300;
-    public static final int CORE_CLIENT_NUM_FOR_EACH_NODE = 200;
   }
 }

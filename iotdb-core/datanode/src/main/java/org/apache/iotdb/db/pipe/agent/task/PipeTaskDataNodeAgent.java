@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -38,12 +39,17 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.PipeSchemaNodeFilter;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -59,8 +65,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
@@ -78,6 +87,139 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
+  }
+
+  /**
+   * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
+   * {@link PipeTaskDataNodeAgent#handlePipeMetaChanges(List)}} concurrently.
+   */
+  public void stopAllPipesWithCriticalException() {
+    try {
+      int retryCount = 0;
+      while (true) {
+        if (tryWriteLockWithTimeOut(5)) {
+          try {
+            stopAllPipesWithCriticalExceptionInternal();
+            LOGGER.info("Stopped all pipes with critical exception.");
+            return;
+          } finally {
+            releaseWriteLock();
+          }
+        } else {
+          Thread.sleep(1000);
+          LOGGER.warn(
+              "Failed to stop all pipes with critical exception, retry count: {}.", ++retryCount);
+        }
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error(
+          "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+    }
+  }
+
+  private void stopAllPipesWithCriticalExceptionInternal() {
+    // 1. track exception in all pipe tasks that share the same connector that have critical
+    // exceptions.
+    final int currentDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderDataNodeId() != currentDataNodeId) {
+                          return;
+                        }
+
+                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
+                                staticMeta.getConnectorParameters(),
+                                (PipeRuntimeConnectorCriticalException) e);
+                          }
+                        }
+                      });
+            });
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderDataNodeId() == currentDataNodeId
+                            && reusedConnectorParameters2ExceptionMap.containsKey(
+                                staticMeta.getConnectorParameters())
+                            && !pipeTaskMeta.containsExceptionMessage(
+                                reusedConnectorParameters2ExceptionMap.get(
+                                    staticMeta.getConnectorParameters()))) {
+                          final PipeRuntimeConnectorCriticalException exception =
+                              reusedConnectorParameters2ExceptionMap.get(
+                                  staticMeta.getConnectorParameters());
+                          pipeTaskMeta.trackExceptionMessage(exception);
+                          LOGGER.warn(
+                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
+                                  + "(occurred time {}) in connector {}.",
+                              staticMeta.getPipeName(),
+                              DateTimeUtils.convertLongToDate(staticMeta.getCreationTime(), "ms"),
+                              DateTimeUtils.convertLongToDate(exception.getTimeStamp(), "ms"),
+                              staticMeta.getConnectorParameters());
+                        }
+                      });
+            });
+
+    // 2. stop all pipes that have critical exceptions.
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                runtimeMeta
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              LOGGER.warn(
+                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
+                                      + "(occurred time {}).",
+                                  staticMeta.getPipeName(),
+                                  DateTimeUtils.convertLongToDate(
+                                      staticMeta.getCreationTime(), "ms"),
+                                  DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"));
+                              return;
+                            }
+                          }
+                        });
+              }
+            });
   }
 
   ///////////////////////// Manage by regionGroupId /////////////////////////
@@ -258,5 +400,74 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
 
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
+  }
+
+  ///////////////////////// Restart Logic /////////////////////////
+
+  public void restartAllStuckPipes() {
+    if (!tryWriteLockWithTimeOut(5)) {
+      return;
+    }
+    try {
+      restartAllStuckPipesInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void restartAllStuckPipesInternal() {
+    final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
+        PipeExtractorMetrics.getInstance().getExtractorMap();
+
+    final Set<PipeMeta> stuckPipes = new HashSet<>();
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+      final List<IoTDBDataRegionExtractor> extractors =
+          taskId2ExtractorMap.values().stream()
+              .filter(e -> e.getPipeName().equals(pipeName))
+              .collect(Collectors.toList());
+      if (extractors.isEmpty()
+          || !extractors.get(0).isStreamMode()
+          || extractors.stream()
+              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
+        continue;
+      }
+
+      if (mayLinkedTsFileCountReachDangerousThreshold()
+          || mayMemTablePinnedCountReachDangerousThreshold()
+          || mayWalSizeReachThrottleThreshold()) {
+        LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
+        stuckPipes.add(pipeMeta);
+      }
+    }
+
+    // Restart all stuck pipes
+    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+  }
+
+  private boolean mayLinkedTsFileCountReachDangerousThreshold() {
+    return PipeResourceManager.tsfile().getLinkedTsfileCount()
+        >= 2 * PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
+    return PipeResourceManager.wal().getPinnedWalCount()
+        >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+  }
+
+  private boolean mayWalSizeReachThrottleThreshold() {
+    return 3 * WALManager.getInstance().getTotalDiskUsage()
+        > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private void restartStuckPipe(PipeMeta pipeMeta) {
+    LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
+    final long startTime = System.currentTimeMillis();
+    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
+    handleSinglePipeMetaChangesInternal(pipeMeta);
+    LOGGER.warn(
+        "Pipe {} was restarted because of stuck, time cost: {} ms.",
+        pipeMeta.getStaticMeta(),
+        System.currentTimeMillis() - startTime);
   }
 }
