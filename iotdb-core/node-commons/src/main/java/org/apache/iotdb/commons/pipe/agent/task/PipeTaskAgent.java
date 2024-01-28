@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -844,44 +843,39 @@ public abstract class PipeTaskAgent {
    * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
    * {@link PipeTaskAgent#handlePipeMetaChanges(List)}} concurrently.
    */
-  protected void stopAllPipesWithCriticalException(final int currentNodeId) {
-    // To avoid deadlock, we use a new thread to stop all pipes.
-    CompletableFuture.runAsync(
-        () -> {
+  public void stopAllPipesWithCriticalException(final int currentNodeId) {
+    try {
+      int retryCount = 0;
+      while (true) {
+        if (tryWriteLockWithTimeOut(5)) {
           try {
-            int retryCount = 0;
-            while (true) {
-              if (tryWriteLockWithTimeOut(5)) {
-                try {
-                  stopAllPipesWithCriticalExceptionInternal(currentNodeId);
-                  LOGGER.info("Stopped all pipes with critical exception.");
-                  return;
-                } finally {
-                  releaseWriteLock();
-                }
-              } else {
-                Thread.sleep(1000);
-                LOGGER.warn(
-                    "Failed to stop all pipes with critical exception, retry count: {}.",
-                    ++retryCount);
-              }
-            }
-          } catch (InterruptedException e) {
-            LOGGER.error(
-                "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
-                e.getMessage(),
-                e);
-            Thread.currentThread().interrupt();
-          } catch (Exception e) {
-            LOGGER.error(
-                "Failed to stop all pipes with critical exception, exception message: {}",
-                e.getMessage(),
-                e);
+            stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+            LOGGER.info("Stopped all pipes with critical exception.");
+            return;
+          } finally {
+            releaseWriteLock();
           }
-        });
+        } else {
+          Thread.sleep(1000);
+          LOGGER.warn(
+              "Failed to stop all pipes with critical exception, retry count: {}.", ++retryCount);
+        }
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error(
+          "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to stop all pipes with critical exception, exception message: {}",
+          e.getMessage(),
+          e);
+    }
   }
 
-  private void stopAllPipesWithCriticalExceptionInternal(int currentNodeId) {
+  private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
     // 1. track exception in all pipe tasks that share the same connector that have critical
     // exceptions.
     final Map<PipeParameters, PipeRuntimeConnectorCriticalException>

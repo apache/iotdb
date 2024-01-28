@@ -45,11 +45,6 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       return;
     }
 
-    int maxRetryTimes =
-        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
-            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
-            : MAX_RETRY_TIMES;
-
     if (lastEvent instanceof EnrichedEvent) {
       onEnrichedEventFailure(throwable);
     } else {
@@ -62,7 +57,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     // is dropped or the process is running normally.
   }
 
-  private void onEnrichedEventFailure(@NotNull Throwable throwable) {
+  private void onEnrichedEventFailure(Throwable throwable) {
+    final int maxRetryTimes =
+        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
+            : MAX_RETRY_TIMES;
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
@@ -101,17 +100,21 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           String.format(
               "Failed to execute subtask %s (creation time: %s, simple class: %s), "
                   + "retry count exceeds the max retry times %d, last exception: %s",
-              taskID,creationTime, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
+              taskID,
+              creationTime,
+              this.getClass().getSimpleName(),
+              retryCount.get(),
+              throwable.getMessage());
       String rootCause = getRootCause(throwable);
       if (Objects.nonNull(rootCause)) {
         errorMessage += String.format(", root cause: %s", rootCause);
       }
       LOGGER.warn(errorMessage, throwable);
-      ((EnrichedEvent) lastEvent)
-          .reportException(
-              throwable instanceof PipeRuntimeException
-                  ? (PipeRuntimeException) throwable
-                  : new PipeRuntimeCriticalException(errorMessage));
+      report(
+          (EnrichedEvent) lastEvent,
+          throwable instanceof PipeRuntimeException
+              ? (PipeRuntimeException) throwable
+              : new PipeRuntimeCriticalException(errorMessage));
       LOGGER.warn(
           "The last event is an instance of EnrichedEvent, so the exception is reported. "
               + "Stopping current pipe subtask {} (creation time: {}, simple class: {}) locally... "
@@ -124,7 +127,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
   }
 
-  private void onNonEnrichedEventFailure(@NotNull Throwable throwable) {
+  private void onNonEnrichedEventFailure(Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), "
