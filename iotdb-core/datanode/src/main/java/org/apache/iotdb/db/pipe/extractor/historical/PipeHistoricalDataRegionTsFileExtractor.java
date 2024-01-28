@@ -95,6 +95,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
+  private boolean transferModFile; // Whether to transfer mods in historical mode
+
   private Queue<TsFileResource> pendingQueue;
 
   @Override
