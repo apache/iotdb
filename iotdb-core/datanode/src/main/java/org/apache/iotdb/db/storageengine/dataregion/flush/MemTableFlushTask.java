@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -26,6 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -276,15 +277,11 @@ public class MemTableFlushTask {
         }
 
         private void recordFlushPointsMetric() {
-          if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
-            return;
+          String userDatabaseName = DataRegion.getUserDatabaseName(storageGroup);
+          if (Objects.nonNull(userDatabaseName)) {
+            recordFlushPointsMetricInternal(
+                memTable.getTotalPointsNum(), userDatabaseName, dataRegionId);
           }
-          int lastIndex = storageGroup.lastIndexOf("-");
-          if (lastIndex == -1) {
-            lastIndex = storageGroup.length();
-          }
-          recordFlushPointsMetricInternal(
-              memTable.getTotalPointsNum(), storageGroup.substring(0, lastIndex), dataRegionId);
         }
       };
 

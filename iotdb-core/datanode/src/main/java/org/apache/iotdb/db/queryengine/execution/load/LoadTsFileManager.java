@@ -320,22 +320,26 @@ public class LoadTsFileManager {
         TsFileResource resource = generateResource(writer, progressIndex);
         dataRegion.loadNewTsFile(resource, true, isGeneratedByPipe);
 
-        long writePointCount = getTsFileWritePointCount(writer);
-        // Report load tsFile points to IoTDB flush metrics
-        MemTableFlushTask.recordFlushPointsMetricInternal(
-            writePointCount, dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
+        String userDatabaseName = dataRegion.getUserDatabaseName();
 
-        MetricService.getInstance()
-            .count(
-                writePointCount,
-                Metric.QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                Metric.POINTS_IN.toString(),
-                Tag.DATABASE.toString(),
-                dataRegion.getDatabaseName(),
-                Tag.REGION.toString(),
-                dataRegion.getDataRegionId());
+        if (Objects.nonNull(userDatabaseName)) {
+          long writePointCount = getTsFileWritePointCount(writer);
+          // Report load tsFile points to IoTDB flush metrics
+          MemTableFlushTask.recordFlushPointsMetricInternal(
+              writePointCount, userDatabaseName, dataRegion.getDataRegionId());
+
+          MetricService.getInstance()
+              .count(
+                  writePointCount,
+                  Metric.QUANTITY.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  Metric.POINTS_IN.toString(),
+                  Tag.DATABASE.toString(),
+                  userDatabaseName,
+                  Tag.REGION.toString(),
+                  dataRegion.getDataRegionId());
+        }
       }
     }
 
