@@ -399,16 +399,23 @@ public class DataRegion implements IDataRegionForQuery {
 
     public void incrementRecoveredFilesNum() {
       recoveredFilesNum++;
-      // check log only when 1% more files have been recovered
-      if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
-        lastLogCheckFilesNum = recoveredFilesNum;
-        // log only when log interval exceeds recovery log interval
-        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+      if (recoveredFilesNum < numOfFilesToRecover) {
+        if (System.currentTimeMillis() - lastLogTime > config.getRecoveryLogIntervalInMs()) {
           logger.info(
-              "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
+              "The TsFiles of data region {}[{}] has recovered {}/{}.",
+              databaseName,
+              dataRegionId,
+              recoveredFilesNum,
+              numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
+      } else {
+        logger.info(
+            "The TsFiles of data region {}[{}] has recovered" + " {}/{}.",
+            databaseName,
+            dataRegionId,
+            numOfFilesToRecover,
+            numOfFilesToRecover);
       }
     }
   }
