@@ -139,6 +139,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
@@ -2532,19 +2533,19 @@ public class DataRegion implements IDataRegionForQuery {
     BloomFilterCache.getInstance().clear();
   }
 
-  public static String getUserDatabaseName(String databaseName) {
+  public static Optional<String> getNonSystemDatabaseName(String databaseName) {
     if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
-      return null;
+      return Optional.empty();
     }
     int lastIndex = databaseName.lastIndexOf("-");
     if (lastIndex == -1) {
       lastIndex = databaseName.length();
     }
-    return databaseName.substring(0, lastIndex);
+    return Optional.of(databaseName.substring(0, lastIndex));
   }
 
-  public String getUserDatabaseName() {
-    return getUserDatabaseName(databaseName);
+  public Optional<String> getNonSystemDatabaseName() {
+    return getNonSystemDatabaseName(databaseName);
   }
 
   /** merge file under this database processor */

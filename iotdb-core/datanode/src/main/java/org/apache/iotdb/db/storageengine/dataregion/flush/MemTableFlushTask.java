@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -272,16 +271,12 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          recordFlushPointsMetric();
+          DataRegion.getNonSystemDatabaseName(storageGroup)
+              .ifPresent(
+                  databaseName ->
+                      recordFlushPointsMetricInternal(
+                          memTable.getTotalPointsNum(), databaseName, dataRegionId));
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
-        }
-
-        private void recordFlushPointsMetric() {
-          String userDatabaseName = DataRegion.getUserDatabaseName(storageGroup);
-          if (Objects.nonNull(userDatabaseName)) {
-            recordFlushPointsMetricInternal(
-                memTable.getTotalPointsNum(), userDatabaseName, dataRegionId);
-          }
         }
       };
 

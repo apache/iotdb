@@ -318,26 +318,27 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
-        String userDatabaseName = dataRegion.getUserDatabaseName();
+        dataRegion
+            .getNonSystemDatabaseName()
+            .ifPresent(
+                databaseName -> {
+                  long writePointCount = getTsFileWritePointCount(writer);
+                  // Report load tsFile points to IoTDB flush metrics
+                  MemTableFlushTask.recordFlushPointsMetricInternal(
+                      writePointCount, databaseName, dataRegion.getDataRegionId());
 
-        if (Objects.nonNull(userDatabaseName)) {
-          long writePointCount = getTsFileWritePointCount(writer);
-          // Report load tsFile points to IoTDB flush metrics
-          MemTableFlushTask.recordFlushPointsMetricInternal(
-              writePointCount, userDatabaseName, dataRegion.getDataRegionId());
-
-          MetricService.getInstance()
-              .count(
-                  writePointCount,
-                  Metric.QUANTITY.toString(),
-                  MetricLevel.CORE,
-                  Tag.NAME.toString(),
-                  Metric.POINTS_IN.toString(),
-                  Tag.DATABASE.toString(),
-                  userDatabaseName,
-                  Tag.REGION.toString(),
-                  dataRegion.getDataRegionId());
-        }
+                  MetricService.getInstance()
+                      .count(
+                          writePointCount,
+                          Metric.QUANTITY.toString(),
+                          MetricLevel.CORE,
+                          Tag.NAME.toString(),
+                          Metric.POINTS_IN.toString(),
+                          Tag.DATABASE.toString(),
+                          databaseName,
+                          Tag.REGION.toString(),
+                          dataRegion.getDataRegionId());
+                });
       }
     }
 

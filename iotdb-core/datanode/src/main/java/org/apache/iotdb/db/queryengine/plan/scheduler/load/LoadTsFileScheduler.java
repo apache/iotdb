@@ -82,7 +82,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
@@ -400,24 +399,26 @@ public class LoadTsFileScheduler implements IScheduler {
                     ConsensusGroupId.Factory.createFromTConsensusGroupId(
                         node.getLocalRegionReplicaSet().getRegionId()));
 
-    String userDatabaseName = dataRegion.getUserDatabaseName();
-    if (Objects.nonNull(userDatabaseName)) {
-      // Report load tsFile points to IoTDB flush metrics
-      MemTableFlushTask.recordFlushPointsMetricInternal(
-          node.getWritePointCount(), userDatabaseName, dataRegion.getDataRegionId());
+    dataRegion
+        .getNonSystemDatabaseName()
+        .ifPresent(
+            databaseName -> {
+              // Report load tsFile points to IoTDB flush metrics
+              MemTableFlushTask.recordFlushPointsMetricInternal(
+                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
 
-      MetricService.getInstance()
-          .count(
-              node.getWritePointCount(),
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              Metric.POINTS_IN.toString(),
-              Tag.DATABASE.toString(),
-              userDatabaseName,
-              Tag.REGION.toString(),
-              dataRegion.getDataRegionId());
-    }
+              MetricService.getInstance()
+                  .count(
+                      node.getWritePointCount(),
+                      Metric.QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId());
+            });
     return true;
   }
 
