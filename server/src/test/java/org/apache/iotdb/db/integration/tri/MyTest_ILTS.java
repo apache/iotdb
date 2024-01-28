@@ -73,7 +73,7 @@ public class MyTest_ILTS {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("ILTS");
-    config.setNumIterations(4);
+    //    config.setNumIterations(4);
 
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
@@ -89,9 +89,9 @@ public class MyTest_ILTS {
   }
 
   @Test
-  public void test3_2() {
-    prepareData3_2();
-
+  public void test1() {
+    prepareData1();
+    config.setNumIterations(4);
     String res = "5.0[1],10.0[2],2.0[40],5.0[55],20.0[62],1.0[90],7.0[102],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -122,7 +122,41 @@ public class MyTest_ILTS {
     }
   }
 
-  private static void prepareData3_2() {
+  @Test
+  public void test1_2() {
+    prepareData1();
+    config.setNumIterations(1); // result equals LTTB
+    String res = "5.0[1],10.0[2],2.0[40],15.0[60],18.0[70],1.0[90],7.0[102],";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_value(s0)"
+                  // TODO not real min_value here, actually controlled by enableTri
+                  + " FROM root.vehicle.d0 group by ([2,102),20ms)");
+      // (102-2)/(7-2)=20ms
+      // note keep no empty buckets
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int i = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2);
+          // for LTTB all results are in the value string of MinValueAggrResult
+          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
+          ans = ans.substring(0, ans.length() - 3);
+          System.out.println(ans);
+          Assert.assertEquals(res, ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareData1() {
     // data:
     // https://user-images.githubusercontent.com/33376433/152003603-6b4e7494-00ff-47e4-bf6e-cab3c8600ce2.png
     // slightly modified
@@ -155,9 +189,9 @@ public class MyTest_ILTS {
   }
 
   @Test
-  public void test3() {
-    prepareData3();
-
+  public void test2() {
+    prepareData2();
+    config.setNumIterations(4);
     String res =
         "-1.2079272[0],1.101946[200],-0.523204[300],0.145359[500],-1.014322[700],"
             + "0.532565[900],-0.122525[1200],-0.676077[1300],0.809559[1500],0.315869[1800],"
@@ -190,7 +224,43 @@ public class MyTest_ILTS {
     }
   }
 
-  private static void prepareData3() {
+  @Test
+  public void test2_2() {
+    prepareData2();
+    config.setNumIterations(1); // result equals LTTB
+    String res =
+        "-1.2079272[0],1.101946[200],-0.523204[300],0.145359[500],-1.014322[700],0.532565[900],"
+            + "-0.146934[1100],-0.676077[1300],0.809559[1500],0.032211[1700],"
+            + "-0.413534[1900],-0.0211206[2100],";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_value(s0)"
+                  // TODO not real min_value here, actually controlled by enableTri
+                  + " FROM root.vehicle.d0 group by ([100,2100),200ms)");
+      // (tn-t2)/(nout-2)=(2100-100)/(12-2)=2000/10=200
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int i = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2);
+          // for LTTB all results are in the value string of MinValueAggrResult
+          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
+          ans = ans.substring(0, ans.length() - 3);
+          System.out.println(ans);
+          Assert.assertEquals(res, ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareData2() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

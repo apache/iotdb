@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
+public class LocalGroupByExecutorTri_ILTS_noacc implements GroupByExecutor {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
@@ -75,11 +75,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
 
   private final int N1; // 分桶数
 
-  private final int numIterations = CONFIG.getNumIterations(); // do not make it static
+  private static final int numIterations = CONFIG.getNumIterations();
 
   private Filter timeFilter;
 
-  public LocalGroupByExecutorTri_ILTS(
+  public LocalGroupByExecutorTri_ILTS_noacc(
       PartialPath path,
       Set<String> allSensors,
       TSDataType dataType,
@@ -128,7 +128,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         long chunkMaxTime = chunkMetadata.getEndTime();
         int idx1 = (int) Math.floor((chunkMinTime - startTime) * 1.0 / interval);
         int idx2 = (int) Math.floor((chunkMaxTime - startTime) * 1.0 / interval);
-        idx2 = Math.min(idx2, N1 - 1);
+        idx2 = (int) Math.min(idx2, N1 - 1);
         for (int i = idx1; i <= idx2; i++) {
           splitChunkList.computeIfAbsent(i, k -> new ArrayList<>());
           splitChunkList.get(i).add(chunkSuit4Tri);
@@ -190,7 +190,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               if (dataType != TSDataType.DOUBLE) {
                 throw new UnSupportedDataTypeException(String.valueOf(dataType));
               }
-              // TODO: 用元数据sum&count加速
               // 1. load page data if it hasn't been loaded
               if (chunkSuit4Tri.pageReader == null) {
                 chunkSuit4Tri.pageReader =
@@ -239,7 +238,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           if (dataType != TSDataType.DOUBLE) {
             throw new UnSupportedDataTypeException(String.valueOf(dataType));
           }
-          // TODO: 用FP&LP&BP&TP形成的rectangle加速
           // load page data if it hasn't been loaded
           if (chunkSuit4Tri.pageReader == null) {
             chunkSuit4Tri.pageReader =
@@ -252,7 +250,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
           }
           PageReader pageReader = chunkSuit4Tri.pageReader;
-          // TODO: 用凸包bitmap加速
           for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
             long timestamp = pageReader.timeBuffer.getLong(j * 8);
             if (timestamp < localCurStartTime) {
