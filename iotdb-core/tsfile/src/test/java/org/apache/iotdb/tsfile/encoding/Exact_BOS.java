@@ -641,6 +641,7 @@ public class Exact_BOS {
 //                    break;
             }
         }
+        //System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -931,7 +932,7 @@ public class Exact_BOS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        for (int file_i = 9; file_i < 10; file_i++) {
+//        for (int file_i = 5; file_i < 6; file_i++) {
 //
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -958,6 +959,7 @@ public class Exact_BOS {
             assert tempList != null;
 
             for (File f : tempList) {
+//                f=tempList[2];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1015,10 +1017,9 @@ public class Exact_BOS {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-
+//                break;
             }
             writer.close();
-
         }
     }
 
