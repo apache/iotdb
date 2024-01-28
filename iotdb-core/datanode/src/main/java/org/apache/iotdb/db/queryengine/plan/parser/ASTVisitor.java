@@ -2463,8 +2463,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    String ttlStr = ctx.INTEGER_LITERAL().getText();
-    long ttl = ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)?Long.MAX_VALUE:Long.parseLong(ttlStr);
+
+    String ttlStr = ctx.INTEGER_LITERAL() != null?ctx.INTEGER_LITERAL().getText():ctx.INF().getText();
+    long ttl =
+        ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)
+            ? Long.MAX_VALUE
+            : Long.parseLong(ttlStr);
     setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
@@ -2476,17 +2480,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
     unSetTTLStatement.setPath(partialPath);
     return unSetTTLStatement;
-  }
-
-  // TODO: remove this method
-  @Override
-  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
-    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
-    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-      PartialPath partialPath = parsePrefixPath(prefixPathContext);
-      showTTLStatement.addPathPatterns(partialPath);
-    }
-    return showTTLStatement;
   }
 
   @Override

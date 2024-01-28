@@ -505,12 +505,19 @@ public abstract class SeriesCompactionExecutor {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications =
         modificationCacheMap.computeIfAbsent(
-            tsFileResource, resource -> {
+            tsFileResource,
+            resource -> {
               List<Modification> list = new ArrayList<>(resource.getModFile().getModifications());
               // add outdated mods from ttl
-              long timeLowerBound = CommonDateTimeUtils.currentTime()-deviceTTL;
-              if(!resource.definitelyNotContains(deviceId) && resource.stillLives(timeLowerBound)) {
-                list.add(new Deletion(path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), Long.MAX_VALUE, Long.MIN_VALUE,timeLowerBound));
+              long timeLowerBound = CommonDateTimeUtils.currentTime() - deviceTTL;
+              if (!resource.definitelyNotContains(deviceId)
+                  && resource.stillLives(timeLowerBound)) {
+                list.add(
+                    new Deletion(
+                        path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                        Long.MAX_VALUE,
+                        Long.MIN_VALUE,
+                        timeLowerBound));
               }
               return list;
             });

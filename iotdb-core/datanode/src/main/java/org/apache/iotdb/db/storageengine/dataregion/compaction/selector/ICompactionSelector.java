@@ -58,7 +58,8 @@ public interface ICompactionSelector {
     }
   }
 
-  default List<AbstractCompactionTask> selectSettleTask(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles){
+  default List<AbstractCompactionTask> selectSettleTask(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     throw new RuntimeException("This kind of selector cannot be used to select settle task");
   }
 

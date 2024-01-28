@@ -520,10 +520,16 @@ public class IoTDBConfig {
   /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
   private long ttlCheckInterval = 7200_000L;
 
-  /** The longest expired time of device set with ttl. If the expired time exceeds this value, then expired data will be cleaned by compaction. The unit is ms. Default is 1 month. */
+  /**
+   * The longest expired time of device set with ttl. If the expired time exceeds this value, then
+   * expired data will be cleaned by compaction. The unit is ms. Default is 1 month.
+   */
   private long longestExpiredTime = 2_592_000_000L;
 
-  /** The expired device rate. If the number of expired device in one tsfile exceeds this value, then expired data of this tsfile will be cleaned by compaction. */
+  /**
+   * The expired device rate. If the number of expired device in one tsfile exceeds this value, then
+   * expired data of this tsfile will be cleaned by compaction.
+   */
   private float expiredDataRate = 0.3f;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */

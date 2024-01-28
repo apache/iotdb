@@ -912,11 +912,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return this;
   }
 
-  /**
-   * Return true if the path ends with ** and no other nodes contain *. Otherwise, return false.
-   */
+  /** Return true if the path ends with ** and no other nodes contain *. Otherwise, return false. */
   public boolean isPrefixPath() {
-    if(nodes.length<=0){
+    if (nodes.length <= 0) {
       return false;
     }
     for (int i = 0; i < nodes.length - 1; i++) {

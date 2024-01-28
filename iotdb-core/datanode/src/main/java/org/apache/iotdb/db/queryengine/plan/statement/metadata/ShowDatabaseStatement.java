@@ -91,14 +91,19 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       String storageGroup = entry.getKey();
       TDatabaseInfo storageGroupInfo = entry.getValue();
-      long ttl = DataNodeTTLCache.getInstance().getNodeTTL(storageGroup+ IoTDBConstant.PATH_SEPARATOR+IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-      String ttlStr = ttl == TTLCache.NULL_TTL?"null":String.valueOf(ttl);
+      long ttl =
+          DataNodeTTLCache.getInstance()
+              .getNodeTTL(
+                  storageGroup
+                      + IoTDBConstant.PATH_SEPARATOR
+                      + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+      String ttlStr = ttl == TTLCache.NULL_TTL ? "null" : String.valueOf(ttl);
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
 
-      builder.getColumnBuilder(1).writeBinary(new Binary(ttlStr,TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeBinary(new Binary(ttlStr, TSFileConfig.STRING_CHARSET));
 
       builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
       builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());

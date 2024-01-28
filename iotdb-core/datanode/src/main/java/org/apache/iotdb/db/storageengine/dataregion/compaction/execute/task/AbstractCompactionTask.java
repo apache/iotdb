@@ -388,7 +388,8 @@ public abstract class AbstractCompactionTask {
     CompactionTaskType taskType = getCompactionTaskType();
     boolean needToValidateTsFileCorrectness = taskType != CompactionTaskType.INSERTION;
     boolean needToValidatePartitionSeqSpaceOverlap =
-        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ && getCompactionTaskType() != CompactionTaskType.SETTLE;
+        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ
+            && getCompactionTaskType() != CompactionTaskType.SETTLE;
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {
@@ -431,5 +432,4 @@ public abstract class AbstractCompactionTask {
   }
 
   public abstract CompactionTaskType getCompactionTaskType();
-
 }

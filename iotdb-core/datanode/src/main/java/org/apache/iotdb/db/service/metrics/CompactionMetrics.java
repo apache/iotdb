@@ -701,8 +701,8 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram insertionCrossSpaceCompactionTaskSelectionTimeCost =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
-    private Histogram settleCompactionTaskSelectionTimeCost =
-            DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram settleCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   private Histogram seqInnerSpaceCompactionTaskSelectedFileNum =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -734,9 +734,9 @@ public class CompactionMetrics implements IMetricSet {
       case INSERTION:
         insertionCrossSpaceCompactionTaskSelectionTimeCost.update(time);
         break;
-        case SETTLE:
-            settleCompactionTaskSelectionTimeCost.update(time);
-            break;
+      case SETTLE:
+        settleCompactionTaskSelectionTimeCost.update(time);
+        break;
       default:
         break;
     }

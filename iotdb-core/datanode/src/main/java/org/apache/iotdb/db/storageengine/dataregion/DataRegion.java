@@ -132,7 +132,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -854,7 +853,8 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
-    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+    long deviceTTL =
+        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
     if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
@@ -929,7 +929,8 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getFullPath());
+      long deviceTTL =
+          DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getFullPath());
 
       /*
        * assume that batch has been sorted by client
@@ -1837,8 +1838,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(
-          singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -3000,11 +3000,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowsOfOneDeviceNode.getDevicePath().getFullPath());
+      long deviceTTL =
+          DataNodeTTLCache.getInstance()
+              .getTTL(insertRowsOfOneDeviceNode.getDevicePath().getFullPath());
       Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        if (!isAlive(insertRowNode.getTime(),deviceTTL)) {
+        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
           insertRowsOfOneDeviceNode
@@ -3082,7 +3084,8 @@ public class DataRegion implements IDataRegionForQuery {
       long[] timePartitionIds = new long[insertRowsNode.getInsertRowNodeList().size()];
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-        long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+        long deviceTTL =
+            DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()

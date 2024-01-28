@@ -83,7 +83,7 @@ public enum ProcedureType {
   AUTH_OPERATE_PROCEDURE((short) 1300),
 
   /** TTL */
-  SET_TTL_PROCEDURE((short)1400);
+  SET_TTL_PROCEDURE((short) 1400);
 
   private final short typeCode;
 

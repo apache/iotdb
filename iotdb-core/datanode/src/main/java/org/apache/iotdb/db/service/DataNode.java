@@ -900,14 +900,16 @@ public class DataNode implements DataNodeMBean {
     resourcesInformationHolder.setPipePluginMetaList(list);
   }
 
-  private void initTTLInformation(byte[] allTTLInformation){
+  private void initTTLInformation(byte[] allTTLInformation) {
     if (allTTLInformation == null) {
       return;
     }
     ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
     int mapSize = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < mapSize; i++) {
-      DataNodeTTLCache.getInstance().setTTL(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
+      DataNodeTTLCache.getInstance()
+          .setTTL(
+              Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
               ReadWriteIOUtils.readLong(buffer));
     }
   }

@@ -835,7 +835,7 @@ public class NodeManager {
     return configManager.getUDFManager();
   }
 
-  private TTLManager getTTLManager(){
+  private TTLManager getTTLManager() {
     return configManager.getTTLManager();
   }
 }

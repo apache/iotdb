@@ -71,7 +71,6 @@ import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -79,14 +78,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -224,11 +220,7 @@ public class StorageEngine implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion =
-                    buildNewDataRegion(
-                        sgName,
-                        dataRegionId,
-                        Long.MAX_VALUE);
+                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
               } catch (DataRegionException e) {
                 LOGGER.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);

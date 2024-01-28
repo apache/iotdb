@@ -62,7 +62,8 @@ public class CompactionScheduler {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static long settleIntervalCount = config.getTtlCheckInterval()/config.getCompactionScheduleIntervalInMs();
+  private static long settleIntervalCount =
+      config.getTtlCheckInterval() / config.getCompactionScheduleIntervalInMs();
   private static long scheduleCount = 0;
 
   private CompactionScheduler() {}
@@ -101,8 +102,7 @@ public class CompactionScheduler {
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
       trySubmitCount +=
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
-      trySubmitCount +=
-              tryToSubmitSettleCompactionTask(tsFileManager,timePartition,summary);
+      trySubmitCount += tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
@@ -261,24 +261,25 @@ public class CompactionScheduler {
   }
 
   private static int tryToSubmitSettleCompactionTask(
-          TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
-          throws InterruptedException {
-    if(!config.isEnableSeqSpaceCompaction()&&!config.isEnableUnseqSpaceCompaction()){
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+      throws InterruptedException {
+    if (!config.isEnableSeqSpaceCompaction() && !config.isEnableUnseqSpaceCompaction()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
-    boolean heavySelect = scheduleCount%settleIntervalCount==0;
-    SettleSelectorImpl settleSelector = new SettleSelectorImpl(heavySelect,logicalStorageGroupName,dataRegionId,timePartition,tsFileManager);
+    boolean heavySelect = scheduleCount % settleIntervalCount == 0;
+    SettleSelectorImpl settleSelector =
+        new SettleSelectorImpl(
+            heavySelect, logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     long startTime = System.currentTimeMillis();
     List<AbstractCompactionTask> taskList =
-            settleSelector.selectSettleTask(
-                    tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
-                            ,tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+        settleSelector.selectSettleTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     CompactionMetrics.getInstance()
-            .updateCompactionTaskSelectionTimeCost(
-                    CompactionTaskType.SETTLE,
-                    System.currentTimeMillis() - startTime);
+        .updateCompactionTaskSelectionTimeCost(
+            CompactionTaskType.SETTLE, System.currentTimeMillis() - startTime);
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitSeqInnerCount = 0;
@@ -286,22 +287,18 @@ public class CompactionScheduler {
     int trySubmitSettleCount = 0;
     for (AbstractCompactionTask task : taskList) {
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-        if(task instanceof SettleCompactionTask){
+        if (task instanceof SettleCompactionTask) {
           trySubmitSettleCount++;
-        }else if(((InnerSpaceCompactionTask)task).isSequence()){
-            trySubmitSeqInnerCount++;
-        }else{
-            trySubmitUnseqInnerCount++;
+        } else if (((InnerSpaceCompactionTask) task).isSequence()) {
+          trySubmitSeqInnerCount++;
+        } else {
+          trySubmitUnseqInnerCount++;
         }
-
       }
     }
-    summary.incrementSubmitTaskNum(
-            CompactionTaskType.SETTLE, trySubmitSettleCount);
-    summary.incrementSubmitTaskNum(
-            CompactionTaskType.INNER_SEQ, trySubmitSeqInnerCount);
-    summary.incrementSubmitTaskNum(
-            CompactionTaskType.INNER_UNSEQ, trySubmitUnseqInnerCount);
-    return trySubmitSettleCount+trySubmitSeqInnerCount+trySubmitUnseqInnerCount;
+    summary.incrementSubmitTaskNum(CompactionTaskType.SETTLE, trySubmitSettleCount);
+    summary.incrementSubmitTaskNum(CompactionTaskType.INNER_SEQ, trySubmitSeqInnerCount);
+    summary.incrementSubmitTaskNum(CompactionTaskType.INNER_UNSEQ, trySubmitUnseqInnerCount);
+    return trySubmitSettleCount + trySubmitSeqInnerCount + trySubmitUnseqInnerCount;
   }
 }

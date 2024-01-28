@@ -42,8 +42,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
@@ -498,9 +496,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public CompactionTaskType getCompactionTaskType() {
-    if(sequence){
+    if (sequence) {
       return CompactionTaskType.INNER_SEQ;
-    }else{
+    } else {
       return CompactionTaskType.INNER_UNSEQ;
     }
   }

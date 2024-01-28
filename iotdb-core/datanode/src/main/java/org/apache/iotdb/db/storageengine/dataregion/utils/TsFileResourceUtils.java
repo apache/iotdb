@@ -119,14 +119,14 @@ public class TsFileResourceUtils {
     return true;
   }
 
-  public static boolean validateTsFileIsComplete(TsFileResource resource){
+  public static boolean validateTsFileIsComplete(TsFileResource resource) {
     if (!resource.getTsFile().exists()
-            || resource.getTsFile().length()
+        || resource.getTsFile().length()
             < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
       // the file does not exist or file size is smaller than magic string and version number
-      logger.error(String.format(
-              "target file %s is smaller than magic string and version number size",
-              resource));
+      logger.error(
+          String.format(
+              "target file %s is smaller than magic string and version number size", resource));
       return false;
     }
     return true;

@@ -267,25 +267,25 @@ public class TsFileNameGenerator {
   }
 
   public static List<TsFileResource> getSettleCompactionTargetFileResources(
-          List<TsFileResource> tsFileResources) throws IOException {
+      List<TsFileResource> tsFileResources) throws IOException {
     List<TsFileResource> targetFileResources = new ArrayList<>();
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
       // set target resource to COMPACTING until the end of this task
       targetFileResources.add(
-              new TsFileResource(
-                      new File(
-                              resource.getTsFile().getParent(),
-                              tsFileName.time
-                                      + FILE_NAME_SEPARATOR
-                                      + tsFileName.version
-                                      + FILE_NAME_SEPARATOR
-                                      + tsFileName.innerCompactionCnt
-                                      + FILE_NAME_SEPARATOR
-                                      + tsFileName.crossCompactionCnt
-                                      + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
-                      TsFileResourceStatus.COMPACTING));
+          new TsFileResource(
+              new File(
+                  resource.getTsFile().getParent(),
+                  tsFileName.time
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.version
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.innerCompactionCnt
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.crossCompactionCnt
+                      + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+              TsFileResourceStatus.COMPACTING));
     }
     return targetFileResources;
   }

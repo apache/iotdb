@@ -2364,7 +2364,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (timeValuePair.getValue() == null) { // there is no data for this time series
       return null;
     } else if (!LastQueryUtil.satisfyFilter(
-        updateFilterUsingTTL(context.getGlobalTimeFilter(), DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice())),
+        updateFilterUsingTTL(
+            context.getGlobalTimeFilter(),
+            DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice())),
         timeValuePair)) { // cached last value is not satisfied
 
       if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -2567,7 +2569,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (timeValuePair.getValue() == null) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(
-          updateFilterUsingTTL(context.getGlobalTimeFilter(), DataNodeTTLCache.getInstance().getTTL(devicePath.getFullPath())),
+          updateFilterUsingTTL(
+              context.getGlobalTimeFilter(),
+              DataNodeTTLCache.getInstance().getTTL(devicePath.getFullPath())),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {

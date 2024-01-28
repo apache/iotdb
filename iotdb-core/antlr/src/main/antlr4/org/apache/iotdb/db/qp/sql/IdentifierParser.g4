@@ -254,4 +254,5 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | INF
     ;

@@ -914,6 +914,10 @@ ELSE
     : E L S E
     ;
 
+INF
+    : I N F
+    ;
+
 // Privileges Keywords
 
 PRIVILEGE_VALUE

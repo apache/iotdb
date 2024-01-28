@@ -1,8 +1,6 @@
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -24,19 +22,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.BiFunction;
 
 public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTTLState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
 
   private SetTTLPlan plan;
 
-  public SetTTLProcedure(){
+  public SetTTLProcedure() {
     super();
   }
 

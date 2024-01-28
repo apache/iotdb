@@ -35,7 +35,7 @@ public class TTLCache {
    * @param nodes should be prefix path or specific device path without wildcard
    */
   public void setTTL(String[] nodes, long ttl) {
-    if(nodes.length<2){
+    if (nodes.length < 2) {
       return;
     }
     CacheNode parent = ttlCacheTree;
@@ -51,12 +51,14 @@ public class TTLCache {
   }
 
   public void unsetTTL(String[] nodes) {
-    if(nodes.length<2){
+    if (nodes.length < 2) {
       return;
-    }else if(nodes.length == 2){
+    } else if (nodes.length == 2) {
       // if path equals to root.**, then unset it to configured ttl
-      if(nodes[0].equals(IoTDBConstant.PATH_ROOT) && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)){
-        ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
+      if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
+          && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl =
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
         return;
       }
     }
@@ -77,7 +79,7 @@ public class TTLCache {
       parent = child;
     }
 
-    if(!parent.getChildren().isEmpty()){
+    if (!parent.getChildren().isEmpty()) {
       // node to be removed is internal node, then just reset its ttl
       parent.ttl = NULL_TTL;
       return;
@@ -109,27 +111,26 @@ public class TTLCache {
     return ttl;
   }
 
-
-  public Map<String,Long> getAllTTLUnderOneNode(String[] nodes){
+  public Map<String, Long> getAllTTLUnderOneNode(String[] nodes) {
     Map<String, Long> pathTTLMap = new HashMap<>();
     CacheNode node = ttlCacheTree;
-    for(int i=1;i< nodes.length;i++){
+    for (int i = 1; i < nodes.length; i++) {
       node = node.getChild(nodes[i]);
-      if(node == null){
+      if (node == null) {
         return pathTTLMap;
       }
     }
 
     // get all ttl under current node
-    dfsCacheTree(pathTTLMap, new StringBuilder(new PartialPath(nodes).getFullPath()),node);
+    dfsCacheTree(pathTTLMap, new StringBuilder(new PartialPath(nodes).getFullPath()), node);
     return pathTTLMap;
   }
 
-  public long getNodeTTL(String[] nodes){
+  public long getNodeTTL(String[] nodes) {
     CacheNode node = ttlCacheTree;
-    for(int i=1;i< nodes.length;i++){
+    for (int i = 1; i < nodes.length; i++) {
       node = node.getChild(nodes[i]);
-      if(node == null){
+      if (node == null) {
         return NULL_TTL;
       }
     }

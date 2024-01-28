@@ -43,7 +43,7 @@ public class CompactionScheduleSummary {
         submitInsertionCrossSpaceCompactionTaskNum += num;
         break;
       case SETTLE:
-        submitSettleCompactionTaskNum +=num;
+        submitSettleCompactionTaskNum += num;
         break;
       default:
         break;

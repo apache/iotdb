@@ -92,7 +92,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.GET_QUERY_RESOURCE_FROM_MEM;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.FLUSHING_MEMTABLE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORKING_MEMTABLE;
@@ -1483,14 +1482,15 @@ public class TsFileProcessor {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
           long deviceTTL = DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice());
           long timeLowerBound =
-                  deviceTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - deviceTTL : Long.MIN_VALUE;
+              deviceTTL != Long.MAX_VALUE
+                  ? CommonDateTimeUtils.currentTime() - deviceTTL
+                  : Long.MIN_VALUE;
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(
-                    context, seriesPath, timeLowerBound, modsToMemtable);
+                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
@@ -1505,7 +1505,8 @@ public class TsFileProcessor {
 
           List<IChunkMetadata> chunkMetadataList =
               ResourceByPathUtils.getResourceInstance(seriesPath)
-                  .getVisibleMetadataListFromWriter(writer, tsFileResource, context, timeLowerBound);
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, context, timeLowerBound);
 
           // get in memory data
           if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {

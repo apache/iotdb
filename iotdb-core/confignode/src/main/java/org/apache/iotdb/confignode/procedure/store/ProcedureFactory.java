@@ -232,7 +232,7 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AuthOperationProcedure) {
       return ProcedureType.AUTH_OPERATE_PROCEDURE;
-    }else if (procedure instanceof SetTTLProcedure){
+    } else if (procedure instanceof SetTTLProcedure) {
       return ProcedureType.SET_TTL_PROCEDURE;
     }
     return null;

@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -289,7 +288,7 @@ public class CompactionUtils {
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
     for (TsFileResource resource : resources) {
-      if(resource.getModFile().exists()){
+      if (resource.getModFile().exists()) {
         FileMetrics.getInstance().decreaseModFileNum(1);
         FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
       }
