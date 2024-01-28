@@ -1085,7 +1085,7 @@ public class SPRINTZPruneBOSTest {
 
                     String[] record = {
                             f.toString(),
-                            "SPRINTZ+BWS",
+                            "SPRINTZ+BOS-P",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
