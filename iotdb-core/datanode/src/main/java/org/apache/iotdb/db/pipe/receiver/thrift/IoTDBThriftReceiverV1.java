@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -354,7 +355,10 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         writingFile == null ? "null" : writingFile.getPath());
 
     closeCurrentWritingFileWriter();
-    deleteCurrentWritingFile();
+    if (writingFile != null
+        && !writingFile.getName().equals(fileName + ModificationFile.FILE_SUFFIX)) {
+      deleteCurrentWritingModAndTsFile();
+    }
 
     // make sure receiver file dir exists
     // this may be useless, because receiver file dir is created when handshake. just in case.
@@ -396,24 +400,36 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  private void deleteCurrentWritingFile() {
+  private void deleteCurrentWritingModAndTsFile() {
     if (writingFile != null) {
-      if (writingFile.exists()) {
-        try {
-          Files.delete(writingFile.toPath());
-          LOGGER.info("Original writing file {} was deleted.", writingFile.getPath());
-        } catch (IOException e) {
-          LOGGER.warn(
-              "Failed to delete original writing file {}, because {}.",
-              writingFile.getPath(),
-              e.getMessage());
-        }
+      deleteFile(writingFile);
+      String absolutePath = writingFile.getAbsolutePath();
+      if (absolutePath.endsWith(ModificationFile.FILE_SUFFIX)) {
+        deleteFile(
+            new File(
+                absolutePath.substring(
+                    0, absolutePath.length() - ModificationFile.FILE_SUFFIX.length())));
       } else {
-        LOGGER.info("Original file {} is not existed. No need to delete.", writingFile.getPath());
+        deleteFile(new File(absolutePath + ModificationFile.FILE_SUFFIX));
       }
-      writingFile = null;
     } else {
       LOGGER.info("Current writing file is null. No need to delete.");
+    }
+  }
+
+  private void deleteFile(File file) {
+    if (file.exists()) {
+      try {
+        Files.delete(file.toPath());
+        LOGGER.info("Original writing file {} was deleted.", file.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to delete original writing file {}, because {}.",
+            file.getPath(),
+            e.getMessage());
+      }
+    } else {
+      LOGGER.info("Original file {} is not existed. No need to delete.", file.getPath());
     }
   }
 
@@ -514,9 +530,10 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
               String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
-      // All pieces of the writing file should be retransmitted by the sender.
+      // All pieces of the writing file and its mod(if exists) should be retransmitted by the
+      // sender.
       closeCurrentWritingFileWriter();
-      deleteCurrentWritingFile();
+      deleteCurrentWritingModAndTsFile();
     }
   }
 
