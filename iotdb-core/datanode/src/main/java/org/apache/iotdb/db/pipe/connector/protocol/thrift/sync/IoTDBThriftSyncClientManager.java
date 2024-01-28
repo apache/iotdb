@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -163,6 +164,8 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
           endPoint.getPort(),
           e.getMessage(),
           e);
+    } catch (ClientManagerException e) {
+      LOGGER.warn("Unable to get configNode client, because: {}.", e.getMessage());
     }
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
@@ -41,6 +42,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -56,12 +60,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,6 +177,25 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final String clusterId = configNodeClient.getClusterId().clusterId;
+      if (clusterId.equals(req.getClusterId())) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_HANDSHAKE_ERROR,
+                String.format("Unable to transfer data to IoTDB cluster %s itself", clusterId));
+        LOGGER.warn("Handshake failed, response status = {}.", status);
+        return new TPipeTransferResp(status);
+      }
+    } catch (ClientManagerException e) {
+      LOGGER.error("Unable to get ConfigNode client in handleTransferHandshake!");
+      throw new PipeException(e.getMessage());
+    } catch (TException e) {
+      LOGGER.error("Unable to get clusterId in handleTransferHandshake!");
+      throw new PipeException(e.getMessage());
+    }
+
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()
