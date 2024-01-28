@@ -105,7 +105,6 @@ public class StorageEngine implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /**
@@ -128,7 +127,6 @@ public class StorageEngine implements IService {
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
-  private ScheduledExecutorService ttlCheckThread;
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
@@ -286,31 +284,9 @@ public class StorageEngine implements IService {
 
     asyncRecover();
 
-    ttlCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        ttlCheckThread,
-        this::checkTTL,
-        TTL_CHECK_INTERVAL,
-        TTL_CHECK_INTERVAL,
-        TimeUnit.MILLISECONDS);
     LOGGER.info("start ttl check thread successfully.");
 
     startTimedService();
-  }
-
-  private void checkTTL() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.checkFilesTTL();
-        }
-      }
-    } catch (ConcurrentModificationException e) {
-      // ignore
-    } catch (Exception e) {
-      LOGGER.error("An error occurred when checking TTL", e);
-    }
   }
 
   private void startTimedService() {
@@ -367,7 +343,6 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
-    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
@@ -389,7 +364,6 @@ public class StorageEngine implements IService {
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
     }
-    shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
     cachedThreadPool.shutdownNow();

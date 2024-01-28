@@ -52,6 +52,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNod
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -242,11 +243,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
-  /**
-   * when the data in a database is older than dataTTL, it is considered invalid and will be
-   * eventually removed.
-   */
-  private long dataTTL = Long.MAX_VALUE;
+
   /** file system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   /** file flush policy. */
@@ -857,9 +854,10 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
-    if (!isAlive(insertRowNode.getTime())) {
+    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+    if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
-          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - dataTTL));
+          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
     }
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
@@ -931,6 +929,7 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
+      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getFullPath());
 
       /*
        * assume that batch has been sorted by client
@@ -939,7 +938,7 @@ public class DataRegion implements IDataRegionForQuery {
       while (loc < insertTabletNode.getRowCount()) {
         long currTime = insertTabletNode.getTimes()[loc];
         // skip points that do not satisfy TTL
-        if (!isAlive(currTime)) {
+        if (!isAlive(currTime, deviceTTL)) {
           results[loc] =
               RpcUtils.getStatus(
                   TSStatusCode.OUT_OF_TTL,
@@ -947,7 +946,7 @@ public class DataRegion implements IDataRegionForQuery {
                       "Insertion time [%s] is less than ttl time bound [%s]",
                       DateTimeUtils.convertLongToDate(currTime),
                       DateTimeUtils.convertLongToDate(
-                          CommonDateTimeUtils.currentTime() - dataTTL)));
+                          CommonDateTimeUtils.currentTime() - deviceTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -958,7 +957,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (CommonDateTimeUtils.currentTime() - dataTTL));
+            (CommonDateTimeUtils.currentTime() - deviceTTL));
       }
       // before is first start point
       int before = loc;
@@ -1028,7 +1027,7 @@ public class DataRegion implements IDataRegionForQuery {
    *
    * @return whether the given time falls in ttl
    */
-  private boolean isAlive(long time) {
+  private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
@@ -1618,56 +1617,6 @@ public class DataRegion implements IDataRegionForQuery {
               dataRegionDataFolder);
         }
       }
-    }
-  }
-
-  /** Iterate each TsFile and try to lock and remove those out of TTL. */
-  public synchronized void checkFilesTTL() {
-    if (dataTTL == Long.MAX_VALUE) {
-      logger.debug("{}: TTL not set, ignore the check", databaseName + "-" + dataRegionId);
-      return;
-    }
-    long ttlLowerBound = CommonDateTimeUtils.currentTime() - dataTTL;
-    logger.debug(
-        "{}: TTL removing files before {}",
-        databaseName + "-" + dataRegionId,
-        new Date(ttlLowerBound));
-
-    // copy to avoid concurrent modification of deletion
-    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
-    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
-
-    for (TsFileResource tsFileResource : seqFiles) {
-      checkFileTTL(tsFileResource, ttlLowerBound, true);
-    }
-    for (TsFileResource tsFileResource : unseqFiles) {
-      checkFileTTL(tsFileResource, ttlLowerBound, false);
-    }
-  }
-
-  private void checkFileTTL(TsFileResource resource, long ttlLowerBound, boolean isSeq) {
-    if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
-      return;
-    }
-    // Try to set the resource to DELETED status and return if it failed
-    if (!resource.setStatus(TsFileResourceStatus.DELETED)) {
-      return;
-    }
-    tsFileManager.remove(resource, isSeq);
-    // ensure that the file is not used by any queries
-    resource.writeLock();
-    try {
-      // try to delete physical data file
-      resource.remove();
-      FileMetrics.getInstance().deleteTsFile(isSeq, Collections.singletonList(resource));
-      logger.info(
-          "Removed a file {} before {} by ttl ({} {})",
-          resource.getTsFilePath(),
-          new Date(ttlLowerBound),
-          dataTTL,
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    } finally {
-      resource.writeUnlock();
     }
   }
 

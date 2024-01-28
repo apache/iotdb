@@ -32,6 +32,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.PARTIAL_DELETED;
+
 public class SettleSelectorImpl implements ISettleSelector {
     private static final Logger LOGGER =
             LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
@@ -72,9 +74,10 @@ public class SettleSelectorImpl implements ISettleSelector {
         List<TsFileResource> tmpResources = new ArrayList<>();
         long totalTmpFileSize = 0;
 
-        public void add(TsFileResource resource){
+        public void add(TsFileResource resource, long dirtyDataSize){
             tmpResources.add(resource);
             totalTmpFileSize+= resource.getTsFileSize();
+            totalTmpFileSize-= dirtyDataSize;
             if(tmpResources.size()>= config.getFileLimitPerInnerTask() || totalTmpFileSize >= config.getTargetCompactionFileSize()){
                 submitTmpResources();
             }
@@ -136,7 +139,7 @@ public class SettleSelectorImpl implements ISettleSelector {
                         allDirtyResource.add(resource);
                         break;
                     case PARTIAL_DELETED:
-                        partialDirtyResource.add(resource);
+                        partialDirtyResource.add(resource,dirtyStatus.getDirtyDataSize());
                         break;
                     case NOT_SATISFIED:
                         partialDirtyResource.submitTmpResources();
@@ -158,7 +161,7 @@ public class SettleSelectorImpl implements ISettleSelector {
             return DirtyStatus.NOT_SATISFIED;
         }
         return modFile.getSize() > IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTaskSelectionModsFileThreshold()?
-                DirtyStatus.PARTIAL_DELETED:DirtyStatus.NOT_SATISFIED;
+                PARTIAL_DELETED:DirtyStatus.NOT_SATISFIED;
     }
 
     /**
@@ -201,7 +204,10 @@ public class SettleSelectorImpl implements ISettleSelector {
             return DirtyStatus.ALL_DELETED;
         }
         if(hasExpiredTooLong || deletedDeviceRate >= dirtyDataRate){
-            return DirtyStatus.PARTIAL_DELETED;
+            // evaluate dirty data size in the tsfile
+            DirtyStatus partialDeleted= DirtyStatus.PARTIAL_DELETED;
+            partialDeleted.setDirtyDataSize((long) (deletedDeviceRate*resource.getTsFileSize()));
+            return partialDeleted;
         }
         return DirtyStatus.NOT_SATISFIED;
     }
@@ -249,7 +255,17 @@ public class SettleSelectorImpl implements ISettleSelector {
     enum DirtyStatus{
         ALL_DELETED,        // the whole file is deleted
         PARTIAL_DELETED,    // the file is partial deleted
-        NOT_SATISFIED       // do not satisfy settle condition, which does not mean there is no dirty data
+        NOT_SATISFIED;       // do not satisfy settle condition, which does not mean there is no dirty data
+
+        private long dirtyDataSize = 0;
+
+        public void setDirtyDataSize(long dirtyDataSize){
+            this.dirtyDataSize = dirtyDataSize;
+        }
+
+        public long getDirtyDataSize(){
+            return dirtyDataSize;
+        }
     }
 
 

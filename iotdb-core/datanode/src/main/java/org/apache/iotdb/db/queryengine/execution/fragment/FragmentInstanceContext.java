@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -336,6 +337,8 @@ public class FragmentInstanceContext extends QueryContext {
         pathList.add(path);
         selectedDeviceIdSet.add(path.getDevice());
       }
+      // TODO
+      SeriesScanOptions.updateFilterUsingTTL()
 
       this.sharedQueryDataSource =
           dataRegion.query(
