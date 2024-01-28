@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -138,6 +139,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
@@ -2529,6 +2531,21 @@ public class DataRegion implements IDataRegionForQuery {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+  }
+
+  public static Optional<String> getNonSystemDatabaseName(String databaseName) {
+    if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return Optional.empty();
+    }
+    int lastIndex = databaseName.lastIndexOf("-");
+    if (lastIndex == -1) {
+      lastIndex = databaseName.length();
+    }
+    return Optional.of(databaseName.substring(0, lastIndex));
+  }
+
+  public Optional<String> getNonSystemDatabaseName() {
+    return getNonSystemDatabaseName(databaseName);
   }
 
   /** merge file under this database processor */

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -26,6 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -271,20 +271,17 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          recordFlushPointsMetric();
+          DataRegion.getNonSystemDatabaseName(storageGroup)
+              .ifPresent(
+                  databaseName ->
+                      recordFlushPointsMetricInternal(
+                          memTable.getTotalPointsNum(), databaseName, dataRegionId));
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
       };
 
-  private void recordFlushPointsMetric() {
-    if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
-      return;
-    }
-    int lastIndex = storageGroup.lastIndexOf("-");
-    if (lastIndex == -1) {
-      lastIndex = storageGroup.length();
-    }
-    String storageGroupName = storageGroup.substring(0, lastIndex);
+  public static void recordFlushPointsMetricInternal(
+      long totalPointsNum, String storageGroupName, String dataRegionId) {
     long currentTime = CommonDateTimeUtils.currentTime();
     // compute the flush points
     long writeTime =
@@ -300,12 +297,12 @@ public class MemTableFlushTask {
     // record the flush points
     MetricService.getInstance()
         .gaugeWithInternalReportAsync(
-            memTable.getTotalPointsNum(),
+            totalPointsNum,
             Metric.POINTS.toString(),
             MetricLevel.CORE,
             writeTime,
             Tag.DATABASE.toString(),
-            storageGroup.substring(0, lastIndex),
+            storageGroupName,
             Tag.TYPE.toString(),
             "flush",
             Tag.REGION.toString(),
