@@ -53,7 +53,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
@@ -105,20 +107,25 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
     try {
       realtimeDataExtractionStartTime =
-          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
               ? DateTimeUtils.convertDatetimeStrToLong(
-                  parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY),
+                  ZoneId.systemDefault())
               : Long.MIN_VALUE;
       realtimeDataExtractionEndTime =
-          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
               ? DateTimeUtils.convertDatetimeStrToLong(
-                  parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY),
+                  ZoneId.systemDefault())
               : Long.MAX_VALUE;
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s should be less than or equal to %s.",
-                SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+                "%s or %s should be less than or equal to %s or %s.",
+                SOURCE_START_TIME_KEY,
+                EXTRACTOR_START_TIME_KEY,
+                SOURCE_END_TIME_KEY,
+                EXTRACTOR_END_TIME_KEY));
       }
     } catch (Exception e) {
       // compatible with the current validation framework
