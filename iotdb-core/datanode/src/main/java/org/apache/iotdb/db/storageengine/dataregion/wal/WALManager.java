@@ -199,7 +199,7 @@ public class WALManager implements IService {
   }
 
   public long getThrottleThreshold() {
-    return (long) (config.getThrottleThreshold() * 0.8);
+    return (long) (config.getThrottleThreshold() * 0.6);
   }
 
   public long getTotalDiskUsage() {
