@@ -42,7 +42,11 @@ import static org.junit.Assert.fail;
 public class MyTest_ILTS {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength).
+   * Sql format: SELECT min_value(s0) FROM root.vehicle.d0 group by ([2,102),20ms)
+   * not real min_value here, actually controlled by enableTri="ILTS"
+   * 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+   * 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
+   *
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -112,9 +116,6 @@ public class MyTest_ILTS {
         int i = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(2);
-          // for LTTB all results are in the value string of MinValueAggrResult
-          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
-          ans = ans.substring(0, ans.length() - 3);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -146,9 +147,6 @@ public class MyTest_ILTS {
         int i = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(2);
-          // for LTTB all results are in the value string of MinValueAggrResult
-          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
-          ans = ans.substring(0, ans.length() - 3);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -214,9 +212,6 @@ public class MyTest_ILTS {
         int i = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(2);
-          // for LTTB all results are in the value string of MinValueAggrResult
-          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
-          ans = ans.substring(0, ans.length() - 3);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
@@ -251,9 +246,6 @@ public class MyTest_ILTS {
         int i = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(2);
-          // for LTTB all results are in the value string of MinValueAggrResult
-          // 因此对于LTTB来说，MinValueAggrResult的[t]也无意义
-          ans = ans.substring(0, ans.length() - 3);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }

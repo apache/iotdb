@@ -139,10 +139,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return nextWithoutConstraintTri_MinMax();
     } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
       return nextWithoutConstraintTri_MinMaxLTTB();
-    }
-    //    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
-    //      // TODO
-    else if (CONFIG.getEnableTri().equals("LTTB") || CONFIG.getEnableTri().equals("ILTS")) {
+    } else if (CONFIG.getEnableTri().equals("M4")) {
+      return nextWithoutConstraintTri_M4();
+    } else if (CONFIG.getEnableTri().equals("LTTB") || CONFIG.getEnableTri().equals("ILTS")) {
       return nextWithoutConstraintTri_LTTB();
     } else {
       return nextWithoutConstraint_raw();
@@ -165,9 +164,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // all bucket results as string in value of MinValueAggrResult
       List<AggregateResult> aggregations =
           executor.calcResult(startTime, startTime + interval, startTime, endTime, interval);
-      series.append(aggregations.get(0).getResult());
+      MinMaxInfo minMaxInfo = (MinMaxInfo) aggregations.get(0).getResult();
+      series.append(minMaxInfo.val); // 对于LTTB来说，MinValueAggrResult的[t]也无意义，因为只需要val
 
       // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
     } catch (QueryProcessException e) {
@@ -347,6 +349,77 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       series.append(pnv).append("[").append(pnt).append("]").append(",");
 
       // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
+      record.addField(series, TSDataType.MIN_MAX_INT64);
+
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
+    }
+
+    // in the end, make the next hasNextWithoutConstraint() false
+    // as we already fetch all here
+    curStartTime = endTime;
+    hasCachedTimeInterval = false;
+
+    return record;
+  }
+
+  public RowRecord nextWithoutConstraintTri_M4() throws IOException {
+    RowRecord record;
+    try {
+      GroupByExecutor executor = null;
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        executor = pathToExecutorEntry.getValue(); // assume only one series here
+        break;
+      }
+
+      // concat results into a string
+      record = new RowRecord(0);
+      StringBuilder series = new StringBuilder();
+
+      for (long localCurStartTime = startTime;
+          localCurStartTime + interval <= endTime;
+          // 注意有等号！因为左闭右开
+          // + interval to make the last bucket complete
+          // e.g, T=11,nout=3,interval=floor(11/3)=3,
+          // [0,3),[3,6),[6,9), no need incomplete [9,11)
+          // then the number of buckets must be Math.floor((endTime-startTime)/interval)
+          localCurStartTime += interval) { // not change real curStartTime&curEndTime
+        // attention the returned aggregations need deep copy if using directly
+        List<AggregateResult> aggregations =
+            executor.calcResult(
+                localCurStartTime,
+                localCurStartTime + interval,
+                startTime,
+                endTime,
+                interval); // attention
+
+        // min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)
+        // minValue[bottomTime]
+        series.append(aggregations.get(0).getResult()).append(",");
+        // maxValue[topTime]
+        series.append(aggregations.get(1).getResult()).append(",");
+        // firstValue[firstTime]
+        series
+            .append(aggregations.get(4).getResult())
+            .append("[")
+            .append(aggregations.get(2).getResult())
+            .append("]")
+            .append(",");
+        // lastValue[lastTime]
+        series
+            .append(aggregations.get(5).getResult())
+            .append("[")
+            .append(aggregations.get(3).getResult())
+            .append("]")
+            .append(",");
+      }
+
+      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
     } catch (QueryProcessException e) {
@@ -398,6 +471,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
+      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
     } catch (QueryProcessException e) {
@@ -484,15 +559,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (CONFIG.getEnableTri().equals("MinMax") || CONFIG.getEnableTri().equals("MinMaxLTTB")) {
       return new LocalGroupByExecutorTri_MinMax(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
-      // TODO
-      return new LocalGroupByExecutor(
+    } else if (CONFIG.getEnableTri().equals("M4")) {
+      return new LocalGroupByExecutorTri_M4(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("LTTB")) {
       return new LocalGroupByExecutorTri_LTTB(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("ILTS")) {
-      // TODO
       return new LocalGroupByExecutorTri_ILTS(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }

@@ -39,11 +39,14 @@ import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
-public class MyTest_MinMax {
+public class MyTest_M4 {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength).
-   * enableTri="MinMax"
+   * Sql format: SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),
+   * last_value(s0) FROM root.vehicle.d0 group by ([0,100),25ms)
+   * enableTri="M4"
+   * 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
+   * 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -73,7 +76,7 @@ public class MyTest_MinMax {
     config.setTimestampPrecision("ms");
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
-    config.setEnableTri("MinMax");
+    config.setEnableTri("M4");
 
     // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
     // 因为它直接用chunk元数据去构造pageReader，
@@ -98,17 +101,17 @@ public class MyTest_MinMax {
   @Test
   public void test1() throws Exception {
     prepareData1();
-    //    String[] res = new String[]{"0,1[20],15[2]", "25,8[25],8[25]", "50,3[54],3[54]",
-    // "75,null,null"};
-    String res = "1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res =
+        "1.0[20],15.0[2],5.0[1],1.0[20],8.0[25],8.0[25],8.0[25],8.0[25],3.0[54],3.0[54],3.0[54],3.0[54],null,null,null[null],null[null],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
+              "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)");
+      // 注意需要第一项是min_value因为以后会用到record.addField(series,
+      // TSDataType.MIN_MAX_INT64)把所有序列组装成string放在第一行第二列里
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
@@ -157,16 +160,14 @@ public class MyTest_MinMax {
   public void test3() {
     prepareData3();
 
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "1.0[10],10.0[2],2.0[40],8.0[30],4.0[72],20.0[62],1.0[90],11.0[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res =
+        "1.0[10],10.0[2],5.0[1],4.0[22],2.0[40],8.0[30],8.0[30],2.0[40],4.0[72],20.0[62],5.0[55],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
+              "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
       // sequence!!!
 
@@ -229,16 +230,14 @@ public class MyTest_MinMax {
   public void test3_2() {
     prepareData3_2();
 
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res =
+        "1.0[10],10.0[2],5.0[1],5.0[20],null,null,null[null],null[null],4.0[72],20.0[62],15.0[60],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
+              "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
       // sequence!!!
 

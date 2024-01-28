@@ -42,7 +42,8 @@ import static org.junit.Assert.fail;
 public class MyTest_MinMaxLTTB {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength).
+   * Sql format: SELECT min_value(s0), max_value(s0) FROM root.vehicle.d0 group by ([100,2100),250ms)
+   * enableTri="MinMaxLTTB"
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.

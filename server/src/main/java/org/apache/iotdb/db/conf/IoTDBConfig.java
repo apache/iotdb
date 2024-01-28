@@ -433,7 +433,7 @@ public class IoTDBConfig {
 
   private boolean enableCPV = false;
 
-  private String enableTri = ""; // MinMax, MinMaxLTTB, M4LTTB, LTTB, ILTS
+  private String enableTri = ""; // MinMax, MinMaxLTTB, M4, LTTB, ILTS
 
   private long p1t;
   private double p1v;

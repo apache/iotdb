@@ -57,7 +57,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
+public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
   private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
@@ -69,7 +69,7 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
 
   private Filter timeFilter;
 
-  public LocalGroupByExecutorTri_MinMax(
+  public LocalGroupByExecutorTri_M4(
       PartialPath path,
       Set<String> allSensors,
       TSDataType dataType,
@@ -275,14 +275,14 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
     }
 
     //    start = System.nanoTime();
-    calculateMinMax(currentChunkList, curStartTime, curEndTime);
+    calculateM4(currentChunkList, curStartTime, curEndTime);
     //    IOMonitor2.addMeasure(Operation.M4_LSM_FP, System.nanoTime() - start);
 
     return results;
   }
 
-  private void calculateMinMax(
-      List<ChunkSuit4Tri> currentChunkList, long curStartTime, long curEndTime) throws IOException {
+  private void calculateM4(List<ChunkSuit4Tri> currentChunkList, long curStartTime, long curEndTime)
+      throws IOException {
     for (ChunkSuit4Tri chunkSuit4Tri : currentChunkList) {
 
       Statistics statistics = chunkSuit4Tri.chunkMetadata.getStatistics();
@@ -302,6 +302,10 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
         long bottomTime = -1;
         double maxVal = Double.MIN_VALUE;
         long topTime = -1;
+        long firstTime = -1;
+        double firstValue = 0;
+        long lastTime = -1;
+        double lastValue = 0;
 
         // 1. load page data if it hasn't been loaded
         TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
@@ -335,6 +339,12 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
             // 4. update MinMax by traversing points fallen within this bucket
             ByteBuffer valueBuffer = pageReader.valueBuffer;
             double v = valueBuffer.getDouble(pageReader.timeBufferLength + i * 8);
+            if (firstTime < 0) {
+              firstTime = timestamp;
+              firstValue = v;
+            }
+            lastTime = timestamp;
+            lastValue = v;
             if (v < minVal) {
               minVal = v;
               bottomTime = timestamp;
@@ -347,6 +357,24 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
         }
         // 4. update MinMax by traversing points fallen within this bucket
         if (topTime >= 0) {
+          //  min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),
+          // last_value(s0)
+          // update min_time
+          results
+              .get(2)
+              .updateResultUsingValues(new long[] {firstTime}, 1, new Object[] {firstValue});
+          // update first_value
+          results
+              .get(4)
+              .updateResultUsingValues(new long[] {firstTime}, 1, new Object[] {firstValue});
+          // update max_time
+          results
+              .get(3)
+              .updateResultUsingValues(new long[] {lastTime}, 1, new Object[] {lastValue});
+          // update last_value
+          results
+              .get(5)
+              .updateResultUsingValues(new long[] {lastTime}, 1, new Object[] {lastValue});
           // update BP
           MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
           minValueAggrResult.updateResult(new MinMaxInfo<>(minVal, bottomTime));
