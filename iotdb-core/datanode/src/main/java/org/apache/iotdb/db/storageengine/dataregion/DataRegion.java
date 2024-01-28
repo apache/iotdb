@@ -378,23 +378,19 @@ public class DataRegion implements IDataRegionForQuery {
   private class DataRegionRecoveryContext {
     /** number of files to be recovered. */
     private final long numOfFilesToRecover;
-    /** when the change of recoveredFilesNum exceeds this, log check will be triggered. */
-    private final long filesNumLogCheckTrigger;
+
     /** number of already recovered files. */
     private long recoveredFilesNum;
     /** last recovery log time. */
     private long lastLogTime;
-    /** last recovery log files num. */
-    private long lastLogCheckFilesNum;
+
     /** recover performers of unsealed TsFiles. */
     private final List<UnsealedTsFileRecoverPerformer> recoverPerformers = new ArrayList<>();
 
     public DataRegionRecoveryContext(long numOfFilesToRecover) {
       this.numOfFilesToRecover = numOfFilesToRecover;
       this.recoveredFilesNum = 0;
-      this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
       this.lastLogTime = System.currentTimeMillis();
-      this.lastLogCheckFilesNum = 0;
     }
 
     public void incrementRecoveredFilesNum() {
