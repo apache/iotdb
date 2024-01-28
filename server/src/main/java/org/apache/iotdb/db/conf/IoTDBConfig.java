@@ -435,6 +435,53 @@ public class IoTDBConfig {
 
   private String enableTri = ""; // MinMax, MinMaxLTTB, M4LTTB, LTTB, ILTS
 
+  private long p1t;
+  private double p1v;
+  private long pnt;
+  private double pnv;
+
+  private int rps;
+
+  public long getP1t() {
+    return p1t;
+  }
+
+  public void setP1t(long p1t) {
+    this.p1t = p1t;
+  }
+
+  public double getP1v() {
+    return p1v;
+  }
+
+  public void setP1v(double p1v) {
+    this.p1v = p1v;
+  }
+
+  public long getPnt() {
+    return pnt;
+  }
+
+  public void setPnt(long pnt) {
+    this.pnt = pnt;
+  }
+
+  public double getPnv() {
+    return pnv;
+  }
+
+  public void setPnv(double pnv) {
+    this.pnv = pnv;
+  }
+
+  public int getRps() {
+    return rps;
+  }
+
+  public void setRps(int rps) {
+    this.rps = rps;
+  }
+
   /** The display of stat performance interval in ms. */
   private long performanceStatDisplayInterval = 60000;
 

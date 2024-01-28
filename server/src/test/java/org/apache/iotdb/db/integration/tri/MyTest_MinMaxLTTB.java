@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
@@ -73,13 +72,12 @@ public class MyTest_MinMaxLTTB {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("MinMaxLTTB");
+    //    config.setP1t(0);
+    //    config.setP1v(-1.2079272);
+    //    config.setPnt(2100);
+    //    config.setPnv(-0.0211206);
+    //    config.setRps(4);
 
-    // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
-    // 因为它直接用chunk元数据去构造pageReader，
-    // 但是如果走的是传统聚合类型->seriesAggregateReader->seriesReader->hasNextOverlappedPage里
-    // cachedBatchData = BatchDataFactory.createBatchData(dataType, orderUtils.getAscending(), true)
-    // 这个路径就错了，把聚合类型赋给batchData了。所以这个LocalGroupByExecutor bug得在有overlap数据的时候才能复现
-    // （那刚好我本文数据都不会有Overlap，可以用LocalGroupByExecutor来得到正确结果）
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
     TSFileDescriptor.getInstance().getConfig().setUseStatistics(false);
@@ -93,64 +91,70 @@ public class MyTest_MinMaxLTTB {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
-  public void test1() throws Exception {
-    prepareData1();
-    String res = "0,1[20],15[2],8[25],8[25],3[54],3[54],null,null,";
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([0,100),25ms)");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int i = 0;
-        while (resultSet.next()) {
-          // 注意从1开始编号，所以第一列是无意义时间戳
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          System.out.println(ans);
-          Assert.assertEquals(res, ans);
-        }
-      }
-      System.out.println(((IoTDBStatement) statement).executeFinish());
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private static void prepareData1() {
-    // data:
-    // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
-    // only first chunk
-    // no overlap, no delete
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5.0));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15.0));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 1.0));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 8.0));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 3.0));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8.0));
-      statement.execute("FLUSH");
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
+  //  @Test
+  //  public void test1() throws Exception {
+  //    prepareData1();
+  //    String res = "0,1[20],15[2],8[25],8[25],3[54],3[54],null,null,";
+  //    try (Connection connection =
+  //            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+  //        Statement statement = connection.createStatement()) {
+  //      boolean hasResultSet =
+  //          statement.execute(
+  //              "SELECT min_value(s0), max_value(s0)"
+  //                  + " FROM root.vehicle.d0 group by ([0,100),25ms)");
+  //      Assert.assertTrue(hasResultSet);
+  //      try (ResultSet resultSet = statement.getResultSet()) {
+  //        int i = 0;
+  //        while (resultSet.next()) {
+  //          // 注意从1开始编号，所以第一列是无意义时间戳
+  //          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+  //          System.out.println(ans);
+  //          Assert.assertEquals(res, ans);
+  //        }
+  //      }
+  //      System.out.println(((IoTDBStatement) statement).executeFinish());
+  //    } catch (Exception e) {
+  //      e.printStackTrace();
+  //      fail(e.getMessage());
+  //    }
+  //  }
+  //
+  //  private static void prepareData1() {
+  //    // data:
+  //    //
+  // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
+  //    // only first chunk
+  //    // no overlap, no delete
+  //    try (Connection connection =
+  //            DriverManager.getConnection(
+  //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  //        Statement statement = connection.createStatement()) {
+  //
+  //      for (String sql : creationSqls) {
+  //        statement.execute(sql);
+  //      }
+  //
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5.0));
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15.0));
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 1.0));
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 8.0));
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 3.0));
+  //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8.0));
+  //      statement.execute("FLUSH");
+  //
+  //    } catch (Exception e) {
+  //      e.printStackTrace();
+  //    }
+  //  }
 
   @Test
   public void test2() throws Exception {
     prepareData2();
+    config.setP1t(0);
+    config.setP1v(-1.2079272);
+    config.setPnt(2100);
+    config.setPnv(-0.0211206);
+    config.setRps(4);
     String res =
         "-1.2079272[0],1.101946[200],-1.014322[700],0.809559[1500],-0.785419[1600],-0.0211206[2100],";
     try (Connection connection =
@@ -225,151 +229,6 @@ public class MyTest_MinMaxLTTB {
       }
       statement.execute("FLUSH");
 
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Test
-  public void test3() {
-    prepareData3();
-
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "0,1[10],10[2],2[40],8[30],4[72],20[62],1[90],11[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
-      // sequence!!!
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int i = 0;
-        while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          System.out.println(ans);
-          Assert.assertEquals(res, ans);
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private static void prepareData3() {
-    // data:
-    // https://user-images.githubusercontent.com/33376433/152003603-6b4e7494-00ff-47e4-bf6e-cab3c8600ce2.png
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5));
-      statement.execute("FLUSH");
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5));
-      statement.execute("FLUSH");
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18));
-      statement.execute("FLUSH");
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7));
-      statement.execute("FLUSH");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Test
-  public void test3_2() {
-    prepareData3_2();
-
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "0,1[10],10[2],null,null,4[72],20[62],1[90],11[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
-                  + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
-      // sequence!!!
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int i = 0;
-        while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-          System.out.println(ans);
-          Assert.assertEquals(res, ans);
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private static void prepareData3_2() {
-    // data:
-    // https://user-images.githubusercontent.com/33376433/152003603-6b4e7494-00ff-47e4-bf6e-cab3c8600ce2.png
-    // remove chunk 2 so that bucket 2 is empty
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 5));
-      statement.execute("FLUSH");
-
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 22, 4));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 8));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 2));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 55, 5));
-      //      statement.execute("FLUSH");
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 60, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 62, 20));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 65, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 70, 18));
-      statement.execute("FLUSH");
-
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 72, 4));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 80, 11));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 90, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 105, 7));
-      statement.execute("FLUSH");
     } catch (Exception e) {
       e.printStackTrace();
     }

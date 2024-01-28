@@ -153,15 +153,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   public RowRecord nextWithoutConstraintTri_MinMaxLTTB() throws IOException {
-    RowRecord record;
 
-    // TODO tmp p1,pn,rps later passed by config
-    long p1t = 0;
-    double p1v = -1.2079272;
-    long pnt = 2100;
-    double pnv = -0.0211206;
-    int rps = 4;
     int divide = 2; // one LTTB bucket corresponds to rps/2 MinMax buckets
+
+    long p1t = CONFIG.getP1t();
+    double p1v = CONFIG.getP1v();
+    long pnt = CONFIG.getPnt();
+    double pnv = CONFIG.getPnv();
+    int rps = CONFIG.getRps();
+
+    RowRecord record;
 
     // concat results into a string
     record = new RowRecord(0);
@@ -184,7 +185,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           // [0,3),[3,6),[6,9), no need incomplete [9,11)
           // then the number of buckets must be Math.floor((endTime-startTime)/interval)
           localCurStartTime += interval) {
-        System.out.println(localCurStartTime);
+        //        System.out.println(localCurStartTime);
         // not change real curStartTime&curEndTime
         // attention the returned aggregations need deep copy if using directly
         List<AggregateResult> aggregations =
@@ -204,8 +205,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       // Second step: apply LTTB on the MinMax preselection result
-      System.out.println(times);
-      System.out.println(values);
+      //      System.out.println(times);
+      //      System.out.println(values);
       int N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // MinMax桶数
       int N2 = N1 / (rps / divide); // LTTB桶数
       // 全局首点
@@ -266,7 +267,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             long t = times.get(j);
             double v = (double) values.get(j); // TODO
             double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
-            System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area, lt);
+            //            System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area,
+            // lt);
             if (area > maxArea) {
               maxArea = area;
               select_t = t;
@@ -285,7 +287,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         lv = select_v;
       }
 
-      // 下面处理最后一个桶
+      // ==========下面处理最后一个桶===============
       // 现在找到当前非空桶里距离lr垂直距离最远的点
       double maxArea = -1;
       long select_t = -1;
@@ -296,7 +298,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           long t = times.get(j);
           double v = (double) values.get(j); // TODO
           double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
-          System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area, lt);
+          //          System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area, lt);
           if (area > maxArea) {
             maxArea = area;
             select_t = t;
