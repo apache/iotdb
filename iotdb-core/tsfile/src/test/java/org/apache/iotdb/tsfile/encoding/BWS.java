@@ -655,14 +655,14 @@ public class BWS {
             cur_k1_close += pow_2_alpha_i_1_to_2_alpha_i;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
 
 
-            int k_end_value_close;
+
 
             alpha_2_pow = (int)pow(2,alpha);
             gamma_size = (int) (Math.log(max_delta_value - alpha_2_pow - 1)/Math.log(2));
 
             // upper outliers: x_max
             cur_k2_close = gamma_count_list[0];
-            k_end_value_close = max_delta_value;
+            int k_end_value_close= max_delta_value;
 
             cur_bits=cur_k2_close;
             cur_bits += Math.min((cur_k1_close + cur_k2_close) * getBitWith(block_size-1), block_size + cur_k1_close + cur_k2_close);
