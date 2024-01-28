@@ -353,7 +353,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setDataReplicationFactor(1)
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -385,8 +388,14 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      // test mods transfer
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (1, 1)",
+              "insert into root.db.d1(time, s1) values (3, 1)",
+              "flush",
+              "delete from root.db.d1.s1 where time > 2"))) {
         return;
       }
 
@@ -397,6 +406,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       connectorAttributes.put("connector", connectorName);
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
+
+      extractorAttributes.put("source.history.mods.enable", "true");
 
       // Test forced-log mode, in TimechoDB this might be "file"
       extractorAttributes.put("source.realtime.mode", "forced-log");
@@ -411,6 +422,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      TestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {

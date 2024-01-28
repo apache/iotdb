@@ -101,6 +101,7 @@ public class PipeTransferTsFileInsertionEventHandler
         currentFile = tsFile;
         position = 0;
         reader = new RandomAccessFile(tsFile, "r");
+        transfer(client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
         client.pipeTransfer(
