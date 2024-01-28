@@ -160,20 +160,20 @@ public class LoadTsFileScheduler implements IScheduler {
                 "Load skip TsFile {}, because it has no data.",
                 node.getTsFileResource().getTsFilePath());
 
-        } else if (!node.needDecodeTsFile(
-            slotList ->
-                partitionFetcher.queryDataPartition(
-                    slotList,
-                    queryContext.getSession().getUserName()))) { // do not decode, load locally
+          } else if (!node.needDecodeTsFile(
+              slotList ->
+                  partitionFetcher.queryDataPartition(
+                      slotList,
+                      queryContext.getSession().getUserName()))) { // do not decode, load locally
 
-          long loadLocallyStartTime = System.nanoTime();
-          isLoadSingleTsFileSuccess = loadLocally(node);
-          long loadLocallyEndTime = System.nanoTime();
-          LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
-              LoadTsFileMetricSet.LOAD_TSFILE_WRITE_PHASE,
-              loadLocallyEndTime - loadLocallyStartTime);
+            long loadLocallyStartTime = System.nanoTime();
+            isLoadSingleTsFileSuccess = loadLocally(node);
+            long loadLocallyEndTime = System.nanoTime();
+            LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
+                LoadTsFileMetricSet.LOAD_TSFILE_WRITE_PHASE,
+                loadLocallyEndTime - loadLocallyStartTime);
 
-          node.clean();
+            node.clean();
 
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();

@@ -2693,7 +2693,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       loadTsfileAnalyzer.close();
       LOAD_TSFILE_METRICS.recordLoadTsFileTimeCost(
-        LoadTsFileMetricSet.LOAD_TSFILE_ANALYSIS_PHASE, System.nanoTime() - startTime);
+          LoadTsFileMetricSet.LOAD_TSFILE_ANALYSIS_PHASE, System.nanoTime() - startTime);
     }
   }
 
