@@ -1,5 +1,9 @@
 package org.apache.iotdb.tsfile.encoding;
-public class Group {
+
+import static java.lang.Math.pow;
+
+public class GroupU{
+
     public int[] number;
     public int count;
     public int if_count;
@@ -7,10 +11,12 @@ public class Group {
     public int range;
 
 
-    public Group(int[] number, int count) {
+    public GroupU(int[] number, int count, int i) {
         this.number = number;
         this.count = count;
         this.if_count = 0;
+        this.range = (int) pow(2,i-1);
+        this.count_array = new int[range];
     }
 
     public int[] getNumber() {
@@ -31,6 +37,15 @@ public class Group {
         this.count = count;
     }
 
+    public void setCount_array(int k2_end){
+        this.if_count = 1;
+        int[] number_gamma = this.number;
+        for (int i = 0; i < this.count; i++) {
+            int value = number_gamma[i];
+            count_array[k2_end - value]++;
+        }
+    }
+
     public void incrementCount() {
         count++;
     }
@@ -39,4 +54,5 @@ public class Group {
     public String toString() {
         return "Number: " + number + ", Count: " + count;
     }
+
 }

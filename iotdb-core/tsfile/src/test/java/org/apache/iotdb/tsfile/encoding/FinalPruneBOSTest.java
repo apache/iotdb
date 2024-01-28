@@ -536,13 +536,13 @@ public class FinalPruneBOSTest {
         int[] alpha_count_list = new int[max_bit_width + 1];
         int[] gamma_count_list = new int[max_bit_width + 1];
         Group[] groupL = new Group[max_bit_width];
-        Group[] groupU = new Group[max_bit_width];
+        GroupU[] groupU = new GroupU[max_bit_width];
         for (int i = 0; i < max_bit_width; i++) {
             int[] numbers = new int[block_size];
             int count = 0;
             groupL[i] = new Group(numbers, count);
             int[] numbersU = new int[block_size];
-            groupU[i] = new Group(numbersU, count);
+            groupU[i] = new GroupU(numbersU, count, i);
         }
         for (int value : ts_block_delta) {
             int alpha_i = getBitWith(value); // 0 1 2 3 4
@@ -602,7 +602,7 @@ public class FinalPruneBOSTest {
             int gap_gamma = (int) pow(2, gamma - 1);
             k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1}  gamma : 1 to alpha_size-1
 
-            Group cur_group_gamma = groupU[gamma];
+            GroupU cur_group_gamma = groupU[gamma];
             // x_max - 2^{gamma-1} =gamma_count_list[gamma]
             k2 += gamma_count_list[gamma];
             cur_bits = 0;
@@ -618,11 +618,13 @@ public class FinalPruneBOSTest {
             }
 
             //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
+
             int[] gamma_value_count_list = new int[gap_gamma];
             int gamma_value_count = cur_group_gamma.count;
             if (gamma_value_count == 0)
                 continue;
             int[] number_gamma = cur_group_gamma.number;
+
             for (int i = 0; i < gamma_value_count; i++) {
                 int value = number_gamma[i];
                 gamma_value_count_list[k2_end - value]++;
@@ -668,13 +670,17 @@ public class FinalPruneBOSTest {
         // (0,x_max - 2^{alpha_size-1})
         int gap_gamma = (int) pow(2,alpha_size-1);
         int[] gamma_value_count_list = new int[gap_gamma];
-        Group cur_group_gamma = groupU[alpha_size];
-        int gamma_value_count = cur_group_gamma.count;
-        int[] number_gamma = cur_group_gamma.number;
-        for (int i = 0; i < gamma_value_count; i++) {
-            int value = number_gamma[i];
-            gamma_value_count_list[k2_end - value]++;
+        GroupU cur_group_gamma = groupU[alpha_size];
+        if (cur_group_gamma.if_count == 0) {
+            cur_group_gamma.setCount_array(k2_end);
         }
+        int gamma_value_count = cur_group_gamma.count;
+        gamma_value_count_list = cur_group_gamma.count_array;
+//        int[] number_gamma = cur_group_gamma.number;
+//        for (int i = 0; i < gamma_value_count; i++) {
+//            int value = number_gamma[i];
+//            gamma_value_count_list[k2_end - value]++;
+//        }
 
 
         for (int x_u_i = 1; x_u_i < k2_end; x_u_i++) {
@@ -708,7 +714,6 @@ public class FinalPruneBOSTest {
             k1 += alpha_count_list[alpha];
 
             //lower: x_min+2^{alpha-1}
-
             // upper: x_max
             k2 = gamma_count_list[0];
             k2_end = max_delta_value;
@@ -747,13 +752,20 @@ public class FinalPruneBOSTest {
                     final_k_end_value = k2_end;
                 }
                 //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                gamma_value_count_list = new int[gap_gamma];
+//                gamma_value_count_list = new int[gap_gamma];
                 gamma_value_count = cur_group_gamma.count;
-                number_gamma = cur_group_gamma.number;
-                for (int i = 0; i < gamma_value_count; i++) {
-                    int value = number_gamma[i];
-                    gamma_value_count_list[k2_end - value]++;
+                if (gamma_value_count == 0)
+                    continue;
+                if (cur_group_gamma.if_count == 0) {
+                    cur_group_gamma.setCount_array(k2_end);
                 }
+//                int gamma_value_count = cur_group_gamma.count;
+                gamma_value_count_list = cur_group_gamma.count_array;
+//                number_gamma = cur_group_gamma.number;
+//                for (int i = 0; i < gamma_value_count; i++) {
+//                    int value = number_gamma[i];
+//                    gamma_value_count_list[k2_end - value]++;
+//                }
 
                 for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
 //                    if (k2_end - x_u_i <= 0) {
@@ -800,14 +812,22 @@ public class FinalPruneBOSTest {
             //lower: x_min+2^{alpha-1}
             //upper: (x_min+2^{alpha-1},x_max - 2^{gamma_size_smaller) \in (x_max - 2^{gamma_size_smaller+1}, x_max - 2^{gamma_size_smaller)
 
-            gamma_value_count_list = new int[gap_gamma];
+
+
+//            gamma_value_count_list = new int[gap_gamma];
             cur_group_gamma = groupU[gamma_size_smaller+1];
             gamma_value_count = cur_group_gamma.count;
-            number_gamma = cur_group_gamma.number;
-            for (int i = 0; i < gamma_value_count; i++) {
-                int value = number_gamma[i];
-                gamma_value_count_list[k2_end - value]++;
+//            number_gamma = cur_group_gamma.number;
+//            for (int i = 0; i < gamma_value_count; i++) {
+//                int value = number_gamma[i];
+//                gamma_value_count_list[k2_end - value]++;
+//            }
+
+            if (cur_group_gamma.if_count == 0) {
+                cur_group_gamma.setCount_array(k2_end);
             }
+//            int gamma_value_count = cur_group_gamma.count;
+            gamma_value_count_list = cur_group_gamma.count_array;
 
 
             int x_u_i_end = k2_end - (int) pow(2,alpha-1);
@@ -837,6 +857,9 @@ public class FinalPruneBOSTest {
             int gap_alpha = (int) pow(2,alpha-1);
             int[] alpha_value_count_list = new int[gap_alpha];
             int alpha_value_count = cur_group_alpha.count;
+            if (alpha_value_count == 0){
+                continue;
+            }
             int[] number_alpha = cur_group_alpha.number;
             for(int i=0;i<alpha_value_count;i++){
                 int value = number_alpha[i];
@@ -895,13 +918,23 @@ public class FinalPruneBOSTest {
 
                     // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                     // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                    gamma_value_count_list = new int[gap_gamma];
+//                    gamma_value_count_list = new int[gap_gamma];
                     gamma_value_count = cur_group_gamma.count;
-                    number_gamma = cur_group_gamma.number;
-                    for (int i = 0; i < gamma_value_count; i++) {
-                        int value = number_gamma[i];
-                        gamma_value_count_list[k2_end - value]++;
+                    if (gamma_value_count == 0){
+                        continue;
                     }
+//                    number_gamma = cur_group_gamma.number;
+//                    for (int i = 0; i < gamma_value_count; i++) {
+//                        int value = number_gamma[i];
+//                        gamma_value_count_list[k2_end - value]++;
+//                    }
+
+                    if (cur_group_gamma.if_count == 0) {
+                        cur_group_gamma.setCount_array(k2_end);
+                    }
+//                    int gamma_value_count = cur_group_gamma.count;
+                    gamma_value_count_list = cur_group_gamma.count_array;
+
                     for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
                         int cur_count_gamma = gamma_value_count_list[x_u_i];
                         if (cur_count_gamma == 0)
@@ -953,13 +986,23 @@ public class FinalPruneBOSTest {
                     // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                     // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
 
-                    gamma_value_count_list = new int[gap_gamma];
+//                    gamma_value_count_list = new int[gap_gamma];
                     gamma_value_count = cur_group_gamma.count;
-                    number_gamma = cur_group_gamma.number;
-                    for (int i = 0; i < gamma_value_count; i++) {
-                        int value = number_gamma[i];
-                        gamma_value_count_list[k2_end - value]++;
+                    if (gamma_value_count == 0) {
+                        gap_gamma = (int) pow(2, gamma);
+                        k2_end = max_delta_value - gap_gamma;
+                        continue;
                     }
+//                    number_gamma = cur_group_gamma.number;
+//                    for (int i = 0; i < gamma_value_count; i++) {
+//                        int value = number_gamma[i];
+//                        gamma_value_count_list[k2_end - value]++;
+//                    }
+
+                    if (cur_group_gamma.if_count == 0) {
+                        cur_group_gamma.setCount_array(k2_end);
+                    }
+                    gamma_value_count_list = cur_group_gamma.count_array;
 
                     for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
                         if(k2_end - x_u_i <= k1_start+x_l_i){
@@ -1046,13 +1089,20 @@ public class FinalPruneBOSTest {
                 final_k_end_value = k2_end;
             }
             //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-            gamma_value_count_list = new int[gap_gamma];
+//            gamma_value_count_list = new int[gap_gamma];
             gamma_value_count = cur_group_gamma.count;
-            number_gamma = cur_group_gamma.number;
-            for (int i = 0; i < gamma_value_count; i++) {
-                int value = number_gamma[i];
-                gamma_value_count_list[k2_end - value]++;
+            if (gamma_value_count == 0)
+                continue;
+//            number_gamma = cur_group_gamma.number;
+//            for (int i = 0; i < gamma_value_count; i++) {
+//                int value = number_gamma[i];
+//                gamma_value_count_list[k2_end - value]++;
+//            }
+
+            if (cur_group_gamma.if_count == 0) {
+                cur_group_gamma.setCount_array(k2_end);
             }
+            gamma_value_count_list = cur_group_gamma.count_array;
 
             for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
                 int cur_count_gamma = gamma_value_count_list[x_u_i];
@@ -1097,14 +1147,19 @@ public class FinalPruneBOSTest {
             //upper: (x_min+2^{alpha_size-1},x_max - 2^{gamma_size_smaller) \in (x_max - 2^{gamma_size_smaller+1}, x_max - 2^{gamma_size_smaller)
 
             gap_gamma = (int) pow(2, gamma_size_smaller);
-            gamma_value_count_list = new int[gap_gamma];
+//            gamma_value_count_list = new int[gap_gamma];
             cur_group_gamma = groupU[gamma_size_smaller + 1];
             gamma_value_count = cur_group_gamma.count;
-            number_gamma = cur_group_gamma.number;
-            for (int i = 0; i < gamma_value_count; i++) {
-                int value = number_gamma[i];
-                gamma_value_count_list[k2_end - value]++;
+//            number_gamma = cur_group_gamma.number;
+//            for (int i = 0; i < gamma_value_count; i++) {
+//                int value = number_gamma[i];
+//                gamma_value_count_list[k2_end - value]++;
+//            }
+
+            if (cur_group_gamma.if_count == 0) {
+                cur_group_gamma.setCount_array(k2_end);
             }
+            gamma_value_count_list = cur_group_gamma.count_array;
 
 
             int x_u_i_end = k2_end - (int) pow(2, alpha_size - 1);
@@ -1146,7 +1201,7 @@ public class FinalPruneBOSTest {
                 continue;
             k1 += cur_count_alpha;// gamma_box_count_list[gamma];
 
-            // lower: (x_min+2^{alpha-1},x_max) : k1_start, k1_start + gap_alpha
+            // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
             // upper: x_max
             k2=gamma_count_list[0];
             k2_end = max_delta_value;
@@ -1175,7 +1230,7 @@ public class FinalPruneBOSTest {
                 cur_group_gamma = groupU[gamma];
                 k2 += gamma_count_list[gamma];// = x_max - 2^{gamma-1}
 
-                // lower: (x_min+2^{alpha-1},x_max): k1_start, k1_start + gap_alpha
+                // lower: (x_min+2^{alpha_size-1},x_max): k1_start, k1_start + gap_alpha
                 // upper:  x_max - 2^{gamma-1}
                 cur_bits = 0;
                 cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
@@ -1189,16 +1244,26 @@ public class FinalPruneBOSTest {
                     final_k_end_value = k2_end;
                 }
 
-                // lower: (x_min+2^{alpha-1},x_max) : k1_start, k1_start + gap_alpha
+                // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
                 // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
 
-                gamma_value_count_list = new int[gap_gamma];
+//                gamma_value_count_list = new int[gap_gamma];
                 gamma_value_count = cur_group_gamma.count;
-                number_gamma = cur_group_gamma.number;
-                for (int i = 0; i < gamma_value_count; i++) {
-                    int value = number_gamma[i];
-                    gamma_value_count_list[k2_end - value]++;
+                if (gamma_value_count == 0){
+                    gap_gamma = (int) pow(2, gamma);
+                    k2_end = max_delta_value - gap_gamma;
+                    continue;
                 }
+//                number_gamma = cur_group_gamma.number;
+//                for (int i = 0; i < gamma_value_count; i++) {
+//                    int value = number_gamma[i];
+//                    gamma_value_count_list[k2_end - value]++;
+//                }
+
+                if (cur_group_gamma.if_count == 0) {
+                    cur_group_gamma.setCount_array(k2_end);
+                }
+                gamma_value_count_list = cur_group_gamma.count_array;
 
                 for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
                     if(k2_end - x_u_i <= k1_start+x_l_i){
