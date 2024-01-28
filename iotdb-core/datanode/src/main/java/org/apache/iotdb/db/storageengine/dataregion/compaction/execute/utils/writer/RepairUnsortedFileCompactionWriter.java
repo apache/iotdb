@@ -33,20 +33,22 @@ import java.util.List;
 
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompactionWriter {
-  private List<TimeValuePair> dataOfCurrentSeries;
+  private List<TimeValuePair>[] dataOfCurrentSeriesArr;
 
   public RepairUnsortedFileCompactionWriter(TsFileResource targetFileResource) throws IOException {
     super(targetFileResource);
+    dataOfCurrentSeriesArr = new ArrayList[subTaskNum];
   }
 
   @Override
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
-    dataOfCurrentSeries = new ArrayList<>();
+    dataOfCurrentSeriesArr[subTaskId] = new ArrayList<>();
     super.startMeasurement(measurementSchemaList, subTaskId);
   }
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
+    List<TimeValuePair> dataOfCurrentSeries = dataOfCurrentSeriesArr[subTaskId];
     if (dataOfCurrentSeries.isEmpty()) {
       super.endMeasurement(subTaskId);
       return;
@@ -74,7 +76,7 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
         chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
 
-    dataOfCurrentSeries = null;
+    dataOfCurrentSeriesArr[subTaskId] = null;
     super.endMeasurement(subTaskId);
   }
 
@@ -103,7 +105,7 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
 
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
-    dataOfCurrentSeries.add(timeValuePair);
+    dataOfCurrentSeriesArr[subTaskId].add(timeValuePair);
     isEmptyFile = false;
   }
 }
