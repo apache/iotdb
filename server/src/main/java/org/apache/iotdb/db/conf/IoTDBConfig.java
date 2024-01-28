@@ -452,6 +452,34 @@ public class IoTDBConfig {
 
   private int numIterations = 8;
 
+  public boolean isAcc_avg() {
+    return acc_avg;
+  }
+
+  public void setAcc_avg(boolean acc_avg) {
+    this.acc_avg = acc_avg;
+  }
+
+  public boolean isAcc_rectangle() {
+    return acc_rectangle;
+  }
+
+  public void setAcc_rectangle(boolean acc_rectangle) {
+    this.acc_rectangle = acc_rectangle;
+  }
+
+  public boolean isAcc_convex() {
+    return acc_convex;
+  }
+
+  public void setAcc_convex(boolean acc_convex) {
+    this.acc_convex = acc_convex;
+  }
+
+  private boolean acc_avg = false;
+  private boolean acc_rectangle = true;
+  private boolean acc_convex = false;
+
   public long getP1t() {
     return p1t;
   }

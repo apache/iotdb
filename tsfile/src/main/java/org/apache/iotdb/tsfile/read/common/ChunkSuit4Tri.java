@@ -39,6 +39,9 @@ public class ChunkSuit4Tri {
   // pageReader does not refer to the same deleteInterval as those in chunkMetadata
   // after chunkMetadata executes insertIntoSortedDeletions
 
+  // not fixed, because the relative line L varies for each bucket in each iteration
+  public double distance_loose_upper_bound = -1;
+
   public ChunkSuit4Tri(ChunkMetadata chunkMetadata) {
     this.chunkMetadata = chunkMetadata;
     this.lastReadPos = 0;

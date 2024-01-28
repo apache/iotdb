@@ -261,6 +261,13 @@ public class IOMonitor2 {
     return Math.abs((t1 - t3) * (v2 - v3) - (t2 - t3) * (v1 - v3)) / 2;
   }
 
+  public static double calculateDistance(
+      double tl, double vl, double t, double v, double tr, double vr) {
+    double numerator = Math.abs((vr - vl) * t + (tl - tr) * v + tr * vl - tl * vr);
+    double denominator = Math.sqrt((vr - vl) * (vr - vl) + (tl - tr) * (tl - tr));
+    return numerator / denominator;
+  }
+
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
     switch (operation) {
       case DCP_Server_Query_Execute:

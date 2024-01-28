@@ -550,6 +550,15 @@ public class IoTDBDescriptor {
       conf.setNumIterations(
           Integer.parseInt(
               properties.getProperty("numIterations", Integer.toString(conf.getNumIterations()))));
+      conf.setAcc_avg(
+          Boolean.parseBoolean(
+              properties.getProperty("acc_avg", Boolean.toString(conf.isAcc_avg()))));
+      conf.setAcc_rectangle(
+          Boolean.parseBoolean(
+              properties.getProperty("acc_rectangle", Boolean.toString(conf.isAcc_rectangle()))));
+      conf.setAcc_convex(
+          Boolean.parseBoolean(
+              properties.getProperty("acc_convex", Boolean.toString(conf.isAcc_convex()))));
 
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(

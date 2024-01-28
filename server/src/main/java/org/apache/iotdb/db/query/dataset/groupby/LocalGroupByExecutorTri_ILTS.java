@@ -126,7 +126,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         ChunkMetadata chunkMetadata = chunkSuit4Tri.chunkMetadata;
         long chunkMinTime = chunkMetadata.getStartTime();
         long chunkMaxTime = chunkMetadata.getEndTime();
+        if (chunkMinTime >= endTime || chunkMaxTime < startTime) {
+          continue; // note futureChunkList is not sorted in advance, so not break, just skip
+        }
         int idx1 = (int) Math.floor((chunkMinTime - startTime) * 1.0 / interval);
+        idx1 = Math.max(idx1, 0);
         int idx2 = (int) Math.floor((chunkMaxTime - startTime) * 1.0 / interval);
         idx2 = Math.min(idx2, N1 - 1);
         for (int i = idx1; i <= idx2; i++) {
@@ -134,6 +138,16 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           splitChunkList.get(i).add(chunkSuit4Tri);
         }
       }
+
+      //      // debug
+      //      for (int i = 0; i < N1; i++) {
+      //        List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(i);
+      //        if (chunkSuit4TriList != null) {
+      //          for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
+      //            System.out.println(i + "," + chunkSuit4Tri.chunkMetadata.getStartTime());
+      //          }
+      //        }
+      //      }
 
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
@@ -191,6 +205,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                 throw new UnSupportedDataTypeException(String.valueOf(dataType));
               }
               // TODO: 用元数据sum&count加速
+              //  如果chunk没有被桶切开，可以直接用元数据里的sum和count
+
               // 1. load page data if it hasn't been loaded
               if (chunkSuit4Tri.pageReader == null) {
                 chunkSuit4Tri.pageReader =
@@ -227,19 +243,84 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           }
         }
         // ========找到当前桶内距离lr连线最远的点========
-        double maxArea = -1;
+        double maxDistance = -1;
         long select_t = -1;
         double select_v = -1;
         List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b);
         long localCurStartTime = startTime + (b) * interval;
         long localCurEndTime = startTime + (b + 1) * interval;
+        if (CONFIG.isAcc_rectangle()) {
+          // TODO: 用元数据里落在桶内的FP&LP&BP&TP形成的rectangle加速
+          //   边点得到距离的紧致下限，角点得到距离的非紧致上限
+          //   先遍历一遍这些元数据，得到所有落在桶内的元数据点的最远点，更新maxDistance&select_t&select_v
+          //   然后遍历如果这个chunk的非紧致上限<=当前已知的maxDistance，那么整个chunk都不用管了
+          for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
+            long[] rect_t =
+                new long[] {
+                  chunkSuit4Tri.chunkMetadata.getStartTime(), // FPt
+                  chunkSuit4Tri.chunkMetadata.getEndTime(), // LPt
+                  chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp(), // BPt
+                  chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp() // TPt
+                };
+            double[] rect_v =
+                new double[] {
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getFirstValue(), // FPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getLastValue(), // LPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMinValue(), // BPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMaxValue() // TPv
+                };
+            // 用落在桶内的元数据点（紧致下限）更新maxDistance&select_t&select_v
+            for (int i = 0; i < 4; i++) {
+              if (rect_t[i] >= localCurStartTime && rect_t[i] < localCurEndTime) {
+                double distance =
+                    IOMonitor2.calculateDistance(lt, lv, rect_t[i], rect_v[i], rt, rv);
+                if (distance > maxDistance) {
+                  maxDistance = distance;
+                  select_t = rect_t[i];
+                  select_v = rect_v[i];
+                }
+              }
+            }
+            // 用四个角点计算每个块的相对于当前固定线的非紧致上限
+            // 注意第一步是直接赋值而不是和旧的比较，因为距离是相对于线L的，每次迭代每个分桶下的L不同
+            chunkSuit4Tri.distance_loose_upper_bound =
+                IOMonitor2.calculateDistance(lt, lv, rect_t[0], rect_v[2], rt, rv); // FPt,BPv,左下角
+            chunkSuit4Tri.distance_loose_upper_bound =
+                Math.max(
+                    chunkSuit4Tri.distance_loose_upper_bound,
+                    IOMonitor2.calculateDistance(
+                        lt, lv, rect_t[0], rect_v[3], rt, rv)); // FPt,TPv,左上角
+            chunkSuit4Tri.distance_loose_upper_bound =
+                Math.max(
+                    chunkSuit4Tri.distance_loose_upper_bound,
+                    IOMonitor2.calculateDistance(
+                        lt, lv, rect_t[1], rect_v[2], rt, rv)); // LPt,BPv,右下角
+            chunkSuit4Tri.distance_loose_upper_bound =
+                Math.max(
+                    chunkSuit4Tri.distance_loose_upper_bound,
+                    IOMonitor2.calculateDistance(
+                        lt, lv, rect_t[1], rect_v[3], rt, rv)); // LPt,TPv,右上角
+          }
+        }
         // 遍历所有与当前桶overlap的chunks
         for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
           TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
           if (dataType != TSDataType.DOUBLE) {
             throw new UnSupportedDataTypeException(String.valueOf(dataType));
           }
-          // TODO: 用FP&LP&BP&TP形成的rectangle加速
+          // TODO: (continue)用元数据里落在桶内的FP&LP&BP&TP形成的rectangle加速
+          //   边点得到距离的紧致下限，角点得到距离的非紧致上限
+          //   如果这个chunk的非紧致上限<=当前已知的maxDistance，那么整个chunk都不用管了
+          if (CONFIG.isAcc_rectangle()) {
+            //   （当一个chunk的非紧致上限=紧致下限的时候，意味着有角点和边点重合，
+            //   如果这个上限是maxDistance，在“用元数据点/紧致下限更新maxDistance&select_t&select_v”
+            //   步骤中已经赋值了这个边点，所以这里跳过没关系）
+            if (chunkSuit4Tri.distance_loose_upper_bound <= maxDistance) {
+              //              System.out.println("skip" + b + "," +
+              // chunkSuit4Tri.chunkMetadata.getStartTime());
+              continue;
+            }
+          }
           // load page data if it hasn't been loaded
           if (chunkSuit4Tri.pageReader == null) {
             chunkSuit4Tri.pageReader =
@@ -253,6 +334,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           }
           PageReader pageReader = chunkSuit4Tri.pageReader;
           // TODO: 用凸包bitmap加速
+          //   如果块被分桶边界切开，那还是逐点遍历
+          //   否则块完整落在桶内时，用凸包规则快速找到这个块中距离lr连线最远的点，最后和全局当前最远结果点比较
           for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
             long timestamp = pageReader.timeBuffer.getLong(j * 8);
             if (timestamp < localCurStartTime) {
@@ -262,9 +345,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             } else { // localCurStartTime<=t<localCurEndTime
               ByteBuffer valueBuffer = pageReader.valueBuffer;
               double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
-              double area = IOMonitor2.calculateTri(lt, lv, timestamp, v, rt, rv);
-              if (area > maxArea) {
-                maxArea = area;
+              double distance = IOMonitor2.calculateDistance(lt, lv, timestamp, v, rt, rv);
+              if (distance > maxDistance) {
+                maxDistance = distance;
                 select_t = timestamp;
                 select_v = v;
               }
