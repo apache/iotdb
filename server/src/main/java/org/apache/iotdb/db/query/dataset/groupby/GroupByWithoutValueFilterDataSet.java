@@ -142,14 +142,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     //    } else if (CONFIG.getEnableTri().equals("M4LTTB")) {
     //      // TODO
-    else if (CONFIG.getEnableTri().equals("LTTB")) {
-      // TODO
+    else if (CONFIG.getEnableTri().equals("LTTB") || CONFIG.getEnableTri().equals("ILTS")) {
       return nextWithoutConstraintTri_LTTB();
-    }
-    //    } else if (CONFIG.getEnableTri().equals("ILTS")) {
-    //      // TODO
-    //    }
-    else {
+    } else {
       return nextWithoutConstraint_raw();
     }
   }
@@ -494,12 +489,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("LTTB")) {
-      // TODO
       return new LocalGroupByExecutorTri_LTTB(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("ILTS")) {
       // TODO
-      return new LocalGroupByExecutor(
+      return new LocalGroupByExecutorTri_ILTS(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
     // deprecated below
