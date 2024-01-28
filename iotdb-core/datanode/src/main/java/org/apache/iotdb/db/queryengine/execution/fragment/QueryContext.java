@@ -95,14 +95,16 @@ public class QueryContext {
     }
 
     PatternTreeMap<Modification, ModsSerializer> allModifications =
-        fileModCache.get(modFile.getFilePath());
-    if (allModifications == null) {
-      allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : modFile.getModificationsIter()) {
-        allModifications.append(modification.getPath(), modification);
-      }
-      fileModCache.put(modFile.getFilePath(), allModifications);
-    }
+        fileModCache.computeIfAbsent(
+            modFile.getFilePath(),
+            k -> {
+              PatternTreeMap<Modification, ModsSerializer> modifications =
+                  PatternTreeMapFactory.getModsPatternTreeMap();
+              for (Modification modification : modFile.getModificationsIter()) {
+                modifications.append(modification.getPath(), modification);
+              }
+              return modifications;
+            });
     return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
