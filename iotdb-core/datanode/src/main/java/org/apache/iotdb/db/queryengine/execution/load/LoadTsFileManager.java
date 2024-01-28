@@ -317,8 +317,7 @@ public class LoadTsFileManager {
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
 
-        TsFileResource resource = generateResource(writer, progressIndex);
-        dataRegion.loadNewTsFile(resource, true, isGeneratedByPipe);
+        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
         String userDatabaseName = dataRegion.getUserDatabaseName();
 
