@@ -58,7 +58,6 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   }
 
   private void onEnrichedEventFailure(Throwable throwable) {
-
     int maxRetryTimes =
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
             ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
