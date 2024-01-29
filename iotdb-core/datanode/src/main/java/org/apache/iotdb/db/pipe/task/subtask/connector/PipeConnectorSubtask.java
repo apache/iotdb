@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -142,7 +143,10 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(event);
+        outputPipeConnector.transfer(
+            event instanceof UserDefinedEnrichedEvent
+                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                : event);
       }
 
       releaseLastEvent(true);

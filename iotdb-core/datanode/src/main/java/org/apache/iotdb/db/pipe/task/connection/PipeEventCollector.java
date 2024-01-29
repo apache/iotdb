@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -47,6 +48,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   @Override
   public synchronized void collect(Event event) {
+    event = UserDefinedEnrichedEvent.maybeOf(event);
+
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
 
