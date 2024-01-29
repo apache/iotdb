@@ -111,19 +111,24 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     isSubmitted = false;
 
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
       releaseLastEvent(false);
       return;
     }
 
-    // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
+      // Retry to connect to the target system if the connection is broken
+      // We should reconstruct the client before re-submit the subtask
       if (onPipeConnectionException(throwable)) {
+        // return if the pipe task should be stopped
         return;
       }
     }
 
-    // Handle other exceptions as usual
+    // Handle exceptions if any available clients exist
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
     super.onFailure(
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
             ? throwable

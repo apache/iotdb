@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
 
 public abstract class PipeReportableSubtask extends PipeSubtask {
 
@@ -58,10 +55,6 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   }
 
   private void onEnrichedEventFailure(Throwable throwable) {
-    int maxRetryTimes =
-        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
-            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
-            : MAX_RETRY_TIMES;
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
@@ -69,11 +62,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           creationTime,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
-          maxRetryTimes,
+          MAX_RETRY_TIMES,
           throwable);
     }
 
-    if (retryCount.get() < maxRetryTimes) {
+    if (retryCount.get() < MAX_RETRY_TIMES) {
       retryCount.incrementAndGet();
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}]",
@@ -81,7 +74,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
-          maxRetryTimes);
+          MAX_RETRY_TIMES);
       try {
         Thread.sleep(1000L * retryCount.get());
       } catch (InterruptedException e) {
@@ -96,49 +89,31 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
       submitSelf();
     } else {
-      String errorMessage =
+      final String errorMessage =
           String.format(
-              "Failed to execute subtask %s(%s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s",
-              taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
-      String rootCause = getRootCause(throwable);
-      if (Objects.nonNull(rootCause)) {
-        errorMessage += String.format(", root cause: %s", rootCause);
-      }
-
+              "Failed to execute subtask %s (creation time: %s, simple class: %s), "
+                  + "retry count exceeds the max retry times %d, last exception: %s, root cause: %s",
+              taskID,
+              creationTime,
+              this.getClass().getSimpleName(),
+              retryCount.get(),
+              throwable.getMessage(),
+              getRootCause(throwable));
       LOGGER.warn(errorMessage, throwable);
-
-      if (lastEvent instanceof EnrichedEvent) {
-        report(
-            ((EnrichedEvent) lastEvent),
-            throwable instanceof PipeRuntimeException
-                ? (PipeRuntimeException) throwable
-                : new PipeRuntimeCriticalException(errorMessage));
-        LOGGER.warn(
-            "The last event is an instance of EnrichedEvent, so the exception is reported. "
-                + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when query the pipe will be 'STOPPED'. "
-                + "Please restart the task by executing 'START PIPE' manually if needed.",
-            taskID,
-            this.getClass().getSimpleName(),
-            throwable);
-      } else {
-        LOGGER.error(
-            "The last event is not an instance of EnrichedEvent, "
-                + "so the exception cannot be reported. "
-                + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when query the pipe will be 'RUNNING' "
-                + "instead of 'STOPPED', but the task is actually stopped. "
-                + "Please restart the task by executing 'START PIPE' manually if needed.",
-            taskID,
-            this.getClass().getSimpleName(),
-            throwable);
-      }
-
-      // Although the pipe task will be stopped, we still don't release the last event here
-      // Because we need to keep it for the next retry. If user wants to restart the task,
-      // the last event will be processed again. The last event will be released when the task
-      // is dropped or the process is running normally.
+      report(
+          (EnrichedEvent) lastEvent,
+          throwable instanceof PipeRuntimeException
+              ? (PipeRuntimeException) throwable
+              : new PipeRuntimeCriticalException(errorMessage));
+      LOGGER.warn(
+          "The last event is an instance of EnrichedEvent, so the exception is reported. "
+              + "Stopping current pipe subtask {} (creation time: {}, simple class: {}) locally... "
+              + "Status shown when query the pipe will be 'STOPPED'. "
+              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          taskID,
+          creationTime,
+          this.getClass().getSimpleName(),
+          throwable);
     }
   }
 
