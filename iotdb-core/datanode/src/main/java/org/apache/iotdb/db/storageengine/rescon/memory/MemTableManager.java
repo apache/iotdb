@@ -89,15 +89,6 @@ public class MemTableManager {
     return currentMemtableNumber >= CONFIG.getMaxMemtableNumber();
   }
 
-  /** Called when memory control is disabled */
-  public synchronized void addOrDeleteStorageGroup(int diff) {
-    int maxMemTableNum = CONFIG.getMaxMemtableNumber();
-    maxMemTableNum +=
-        MEMTABLE_NUM_FOR_EACH_PARTITION * CONFIG.getConcurrentWritingTimePartition() * diff;
-    CONFIG.setMaxMemtableNumber(maxMemTableNum);
-    notifyAll();
-  }
-
   public synchronized void close() {
     currentMemtableNumber = 0;
   }

@@ -800,13 +800,6 @@ public class TsFileProcessor {
     if (workMemTable.shouldFlush()) {
       return true;
     }
-    if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
-      logger.info(
-          "The memtable size {} of tsfile {} reaches the threshold",
-          workMemTable.memSize(),
-          tsFileResource.getTsFile().getAbsolutePath());
-      return true;
-    }
     if (workMemTable.reachTotalPointNumThreshold()) {
       logger.info(
           "The avg series points num {} of tsfile {} reaches the threshold",
@@ -817,10 +810,6 @@ public class TsFileProcessor {
       return true;
     }
     return false;
-  }
-
-  private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {

@@ -365,22 +365,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty("batch_size", Integer.toString(conf.getBatchSize()))));
 
-    conf.setEnableMemControl(
-        (Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
-    LOGGER.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
-
-    long memTableSizeThreshold =
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "memtable_size_threshold", Long.toString(conf.getMemtableSizeThreshold()))
-                .trim());
-    if (memTableSizeThreshold > 0) {
-      conf.setMemtableSizeThreshold(memTableSizeThreshold);
-    }
-
     conf.setTvListSortAlgorithm(
         TVListSortAlgorithm.valueOf(
             properties.getProperty(
@@ -747,13 +731,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
-
-    // the num of memtables in each database
-    conf.setConcurrentWritingTimePartition(
-        Integer.parseInt(
-            properties.getProperty(
-                "concurrent_writing_time_partition",
-                String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
     // the default fill interval in LinearFill and PreviousFill
     conf.setDefaultFillInterval(
@@ -1556,17 +1533,6 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
-
-      long memTableSizeThreshold =
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "memtable_size_threshold", Long.toString(conf.getMemtableSizeThreshold()))
-                  .trim());
-      if (memTableSizeThreshold > 0) {
-        conf.setMemtableSizeThreshold(memTableSizeThreshold);
-      }
-
       // update params of creating schemaengine automatically
       loadAutoCreateSchemaProps(properties);
 
