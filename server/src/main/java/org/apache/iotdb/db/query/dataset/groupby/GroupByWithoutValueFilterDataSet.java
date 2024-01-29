@@ -224,7 +224,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         List<AggregateResult> aggregations =
             executor.calcResult(
                 localCurStartTime, localCurStartTime + interval, startTime, endTime, interval);
+        int c = 0;
         for (AggregateResult aggregation : aggregations) {
+          // ATTENTION only take the first two aggregation fields, which are BPv[BPt], TPv[TPt]
           // Each row correspond to (bucketLeftBound, minV[bottomT], maxV[topT]) of a MinMax bucket
           MinMaxInfo minMaxInfo = (MinMaxInfo) aggregation.getResult();
           if (minMaxInfo == null) {
@@ -233,6 +235,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           } else {
             times.add(minMaxInfo.timestamp);
             values.add((Double) minMaxInfo.val);
+          }
+          c++;
+          if (c >= 2) {
+            // ATTENTION only take the first two aggregation fields, which are BPv[BPt], TPv[TPt]
+            break;
           }
         }
       }
@@ -378,6 +385,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // concat results into a string
       record = new RowRecord(0);
       StringBuilder series = new StringBuilder();
+      // 全局首点(对于M4来说全局首尾点只是输出不会影响到其它桶的采点)
+      series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
 
       for (long localCurStartTime = startTime;
           localCurStartTime + interval <= endTime;
@@ -417,6 +426,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .append(",");
       }
 
+      // 全局尾点(对于M4来说全局首尾点只是输出不会影响到其它桶的采点)
+      series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
+
       // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
       // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
       // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
@@ -447,6 +459,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       // concat results into a string
       record = new RowRecord(0);
       StringBuilder series = new StringBuilder();
+      // 全局首点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
+      series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
 
       for (long localCurStartTime = startTime;
           localCurStartTime + interval <= endTime;
@@ -464,11 +478,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
                 startTime,
                 endTime,
                 interval); // attention
-        for (AggregateResult aggregation : aggregations) {
-          // Each row correspond to (bucketLeftBound, minV[bottomT], maxV[topT]) of a MinMax bucket
-          series.append(aggregation.getResult()).append(",");
-        }
+        series.append(aggregations.get(0).getResult()).append(","); // BPv[BPt]
+        series.append(aggregations.get(1).getResult()).append(","); // TPv[TPt]
       }
+
+      // 全局尾点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
+      series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
 
       // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
       // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)

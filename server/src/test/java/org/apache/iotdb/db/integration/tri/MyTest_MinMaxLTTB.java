@@ -108,6 +108,8 @@ public class MyTest_MinMaxLTTB {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0), max_value(s0)"
+                  // actually controlled by enableTri
+                  + ",min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([100,2100),250ms)");
       // rps=4,nout=6,minmaxInterval=floor((tn-t2)/((nout-2)*rps/2))=250ms
       Assert.assertTrue(hasResultSet);

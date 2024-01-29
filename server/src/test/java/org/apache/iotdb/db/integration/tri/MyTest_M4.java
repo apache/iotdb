@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
@@ -77,6 +78,11 @@ public class MyTest_M4 {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("M4");
+    // 对于M4来说全局首尾点只是输出不会影响到其它桶的采点
+    config.setP1t(0);
+    config.setP1v(0);
+    config.setPnt(200);
+    config.setPnv(200);
 
     // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
     // 因为它直接用chunk元数据去构造pageReader，
@@ -102,13 +108,15 @@ public class MyTest_M4 {
   public void test1() throws Exception {
     prepareData1();
     String res =
-        "1.0[20],15.0[2],5.0[1],1.0[20],8.0[25],8.0[25],8.0[25],8.0[25],3.0[54],3.0[54],3.0[54],3.0[54],null,null,null[null],null[null],";
+        "0.0[0],1.0[20],15.0[2],5.0[1],1.0[20],8.0[25],8.0[25],8.0[25],8.0[25],3.0[54],"
+            + "3.0[54],3.0[54],3.0[54],null,null,null[null],null[null],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
+                  // do not change sequence
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)");
       // 注意需要第一项是min_value因为以后会用到record.addField(series,
       // TSDataType.MIN_MAX_INT64)把所有序列组装成string放在第一行第二列里
@@ -161,25 +169,24 @@ public class MyTest_M4 {
     prepareData3();
 
     String res =
-        "1.0[10],10.0[2],5.0[1],4.0[22],2.0[40],8.0[30],8.0[30],2.0[40],4.0[72],20.0[62],5.0[55],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],";
+        "0.0[0],1.0[10],10.0[2],5.0[1],4.0[22],2.0[40],8.0[30],8.0[30],2.0[40],"
+            + "4.0[72],20.0[62],5.0[55],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
+      ResultSet resultSet =
+          statement.executeQuery(
               "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
       // sequence!!!
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int i = 0;
-        while (resultSet.next()) {
-          String ans = resultSet.getString(2);
-          System.out.println(ans);
-          Assert.assertEquals(res, ans);
-        }
+      int i = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(2);
+        System.out.println(ans);
+        Assert.assertEquals(res, ans);
       }
+      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -231,7 +238,8 @@ public class MyTest_M4 {
     prepareData3_2();
 
     String res =
-        "1.0[10],10.0[2],5.0[1],5.0[20],null,null,null[null],null[null],4.0[72],20.0[62],15.0[60],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],";
+        "0.0[0],1.0[10],10.0[2],5.0[1],5.0[20],null,null,null[null],null[null],4.0[72],"
+            + "20.0[62],15.0[60],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

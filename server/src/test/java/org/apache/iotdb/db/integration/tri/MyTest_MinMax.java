@@ -74,6 +74,11 @@ public class MyTest_MinMax {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("MinMax");
+    // 对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点
+    config.setP1t(0);
+    config.setP1v(0);
+    config.setPnt(200);
+    config.setPnv(200);
 
     // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
     // 因为它直接用chunk元数据去构造pageReader，
@@ -98,16 +103,15 @@ public class MyTest_MinMax {
   @Test
   public void test1() throws Exception {
     prepareData1();
-    //    String[] res = new String[]{"0,1[20],15[2]", "25,8[25],8[25]", "50,3[54],3[54]",
-    // "75,null,null"};
-    String res = "1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res = "0.0[0],1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,200.0[200],";
+    // 0,P1v[P1t],BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...,Pnv[Pnt]
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0), max_value(s0)"
+              "SELECT min_value(s0), max_value(s0)" // do not change sequence
+                  + ",min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -157,16 +161,15 @@ public class MyTest_MinMax {
   public void test3() {
     prepareData3();
 
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "1.0[10],10.0[2],2.0[40],8.0[30],4.0[72],20.0[62],1.0[90],11.0[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res =
+        "0.0[0],1.0[10],10.0[2],2.0[40],8.0[30],4.0[72],20.0[62],1.0[90],11.0[80],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0), max_value(s0)"
+                  + ",min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
       // sequence!!!
 
@@ -229,16 +232,14 @@ public class MyTest_MinMax {
   public void test3_2() {
     prepareData3_2();
 
-    //    String[] res = new String[]{"0,1[10],10[2]", "25,null,null", "50,4[72],20[62]",
-    // "75,1[90],11[80]"};
-    String res = "1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],";
-    // 0,BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...
+    String res = "0.0[0],1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0), max_value(s0)"
+                  + ",min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)"); // don't change the
       // sequence!!!
 

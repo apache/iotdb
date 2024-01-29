@@ -107,6 +107,7 @@ public class MyTest_LTTB {
           statement.execute(
               "SELECT min_value(s0)"
                   // TODO not real min_value here, actually controlled by enableTri
+                  + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([2,106),26ms)");
 
       Assert.assertTrue(hasResultSet);
@@ -170,6 +171,7 @@ public class MyTest_LTTB {
           statement.execute(
               "SELECT min_value(s0)"
                   // TODO not real min_value here, actually controlled by enableTri
+                  + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([100,2100),250ms)");
       // (tn-t2)/(nout-2)=(2100-100)/(10-2)=2000/8=250
 
