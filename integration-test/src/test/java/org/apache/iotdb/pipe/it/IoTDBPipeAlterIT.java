@@ -71,6 +71,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
 
       final long firstCreationTime = showPipeResult.get(0).creationTime;
@@ -83,7 +84,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
 
       // alter pipe
-      extractorAttributes.replace("batch.enable", "true");
+      connectorAttributes.replace("batch.enable", "true");
       status =
           client.alterPipe(
               new TAlterPipeReq("a2b", connectorAttributes)
@@ -92,6 +93,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       // alter pipe will reset pipe status to running
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // alter pipe will reset pipe creation time
