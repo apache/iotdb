@@ -380,37 +380,40 @@ public class DataRegion implements IDataRegionForQuery {
   private class DataRegionRecoveryContext {
     /** number of files to be recovered. */
     private final long numOfFilesToRecover;
-    /** when the change of recoveredFilesNum exceeds this, log check will be triggered. */
-    private final long filesNumLogCheckTrigger;
+
     /** number of already recovered files. */
     private long recoveredFilesNum;
     /** last recovery log time. */
     private long lastLogTime;
-    /** last recovery log files num. */
-    private long lastLogCheckFilesNum;
+
     /** recover performers of unsealed TsFiles. */
     private final List<UnsealedTsFileRecoverPerformer> recoverPerformers = new ArrayList<>();
 
     public DataRegionRecoveryContext(long numOfFilesToRecover) {
       this.numOfFilesToRecover = numOfFilesToRecover;
       this.recoveredFilesNum = 0;
-      this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
       this.lastLogTime = System.currentTimeMillis();
-      this.lastLogCheckFilesNum = 0;
     }
 
     public void incrementRecoveredFilesNum() {
       recoveredFilesNum++;
-      // check log only when 1% more files have been recovered
-      if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
-        lastLogCheckFilesNum = recoveredFilesNum;
-        // log only when log interval exceeds recovery log interval
-        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+      if (recoveredFilesNum < numOfFilesToRecover) {
+        if (System.currentTimeMillis() - lastLogTime > config.getRecoveryLogIntervalInMs()) {
           logger.info(
-              "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
+              "The TsFiles of data region {}[{}] has recovered {}/{}.",
+              databaseName,
+              dataRegionId,
+              recoveredFilesNum,
+              numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
+      } else {
+        logger.info(
+            "The TsFiles of data region {}[{}] has recovered" + " {}/{}.",
+            databaseName,
+            dataRegionId,
+            numOfFilesToRecover,
+            numOfFilesToRecover);
       }
     }
   }
