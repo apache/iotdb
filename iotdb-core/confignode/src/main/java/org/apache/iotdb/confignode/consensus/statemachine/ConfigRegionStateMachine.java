@@ -59,6 +59,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** StateMachine for ConfigRegion. */
@@ -413,9 +414,16 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   static long parseEndIndex(String filename) {
     if (filename.startsWith("log_inprogress_")) {
-      return Long.parseLong(LOG_INPROGRESS_PATTERN.matcher(filename).group());
+      Matcher matcher = LOG_INPROGRESS_PATTERN.matcher(filename);
+      if (matcher.find()) {
+        return Long.parseLong(matcher.group());
+      }
     } else {
-      return Long.parseLong(LOG_PATTERN.matcher(filename).group());
+      Matcher matcher = LOG_PATTERN.matcher(filename);
+      if (matcher.find()) {
+        return Long.parseLong(matcher.group());
+      }
     }
+    return 0;
   }
 }
