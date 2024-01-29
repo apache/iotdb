@@ -67,14 +67,12 @@ public class IoTDBSyntaxHighlighter implements Highlighter {
 
   @Override
   public void setErrorPattern(Pattern errorPattern) {
-    // TODO: Not quite sure what this code should actually do
-    new IoTPrinter(System.out).print("");
+    // This method is not needed.
   }
 
   @Override
   public void setErrorIndex(int errorIndex) {
-    // TODO: Not quite sure what this code should actually do
-    new IoTPrinter(System.out).print("");
+    // This method is not needed.
   }
 
   private boolean isKeyword(String token) {

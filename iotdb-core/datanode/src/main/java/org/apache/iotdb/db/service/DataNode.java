@@ -925,9 +925,6 @@ public class DataNode implements DataNodeMBean {
       if (dataRegionConsensusStarted) {
         DataRegionConsensusImpl.getInstance().stop();
       }
-      /*if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-        RestService.getInstance().stop();
-      }*/
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }
