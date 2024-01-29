@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -115,7 +116,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     } else if (!parsedEventQueue.isEmpty()) {
       event = parsedEventQueue.poll();
     } else {
-      Event originalEvent = inputEventSupplier.supply();
+      Event originalEvent = UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
       parseEventByPatternAndTime(originalEvent).forEach(parsedEventQueue::offer);
       event = parsedEventQueue.poll(); // If null is polled, will skip this round of process.
     }
@@ -147,7 +148,11 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
           ((PipeHeartbeatEvent) event).onProcessed();
           PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
-          pipeProcessor.process(event, outputEventCollector);
+          pipeProcessor.process(
+              event instanceof UserDefinedEnrichedEvent
+                  ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                  : event,
+              outputEventCollector);
         }
       }
 
