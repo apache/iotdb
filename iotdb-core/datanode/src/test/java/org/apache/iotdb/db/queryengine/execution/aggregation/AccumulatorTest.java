@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
@@ -92,8 +91,7 @@ public class AccumulatorTest {
   @Test
   public void avgAccumulatorTest() {
     Accumulator avgAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.AVG,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.AVG,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -146,8 +144,7 @@ public class AccumulatorTest {
   @Test
   public void countAccumulatorTest() {
     Accumulator countAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.COUNT,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.COUNT,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -193,8 +190,7 @@ public class AccumulatorTest {
   @Test
   public void countTimeAccumulatorTest() {
     Accumulator countTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.COUNT_TIME,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.COUNT_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -237,8 +233,7 @@ public class AccumulatorTest {
   @Test
   public void extremeAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.EXTREME,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.EXTREME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -278,8 +273,7 @@ public class AccumulatorTest {
   @Test
   public void firstValueAccumulatorTest() {
     Accumulator firstValueAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.FIRST_VALUE,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.FIRST_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -325,8 +319,7 @@ public class AccumulatorTest {
   @Test
   public void lastValueAccumulatorTest() {
     Accumulator lastValueAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.LAST_VALUE,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.LAST_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -371,8 +364,7 @@ public class AccumulatorTest {
   @Test
   public void maxTimeAccumulatorTest() {
     Accumulator maxTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.MAX_TIME,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -412,8 +404,7 @@ public class AccumulatorTest {
   @Test
   public void minTimeAccumulatorTest() {
     Accumulator minTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.MIN_TIME,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MIN_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -453,8 +444,7 @@ public class AccumulatorTest {
   @Test
   public void maxValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.MAX_VALUE,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -494,8 +484,7 @@ public class AccumulatorTest {
   @Test
   public void minValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.MIN_VALUE,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MIN_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -535,8 +524,7 @@ public class AccumulatorTest {
   @Test
   public void sumAccumulatorTest() {
     Accumulator sumAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.SUM,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.SUM,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -582,8 +570,7 @@ public class AccumulatorTest {
   @Test
   public void stddevAccumulatorTest() {
     Accumulator stddevAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.STDDEV,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -637,8 +624,7 @@ public class AccumulatorTest {
   @Test
   public void stddevPopAccumulatorTest() {
     Accumulator stddevPopAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.STDDEV_POP,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV_POP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -685,8 +671,7 @@ public class AccumulatorTest {
   @Test
   public void stddevSampAccumulatorTest() {
     Accumulator stddevSampAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.STDDEV_SAMP,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV_SAMP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -740,8 +725,7 @@ public class AccumulatorTest {
   @Test
   public void varianceAccumulatorTest() {
     Accumulator varianceAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.VARIANCE,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VARIANCE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -795,8 +779,7 @@ public class AccumulatorTest {
   @Test
   public void varPopAccumulatorTest() {
     Accumulator varPopAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.VAR_POP,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VAR_POP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -843,8 +826,7 @@ public class AccumulatorTest {
   @Test
   public void varSampAccumulatorTest() {
     Accumulator varSampAccumulator =
-        AccumulatorFactory.createAccumulator(
-            SqlConstant.VAR_SAMP,
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VAR_SAMP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),

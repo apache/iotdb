@@ -394,7 +394,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                         Collections.singletonList(node.getSeriesPath().getSeriesType()),
                         o.getInputExpressions(),
                         o.getInputAttributes(),
-                        ascending),
+                        ascending,
+                        o.getStep().isInputRaw()),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
@@ -461,7 +462,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     Collections.singletonList(seriesDataType),
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    descriptor.getStep().isInputRaw()),
                 descriptor.getStep(),
                 Collections.singletonList(
                     new InputLocation[] {new InputLocation(0, seriesIndex)})));
@@ -474,7 +476,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     Collections.singletonList(TSDataType.INT64),
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    descriptor.getStep().isInputRaw()),
                 descriptor.getStep(),
                 Collections.singletonList(new InputLocation[] {new InputLocation(0, -1)})));
       } else {
@@ -1498,7 +1501,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   inputDataTypes,
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
-                  ascending),
+                  ascending,
+                  descriptor.getStep().isInputRaw()),
               descriptor.getStep(),
               inputLocationList));
     }
@@ -1557,7 +1561,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     inputDataTypes,
                     aggregationDescriptor.getInputExpressions(),
                     aggregationDescriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    aggregationDescriptor.getStep().isInputRaw()),
                 aggregationDescriptor.getStep(),
                 inputLocations));
       }
@@ -1690,6 +1695,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       .collect(Collectors.toList()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
+                  descriptor.getStep().isInputRaw(),
                   ascending),
               descriptor.getStep(),
               inputLocationList));

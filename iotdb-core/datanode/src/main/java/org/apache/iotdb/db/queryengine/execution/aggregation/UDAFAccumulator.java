@@ -41,7 +41,8 @@ public class UDAFAccumulator implements Accumulator {
       String functionName,
       List<Expression> childrenExpressions,
       TSDataType childrenExpressionDataTypes,
-      Map<String, String> attributes) {
+      Map<String, String> attributes,
+      boolean isInputRaw) {
     this.functionName = functionName;
     this.configurations = new UDAFConfigurations(ZoneId.systemDefault());
 
@@ -50,21 +51,26 @@ public class UDAFAccumulator implements Accumulator {
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
     beforeStart(
-        childExpressionStrings, Collections.singletonList(childrenExpressionDataTypes), attributes);
+        childExpressionStrings,
+        Collections.singletonList(childrenExpressionDataTypes),
+        attributes,
+        isInputRaw);
   }
 
   private void beforeStart(
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
-      Map<String, String> attributes) {
-    reflectAndValidateUDF(childExpressions, childExpressionDataTypes, attributes);
+      Map<String, String> attributes,
+      boolean isInputRaw) {
+    reflectAndValidateUDF(childExpressions, childExpressionDataTypes, attributes, isInputRaw);
     configurations.check();
   }
 
   private void reflectAndValidateUDF(
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
-      Map<String, String> attributes) {
+      Map<String, String> attributes,
+      boolean isInputRaw) {
     udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
     state = udaf.createState();
 
@@ -74,11 +80,15 @@ public class UDAFAccumulator implements Accumulator {
             UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
             attributes);
 
-    try {
-      // Double validates in workers
-      udaf.validate(new UDFParameterValidator(parameters));
-    } catch (Exception e) {
-      onError("validate(UDFParameterValidator)", e);
+    // Only validate for raw input
+    // There is no need to validate for partial input
+    if (isInputRaw) {
+      try {
+        // Double validates in workers
+        udaf.validate(new UDFParameterValidator(parameters));
+      } catch (Exception e) {
+        onError("validate(UDFParameterValidator)", e);
+      }
     }
 
     try {

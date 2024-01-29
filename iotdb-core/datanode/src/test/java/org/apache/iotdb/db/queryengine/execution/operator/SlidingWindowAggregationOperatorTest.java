@@ -237,13 +237,8 @@ public class SlidingWindowAggregationOperatorTest {
     MeasurementPath d0s0 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
-    List<String> leafAggregationNames =
-        leafAggregationTypes.stream()
-            .map(SchemaUtils::getBuiltinAggregationName)
-            .collect(Collectors.toList());
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
-            leafAggregationNames,
+    AccumulatorFactory.createBuiltinAccumulators(
             leafAggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
