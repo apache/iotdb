@@ -1695,8 +1695,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       .collect(Collectors.toList()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
-                  descriptor.getStep().isInputRaw(),
-                  ascending),
+                  ascending,
+                  descriptor.getStep().isInputRaw()),
               descriptor.getStep(),
               inputLocationList));
     }
