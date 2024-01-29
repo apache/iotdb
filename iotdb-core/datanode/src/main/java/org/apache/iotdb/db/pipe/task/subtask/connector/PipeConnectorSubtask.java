@@ -121,7 +121,10 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
