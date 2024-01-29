@@ -2715,13 +2715,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseFunctionExpression(context, canUseFullPath);
     }
 
-    if (context.time != null) {
-      return new TimestampOperand();
-    }
-
     if (context.fullPathInExpression() != null) {
       return new TimeSeriesOperand(
           parseFullPathInExpression(context.fullPathInExpression(), canUseFullPath));
+    }
+
+    if (context.time != null) {
+      return new TimestampOperand();
     }
 
     if (context.constant() != null && !context.constant().isEmpty()) {
