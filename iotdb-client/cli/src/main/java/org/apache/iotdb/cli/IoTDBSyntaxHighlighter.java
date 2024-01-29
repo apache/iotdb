@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cli;
 
-import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 
