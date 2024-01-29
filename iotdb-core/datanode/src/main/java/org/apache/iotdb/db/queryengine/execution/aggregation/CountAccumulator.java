@@ -39,12 +39,17 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
     int count = columns[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (bitMap != null && !bitMap.isMarked(i)) {
-        continue;
-      }
-      if (!columns[1].isNull(i)) {
-        countValue++;
+
+    if (!columns[1].mayHaveNull() && ((bitMap == null) || bitMap.isAllMarked())) {
+      countValue += count;
+    } else {
+      for (int i = 0; i < count; i++) {
+        if (bitMap != null && !bitMap.isMarked(i)) {
+          continue;
+        }
+        if (!columns[1].isNull(i)) {
+          countValue++;
+        }
       }
     }
   }
