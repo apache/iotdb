@@ -40,6 +40,8 @@ public enum PipeRequestType {
 
   TRANSFER_SNAPSHOT_PIECE((short) 10),
   TRANSFER_SNAPSHOT_SEAL((short) 11),
+
+  HANDSHAKE_V2((short) 12),
   ;
 
   private final short type;

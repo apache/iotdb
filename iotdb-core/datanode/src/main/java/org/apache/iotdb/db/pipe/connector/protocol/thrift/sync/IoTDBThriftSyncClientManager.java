@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -134,12 +137,28 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     }
 
     try {
-      final TPipeTransferResp resp =
+      HashMap<String, String> params = new HashMap<>();
+      params.put(
+          "timestampPrecision", CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      params.put("clusterId", PipeRuntimeAgent.getClusterId());
+
+      TPipeTransferResp resp =
           clientAndStatus
               .getLeft()
-              .pipeTransfer(
-                  PipeTransferHandshakeReq.toTPipeTransferReq(
-                      CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+              .pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Retry to handshake by PipeTransferHandshakeV1Req.
+        if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+          LOGGER.warn(
+              "Handshake error by PipeTransferHandshakeV2Req. Retry to handshake by PipeTransferHandshakeV1Req");
+          resp =
+              clientAndStatus
+                  .getLeft()
+                  .pipeTransfer(
+                      PipeTransferHandshakeV1Req.toTPipeTransferReq(
+                          CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+        }
+      }
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",

@@ -30,11 +30,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferHandshakeReq extends TPipeTransferReq {
+public class PipeTransferHandshakeV1Req extends TPipeTransferReq {
 
   private transient String timestampPrecision;
 
-  private PipeTransferHandshakeReq() {
+  private PipeTransferHandshakeV1Req() {
     // Empty constructor
   }
 
@@ -44,9 +44,9 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferHandshakeReq toTPipeTransferReq(String timestampPrecision)
+  public static PipeTransferHandshakeV1Req toTPipeTransferReq(String timestampPrecision)
       throws IOException {
-    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+    final PipeTransferHandshakeV1Req handshakeReq = new PipeTransferHandshakeV1Req();
 
     handshakeReq.timestampPrecision = timestampPrecision;
 
@@ -62,8 +62,8 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     return handshakeReq;
   }
 
-  public static PipeTransferHandshakeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+  public static PipeTransferHandshakeV1Req fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferHandshakeV1Req handshakeReq = new PipeTransferHandshakeV1Req();
 
     handshakeReq.timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
 
@@ -96,7 +96,7 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferHandshakeReq that = (PipeTransferHandshakeReq) obj;
+    PipeTransferHandshakeV1Req that = (PipeTransferHandshakeV1Req) obj;
     return timestampPrecision.equals(that.timestampPrecision)
         && version == that.version
         && type == that.type

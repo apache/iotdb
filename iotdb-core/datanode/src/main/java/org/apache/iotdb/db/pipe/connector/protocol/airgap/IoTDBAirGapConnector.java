@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -196,7 +196,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       if (!send(
           socket,
-          PipeTransferHandshakeReq.toTransferHandshakeBytes(
+          PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {

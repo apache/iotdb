@@ -31,11 +31,13 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -114,7 +116,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
           case HANDSHAKE:
-            return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
+            return handleTransferHandshakeV1(PipeTransferHandshakeV1Req.fromTPipeTransferReq(req));
+          case HANDSHAKE_V2:
+            return handleTransferHandshakeV2(PipeTransferHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
             return handleTransferTabletInsertNode(
                 PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req),
@@ -170,7 +174,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
   }
 
-  private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
+  private TPipeTransferResp handleTransferHandshakeV1(PipeTransferHandshakeV1Req req) {
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()
@@ -244,6 +248,26 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         receiverId.get(),
         newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
+      throws IOException {
+    if (req.getParams().get("clusterId").equals(PipeRuntimeAgent.getClusterId())) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "Unable to transfer data to IoTDB cluster %s itself",
+                  PipeRuntimeAgent.getClusterId()));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Handle the rest part by handleTransferHandshakeV1.
+    String timestampPrecision = req.getParams().get("timestampPrecision");
+    PipeTransferHandshakeV1Req handshakeV1Req =
+        PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision);
+    return handleTransferHandshakeV1(handshakeV1Req);
   }
 
   private TPipeTransferResp handleTransferTabletInsertNode(
