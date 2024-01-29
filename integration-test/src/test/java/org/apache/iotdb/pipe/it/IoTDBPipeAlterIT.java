@@ -91,6 +91,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
