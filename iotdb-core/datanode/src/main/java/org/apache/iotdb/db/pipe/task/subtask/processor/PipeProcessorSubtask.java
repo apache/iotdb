@@ -99,8 +99,9 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     }
 
     final Event event =
-        UserDefinedEnrichedEvent.maybeOf(
-            lastEvent != null ? lastEvent : inputEventSupplier.supply());
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
     if (
