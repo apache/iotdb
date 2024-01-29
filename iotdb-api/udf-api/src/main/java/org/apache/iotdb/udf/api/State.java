@@ -20,6 +20,9 @@
 package org.apache.iotdb.udf.api;
 
 public interface State {
+  /** Reset your state object to its initial state. */
+  void reset();
+
   /**
    * Serialize your state into byte array. The order of serialization must be consistent with
    * deserialization.
@@ -31,9 +34,6 @@ public interface State {
    * serialization.
    */
   void deserialize(byte[] bytes);
-
-  /** Reset your state object to its initial state. */
-  void reset();
 
   /** Destroy state. You may release previously binding resource in this method. */
   default void destroyState() {};
