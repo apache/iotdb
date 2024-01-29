@@ -58,6 +58,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       List<String> validPipeNames = Arrays.asList("Pipe_1", "null", "`33`", "`root`", "中文", "with");
+      List<String> expectedPipeNames = Arrays.asList("Pipe_1", "null", "33", "root", "中文", "with");
       for (String pipeName : validPipeNames) {
         try (Connection connection = senderEnv.getConnection();
             Statement statement = connection.createStatement()) {
@@ -77,7 +78,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualIT {
       }
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      for (String pipeName : validPipeNames) {
+      for (String pipeName : expectedPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
                 .anyMatch((o) -> o.id.equals(pipeName) && o.state.equals("RUNNING")));
