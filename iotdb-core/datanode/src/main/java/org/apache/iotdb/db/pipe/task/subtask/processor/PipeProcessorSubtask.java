@@ -129,7 +129,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
         }
       }
 
-      releaseLastEvent(false);
+      releaseLastEvent(true);
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
