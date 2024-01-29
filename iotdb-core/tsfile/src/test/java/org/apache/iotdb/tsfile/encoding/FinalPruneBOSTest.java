@@ -547,7 +547,7 @@ public class FinalPruneBOSTest {
             groupU[i] = new GroupU(numbersU, count, i);
         }
         for (int value : ts_block_delta) {
-            int alpha_i = getBitWith(value); // 0 1 2 3 4
+            int alpha_i = getBitWith(value);
             if (value == 0) {
                 alpha_count_list[0]++;
             } else if (value == pow(2, alpha_i - 1)) { // x_min+2^{alpha_i-1} = alpha_count_list[alpha_i]
@@ -604,7 +604,7 @@ public class FinalPruneBOSTest {
             int gap_gamma = (int) pow(2, gamma - 1);
             k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1}  gamma : 1 to alpha_size-1
 
-            GroupU cur_group_gamma = groupU[gamma];
+
             // x_max - 2^{gamma-1} =gamma_count_list[gamma]
             k2 += gamma_count_list[gamma];
             cur_bits = 0;
@@ -621,23 +621,15 @@ public class FinalPruneBOSTest {
 
             //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
 
-            int[] gamma_value_count_list = new int[gap_gamma];
+
+            GroupU cur_group_gamma = groupU[gamma];
             int gamma_value_count = cur_group_gamma.count;
             if (gamma_value_count == 0)
                 continue;
-            int[] number_gamma = cur_group_gamma.number;
 
-//            for (int i = 0; i < gamma_value_count; i++) {
-//                int value = number_gamma[i];
-//                gamma_value_count_list[k2_end - value]++;
-//            }
-
-//            GroupU cur_group_gamma = groupU[alpha_size];
             if (cur_group_gamma.if_count == 0) {
                 cur_group_gamma.setCount_array(k2_end);
             }
-//            int gamma_value_count = cur_group_gamma.count;
-            gamma_value_count_list = cur_group_gamma.count_array;
 
             int[] gamma_unique_count_array = cur_group_gamma.unique_count_array;
             int[] gamma_unique_number_array = cur_group_gamma.unique_number_array;
@@ -1034,7 +1026,7 @@ public class FinalPruneBOSTest {
                     cur_group_gamma.setCount_array(k2_end);
                 }
 //                    int gamma_value_count = cur_group_gamma.count;
-                gamma_value_count_list = cur_group_gamma.count_array;
+//                gamma_value_count_list = cur_group_gamma.count_array;
 
                 gamma_unique_count_array = cur_group_gamma.unique_count_array;
                 gamma_unique_number_array = cur_group_gamma.unique_number_array;
@@ -1050,9 +1042,6 @@ public class FinalPruneBOSTest {
                     int pow_2_lambda = (int) pow(2, lambda);
                     int pow_2_alpha = (int) pow(2, alpha);
                     int pow_2_gamma = (int) pow(2, gamma);
-
-
-
 
 
                     int cur_k2_start_of_lambda = cur_k2;
@@ -1160,7 +1149,7 @@ public class FinalPruneBOSTest {
 
                                     for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
                                         int x_u_i = gamma_unique_number_array[unique_i];//<=x_u_i_end
-                                        if(x_u_i>x_u_i_end){
+                                        if(x_u_i > x_u_i_end){
                                             break;
                                         }
                                         cur_cur_k2 += gamma_unique_count_array[unique_i];
@@ -1948,9 +1937,9 @@ public class FinalPruneBOSTest {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 1;
-//        for (int file_i = 4; file_i < 5; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 11; file_i < 12; file_i++) {
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
