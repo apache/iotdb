@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.compress.auto;
+package org.apache.iotdb.tsfile.compress.btrblocks;
 
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class AutoUncompressor implements IUnCompressor {
+public class BtrBlkUncompressor implements IUnCompressor {
 
   @Override
   public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
@@ -76,6 +76,6 @@ public class AutoUncompressor implements IUnCompressor {
 
   @Override
   public CompressionType getCodecName() {
-    return CompressionType.AUTO;
+    return CompressionType.BTRBLK;
   }
 }

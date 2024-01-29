@@ -41,6 +41,7 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.common.cache.Cache;
 import org.apache.ratis.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -309,6 +310,9 @@ public class Utils {
 
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
+    RaftServerConfigKeys.Log.setWriteBufferSize(
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSize() * 10));
     RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
         properties, config.getLeaderLogAppender().getSnapshotChunkSizeMax());
     RaftServerConfigKeys.Log.Appender.setInstallSnapshotEnabled(

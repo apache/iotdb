@@ -39,7 +39,8 @@ public enum CompressionType {
   /** LZMA2. */
   LZMA2(".lzma2", (byte) 9),
 
-  AUTO(".auto", (byte) 10);
+  AUTO(".auto", (byte) 10),
+  BTRBLK(".btrblk", (byte) 10);
 
   private final String extensionName;
   private final byte index;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.compress.auto.AutoUncompressor;
+import org.apache.iotdb.tsfile.compress.btrblocks.BtrBlkUncompressor;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
@@ -62,6 +63,8 @@ public interface IUnCompressor {
         return new LZMA2UnCompressor();
       case AUTO:
         return new AutoUncompressor();
+      case BTRBLK:
+        return new BtrBlkUncompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }

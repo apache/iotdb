@@ -30,7 +30,7 @@ public class Timer {
 
   private static final Logger logger = LoggerFactory.getLogger(Timer.class);
 
-  public static final boolean ENABLE_INSTRUMENTING = false;
+  public static final boolean ENABLE_INSTRUMENTING = true;
 
   private static final String COORDINATOR = "Coordinator";
   private static final String META_GROUP_MEMBER = "Meta group member";
@@ -450,9 +450,27 @@ public class Timer {
         1,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    ENCODE_RAW_SIZE(
+        LOG_DISPATCHER,
+        "encode raw size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    ENCODE_AFTER_SIZE(
+        LOG_DISPATCHER,
+        "encode after size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     PERSISTENCE_COMPRESS_TIME(
         LOG_DISPATCHER,
         "persistence compression time",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    SERIALIZE_ENCODE_TIME(
+        LOG_DISPATCHER,
+        "serialize encode time",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -632,6 +634,20 @@ public class QueryDataSetUtils {
     return times;
   }
 
+  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size, TSEncoding encoding) {
+    Decoder decoder = Decoder.getDecoderByType(encoding, TSDataType.INT64);
+    int encodedSize = buffer.getInt();
+    ByteBuffer encodedBuffer = buffer.slice();
+    encodedBuffer.limit(encodedBuffer.position() + encodedSize);
+    buffer.position(buffer.position() + encodedSize);
+
+    long[] times = new long[size];
+    for (int i = 0; i < size; i++) {
+      times[i] = decoder.readLong(encodedBuffer);
+    }
+    return times;
+  }
+
   public static long[] readTimesFromStream(DataInputStream stream, int size) throws IOException {
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {
@@ -710,6 +726,10 @@ public class QueryDataSetUtils {
     return readTabletValuesFromBuffer(buffer, dataTypes, columns, size);
   }
 
+  public static Object[] readTabletValuesFromBuffer(
+      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+    return readTabletValuesFromBuffer(buffer, types, columns, size, null);
+  }
   /**
    * Deserialize Tablet Values From Buffer
    *
@@ -721,7 +741,7 @@ public class QueryDataSetUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+      ByteBuffer buffer, TSDataType[] types, int columns, int size, TSEncoding encoding) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
       switch (types[i]) {
@@ -755,10 +775,23 @@ public class QueryDataSetUtils {
           break;
         case DOUBLE:
           double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
+          if (encoding == null) {
+            for (int index = 0; index < size; index++) {
+              doubleValues[index] = buffer.getDouble();
+            }
+            values[i] = doubleValues;
+          } else {
+            Decoder decoder = Decoder.getDecoderByType(encoding, TSDataType.DOUBLE);
+            int encodedSize = buffer.getInt();
+            ByteBuffer encodedBuffer = buffer.slice();
+            encodedBuffer.limit(encodedBuffer.position() + encodedSize);
+            buffer.position(buffer.position() + encodedSize);
+
+            for (int index = 0; index < size; index++) {
+              doubleValues[index] = decoder.readDouble(encodedBuffer);
+            }
+            values[i] = doubleValues;
           }
-          values[i] = doubleValues;
           break;
         case TEXT:
           Binary[] binaryValues = new Binary[size];
