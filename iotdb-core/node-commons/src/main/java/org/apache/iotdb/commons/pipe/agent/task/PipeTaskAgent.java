@@ -126,7 +126,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+  private TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
       PipeMeta pipeMetaFromCoordinator) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
@@ -299,7 +299,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+  private TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
       return null;

@@ -181,6 +181,8 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
+                                      .setCoreClientNumForEachNode(
+                                          CONF.getCoreClientNumForEachNode())
                                       .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                                       .build())
                               .setImpl(

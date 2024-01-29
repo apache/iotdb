@@ -59,7 +59,7 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
-  private int acquiredLockNum;
+  private boolean acquiredLock;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -157,12 +157,12 @@ public class MPPQueryContext {
     return sql;
   }
 
-  public int getAcquiredLockNum() {
-    return acquiredLockNum;
+  public boolean getAcquiredLock() {
+    return acquiredLock;
   }
 
-  public void addAcquiredLockNum() {
-    acquiredLockNum++;
+  public void setAcquiredLock(boolean acuqired) {
+    acquiredLock = acuqired;
   }
 
   public void generateGlobalTimeFilter(Analysis analysis) {

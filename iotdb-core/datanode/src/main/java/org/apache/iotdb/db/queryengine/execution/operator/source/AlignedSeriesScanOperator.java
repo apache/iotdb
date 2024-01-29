@@ -123,9 +123,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   public long calculateMaxPeekMemory() {
     return Math.max(
         maxReturnSize,
-        (1L + valueColumnCount)
-            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
-            * 3L);
+        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override

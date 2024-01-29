@@ -40,10 +40,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -62,7 +61,7 @@ public class CheckpointManager implements AutoCloseable {
   private final Lock infoLock = new ReentrantLock();
   // region these variables should be protected by infoLock
   // memTable id -> memTable info
-  private final Map<Long, MemTableInfo> memTableId2Info = new ConcurrentHashMap<>();
+  private final Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
   // cache the biggest byte buffer to serialize checkpoint
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
@@ -89,7 +88,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  public List<MemTableInfo> activeOrPinnedMemTables() {
+  public List<MemTableInfo> snapshotMemTableInfos() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());
@@ -122,7 +121,7 @@ public class CheckpointManager implements AutoCloseable {
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
@@ -316,13 +315,20 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
-  /** Get MemTableInfo of oldest unpinned MemTable, whose first version id is smallest. */
-  public MemTableInfo getOldestUnpinnedMemTableInfo() {
+  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest. */
+  public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
-    return activeOrPinnedMemTables().stream()
-        .filter(memTableInfo -> !memTableInfo.isPinned())
-        .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
-        .orElse(null);
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    if (memTableInfos.isEmpty()) {
+      return null;
+    }
+    MemTableInfo oldestMemTableInfo = memTableInfos.get(0);
+    for (MemTableInfo memTableInfo : memTableInfos) {
+      if (oldestMemTableInfo.getFirstFileVersionId() > memTableInfo.getFirstFileVersionId()) {
+        oldestMemTableInfo = memTableInfo;
+      }
+    }
+    return oldestMemTableInfo;
   }
 
   /**
@@ -331,7 +337,7 @@ public class CheckpointManager implements AutoCloseable {
    * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
   public long getFirstValidWALVersionId() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -339,28 +345,20 @@ public class CheckpointManager implements AutoCloseable {
     return firstValidVersionId;
   }
 
-  /** Update wal disk cost of active memTables. */
-  public void updateCostOfActiveMemTables(Map<Long, Long> memTableId2WalDiskUsage) {
-    for (Map.Entry<Long, Long> memTableWalUsage : memTableId2WalDiskUsage.entrySet()) {
-      memTableId2Info.computeIfPresent(
-          memTableWalUsage.getKey(),
-          (k, v) -> {
-            v.addWalDiskUsage(memTableWalUsage.getValue());
-            return v;
-          });
-    }
-  }
-
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     long totalCost = 0;
     for (MemTableInfo memTableInfo : memTableInfos) {
       // flushed memTables are not active
       if (memTableInfo.isFlushed()) {
         continue;
       }
-      totalCost += memTableInfo.getWalDiskUsage();
+      if (config.isEnableMemControl()) {
+        totalCost += memTableInfo.getMemTable().getTVListsRamCost();
+      } else {
+        totalCost++;
+      }
     }
 
     return totalCost;

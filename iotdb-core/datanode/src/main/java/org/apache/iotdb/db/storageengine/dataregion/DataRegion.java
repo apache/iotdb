@@ -310,7 +310,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.error("create database system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    lastFlushTimeMap = new HashLastFlushTimeMap();
+    lastFlushTimeMap = new HashLastFlushTimeMap(tsFileManager);
 
     // recover tsfiles unless consensus protocol is ratis and storage storageengine is not ready
     if (config.isClusterMode()
@@ -406,7 +406,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
+              databaseName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
       }
@@ -612,7 +612,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void initCompactionSchedule() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
+        && !config.isEnableCrossSpaceCompaction()
+        && !config.isEnableInsertionCrossSpaceCompaction()) {
       return;
     }
     timedCompactionScheduleTask =
@@ -1680,7 +1681,7 @@ public class DataRegion implements IDataRegionForQuery {
           new ArrayList<>(workSequenceTsFileProcessors.values());
       long timeLowerBound = System.currentTimeMillis() - config.getSeqMemtableFlushInterval();
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
-        if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
               "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
@@ -1706,7 +1707,7 @@ public class DataRegion implements IDataRegionForQuery {
       long timeLowerBound = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
 
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
-        if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
               "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
@@ -2436,7 +2437,7 @@ public class DataRegion implements IDataRegionForQuery {
     timePartitions.sort(Comparator.reverseOrder());
 
     CompactionScheduleSummary summary = new CompactionScheduleSummary();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       trySubmitCount += executeInsertionCompaction(timePartitions);
       summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
@@ -2444,7 +2445,7 @@ public class DataRegion implements IDataRegionForQuery {
       // the name of this variable is trySubmitCount, because the task submitted to the queue could
       // be
       // evicted due to the low priority of the task
-      CompactionScheduler.sharedLockCompactionSelection();
+      CompactionScheduler.lockCompactionSelection();
       try {
         for (long timePartition : timePartitions) {
           trySubmitCount +=
@@ -2453,7 +2454,7 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (Throwable e) {
         logger.error("Meet error in compaction schedule.", e);
       } finally {
-        CompactionScheduler.sharedUnlockCompactionSelection();
+        CompactionScheduler.unlockCompactionSelection();
       }
     }
     if (summary.hasSubmitTask()) {
@@ -2464,7 +2465,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
-    CompactionScheduler.sharedLockCompactionSelection();
+    CompactionScheduler.lockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
@@ -2484,7 +2485,7 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     } finally {
-      CompactionScheduler.sharedUnlockCompactionSelection();
+      CompactionScheduler.unlockCompactionSelection();
     }
     return trySubmitCount;
   }
@@ -2534,11 +2535,9 @@ public class DataRegion implements IDataRegionForQuery {
   /** merge file under this database processor */
   public int compact() {
     writeLock("merge");
-    CompactionScheduler.exclusiveLockCompactionSelection();
     try {
       return executeCompaction();
     } finally {
-      CompactionScheduler.exclusiveUnlockCompactionSelection();
       writeUnlock();
     }
   }
@@ -2732,7 +2731,7 @@ public class DataRegion implements IDataRegionForQuery {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  protected void updateLastFlushTime(TsFileResource newTsFileResource) {
+  private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(endTime);
@@ -3170,8 +3169,7 @@ public class DataRegion implements IDataRegionForQuery {
         // init map
         timePartitionIds[i] = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
-        if (config.isEnableSeparateData()
-            && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i])) {
+        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i])) {
           TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
@@ -3399,9 +3397,13 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /* Be careful, the thread that calls this method may not hold the write lock!!*/
-  public void degradeFlushTimeMap(long timePartitionId) {
-    lastFlushTimeMap.degradeLastFlushTime(timePartitionId);
+  public void releaseFlushTimeMap(long timePartitionId) {
+    writeLock("releaseFlushTimeMap");
+    try {
+      lastFlushTimeMap.removePartition(timePartitionId);
+    } finally {
+      writeUnlock();
+    }
   }
 
   public long getMemCost() {

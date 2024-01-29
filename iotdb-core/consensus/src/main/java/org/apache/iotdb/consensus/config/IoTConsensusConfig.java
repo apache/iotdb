@@ -80,6 +80,7 @@ public class IoTConsensusConfig {
 
     private final boolean printLogWhenThriftClientEncounterException;
     private final int thriftMaxFrameSize;
+    private final int coreClientNumForEachNode;
     private final int maxClientNumForEachNode;
 
     private RPC(
@@ -92,6 +93,7 @@ public class IoTConsensusConfig {
         int connectionTimeoutInMs,
         boolean printLogWhenThriftClientEncounterException,
         int thriftMaxFrameSize,
+        int coreClientNumForEachNode,
         int maxClientNumForEachNode) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
@@ -102,6 +104,7 @@ public class IoTConsensusConfig {
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
@@ -141,6 +144,10 @@ public class IoTConsensusConfig {
       return thriftMaxFrameSize;
     }
 
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
     public int getMaxClientNumForEachNode() {
       return maxClientNumForEachNode;
     }
@@ -161,6 +168,9 @@ public class IoTConsensusConfig {
 
       private boolean printLogWhenThriftClientEncounterException = true;
       private int thriftMaxFrameSize = 536870912;
+
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
@@ -211,6 +221,11 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public RPC.Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
+        return this;
+      }
+
       public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
         this.maxClientNumForEachNode = maxClientNumForEachNode;
         return this;
@@ -227,6 +242,7 @@ public class IoTConsensusConfig {
             connectionTimeoutInMs,
             printLogWhenThriftClientEncounterException,
             thriftMaxFrameSize,
+            coreClientNumForEachNode,
             maxClientNumForEachNode);
       }
     }

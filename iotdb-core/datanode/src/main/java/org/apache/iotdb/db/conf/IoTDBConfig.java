@@ -390,25 +390,25 @@ public class IoTDBConfig {
   private boolean enableTimedFlushSeqMemtable = true;
 
   /**
-   * If a memTable's last update time is older than current time minus this, the memtable will be
+   * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 10 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
-  private long seqMemtableFlushCheckInterval = 30 * 1000L;
+  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
   private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
-   * If a memTable's last update time is older than current time minus this, the memtable will be
+   * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 10 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 30 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
@@ -424,6 +424,9 @@ public class IoTDBConfig {
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
+
+  /** Insert the non overlapped unsequence files into sequence space */
+  private boolean enableInsertionCrossSpaceCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -933,6 +936,12 @@ public class IoTDBConfig {
           : 1;
 
   /**
+   * The maximum number of clients that can be idle for a node in a clientManager. When the number
+   * of idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
    * The maximum number of clients that can be allocated for a node in a clientManager. When the
    * number of the client to a single node exceeds this number, the thread for applying for a client
    * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
@@ -1086,13 +1095,12 @@ public class IoTDBConfig {
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
+
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
-      0L; // 0 means that the decision will be adaptive based on the number of sequences
+      0; // 0 means that the decision will be adaptive based on the number of sequences
 
-  private long loadMemoryAllocateRetryIntervalMs = 1000L;
+  private long loadMemoryAllocateRetryIntervalMs = 1000;
   private int loadMemoryAllocateMaxRetries = 5;
-
-  private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -2692,6 +2700,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableInsertionCrossSpaceCompaction() {
+    return enableInsertionCrossSpaceCompaction;
+  }
+
+  public void setEnableInsertionCrossSpaceCompaction(boolean enableInsertionCrossSpaceCompaction) {
+    this.enableInsertionCrossSpaceCompaction = enableInsertionCrossSpaceCompaction;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -3035,6 +3051,14 @@ public class IoTDBConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
+  }
+
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
+  }
+
+  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   public int getSelectorNumOfClientManager() {
@@ -3749,15 +3773,6 @@ public class IoTDBConfig {
 
   public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
-  }
-
-  public long getLoadCleanupTaskExecutionDelayTimeSeconds() {
-    return loadCleanupTaskExecutionDelayTimeSeconds;
-  }
-
-  public void setLoadCleanupTaskExecutionDelayTimeSeconds(
-      long loadCleanupTaskExecutionDelayTimeSeconds) {
-    this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

@@ -792,11 +792,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus repairData() {
-    return configManager.repairData();
-  }
-
-  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }
@@ -840,7 +835,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
-    resp.setTimestamp(heartbeatReq.getTimestamp());
+    resp.setTimestamp(System.currentTimeMillis());
     return resp;
   }
 

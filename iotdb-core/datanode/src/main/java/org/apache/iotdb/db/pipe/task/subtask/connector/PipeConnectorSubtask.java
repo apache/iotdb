@@ -198,19 +198,19 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
     return connectorIndex;
   }
 
-  public int getTsFileInsertionEventCount() {
+  public Integer getTsFileInsertionEventCount() {
     return inputPendingQueue.getTsFileInsertionEventCount();
   }
 
-  public int getTabletInsertionEventCount() {
+  public Integer getTabletInsertionEventCount() {
     return inputPendingQueue.getTabletInsertionEventCount();
   }
 
-  public int getPipeHeartbeatEventCount() {
+  public Integer getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 
-  public int getAsyncConnectorRetryEventQueueSize() {
+  public Integer getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBThriftAsyncConnector
         ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;

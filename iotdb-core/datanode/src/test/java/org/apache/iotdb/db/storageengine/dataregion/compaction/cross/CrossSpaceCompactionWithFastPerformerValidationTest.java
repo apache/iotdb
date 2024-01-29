@@ -2106,7 +2106,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG + "-" + "0");
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
-    tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0);
+    tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
     targetResources.forEach(x -> x.setStatusForTest(TsFileResourceStatus.NORMAL));
 
@@ -2226,7 +2226,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CompactionUtils.combineModsInCrossCompaction(
         sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources);
     tsFileManager.replace(
-        sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources, 0);
+        sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources, 0, true);
 
     // Suppose the read lock of the source file is occupied by other threads, causing the first task
     // to get stuck.

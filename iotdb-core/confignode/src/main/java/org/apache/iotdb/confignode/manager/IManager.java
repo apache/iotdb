@@ -458,9 +458,6 @@ public interface IManager {
   /** Clear cache on all DataNodes. */
   TSStatus clearCache();
 
-  /** Check and repair unsorted tsfile by compaction. */
-  TSStatus repairData();
-
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();
 

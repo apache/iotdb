@@ -224,12 +224,10 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  3. The number of pinned memtables has reached the dangerous threshold.
     //  4. The number of tsfile events in the pending queue has exceeded the limit.
-    //  5. The number of linked tsfiles has reached the dangerous threshold.
     return !isStartedToSupply
         || mayWalSizeReachThrottleThreshold()
         || mayMemTablePinnedCountReachDangerousThreshold()
-        || isTsFileEventCountInQueueExceededLimit()
-        || mayTsFileLinkedCountReachDangerousThreshold();
+        || isTsFileEventCountInQueueExceededLimit();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
@@ -247,11 +245,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             + processorEventCollectorQueueTsFileSize.get()
             + connectorInputPendingQueueTsFileSize.get()
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
-  }
-
-  private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeResourceManager.tsfile().getLinkedTsfileCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
   public void informProcessorEventCollectorQueueTsFileSize(int queueSize) {

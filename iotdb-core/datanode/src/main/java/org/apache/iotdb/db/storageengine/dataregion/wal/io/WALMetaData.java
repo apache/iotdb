@@ -22,14 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.utils.SerializedSize;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Metadata exists at the end of each wal file, including each entry's size, search index of first
@@ -43,25 +38,21 @@ public class WALMetaData implements SerializedSize {
   private long firstSearchIndex;
   // each entry's size
   private final List<Integer> buffersSize;
-  // memTable ids of this wal file
-  private final Set<Long> memTablesId;
 
   public WALMetaData() {
-    this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
+    this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>());
   }
 
-  public WALMetaData(long firstSearchIndex, List<Integer> buffersSize, Set<Long> memTablesId) {
+  public WALMetaData(long firstSearchIndex, List<Integer> buffersSize) {
     this.firstSearchIndex = firstSearchIndex;
     this.buffersSize = buffersSize;
-    this.memTablesId = memTablesId;
   }
 
-  public void add(int size, long searchIndex, long memTableId) {
+  public void add(int size, long searchIndex) {
     if (buffersSize.isEmpty()) {
       firstSearchIndex = searchIndex;
     }
     buffersSize.add(size);
-    memTablesId.add(memTableId);
   }
 
   public void addAll(WALMetaData metaData) {
@@ -69,14 +60,11 @@ public class WALMetaData implements SerializedSize {
       firstSearchIndex = metaData.getFirstSearchIndex();
     }
     buffersSize.addAll(metaData.getBuffersSize());
-    memTablesId.addAll(metaData.getMemTablesId());
   }
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE
-        + buffersSize.size() * Integer.BYTES
-        + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
+    return FIXED_SERIALIZED_SIZE + buffersSize.size() * Integer.BYTES;
   }
 
   public void serialize(ByteBuffer buffer) {
@@ -84,12 +72,6 @@ public class WALMetaData implements SerializedSize {
     buffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
       buffer.putInt(size);
-    }
-    if (!memTablesId.isEmpty()) {
-      buffer.putInt(memTablesId.size());
-      for (long memTableId : memTablesId) {
-        buffer.putLong(memTableId);
-      }
     }
   }
 
@@ -100,62 +82,14 @@ public class WALMetaData implements SerializedSize {
     for (int i = 0; i < entriesNum; ++i) {
       buffersSize.add(buffer.getInt());
     }
-    Set<Long> memTablesId = new HashSet<>();
-    if (buffer.hasRemaining()) {
-      int memTablesIdNum = buffer.getInt();
-      for (int i = 0; i < memTablesIdNum; ++i) {
-        memTablesId.add(buffer.getLong());
-      }
-    }
-    return new WALMetaData(firstSearchIndex, buffersSize, memTablesId);
+    return new WALMetaData(firstSearchIndex, buffersSize);
   }
 
   public List<Integer> getBuffersSize() {
     return buffersSize;
   }
 
-  public Set<Long> getMemTablesId() {
-    return memTablesId;
-  }
-
   public long getFirstSearchIndex() {
     return firstSearchIndex;
-  }
-
-  public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic(channel).equals(WALWriter.MAGIC_STRING)) {
-      throw new IOException(String.format("Broken wal file %s", logFile));
-    }
-    // load metadata size
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
-    channel.read(metadataSizeBuf, position);
-    metadataSizeBuf.flip();
-    // load metadata
-    int metadataSize = metadataSizeBuf.getInt();
-    ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-    channel.read(metadataBuf, position - metadataSize);
-    metadataBuf.flip();
-    WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
-    if (metaData.memTablesId.isEmpty()) {
-      int offset = Byte.BYTES;
-      for (int size : metaData.buffersSize) {
-        channel.position(offset);
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        channel.read(buffer);
-        buffer.clear();
-        metaData.memTablesId.add(buffer.getLong());
-        offset += size;
-      }
-    }
-    return metaData;
-  }
-
-  private static String readTailMagic(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
-    magicStringBytes.flip();
-    return new String(magicStringBytes.array());
   }
 }

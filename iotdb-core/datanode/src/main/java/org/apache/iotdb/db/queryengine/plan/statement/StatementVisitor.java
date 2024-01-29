@@ -105,7 +105,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -377,10 +376,6 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
     return visitStatement(clearCacheStatement, context);
-  }
-
-  public R visitRepairData(RepairDataStatement repairDataStatement, C context) {
-    return visitStatement(repairDataStatement, context);
   }
 
   public R visitLoadConfiguration(

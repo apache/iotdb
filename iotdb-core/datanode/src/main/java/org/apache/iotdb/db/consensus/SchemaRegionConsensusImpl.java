@@ -128,6 +128,7 @@ public class SchemaRegionConsensusImpl {
                                         CONF.getDataRatisConsensusInitialSleepTimeMs())
                                     .setClientRetryMaxSleepTimeMs(
                                         CONF.getDataRatisConsensusMaxSleepTimeMs())
+                                    .setCoreClientNumForEachNode(CONF.getCoreClientNumForEachNode())
                                     .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                                     .build())
                             .setImpl(
