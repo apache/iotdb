@@ -1,5 +1,7 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import java.util.Arrays;
+
 import static java.lang.Math.pow;
 
 public class GroupL {
@@ -11,15 +13,26 @@ public class GroupL {
     public int[] unique_number_array;
     public int[] unique_count_array;
     public int unique_number;
+    public int mask;
+    public int left_shift;
 
+    public int getCount(long long1) {
+        return ((int) (long1 & this.mask));
+    }
+    public int getUniqueValue(long long1) {
+        return ((int) ((long1) >> this.left_shift));
+    }
+
+    public static int getBitWith(int num) {
+        if (num == 0) return 1;
+        else return 32 - Integer.numberOfLeadingZeros(num);
+    }
     public GroupL(int[] number, int count, int i) {
         this.number = number;
         this.count = count;
         this.if_count = 0;
         this.range = (int) pow(2,i-1);
         this.count_array = new int[range];
-        this.unique_count_array = new int[range];
-        this.unique_number_array = new int[range];
     }
 
     public int[] getNumber() {
@@ -41,18 +54,29 @@ public class GroupL {
     }
 
     public void setCount_array(int k1_start){
+        this.left_shift = getBitWith(this.count);
+        this.mask =  (1 << left_shift) - 1; //block_size*2-1; //
         this.if_count = 1;
+        int[] value_list = new int[this.count];
+        int unique_value_count = 0;
         int[] number_gamma = this.number;
         for (int i = 0; i < this.count; i++) {
             int value = number_gamma[i];
-            count_array[value - k1_start]++;
+            count_array[value-k1_start]++;
+            value_list[unique_value_count] = value;
+            unique_value_count ++;
         }
-        for(int i=0;i<range;i++){
-            if(count_array[i]!=0){
-                unique_count_array[unique_number] = count_array[i];
-                unique_number_array[unique_number]= i;
-                unique_number++;
-            }
+        this.unique_count_array = new int[unique_value_count];
+        this.unique_number_array = new int[unique_value_count];
+        long[] sorted_value_list = new long[unique_value_count];
+        for(int i=0;i<unique_value_count;i++){
+            int value = value_list[i];
+            sorted_value_list[i] = (((long) (value-k1_start)) << left_shift) + count_array[value-k1_start];
+        }
+        Arrays.sort(sorted_value_list);
+        for(int i=0;i<unique_value_count;i++){
+            unique_count_array[i] = getCount(sorted_value_list[i]);
+            unique_number_array[i]= getUniqueValue(sorted_value_list[i]);
         }
     }
 
