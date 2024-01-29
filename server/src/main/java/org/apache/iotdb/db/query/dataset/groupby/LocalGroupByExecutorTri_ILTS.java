@@ -195,6 +195,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           if (num == 0) { // 是第一次迭代的话，就使用右边桶的平均点
             // ========计算右边桶的平均点========
             List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b + 1);
+            if (chunkSuit4TriList == null) {
+              throw new IOException("Empty bucket!");
+            }
             long rightStartTime = startTime + (b + 1) * interval;
             long rightEndTime = startTime + (b + 2) * interval;
             int cnt = 0;
@@ -319,8 +322,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             //   如果这个上限是maxDistance，在“用元数据点/紧致下限更新maxDistance&select_t&select_v”
             //   步骤中已经赋值了这个边点，所以这里跳过没关系）
             if (chunkSuit4Tri.distance_loose_upper_bound <= maxDistance) {
-              //              System.out.println("skip" + b + "," +
-              // chunkSuit4Tri.chunkMetadata.getStartTime());
+              //                            System.out.println("skip" + b + "," +
+              //               chunkSuit4Tri.chunkMetadata.getStartTime());
               continue;
             }
           }

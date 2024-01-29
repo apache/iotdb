@@ -175,6 +175,9 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
       } else {
         // 计算右边桶的平均点
         List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b + 1);
+        if (chunkSuit4TriList == null) {
+          throw new IOException("Empty bucket!");
+        }
         long rightStartTime = startTime + (b + 1) * interval;
         long rightEndTime = startTime + (b + 2) * interval;
         int cnt = 0;
