@@ -88,6 +88,17 @@
                     </filesets>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <configuration>
+                    <consoleOutput>true</consoleOutput>
+                    <excludes combine.children="append">
+                        <exclude>**/SqlLexer.java</exclude>
+                        <exclude>**/SqlLexer.interp</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
