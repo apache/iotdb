@@ -232,10 +232,6 @@ public abstract class EnrichedEvent implements Event {
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
 
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
-
   public abstract boolean isGeneratedByPipe();
 
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
