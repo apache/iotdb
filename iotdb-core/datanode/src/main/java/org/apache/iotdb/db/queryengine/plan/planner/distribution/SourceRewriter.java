@@ -1117,6 +1117,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (Expression exp : originalDescriptor.getInputExpressions()) {
         columnNameToExpression.put(exp.getExpressionString(), Collections.singletonList(exp));
       }
+      // for example, max_by(root.*.x1, root.*.y1), we have "root.*.x1, root.*.y1" =>
+      // [root.*.x1(TimeSeriesOperand), root.*.y1(TimeSeriesOperand)]
       columnNameToExpression.put(
           originalDescriptor.getParametersString(), originalDescriptor.getOutputExpressions());
     }
