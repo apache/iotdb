@@ -32,7 +32,7 @@ import java.util.Objects;
 
 public class SetTTLPlan extends ConfigPhysicalPlan {
 
-  private String[] databasePathPattern;
+  private String[] pathPattern;
 
   private long TTL;
 
@@ -40,22 +40,22 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetTTL);
   }
 
-  public SetTTLPlan(List<String> databasePathPattern, long TTL) {
+  public SetTTLPlan(List<String> pathPattern, long TTL) {
     this();
-    this.databasePathPattern = databasePathPattern.toArray(new String[0]);
+    this.pathPattern = pathPattern.toArray(new String[0]);
     this.TTL = TTL;
   }
 
-  public String[] getDatabasePathPattern() {
-    return databasePathPattern;
+  public String[] getPathPattern() {
+    return pathPattern;
   }
 
   public long getTTL() {
     return TTL;
   }
 
-  public void setDatabasePathPattern(String[] databasePathPattern) {
-    this.databasePathPattern = databasePathPattern;
+  public void setPathPattern(String[] pathPattern) {
+    this.pathPattern = pathPattern;
   }
 
   public void setTTL(long TTL) {
@@ -66,8 +66,8 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(databasePathPattern.length);
-    for (String node : databasePathPattern) {
+    stream.writeInt(pathPattern.length);
+    for (String node : pathPattern) {
       BasicStructureSerDeUtil.write(node, stream);
     }
     stream.writeLong(TTL);
@@ -75,11 +75,10 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-
     int length = buffer.getInt();
-    databasePathPattern = new String[length];
+    pathPattern = new String[length];
     for (int i = 0; i < length; i++) {
-      databasePathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+      pathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
     }
     TTL = buffer.getLong();
   }
@@ -93,12 +92,11 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
       return false;
     }
     SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL
-        && Arrays.equals(this.databasePathPattern, setTTLPlan.databasePathPattern);
+    return TTL == setTTLPlan.TTL && Arrays.equals(this.pathPattern, setTTLPlan.pathPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(Arrays.hashCode(databasePathPattern), TTL);
+    return Objects.hash(Arrays.hashCode(pathPattern), TTL);
   }
 }

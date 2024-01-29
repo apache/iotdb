@@ -38,7 +38,7 @@ public class TTLInfo implements SnapshotProcessor {
   public TSStatus setTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(plan.getDatabasePathPattern(), plan.getTTL());
+      ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
     } finally {
       lock.writeLock().unlock();
     }
@@ -48,7 +48,7 @@ public class TTLInfo implements SnapshotProcessor {
   public TSStatus unsetTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(plan.getDatabasePathPattern());
+      ttlCache.unsetTTL(plan.getPathPattern());
     } finally {
       lock.writeLock().unlock();
     }
@@ -66,6 +66,15 @@ public class TTLInfo implements SnapshotProcessor {
       lock.readLock().unlock();
     }
     return resp;
+  }
+
+  public int getTTLCount() {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getTtlCount();
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override

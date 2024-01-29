@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -127,27 +128,32 @@ public class SettleCompactionTask extends AbstractCompactionTask {
       try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
         compactionLogger.logSourceFiles(allSourceFiles);
         compactionLogger.logTargetFiles(targetFiles);
-        compactionLogger.logEmptyTargetFiles(allDeletedFiles);
         compactionLogger.force();
 
         settleWithAllDeletedFile();
         settleWithPartialDeletedFile(compactionLogger);
+
+        CompactionMetrics.getInstance().recordSummaryInfo(summary);
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
+
+        LOGGER.info(
+            "{}-{} [Compaction] SettleCompaction task finishes successfully, "
+                + "time cost is {} s, "
+                + "compaction speed is {} MB/s, {}",
+            storageGroupName,
+            dataRegionId,
+            String.format("%.2f", costTime),
+            String.format(
+                "%.2f",
+                (allDeletedFileSize + partialDeletedFileSize) / 1024.0d / 1024.0d / costTime),
+            summary);
+      } finally {
+        Files.deleteIfExists(logFile.toPath());
+        for (TsFileResource resource : targetFiles) {
+          // may fail to set status if the status of current resource is DELETED
+          resource.setStatus(TsFileResourceStatus.NORMAL);
+        }
       }
-
-      CompactionMetrics.getInstance().recordSummaryInfo(summary);
-      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
-
-      LOGGER.info(
-          "{}-{} [Compaction] SettleCompaction task finishes successfully, "
-              + "time cost is {} s, "
-              + "compaction speed is {} MB/s, {}",
-          storageGroupName,
-          dataRegionId,
-          String.format("%.2f", costTime),
-          String.format(
-              "%.2f", (allDeletedFileSize + partialDeletedFileSize) / 1024.0d / 1024.0d / costTime),
-          summary);
-
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);

@@ -324,7 +324,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus result = new TSStatus();
     databaseReadWriteLock.writeLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(plan.getDatabasePathPattern());
+      PartialPath patternPath = new PartialPath(plan.getPathPattern());
       List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
       if (!matchedPaths.isEmpty()) {
         for (PartialPath path : matchedPaths) {

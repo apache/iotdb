@@ -96,6 +96,9 @@ public class CommonConfig {
    */
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
+  /** The threshold for the number of TTL stored in the system, the default is 1000. */
+  private int TTLCount = 3;
+
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(3);
 
@@ -347,6 +350,14 @@ public class CommonConfig {
 
   public void setTierTTLInMs(long[] tierTTLInMs) {
     this.tierTTLInMs = tierTTLInMs;
+  }
+
+  public int getTTLCount() {
+    return TTLCount;
+  }
+
+  public void setTTLCount(int TTLCount) {
+    this.TTLCount = TTLCount;
   }
 
   public int getConnectionTimeoutInMS() {

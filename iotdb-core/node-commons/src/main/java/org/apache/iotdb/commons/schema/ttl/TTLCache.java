@@ -5,6 +5,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.concurrent.NotThreadSafe;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -13,26 +15,29 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+@NotThreadSafe
 public class TTLCache {
 
   private final CacheNode ttlCacheTree;
   public static final long NULL_TTL = -1;
 
-  private static final String SEPARATOR = ",";
-
-  private static final String STRING_ENCODING = "utf-8";
+  private int ttlCount;
 
   public TTLCache() {
     ttlCacheTree = new CacheNode(IoTDBConstant.PATH_ROOT);
     ttlCacheTree.addChild(
         IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    ttlCount = 1;
   }
 
   /**
    * Put ttl into cache tree.
    *
    * @param nodes should be prefix path or specific device path without wildcard
+   * @return has added new node with ttl or not. Returns true only if the original node does not
+   *     exist or the node's ttl is NULL_TTL. If the original node exists and ttl is not NULL_TTL,
+   *     return false.
    */
   public void setTTL(String[] nodes, long ttl) {
     if (nodes.length < 2) {
@@ -47,9 +52,21 @@ public class TTLCache {
       }
       parent = child;
     }
+    if (parent.ttl == NULL_TTL) {
+      ttlCount++;
+    }
     parent.ttl = ttl;
   }
 
+  /**
+   * If the path to be removed is internal node, then just reset its ttl. Else, find the sub path
+   * and remove it. Eg: The original ttl cache tree is as following: root / \ ** db / \ a b \ device
+   * <br>
+   * If unset ttl to root.db.b, then just reset node b ttl to NULL_TTL <br>
+   * If unset ttl to root.db.b.device, then remove sub path d.device
+   *
+   * @param nodes path to be removed
+   */
   public void unsetTTL(String[] nodes) {
     if (nodes.length < 2) {
       return;
@@ -64,19 +81,24 @@ public class TTLCache {
     }
     CacheNode parent = ttlCacheTree;
     int index = 0;
-    boolean nextToBeRemoved;
-    CacheNode targetNode = null;
+    boolean flag;
+    CacheNode parentOfSubPathToBeRemoved = null;
     for (int i = 1; i < nodes.length; i++) {
-      nextToBeRemoved = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
+      flag = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
       CacheNode child = parent.getChild(nodes[i]);
       if (child == null) {
+        // there is no matching path on ttl cache tree
         return;
       }
-      if (nextToBeRemoved) {
-        targetNode = parent;
+      if (flag) {
+        parentOfSubPathToBeRemoved = parent;
         index = i;
       }
       parent = child;
+    }
+    // currently, parent is the leaf node of the path to be removed
+    if (parent.ttl != NULL_TTL) {
+      ttlCount--;
     }
 
     if (!parent.getChildren().isEmpty()) {
@@ -86,8 +108,8 @@ public class TTLCache {
     }
 
     // node to be removed is leaf node, then remove corresponding node of this path from cache tree
-    if (targetNode != null) {
-      targetNode.removeChild(nodes[index]);
+    if (parentOfSubPathToBeRemoved != null) {
+      parentOfSubPathToBeRemoved.removeChild(nodes[index]);
     }
   }
 
@@ -155,6 +177,10 @@ public class TTLCache {
           entry.getValue());
       path.delete(idx, path.length());
     }
+  }
+
+  public int getTtlCount() {
+    return ttlCount;
   }
 
   public void serialize(BufferedOutputStream outputStream) throws IOException {

@@ -396,12 +396,12 @@ public class ClusterSchemaManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
     Map<String, TDatabaseSchema> storageSchemaMap =
-        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
+        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getPathPattern());
 
     if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.DATABASE_NOT_EXIST,
-          "Path [" + new PartialPath(setTTLPlan.getDatabasePathPattern()) + "] does not exist");
+          "Path [" + new PartialPath(setTTLPlan.getPathPattern()) + "] does not exist");
     }
 
     // Map<DataNodeId, TDataNodeLocation>

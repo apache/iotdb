@@ -2464,7 +2464,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
 
-    String ttlStr = ctx.INTEGER_LITERAL() != null?ctx.INTEGER_LITERAL().getText():ctx.INF().getText();
+    String ttlStr =
+        ctx.INTEGER_LITERAL() != null ? ctx.INTEGER_LITERAL().getText() : ctx.INF().getText();
     long ttl =
         ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)
             ? Long.MAX_VALUE

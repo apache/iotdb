@@ -8,6 +8,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -15,13 +16,17 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 
@@ -81,8 +86,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         new AsyncClientHandler<>(
             DataNodeRequestType.SET_TTL,
             new TSetTTLReq(
-                Collections.singletonList(String.join(".", plan.getDatabasePathPattern())),
-                plan.getTTL()),
+                Collections.singletonList(String.join(".", plan.getPathPattern())), plan.getTTL()),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
@@ -115,5 +119,23 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   @Override
   protected SetTTLState getInitialState() {
     return SetTTLState.SET_CONFIGNODE_TTL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    try {
+      ReadWriteIOUtils.readInt(byteBuffer);
+      this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+    } catch (IOException e) {
+      LOGGER.error("IO error when deserialize setTTL plan.", e);
+    }
   }
 }

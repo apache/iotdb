@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -311,7 +312,7 @@ public class ConfigManager implements IManager {
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
-    this.ttlManager = new TTLManager(this);
+    this.ttlManager = new TTLManager(this, ttlInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -508,7 +509,11 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return ttlManager.setTTL(setTTLPlan);
+      if (setTTLPlan.getTTL() == TTLCache.NULL_TTL) {
+        return ttlManager.unsetTTL(setTTLPlan);
+      } else {
+        return ttlManager.setTTL(setTTLPlan);
+      }
     } else {
       return status;
     }
