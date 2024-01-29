@@ -1675,18 +1675,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
-    // check useless alter
+    // We do not support alter source plugin of pipe, so the previous configuration will be reused.
+    alterPipeStatement.setExtractorAttributes(
+        pipeStaticMeta.getExtractorParameters().getAttribute());
+
+    // Fill empty attributes and check useless alter
     boolean needToAlter = false;
-    if (!(new TreeMap<>(alterPipeStatement.getExtractorAttributes()).toString())
-        .equals(new TreeMap<>(pipeStaticMeta.getExtractorParameters().getAttribute()).toString())) {
-      // TODO: consistency semantic checks, like 'realtime.mode'='file' and 'realtime.mode'='batch'
-      needToAlter = true;
-    }
-    if (!(new TreeMap<>(alterPipeStatement.getProcessorAttributes()).toString())
+    if (alterPipeStatement.getProcessorAttributes().isEmpty()) {
+      alterPipeStatement.setProcessorAttributes(
+          pipeStaticMeta.getProcessorParameters().getAttribute());
+    } else if (!(new TreeMap<>(alterPipeStatement.getProcessorAttributes()).toString())
         .equals(new TreeMap<>(pipeStaticMeta.getProcessorParameters().getAttribute()).toString())) {
+      // To keep it simple, we only determine whether an alter operation is needed by comparing
+      // whether the ordered strings corresponding to the parameters before and after remain
+      // consistent.
       needToAlter = true;
     }
-    if (!(new TreeMap<>(alterPipeStatement.getConnectorAttributes()).toString())
+    if (alterPipeStatement.getConnectorAttributes().isEmpty()) {
+      alterPipeStatement.setConnectorAttributes(
+          pipeStaticMeta.getConnectorParameters().getAttribute());
+    } else if (!(new TreeMap<>(alterPipeStatement.getConnectorAttributes()).toString())
         .equals(new TreeMap<>(pipeStaticMeta.getConnectorParameters().getAttribute()).toString())) {
       needToAlter = true;
     }

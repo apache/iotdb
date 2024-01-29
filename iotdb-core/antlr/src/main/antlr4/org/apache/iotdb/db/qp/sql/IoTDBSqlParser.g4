@@ -528,13 +528,6 @@ createPipe
         connectorAttributesClause
     ;
 
-alterPipe
-    : ALTER PIPE pipeName=identifier
-        extractorAttributesClause?
-        processorAttributesClause?
-        connectorAttributesClause
-    ;
-
 extractorAttributesClause
     : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
@@ -566,6 +559,26 @@ connectorAttributesClause
 
 connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+    ;
+
+alterPipe
+    : ALTER PIPE pipeName=identifier
+        modifyProcessorAttributesClause?
+        modifyConnectorAttributesClause?
+    ;
+
+modifyProcessorAttributesClause
+    : MODIFY PROCESSOR
+        LR_BRACKET
+        (processorAttributeClause COMMA)* processorAttributeClause?
+        RR_BRACKET
+    ;
+
+modifyConnectorAttributesClause
+    : MODIFY (CONNECTOR | SINK)
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
     ;
 
 dropPipe

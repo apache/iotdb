@@ -58,8 +58,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("pattern", "root.db.d1");
       connectorAttributes.put("node-urls", receiverDataNode.getIpAndPortString());
+      connectorAttributes.put("batch.enable", "false");
 
       // create pipe
       TSStatus status =
@@ -83,7 +83,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
 
       // alter pipe
-      extractorAttributes.replace("pattern", "root.db.d2");
+      extractorAttributes.replace("batch.enable", "true");
       status =
           client.alterPipe(
               new TAlterPipeReq("a2b", connectorAttributes)
@@ -108,11 +108,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // alter non-existed pipe
     String sql =
         String.format(
-            "alter pipe a2b"
-                + " with source ("
-                + "'pattern'='root.db.d1')"
-                + " with sink ("
-                + "'node-urls'='%s')",
+            "alter pipe a2b" + " modify sink (" + "'node-urls'='%s'," + "'batch.enable'='true')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -124,11 +120,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // create pipe
     sql =
         String.format(
-            "create pipe a2b"
-                + " with source ("
-                + "'pattern'='root.db.d1')"
-                + " with sink ("
-                + "'node-urls'='%s')",
+            "create pipe a2b" + " with sink (" + "'node-urls'='%s'," + "'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -140,11 +132,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // useless alter
     sql =
         String.format(
-            "alter pipe a2b"
-                + " with source ("
-                + "'pattern'='root.db.d1')"
-                + " with sink ("
-                + "'node-urls'='%s')",
+            "alter pipe a2b" + " modify sink (" + "'node-urls'='%s'," + "'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
