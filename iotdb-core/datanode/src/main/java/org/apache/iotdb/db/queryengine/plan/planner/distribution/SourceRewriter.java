@@ -1111,15 +1111,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
-    Map<String, Expression> columnNameToExpression = new HashMap<>();
+    Map<String, List<Expression>> columnNameToExpression = new HashMap<>();
     for (CrossSeriesAggregationDescriptor originalDescriptor :
         newRoot.getGroupByLevelDescriptors()) {
       for (Expression exp : originalDescriptor.getInputExpressions()) {
-        columnNameToExpression.put(exp.getExpressionString(), exp);
+        columnNameToExpression.put(exp.getExpressionString(), Collections.singletonList(exp));
       }
-      originalDescriptor
-          .getOutputExpressions()
-          .forEach(x -> columnNameToExpression.put(x.getExpressionString(), x));
+      columnNameToExpression.put(
+          originalDescriptor.getParametersString(), originalDescriptor.getOutputExpressions());
     }
 
     context.setColumnNameToExpression(columnNameToExpression);
@@ -1272,13 +1271,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
-      Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
+      Map<String, List<Expression>> columnNameToExpression = context.getColumnNameToExpression();
       Set<Expression> childrenExpressionSet = new HashSet<>();
       for (String childColumn : childrenOutputColumns) {
-        Expression childExpression =
+        List<Expression> childExpression =
             columnNameToExpression.get(
                 childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
-        childrenExpressionSet.add(childExpression);
+        childrenExpressionSet.addAll(childExpression);
       }
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
