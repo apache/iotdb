@@ -44,7 +44,7 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
   }
 
   @Override
-  public Event supply() {
+  public Event doSupply() {
     return null;
   }
 

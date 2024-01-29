@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
@@ -91,7 +92,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
-  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
+  protected boolean isClosed = false;
+
+  private final ReentrantReadWriteLock closeLock = new ReentrantReadWriteLock();
 
   private String taskID;
 
@@ -196,14 +199,17 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(dataRegionId)) {
-      PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
-      PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
-    }
+    closeLock.writeLock().lock();
+    try {
+      if (Objects.nonNull(dataRegionId)) {
+        PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+        PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
+      }
 
-    synchronized (isClosed) {
       clearPendingQueue();
-      isClosed.set(true);
+      isClosed = true;
+    } finally {
+      closeLock.writeLock().unlock();
     }
   }
 
@@ -225,8 +231,21 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         });
   }
 
-  /** @param event the event from the storage engine */
   public final void extract(PipeRealtimeEvent event) {
+    closeLock.readLock().lock();
+    try {
+      if (!isClosed) {
+        extractInternal(event);
+      } else {
+        event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+      }
+    } finally {
+      closeLock.readLock().unlock();
+    }
+  }
+
+  /** @param event the event from the storage engine */
+  public final void extractInternal(PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -253,15 +272,24 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     } else {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
-
-    synchronized (isClosed) {
-      if (isClosed.get()) {
-        clearPendingQueue();
-      }
-    }
   }
 
   protected abstract void doExtract(PipeRealtimeEvent event);
+
+  @Override
+  public final Event supply() {
+    closeLock.readLock().lock();
+    try {
+      if (!isClosed) {
+        return doSupply();
+      }
+    } finally {
+      closeLock.readLock().unlock();
+    }
+    return null;
+  }
+
+  protected abstract Event doSupply();
 
   public abstract boolean isNeedListenToTsFile();
 

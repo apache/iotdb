@@ -92,7 +92,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   }
 
   @Override
-  protected boolean executeOnce() throws Exception {
+  protected synchronized boolean executeOnce() throws Exception {
     if (isClosed.get()) {
       return false;
     }
@@ -112,35 +112,27 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     }
 
     try {
-      // event can be supplied after the subtask is closed, so we need to check isClosed here
-      if (!isClosed.get()) {
-        if (event instanceof TabletInsertionEvent) {
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-          PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
-        } else if (event instanceof TsFileInsertionEvent) {
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-          PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
-        } else if (event instanceof PipeHeartbeatEvent) {
-          pipeProcessor.process(event, outputEventCollector);
-          ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
-        } else {
-          pipeProcessor.process(event, outputEventCollector);
-        }
+      if (event instanceof TabletInsertionEvent) {
+        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeProcessor.process(event, outputEventCollector);
+        ((PipeHeartbeatEvent) event).onProcessed();
+        PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+      } else {
+        pipeProcessor.process(event, outputEventCollector);
       }
 
       releaseLastEvent(true);
     } catch (Exception e) {
-      if (!isClosed.get()) {
-        throw new PipeException(
-            String.format(
-                "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
-                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
-            e);
-      } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
-      }
+      throw new PipeException(
+          String.format(
+              "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
+              taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+          e);
     }
 
     return true;
@@ -154,10 +146,11 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
+      lastEvent = null;
 
       // pipeProcessor closes first, then no more events will be added into outputEventCollector.
       // only after that, outputEventCollector can be closed.

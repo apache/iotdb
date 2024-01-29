@@ -151,7 +151,7 @@ public class CachedSchemaPatternMatcherTest {
     public PipeRealtimeDataRegionFakeExtractor() {}
 
     @Override
-    public Event supply() {
+    public Event doSupply() {
       return null;
     }
 

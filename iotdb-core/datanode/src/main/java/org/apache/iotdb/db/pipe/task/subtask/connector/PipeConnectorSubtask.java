@@ -115,7 +115,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   }
 
   @Override
-  protected boolean executeOnce() {
+  protected synchronized boolean executeOnce() {
     if (isClosed.get()) {
       return false;
     }
@@ -147,24 +147,13 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
 
       releaseLastEvent(true);
     } catch (PipeConnectionException e) {
-      if (!isClosed.get()) {
-        throw e;
-      } else {
-        LOGGER.info(
-            "PipeConnectionException in pipe transfer, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
-      }
+      throw e;
     } catch (Exception e) {
-      if (!isClosed.get()) {
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
-            e);
-      } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
-      }
+      throw new PipeException(
+          String.format(
+              "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
+              taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+          e);
     }
 
     return true;
@@ -310,7 +299,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     PipeConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
