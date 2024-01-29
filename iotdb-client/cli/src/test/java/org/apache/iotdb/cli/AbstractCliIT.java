@@ -20,6 +20,8 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.AbstractCli.OperationResult;
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
@@ -78,13 +80,14 @@ public class AbstractCliIT {
 
   @Test
   public void testCheckRequiredArg() throws ParseException, ArgsErrorException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
     Options options = AbstractCli.createOptions();
     CommandLineParser parser = new DefaultParser();
     String[] args = new String[] {"-u", "user1"};
     CommandLine commandLine = parser.parse(options, args);
     String str =
         AbstractCli.checkRequiredArg(
-            AbstractCli.USERNAME_ARGS, AbstractCli.USERNAME_NAME, commandLine, true, "root");
+            ctx, AbstractCli.USERNAME_ARGS, AbstractCli.USERNAME_NAME, commandLine, true, "root");
     assertEquals("user1", str);
 
     args =
@@ -94,19 +97,19 @@ public class AbstractCliIT {
     commandLine = parser.parse(options, args);
     str =
         AbstractCli.checkRequiredArg(
-            AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, false, "127.0.0.1");
+            ctx, AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, false, "127.0.0.1");
     assertEquals("127.0.0.1", str);
     try {
       str =
           AbstractCli.checkRequiredArg(
-              AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, true, "127.0.0.1");
+              ctx, AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, true, "127.0.0.1");
     } catch (ArgsErrorException e) {
       assertEquals("IoTDB: Required values for option 'host' not provided", e.getMessage());
     }
     try {
       str =
           AbstractCli.checkRequiredArg(
-              AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, false, null);
+              ctx, AbstractCli.HOST_ARGS, AbstractCli.HOST_NAME, commandLine, false, null);
     } catch (ArgsErrorException e) {
       assertEquals("IoTDB: Required values for option 'host' is null.", e.getMessage());
     }
@@ -148,50 +151,52 @@ public class AbstractCliIT {
 
   @Test
   public void testHandleInputInputCmd() {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
     assertEquals(
         OperationResult.STOP_OPER,
-        AbstractCli.handleInputCmd(AbstractCli.EXIT_COMMAND, connection));
+        AbstractCli.handleInputCmd(ctx, AbstractCli.EXIT_COMMAND, connection));
     assertEquals(
         OperationResult.STOP_OPER,
-        AbstractCli.handleInputCmd(AbstractCli.QUIT_COMMAND, connection));
+        AbstractCli.handleInputCmd(ctx, AbstractCli.QUIT_COMMAND, connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
+            ctx, String.format("%s=", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=xxx", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
+            ctx, String.format("%s=xxx", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=default", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
+            ctx, String.format("%s=default", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
 
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(AbstractCli.SHOW_TIMEZONE, connection));
+        AbstractCli.handleInputCmd(ctx, AbstractCli.SHOW_TIMEZONE, connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(AbstractCli.SHOW_TIMESTAMP_DISPLAY, connection));
+        AbstractCli.handleInputCmd(ctx, AbstractCli.SHOW_TIMESTAMP_DISPLAY, connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(AbstractCli.SHOW_FETCH_SIZE, connection));
+        AbstractCli.handleInputCmd(ctx, AbstractCli.SHOW_FETCH_SIZE, connection));
 
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=%s", AbstractCli.SET_TIME_ZONE, "Asis/chongqing"), connection));
+            ctx, String.format("%s=%s", AbstractCli.SET_TIME_ZONE, "Asis/chongqing"), connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=+08:00", AbstractCli.SET_TIME_ZONE), connection));
+            ctx, String.format("%s=+08:00", AbstractCli.SET_TIME_ZONE), connection));
 
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(String.format("%s=", AbstractCli.SET_FETCH_SIZE), connection));
+        AbstractCli.handleInputCmd(
+            ctx, String.format("%s=", AbstractCli.SET_FETCH_SIZE), connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
-            String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
+            ctx, String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
   }
 }

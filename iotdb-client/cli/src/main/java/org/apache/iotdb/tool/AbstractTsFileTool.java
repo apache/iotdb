@@ -49,6 +49,8 @@ public abstract class AbstractTsFileTool {
   protected static final int CODE_OK = 0;
   protected static final int CODE_ERROR = 1;
 
+  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+
   protected static String host;
   protected static String port;
   protected static String username;
@@ -62,8 +64,8 @@ public abstract class AbstractTsFileTool {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
-      IoTPrinter.println(msg);
-      IoTPrinter.println("Use -help for more information");
+      ioTPrinter.println(msg);
+      ioTPrinter.println("Use -help for more information");
       throw new ArgsErrorException(msg);
     }
     return str;
