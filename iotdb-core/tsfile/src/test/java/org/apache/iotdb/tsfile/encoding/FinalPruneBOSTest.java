@@ -634,7 +634,7 @@ public class FinalPruneBOSTest {
             int[] gamma_unique_count_array = cur_group_gamma.unique_count_array;
             int[] gamma_unique_number_array = cur_group_gamma.unique_number_array;
             int gamma_unique_number = cur_group_gamma.unique_number;
-            int x_u_i_end = k2_end - k1_start;
+//            int x_u_i_end = k2_end - k1_start;
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
@@ -679,7 +679,8 @@ public class FinalPruneBOSTest {
 //            }
         }
 
-        // x_max - 2^{alpha_size-1}
+        // lower : x_min
+        // upper: x_max - 2^{alpha_size-1}
         k2_end = max_delta_value - (int)pow(2,alpha_size-1);
         k2 += gamma_count_list[alpha_size]; //  x_max - 2^{alpha_size-1}
         cur_bits = 0;
@@ -704,7 +705,6 @@ public class FinalPruneBOSTest {
             cur_group_gamma.setCount_array(k2_end);
         }
         int gamma_value_count = cur_group_gamma.count;
-        gamma_value_count_list = cur_group_gamma.count_array;
 
         int[] gamma_unique_count_array = cur_group_gamma.unique_count_array;
         int[] gamma_unique_number_array = cur_group_gamma.unique_number_array;
@@ -1936,10 +1936,10 @@ public class FinalPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 1;
-        for (int file_i = 11; file_i < 12; file_i++) {
-//
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 100;
+//        for (int file_i = 11; file_i < 12; file_i++) {
+
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
