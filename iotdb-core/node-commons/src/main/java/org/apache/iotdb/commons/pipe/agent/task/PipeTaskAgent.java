@@ -566,7 +566,7 @@ public abstract class PipeTaskAgent {
 
     // 1. Drop the pipe task
     final long startTime = System.currentTimeMillis();
-    dropPipe(pipeName);
+    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
 
     // 2. Set pipe meta status to STOPPED
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
