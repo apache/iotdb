@@ -8,7 +8,9 @@ public class GroupL {
     public int if_count;
     public int[] count_array;
     public int range;
-
+    public int[] unique_number_array;
+    public int[] unique_count_array;
+    public int unique_number;
 
     public GroupL(int[] number, int count, int i) {
         this.number = number;
@@ -16,6 +18,8 @@ public class GroupL {
         this.if_count = 0;
         this.range = (int) pow(2,i-1);
         this.count_array = new int[range];
+        this.unique_count_array = new int[range];
+        this.unique_number_array = new int[range];
     }
 
     public int[] getNumber() {
@@ -42,6 +46,13 @@ public class GroupL {
         for (int i = 0; i < this.count; i++) {
             int value = number_gamma[i];
             count_array[value - k1_start]++;
+        }
+        for(int i=0;i<range;i++){
+            if(count_array[i]!=0){
+                unique_count_array[unique_number] = count_array[i];
+                unique_number_array[unique_number]= i;
+                unique_number++;
+            }
         }
     }
 

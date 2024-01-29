@@ -10,6 +10,9 @@ public class GroupU{
     public int[] count_array;
     public int range;
 
+    public int[] unique_number_array;
+    public int[] unique_count_array;
+    public int unique_number;
 
     public GroupU(int[] number, int count, int i) {
         this.number = number;
@@ -17,6 +20,9 @@ public class GroupU{
         this.if_count = 0;
         this.range = (int) pow(2,i-1);
         this.count_array = new int[range];
+
+        this.unique_count_array = new int[range];
+        this.unique_number_array = new int[range];
     }
 
     public int[] getNumber() {
@@ -43,6 +49,13 @@ public class GroupU{
         for (int i = 0; i < this.count; i++) {
             int value = number_gamma[i];
             count_array[k2_end - value]++;
+        }
+        for(int i=0;i<range;i++){
+            if(count_array[i]!=0){
+                unique_count_array[unique_number] = count_array[i];
+                unique_number_array[unique_number]= i;
+                unique_number++;
+            }
         }
     }
 
