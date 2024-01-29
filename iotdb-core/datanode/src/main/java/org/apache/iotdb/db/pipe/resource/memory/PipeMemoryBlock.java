@@ -48,8 +48,6 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   private volatile boolean isReleased = false;
 
-  protected boolean isForTablet = false;
-
   public PipeMemoryBlock(long memoryUsageInBytes) {
     this.memoryUsageInBytes.set(memoryUsageInBytes);
   }
