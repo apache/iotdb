@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
@@ -50,6 +49,11 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 public abstract class SeriesCompactionExecutor {
+  protected enum ModifiedStatus {
+    ALL_DELETED,
+    PARTIAL_DELETED,
+    NONE_DELETED;
+  }
 
   @FunctionalInterface
   public interface RemovePage {

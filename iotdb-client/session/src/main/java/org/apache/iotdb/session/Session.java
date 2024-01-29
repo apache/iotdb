@@ -162,10 +162,6 @@ public class Session implements ISession {
   // default enable
   protected boolean enableAutoFetch = true;
 
-  protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-  protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
   private static final String REDIRECT_TWICE = "redirect twice";
 
   private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
@@ -425,8 +421,6 @@ public class Session implements ISession {
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
     this.enableAutoFetch = builder.enableAutoFetch;
-    this.maxRetryCount = builder.maxRetryCount;
-    this.retryIntervalInMs = builder.retryIntervalInMs;
   }
 
   @Override
@@ -586,11 +580,9 @@ public class Session implements ISession {
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
-      return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+      return new SessionConnection(session, zoneId, availableNodes);
     }
-    return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+    return new SessionConnection(session, endpoint, zoneId, availableNodes);
   }
 
   @Override
@@ -1269,6 +1261,7 @@ public class Session implements ISession {
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
+        logger.warn("Can not redirect to {}, because session can not connect to it.", endpoint);
       }
     }
   }
@@ -3558,10 +3551,6 @@ public class Session implements ISession {
     private String trustStore;
     private String trustStorePwd;
 
-    private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-    private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3641,16 +3630,6 @@ public class Session implements ISession {
 
     public Builder enableAutoFetch(boolean enableAutoFetch) {
       this.enableAutoFetch = enableAutoFetch;
-      return this;
-    }
-
-    public Builder maxRetryCount(int maxRetryCount) {
-      this.maxRetryCount = maxRetryCount;
-      return this;
-    }
-
-    public Builder retryIntervalInMs(long retryIntervalInMs) {
-      this.retryIntervalInMs = retryIntervalInMs;
       return this;
     }
 

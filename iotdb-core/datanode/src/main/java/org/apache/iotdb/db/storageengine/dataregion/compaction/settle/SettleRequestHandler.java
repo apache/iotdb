@@ -74,7 +74,7 @@ public class SettleRequestHandler {
   public TSStatus handleSettleRequest(TSettleReq req) {
     List<String> paths = req.getPaths();
 
-    CompactionScheduler.exclusiveLockCompactionSelection();
+    CompactionScheduler.lockCompactionSelection();
     try {
       SettleRequestContext context = new SettleRequestContext(paths);
       TSStatus validationResult = context.validate();
@@ -87,7 +87,7 @@ public class SettleRequestHandler {
       List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
       return context.submitCompactionTask(selectedTsFileResources);
     } finally {
-      CompactionScheduler.exclusiveUnlockCompactionSelection();
+      CompactionScheduler.unlockCompactionSelection();
     }
   }
 

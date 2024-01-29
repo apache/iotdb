@@ -29,13 +29,12 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -63,8 +62,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   @Override
   public void perform()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException,
-          PageException {
+      throws IOException, MetadataException, InterruptedException, StorageEngineException {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
@@ -123,7 +121,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       TsFileResource targetResource,
       CompactionTsFileWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
-      throws IOException, InterruptedException, IllegalPathException, PageException {
+      throws IOException, InterruptedException, IllegalPathException {
     checkThreadInterrupted();
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
@@ -131,17 +129,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return;
     }
     writer.startChunkGroup(device);
-    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
-        new ReadChunkAlignedSeriesCompactionExecutor(
+    AlignedSeriesCompactionExecutor compactionExecutor =
+        new AlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
-    for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
-      if (chunkMetadata.getMeasurementUid().isEmpty()) {
-        targetResource.updateStartTime(device, chunkMetadata.getStartTime());
-        targetResource.updateEndTime(device, chunkMetadata.getEndTime());
-      }
-    }
-    writer.checkMetadataSizeAndMayFlush();
     writer.endChunkGroup();
   }
 

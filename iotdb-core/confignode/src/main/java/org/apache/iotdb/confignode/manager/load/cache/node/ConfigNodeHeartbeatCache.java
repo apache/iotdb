@@ -63,7 +63,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     // Update Node status
     NodeStatus status = null;
     // TODO: Optimize judge logic
-    if (System.nanoTime() - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {
       status = lastSample.getStatus();

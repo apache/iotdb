@@ -98,7 +98,6 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
 
   @Test
   public void fillTest() {
-    // linear fill can not use TopKNode
     String[] expectedHeader = new String[] {"Time,Device,s1,s2"};
     String[] retArray =
         new String[] {

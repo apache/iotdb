@@ -56,8 +56,6 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -98,8 +96,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
@@ -147,7 +143,7 @@ public class StorageEngine implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
-  private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+  private LoadTsFileManager loadTsFileManager;
 
   private StorageEngine() {}
 
@@ -224,7 +220,6 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
-              recoverRepairDataScheduleTask();
               setAllSgReady(true);
               ttlMapForRecover.clear();
             },
@@ -562,46 +557,6 @@ public class StorageEngine implements IService {
     dataRegionMap.values().forEach(DataRegion::compact);
   }
 
-  /**
-   * check and repair unsorted data by compaction.
-   *
-   * @throws StorageEngineException StorageEngineException
-   */
-  public boolean repairData() throws StorageEngineException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new StorageEngineException("Current system mode is read only, does not support merge");
-    }
-    if (!UnsortedFileRepairTaskScheduler.markRepairTaskStart()) {
-      return false;
-    }
-    LOGGER.info("start repair data");
-    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
-    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
-    return true;
-  }
-
-  /** recover the progress of unfinished repair schedule task */
-  public void recoverRepairDataScheduleTask() {
-    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
-    String repairLogDirPath =
-        IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-            + File.separator
-            + RepairLogger.repairLogDir;
-    File repairLogDir = new File(repairLogDirPath);
-    if (!repairLogDir.exists() || !repairLogDir.isDirectory()) {
-      return;
-    }
-    File[] files = repairLogDir.listFiles();
-    List<File> fileList =
-        Stream.of(files == null ? new File[0] : files)
-            .filter(f -> f.getName().endsWith(RepairLogger.repairLogSuffix) && f.isFile())
-            .collect(Collectors.toList());
-    if (!fileList.isEmpty()) {
-      UnsortedFileRepairTaskScheduler.markRepairTaskStart();
-      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, fileList.get(0)));
-    }
-  }
-
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
@@ -831,7 +786,7 @@ public class StorageEngine implements IService {
     }
 
     try {
-      loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
+      getLoadTsFileManager().writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
     } catch (IOException e) {
       LOGGER.error(
           "IO error when writing piece node of TsFile {} to DataRegion {}.",
@@ -856,7 +811,7 @@ public class StorageEngine implements IService {
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
+          if (getLoadTsFileManager().loadAll(uuid, isGeneratedByPipe, progressIndex)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
@@ -867,7 +822,7 @@ public class StorageEngine implements IService {
           }
           break;
         case ROLLBACK:
-          if (loadTsFileManager.deleteAll(uuid)) {
+          if (getLoadTsFileManager().deleteAll(uuid)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
@@ -927,6 +882,17 @@ public class StorageEngine implements IService {
             dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
           }
         });
+  }
+
+  private LoadTsFileManager getLoadTsFileManager() {
+    if (loadTsFileManager == null) {
+      synchronized (LoadTsFileManager.class) {
+        if (loadTsFileManager == null) {
+          loadTsFileManager = new LoadTsFileManager();
+        }
+      }
+    }
+    return loadTsFileManager;
   }
 
   static class InstanceHolder {

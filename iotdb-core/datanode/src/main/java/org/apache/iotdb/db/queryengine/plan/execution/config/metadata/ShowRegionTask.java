@@ -90,12 +90,9 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());
         builder.getColumnBuilder(7).writeBinary(BytesUtils.valueOf(regionInfo.getClientRpcIp()));
         builder.getColumnBuilder(8).writeInt(regionInfo.getClientRpcPort());
+        builder.getColumnBuilder(9).writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
         builder
-            .getColumnBuilder(9)
-            .writeBinary(BytesUtils.valueOf(regionInfo.getInternalAddress()));
-        builder.getColumnBuilder(10).writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
-        builder
-            .getColumnBuilder(11)
+            .getColumnBuilder(10)
             .writeBinary(
                 new Binary(
                     DateTimeUtils.convertLongToDate(regionInfo.getCreateTime()),

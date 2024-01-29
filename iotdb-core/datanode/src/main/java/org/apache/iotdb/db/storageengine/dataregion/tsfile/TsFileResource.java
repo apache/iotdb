@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -104,9 +103,6 @@ public class TsFileResource {
 
   protected AtomicReference<TsFileResourceStatus> atomicStatus =
       new AtomicReference<>(TsFileResourceStatus.UNCLOSED);
-
-  /** used for check whether this file has internal unsorted data in compaction selection */
-  private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -298,10 +294,6 @@ public class TsFileResource {
 
   public boolean modFileExists() {
     return getModFile().exists();
-  }
-
-  public boolean compactionModFileExists() {
-    return getCompactionModFile().exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
@@ -660,14 +652,6 @@ public class TsFileResource {
       default:
         return false;
     }
-  }
-
-  public TsFileRepairStatus getTsFileRepairStatus() {
-    return this.tsFileRepairStatus;
-  }
-
-  public void setTsFileRepairStatus(TsFileRepairStatus fileRepairStatus) {
-    this.tsFileRepairStatus = fileRepairStatus;
   }
 
   public void forceMarkDeleted() {

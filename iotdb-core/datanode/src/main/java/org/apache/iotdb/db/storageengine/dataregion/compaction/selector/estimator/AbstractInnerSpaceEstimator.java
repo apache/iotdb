@@ -34,22 +34,9 @@ public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEsti
     if (!config.isEnableCompactionMemControl()) {
       return 0;
     }
-
-    if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return -1L;
-    }
-    long cost = 0;
-    try {
-      if (!isAllSourceFileExist(resources)) {
-        return -1L;
-      }
-
-      CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
-      cost = calculatingMetadataMemoryCost(taskInfo);
-      cost += calculatingDataMemoryCost(taskInfo);
-    } finally {
-      CompactionEstimateUtils.releaseReadLock(resources);
-    }
+    CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
+    long cost = calculatingMetadataMemoryCost(taskInfo);
+    cost += calculatingDataMemoryCost(taskInfo);
     return cost;
   }
 }

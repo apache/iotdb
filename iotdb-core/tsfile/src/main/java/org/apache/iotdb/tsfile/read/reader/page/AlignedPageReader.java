@@ -101,8 +101,6 @@ public class AlignedPageReader implements IPageReader {
       timeIndex++;
 
       TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
-      // if all the sub sensors' value are null in current row, just discard it
-      boolean hasNotNullValues = false;
       for (int i = 0; i < valueCount; i++) {
         ValuePageReader pageReader = valuePageReaderList.get(i);
         if (pageReader != null) {
@@ -112,12 +110,9 @@ public class AlignedPageReader implements IPageReader {
           v[i] = null;
           rowValues[i] = null;
         }
-        if (rowValues[i] != null) {
-          hasNotNullValues = true;
-        }
       }
 
-      if (hasNotNullValues && satisfyRecordFilter(timestamp, rowValues)) {
+      if (satisfyRecordFilter(timestamp, rowValues)) {
         pageData.putVector(timestamp, v);
       }
     }

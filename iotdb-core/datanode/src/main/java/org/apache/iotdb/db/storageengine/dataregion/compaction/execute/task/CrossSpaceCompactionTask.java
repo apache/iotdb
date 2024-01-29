@@ -204,7 +204,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             selectedSequenceFiles,
             selectedUnsequenceFiles,
             targetTsfileResourceList,
-            timePartition);
+            timePartition,
+            true);
 
         // find empty target files and add log
         for (TsFileResource targetResource : targetTsfileResourceList) {
@@ -277,7 +278,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      handleException(LOGGER, e);
+      printLogWhenException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();

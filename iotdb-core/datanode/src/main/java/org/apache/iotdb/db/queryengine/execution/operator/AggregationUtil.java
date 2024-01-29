@@ -56,8 +56,6 @@ public class AggregationUtil {
 
   private static final int INVALID_END_TIME = -1;
 
-  private static final String PARTIAL_SUFFIX = "_partial";
-
   private AggregationUtil() {
     // Forbidding instantiation
   }
@@ -255,9 +253,5 @@ public class AggregationUtil {
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);
     }
-  }
-
-  public static String addPartialSuffix(String aggregationName) {
-    return aggregationName + PARTIAL_SUFFIX;
   }
 }

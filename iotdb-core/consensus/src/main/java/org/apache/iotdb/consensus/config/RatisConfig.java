@@ -550,6 +550,7 @@ public class RatisConfig {
     private final int segmentCacheNumMax;
     private final SizeInBytes segmentCacheSizeMax;
     private final SizeInBytes preallocatedSize;
+    private final SizeInBytes writeBufferSize;
     private final int forceSyncNum;
     private final boolean unsafeFlushEnabled;
 
@@ -564,6 +565,7 @@ public class RatisConfig {
         int segmentCacheNumMax,
         SizeInBytes segmentCacheSizeMax,
         SizeInBytes preallocatedSize,
+        SizeInBytes writeBufferSize,
         int forceSyncNum,
         boolean unsafeFlushEnabled) {
       this.useMemory = useMemory;
@@ -576,6 +578,7 @@ public class RatisConfig {
       this.segmentCacheNumMax = segmentCacheNumMax;
       this.segmentCacheSizeMax = segmentCacheSizeMax;
       this.preallocatedSize = preallocatedSize;
+      this.writeBufferSize = writeBufferSize;
       this.forceSyncNum = forceSyncNum;
       this.unsafeFlushEnabled = unsafeFlushEnabled;
     }
@@ -616,6 +619,10 @@ public class RatisConfig {
       return preallocatedSize;
     }
 
+    public SizeInBytes getWriteBufferSize() {
+      return writeBufferSize;
+    }
+
     public int getForceSyncNum() {
       return forceSyncNum;
     }
@@ -644,6 +651,7 @@ public class RatisConfig {
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
+      private SizeInBytes writeBufferSize = SizeInBytes.valueOf("64KB");
       private int forceSyncNum = 128;
       private boolean unsafeFlushEnabled = true;
 
@@ -659,6 +667,7 @@ public class RatisConfig {
             segmentCacheNumMax,
             segmentCacheSizeMax,
             preallocatedSize,
+            writeBufferSize,
             forceSyncNum,
             unsafeFlushEnabled);
       }
@@ -710,6 +719,11 @@ public class RatisConfig {
 
       public Log.Builder setPreallocatedSize(SizeInBytes preallocatedSize) {
         this.preallocatedSize = preallocatedSize;
+        return this;
+      }
+
+      public Log.Builder setWriteBufferSize(SizeInBytes writeBufferSize) {
+        this.writeBufferSize = writeBufferSize;
         return this;
       }
 
@@ -821,6 +835,7 @@ public class RatisConfig {
     private final int clientMaxRetryAttempt;
     private final long clientRetryInitialSleepTimeMs;
     private final long clientRetryMaxSleepTimeMs;
+    private final int coreClientNumForEachNode;
     private final int maxClientNumForEachNode;
 
     public Client(
@@ -828,11 +843,13 @@ public class RatisConfig {
         int clientMaxRetryAttempt,
         long clientRetryInitialSleepTimeMs,
         long clientRetryMaxSleepTimeMs,
+        int coreClientNumForEachNode,
         int maxClientNumForEachNode) {
       this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
       this.clientMaxRetryAttempt = clientMaxRetryAttempt;
       this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
       this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
@@ -852,6 +869,10 @@ public class RatisConfig {
       return clientRetryMaxSleepTimeMs;
     }
 
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
     public int getMaxClientNumForEachNode() {
       return maxClientNumForEachNode;
     }
@@ -866,6 +887,9 @@ public class RatisConfig {
       private int clientMaxRetryAttempt = 10;
       private long clientRetryInitialSleepTimeMs = 100;
       private long clientRetryMaxSleepTimeMs = 10000;
+
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public Client build() {
@@ -874,6 +898,7 @@ public class RatisConfig {
             clientMaxRetryAttempt,
             clientRetryInitialSleepTimeMs,
             clientRetryMaxSleepTimeMs,
+            coreClientNumForEachNode,
             maxClientNumForEachNode);
       }
 
@@ -894,6 +919,11 @@ public class RatisConfig {
 
       public Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
         this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+        return this;
+      }
+
+      public Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
         return this;
       }
 
