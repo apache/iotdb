@@ -4,6 +4,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -24,14 +25,14 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDAFMiscIT {
   private static final String[] dataset =
-      new String[]{
-          "CREATE DATABASE root.sg;",
-          "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-          "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-          "INSERT INTO root.sg.d1(time, s1, s2) VALUES(1, 1, 1);",
-          "INSERT INTO root.sg.d1(time, s1, s2) VALUES(2, 2, 2);",
-          "INSERT INTO root.sg.d1(time, s1, s2) VALUES(3, 3, 3);",
-          "flush;",
+      new String[] {
+        "CREATE DATABASE root.sg;",
+        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(1, 1, 1);",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(2, 2, 2);",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES(3, 3, 3);",
+        "flush;",
       };
 
   @BeforeClass
@@ -55,7 +56,7 @@ public class IoTDBUDAFMiscIT {
 
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
       statement.execute("CREATE FUNCTION udf AS 'org.apache.iotdb.db.query.udf.example.Adder'");
@@ -68,13 +69,11 @@ public class IoTDBUDAFMiscIT {
   public void mixUDAFAndUDTFTest() throws Exception {
     String[] expected = new String[] {"3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       int count = 0;
       try (ResultSet resultSet =
-               statement.executeQuery(
-                   "SELECT udaf(udf(s1, s2)) AS res "
-                       + "FROM root.sg.d1 ")) {
+          statement.executeQuery("SELECT udaf(udf(s1, s2)) AS res " + "FROM root.sg.d1 ")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("res");
           Assert.assertEquals(expected[count], actual);
@@ -90,13 +89,11 @@ public class IoTDBUDAFMiscIT {
   public void UDAFAsOperandTest() throws Exception {
     String[] expected = new String[] {"6.0"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       int count = 0;
       try (ResultSet resultSet =
-               statement.executeQuery(
-                   "SELECT udaf(s1) + udaf(s2) AS res "
-                       + "FROM root.sg.d1 ")) {
+          statement.executeQuery("SELECT udaf(s1) + udaf(s2) AS res " + "FROM root.sg.d1 ")) {
         while (resultSet.next()) {
           String actual = resultSet.getString("res");
           Assert.assertEquals(expected[count], actual);
