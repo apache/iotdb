@@ -294,6 +294,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             cnt++;
           }
         }
+        if (cnt == 0) {
+          throw new IOException("Empty bucket!");
+        }
         rt = rt / cnt;
         rv = rv / cnt;
 

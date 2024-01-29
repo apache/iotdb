@@ -218,6 +218,9 @@ public class LocalGroupByExecutorTri_ILTS_noacc implements GroupByExecutor {
                 }
               }
             }
+            if (cnt == 0) {
+              throw new IOException("Empty bucket!");
+            }
             rt = rt / cnt;
             rv = rv / cnt;
           } else { // 不是第一次迭代也不是最后一个桶的话，就使用上一轮迭代右边桶的采样点

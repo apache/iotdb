@@ -440,7 +440,7 @@ public class IoTDBConfig {
   private long pnt;
   private double pnv;
 
-  private int rps = 2;
+  private int rps = 2; // fixed
 
   public int getNumIterations() {
     return numIterations;
