@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -35,10 +37,12 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
@@ -123,10 +127,9 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
     final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
     final AtomicReference<Exception> exception = new AtomicReference<>();
+    final AtomicInteger statusCode = new AtomicInteger(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    client.pipeTransfer(
-        PipeTransferHandshakeV1Req.toTPipeTransferReq(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+    AsyncMethodCallback<TPipeTransferResp> asyncMethodCallback =
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(TPipeTransferResp response) {
@@ -145,6 +148,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
                           targetNodeUrl.getPort(),
                           response.getStatus().getCode(),
                           response.getStatus().getMessage())));
+              statusCode.set(response.getStatus().getCode());
             } else {
               LOGGER.info(
                   "Handshake successfully with receiver {}:{}.",
@@ -167,7 +171,15 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
             isHandshakeFinished.set(true);
           }
-        });
+        };
+
+    // Try to handshake by PipeTransferHandshakeV2Req.
+    HashMap<String, String> params = new HashMap<>();
+    params.put("clusterId", PipeRuntimeAgent.getClusterId());
+    params.put(
+        "timestampPrecision", CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    client.pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params), asyncMethodCallback);
 
     try {
       while (!isHandshakeFinished.get()) {
@@ -179,7 +191,31 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
     }
 
     if (exception.get() != null) {
-      throw new PipeConnectionException("Failed to handshake.", exception.get());
+      if (statusCode.get() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+        exception.set(null);
+        // Retry to handshake by PipeTransferHandshakeV1Req.
+        LOGGER.warn(
+            "Handshake error by PipeTransferHandshakeV2Req. Retry to handshake by PipeTransferHandshakeV1Req.");
+        client.pipeTransfer(
+            PipeTransferHandshakeV1Req.toTPipeTransferReq(
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            asyncMethodCallback);
+
+        try {
+          while (!isHandshakeFinished.get()) {
+            Thread.sleep(10);
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new PipeException("Interrupted while waiting for handshake response.", e);
+        }
+
+        if (exception.get() != null) {
+          throw new PipeConnectionException("Failed to handshake.", exception.get());
+        }
+      } else {
+        throw new PipeConnectionException("Failed to handshake.", exception.get());
+      }
     }
 
     return false;

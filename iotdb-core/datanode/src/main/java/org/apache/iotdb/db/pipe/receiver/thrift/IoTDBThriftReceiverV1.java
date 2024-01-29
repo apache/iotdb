@@ -252,13 +252,22 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
-    if (req.getParams().get("clusterId").equals(PipeRuntimeAgent.getClusterId())) {
+    // Reject to handshake if the receiver can not take clusterId from configNode.
+    String clusterId = PipeRuntimeAgent.getClusterId();
+    if (clusterId == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR, "Unable to get clusterId in receiver.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the receiver and sender are from the same cluster.
+    if (req.getParams().get("clusterId").equals(clusterId)) {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR,
-              String.format(
-                  "Unable to transfer data to IoTDB cluster %s itself",
-                  PipeRuntimeAgent.getClusterId()));
+              String.format("Unable to transfer data to IoTDB cluster %s itself", clusterId));
       LOGGER.warn("Handshake failed, response status = {}.", status);
       return new TPipeTransferResp(status);
     }

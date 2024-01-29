@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -44,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -52,6 +54,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 public class PipeDataNodeThriftRequestTest {
@@ -59,7 +62,7 @@ public class PipeDataNodeThriftRequestTest {
   private static final String TIME_PRECISION = "ms";
 
   @Test
-  public void testPipeValidateHandshakeReq() throws IOException {
+  public void testPipeValidateHandshakeV1Req() throws IOException {
     PipeTransferHandshakeV1Req req = PipeTransferHandshakeV1Req.toTPipeTransferReq(TIME_PRECISION);
     PipeTransferHandshakeV1Req deserializeReq =
         PipeTransferHandshakeV1Req.fromTPipeTransferReq(req);
@@ -69,6 +72,23 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
+  }
+
+  @Test
+  public void testPipeValidateHandshakeV2Req() throws TException {
+    HashMap<String, String> params = new HashMap<>();
+    params.put("clusterId", "abcde");
+    params.put("timestampPrecision", "ms");
+
+    PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
+    PipeTransferHandshakeV2Req deserializeReq = PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getParams().get("clusterId"), deserializeReq.getParams().get("clusterId"));
+    Assert.assertEquals(req.getParams().get("timestampPrecision"), deserializeReq.getParams().get("timestampPrecision"));
   }
 
   @Test

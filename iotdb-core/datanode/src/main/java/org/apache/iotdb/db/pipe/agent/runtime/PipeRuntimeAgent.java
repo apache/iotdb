@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,18 +49,7 @@ public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private static String clusterId = null;
-
-  static {
-    try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      clusterId = configNodeClient.getClusterId().clusterId;
-    } catch (ClientManagerException e) {
-      LOGGER.warn("Unable to get ConfigNode client in PipeRuntimeAgent");
-    } catch (TException e) {
-      LOGGER.warn("Unable to get clusterId in PipeRuntimeAgent");
-    }
-  }
+  private static volatile String clusterId = null;
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
@@ -75,6 +62,15 @@ public class PipeRuntimeAgent implements IService {
   //////////////////////////// Getter ////////////////////////////
 
   public static String getClusterId() {
+    if (clusterId == null) {
+      try (ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        clusterId = configNodeClient.getClusterId().clusterId;
+      } catch (Exception e) {
+        LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage());
+      }
+    }
+
     return clusterId;
   }
 

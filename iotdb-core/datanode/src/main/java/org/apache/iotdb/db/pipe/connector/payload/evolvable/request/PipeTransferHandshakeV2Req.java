@@ -37,6 +37,8 @@ public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
     handshakeReq.type = PipeRequestType.HANDSHAKE_V2.getType();
     handshakeReq.body = ByteBuffer.wrap(SerializationUtils.serialize(params));
 
+    handshakeReq.params = params;
+
     return handshakeReq;
   }
 
