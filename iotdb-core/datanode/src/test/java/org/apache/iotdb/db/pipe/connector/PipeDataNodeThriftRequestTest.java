@@ -60,6 +60,7 @@ import java.util.List;
 public class PipeDataNodeThriftRequestTest {
 
   private static final String TIME_PRECISION = "ms";
+  private static final String CLUSTER_ID = "abcde";
 
   @Test
   public void testPipeValidateHandshakeV1Req() throws IOException {
@@ -77,8 +78,8 @@ public class PipeDataNodeThriftRequestTest {
   @Test
   public void testPipeValidateHandshakeV2Req() throws TException {
     HashMap<String, String> params = new HashMap<>();
-    params.put("clusterId", "abcde");
-    params.put("timestampPrecision", "ms");
+    params.put("clusterId", CLUSTER_ID);
+    params.put("timestampPrecision", TIME_PRECISION);
 
     PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
     PipeTransferHandshakeV2Req deserializeReq = PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
