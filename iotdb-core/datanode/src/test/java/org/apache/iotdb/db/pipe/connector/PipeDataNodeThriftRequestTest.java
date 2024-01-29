@@ -82,14 +82,18 @@ public class PipeDataNodeThriftRequestTest {
     params.put("timestampPrecision", TIME_PRECISION);
 
     PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
-    PipeTransferHandshakeV2Req deserializeReq = PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
+    PipeTransferHandshakeV2Req deserializeReq =
+        PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
-    Assert.assertEquals(req.getParams().get("clusterId"), deserializeReq.getParams().get("clusterId"));
-    Assert.assertEquals(req.getParams().get("timestampPrecision"), deserializeReq.getParams().get("timestampPrecision"));
+    Assert.assertEquals(
+        req.getParams().get("clusterId"), deserializeReq.getParams().get("clusterId"));
+    Assert.assertEquals(
+        req.getParams().get("timestampPrecision"),
+        deserializeReq.getParams().get("timestampPrecision"));
   }
 
   @Test

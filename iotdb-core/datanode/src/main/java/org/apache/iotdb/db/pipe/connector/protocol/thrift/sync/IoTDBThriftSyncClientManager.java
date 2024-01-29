@@ -140,7 +140,8 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     try {
       HashMap<String, String> params = new HashMap<>();
       params.put(
-              PipeConstant.HANDSHAKE_KEY_TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+          PipeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
       params.put(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID, PipeRuntimeAgent.getClusterId());
 
       TPipeTransferResp resp =

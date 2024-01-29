@@ -178,7 +178,8 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
     HashMap<String, String> params = new HashMap<>();
     params.put(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID, PipeRuntimeAgent.getClusterId());
     params.put(
-            PipeConstant.HANDSHAKE_KEY_TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        PipeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     client.pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params), asyncMethodCallback);
 
