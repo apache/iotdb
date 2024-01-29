@@ -150,7 +150,6 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
-      lastEvent = null;
 
       // pipeProcessor closes first, then no more events will be added into outputEventCollector.
       // only after that, outputEventCollector can be closed.
