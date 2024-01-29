@@ -55,6 +55,10 @@ public class TimePartitionInfo {
     if (cmp != 0) {
       return cmp;
     }
+    cmp = Long.compare(partitionId, timePartitionInfo.partitionId);
+    if (cmp != 0) {
+      return cmp;
+    }
 
     cmp = Boolean.compare(isLatestPartition, timePartitionInfo.isLatestPartition);
     if (cmp != 0) {
