@@ -34,7 +34,7 @@ public abstract class UserDefinedEvent implements Event {
    *     following conditions: 1. A source event can only be assigned to one user defined event. 2.
    *     If more than one user defined events are generated from the same source event, only the
    *     last generated user defined event can be assigned with the source event, others should be
-   *     assigned @code{null}, or call {@link #UserDefinedEvent()} to generate a user defined event
+   *     assigned {@code null}, or call {@link #UserDefinedEvent()} to generate a user defined event
    *     without source event.
    */
   protected UserDefinedEvent(Event sourceEvent) {
