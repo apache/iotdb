@@ -539,8 +539,7 @@ public class DataRegion implements IDataRegionForQuery {
                       latestPartitionId,
                       false,
                       Long.MAX_VALUE,
-                      lastFlushTimeMap.getMemSize(latestPartitionId),
-                      true));
+                      lastFlushTimeMap.getMemSize(latestPartitionId)));
         }
       }
       // wait until all unsealed TsFiles have been recovered
@@ -822,10 +821,26 @@ public class DataRegion implements IDataRegionForQuery {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
     if (config.isEnableSeparateData()) {
-      lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+      if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId)) {
+        TimePartitionManager.getInstance()
+            .registerTimePartitionInfo(
+                new TimePartitionInfo(
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
+                    partitionId,
+                    false,
+                    Long.MAX_VALUE,
+                    lastFlushTimeMap.getMemSize(partitionId)));
+      }
       for (TsFileResource tsFileResource : resourceList) {
         updateLastFlushTime(tsFileResource, isSeq);
       }
+      TimePartitionManager.getInstance()
+          .updateAfterFlushing(
+              new DataRegionId(Integer.parseInt(dataRegionId)),
+              partitionId,
+              System.currentTimeMillis(),
+              lastFlushTimeMap.getMemSize(partitionId),
+              false);
     }
   }
 
@@ -876,8 +891,7 @@ public class DataRegion implements IDataRegionForQuery {
                     timePartitionId,
                     true,
                     Long.MAX_VALUE,
-                    0,
-                    tsFileManager.isLatestTimePartition(timePartitionId)));
+                    0));
       }
 
       boolean isSequence =
@@ -969,8 +983,7 @@ public class DataRegion implements IDataRegionForQuery {
                     beforeTimePartition,
                     true,
                     Long.MAX_VALUE,
-                    0,
-                    tsFileManager.isLatestTimePartition(beforeTimePartition)));
+                    0));
       }
 
       long lastFlushTime =
@@ -3080,8 +3093,7 @@ public class DataRegion implements IDataRegionForQuery {
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,
-                      0,
-                      tsFileManager.isLatestTimePartition(timePartitionId)));
+                      0));
         }
 
         boolean isSequence =
@@ -3156,8 +3168,7 @@ public class DataRegion implements IDataRegionForQuery {
                       timePartitionIds[i],
                       true,
                       Long.MAX_VALUE,
-                      0,
-                      tsFileManager.isLatestTimePartition(timePartitionIds[i])));
+                      0));
         }
         areSequence[i] =
             config.isEnableSeparateData()
