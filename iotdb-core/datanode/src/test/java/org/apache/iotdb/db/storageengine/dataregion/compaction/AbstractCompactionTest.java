@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -77,8 +78,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 import static org.junit.Assert.fail;
 
 public class AbstractCompactionTest {
-  protected int seqFileNum = 5;
-  protected int unseqFileNum = 0;
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
   private int chunkGroupSize = 0;
@@ -563,6 +562,29 @@ public class AbstractCompactionTest {
       }
     }
     sourceDatas.putAll(tmpSourceDatas);
+  }
+
+  protected void generateModsFile(
+      int deviceNum,
+      int measurementNum,
+      List<TsFileResource> resources,
+      long startTime,
+      long endTime)
+      throws IllegalPathException, IOException {
+    List<String> seriesPaths = new ArrayList<>();
+    for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
+      for (int mIndex = 0; mIndex < measurementNum; mIndex++) {
+        seriesPaths.add(
+            COMPACTION_TEST_SG
+                + IoTDBConstant.PATH_SEPARATOR
+                + "d"
+                + dIndex
+                + IoTDBConstant.PATH_SEPARATOR
+                + "s"
+                + mIndex);
+      }
+    }
+    generateModsFile(seriesPaths, resources, startTime, endTime);
   }
 
   protected void generateModsFile(

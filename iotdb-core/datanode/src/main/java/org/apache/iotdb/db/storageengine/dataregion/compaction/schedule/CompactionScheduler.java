@@ -61,11 +61,7 @@ import java.util.stream.Collectors;
 public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static long settleIntervalCount =
-      config.getTtlCheckInterval() / config.getCompactionScheduleIntervalInMs();
-  private static long scheduleCount = 0;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private CompactionScheduler() {}
 
@@ -90,7 +86,6 @@ public class CompactionScheduler {
    */
   public static int scheduleCompaction(
       TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary) {
-    scheduleCount++;
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
@@ -103,7 +98,8 @@ public class CompactionScheduler {
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
       trySubmitCount +=
           tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
-      trySubmitCount += tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary);
+      trySubmitCount +=
+          tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary, false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
@@ -261,15 +257,17 @@ public class CompactionScheduler {
     return trySubmitCount;
   }
 
-  private static int tryToSubmitSettleCompactionTask(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+  public static int tryToSubmitSettleCompactionTask(
+      TsFileManager tsFileManager,
+      long timePartition,
+      CompactionScheduleSummary summary,
+      boolean heavySelect)
       throws InterruptedException {
     if (!config.isEnableSeqSpaceCompaction() && !config.isEnableUnseqSpaceCompaction()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
-    boolean heavySelect = scheduleCount % settleIntervalCount == 0;
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(
             heavySelect, logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
