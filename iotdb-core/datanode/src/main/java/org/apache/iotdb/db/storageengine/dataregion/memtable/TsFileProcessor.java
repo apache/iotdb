@@ -351,6 +351,8 @@ public class TsFileProcessor {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
@@ -1573,6 +1575,11 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableCreatedTime() {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableUpdateTime() {
+    return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
   }
 
   public long getLastWorkMemtableFlushTime() {

@@ -41,6 +41,7 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.common.cache.Cache;
 import org.apache.ratis.thirdparty.com.google.common.cache.CacheBuilder;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -300,7 +301,9 @@ public class Utils {
     RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
         properties, config.getLog().getSegmentCacheSizeMax());
     RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
-    RaftServerConfigKeys.Log.setWriteBufferSize(properties, config.getLog().getWriteBufferSize());
+    final SizeInBytes writeBufferSize =
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8);
+    RaftServerConfigKeys.Log.setWriteBufferSize(properties, writeBufferSize);
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
@@ -315,6 +318,7 @@ public class Utils {
         properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
 
     GrpcConfigKeys.Server.setHeartbeatChannel(properties, true);
+    GrpcConfigKeys.Server.setLogMessageBatchDuration(properties, TimeDuration.ONE_MINUTE);
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMin(
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(

@@ -118,6 +118,7 @@ public abstract class InnerCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
+      tsFileResource.setSeq(true);
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);

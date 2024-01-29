@@ -314,7 +314,7 @@ public class BTreePageManager extends PageManager {
 
   @Override
   public void delete(ICachedMNode node) throws IOException, MetadataException {
-    cacheGuardian();
+    pagePool.cacheGuardian();
     SchemaPageContext cxt = new SchemaPageContext();
     // node is the record deleted from its segment
     entrantLock(node.getParent(), cxt);
@@ -382,7 +382,7 @@ public class BTreePageManager extends PageManager {
       flushDirtyPages(cxt);
     } finally {
       releaseLocks(cxt);
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
     }
   }
 
@@ -481,7 +481,7 @@ public class BTreePageManager extends PageManager {
       return child;
     } finally {
       initPage.getLock().readLock().unlock();
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
       threadContexts.remove(Thread.currentThread().getId(), cxt);
     }
   }
@@ -566,7 +566,7 @@ public class BTreePageManager extends PageManager {
     } finally {
       // safety of iterator should be guaranteed by upper layer
       pageHeldLock.getLock().readLock().unlock();
-      releaseReferent(cxt);
+      pagePool.releaseReferent(cxt);
     }
   }
 

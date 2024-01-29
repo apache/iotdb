@@ -30,9 +30,11 @@ public class CompactionTaskSummary {
   protected int processChunkNum = 0;
   protected int directlyFlushChunkNum = 0;
   protected int deserializeChunkCount = 0;
+  protected int directlyFlushPageCount = 0;
   protected int deserializePageCount = 0;
   protected int mergedChunkNum = 0;
   protected long processPointNum = 0;
+  protected long rewritePointNum = 0;
   protected long temporalFileSize = 0;
   protected int temporalFileNum = 0;
 
@@ -87,8 +89,20 @@ public class CompactionTaskSummary {
     deserializeChunkCount += increment;
   }
 
+  public void increaseDirectlyFlushPageNum(int increment) {
+    directlyFlushPageCount += increment;
+  }
+
+  public void increaseDeserializedPageNum(int increment) {
+    deserializePageCount += increment;
+  }
+
   public void increaseProcessPointNum(long increment) {
     processPointNum += increment;
+  }
+
+  public void increaseRewritePointNum(long increment) {
+    rewritePointNum += increment;
   }
 
   public void increaseMergedChunkNum(int increment) {
@@ -103,8 +117,20 @@ public class CompactionTaskSummary {
     this.deserializeChunkCount = deserializeChunkCount;
   }
 
+  public void setDirectlyFlushPageCount(int directlyFlushPageCount) {
+    this.directlyFlushPageCount = directlyFlushPageCount;
+  }
+
+  public void setDeserializePageCount(int deserializePageCount) {
+    this.deserializePageCount = deserializePageCount;
+  }
+
   public void setProcessPointNum(int processPointNum) {
     this.processPointNum = processPointNum;
+  }
+
+  public void setRewritePointNum(long rewritePointNum) {
+    this.rewritePointNum = rewritePointNum;
   }
 
   public int getProcessChunkNum() {
@@ -119,12 +145,24 @@ public class CompactionTaskSummary {
     return deserializeChunkCount;
   }
 
+  public int getDirectlyFlushPageCount() {
+    return directlyFlushPageCount;
+  }
+
+  public int getDeserializePageCount() {
+    return deserializePageCount;
+  }
+
   public int getMergedChunkNum() {
     return mergedChunkNum;
   }
 
   public long getProcessPointNum() {
     return processPointNum;
+  }
+
+  public long getRewritePointNum() {
+    return rewritePointNum;
   }
 
   enum Status {
@@ -157,12 +195,14 @@ public class CompactionTaskSummary {
     return String.format(
         "Task start time: %s, total process chunk num: %d, "
             + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d,"
-            + " total process point num: %d",
+            + " directly flush page num: %d, total process point num: %d, rewrite point num: %d",
         startTimeInStr,
         processChunkNum,
         directlyFlushChunkNum,
         mergedChunkNum,
         deserializeChunkCount,
-        processPointNum);
+        directlyFlushPageCount,
+        processPointNum,
+        rewritePointNum);
   }
 }
