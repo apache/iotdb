@@ -931,15 +931,20 @@ public class FinalPruneBOSTest {
             if (cur_group_alpha.if_count == 0) {
                 cur_group_alpha.setCount_array(k1_start);
             }
-//            int gamma_value_count = cur_group_gamma.count;
             alpha_value_count_list = cur_group_alpha.count_array;
+            int[] alpha_unique_count_array = cur_group_alpha.unique_count_array;
+            int[] alpha_unique_number_array = cur_group_alpha.unique_number_array;
+            int alpha_unique_number = cur_group_alpha.unique_number;
+
 
             int cur_k1 = k1; //count[x_min, x_min+2^{alpha-1}]
-            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
-                int cur_count_alpha = alpha_value_count_list[x_l_i];
-                if (cur_count_alpha == 0)
-                    continue;
-                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
+            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+                cur_k1 += alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+                int x_l_i = alpha_unique_number_array[unique_j];
+//                int cur_count_alpha = alpha_value_count_list[x_l_i];
+//                if (cur_count_alpha == 0)
+//                    continue;
+                //cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
 
                 // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                 // upper: x_max
@@ -968,11 +973,13 @@ public class FinalPruneBOSTest {
             // upper:  x_max - 2^{gamma-1}
             cur_k1 = k1; //count[x_min, x_min+2^{alpha-1}]
             int cur_k2= k2;
-            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
-                int cur_count_alpha = alpha_value_count_list[x_l_i];
-                if (cur_count_alpha == 0)
-                    continue;
-                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
+            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+//                int cur_count_alpha = alpha_value_count_list[x_l_i];
+//                if (cur_count_alpha == 0)
+//                    continue;
+//                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
+                cur_k1 += alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+                int x_l_i = alpha_unique_number_array[unique_j];
                 cur_k2 = k2; // count(x_max)
 
 
@@ -1135,12 +1142,14 @@ public class FinalPruneBOSTest {
                             }
                             else{
                                 int cur_k1_start_of_lambda = cur_k1;
-                                for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
+                                for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+                                    cur_k1_start_of_lambda += alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+                                    int x_l_i = alpha_unique_number_array[unique_j];
 
-                                    int cur_count_alpha = alpha_value_count_list[x_l_i];
-                                    if (cur_count_alpha == 0)
-                                        continue;
-                                    cur_k1_start_of_lambda += cur_count_alpha;// gamma_box_count_list[gamma];
+//                                    int cur_count_alpha = alpha_value_count_list[x_l_i];
+//                                    if (cur_count_alpha == 0)
+//                                        continue;
+//                                    cur_k1_start_of_lambda += cur_count_alpha;// gamma_box_count_list[gamma];
                                     int cur_cur_k2 = cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
                                     int x_u_i_start = 0;// Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
@@ -1213,13 +1222,15 @@ public class FinalPruneBOSTest {
             // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}] (52 - 64, 52 -32] (0, 20]
             // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
             cur_k1 = k1;
-            for (int x_l_i = 1; x_l_i < gap_alpha; x_l_i++) {
+            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+                cur_k1 += alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+                int x_l_i = alpha_unique_number_array[unique_j];
 
 
-                int cur_count_alpha = alpha_value_count_list[x_l_i];
-                if (cur_count_alpha == 0)
-                    continue;
-                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
+//                int cur_count_alpha = alpha_value_count_list[x_l_i];
+//                if (cur_count_alpha == 0)
+//                    continue;
+//                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
 
 
                 gap_gamma = (int) pow(2, gamma_size);
@@ -1500,13 +1511,17 @@ public class FinalPruneBOSTest {
         }
 //            int gamma_value_count = cur_group_gamma.count;
         alpha_value_count_list = cur_group_alpha.count_array;
+        int[] alpha_unique_count_array = cur_group_alpha.unique_count_array;
+        int[] alpha_unique_number_array = cur_group_alpha.unique_number_array;
+        int alpha_unique_number = cur_group_alpha.unique_number;
 
         int x_l_i_end = max_delta_value - k1_start; // [1, x_max - x_min+2^{alpha_size-1})
-        for (int x_l_i = 1; x_l_i < x_l_i_end; x_l_i++) {
-            int cur_count_alpha = alpha_value_count_list[x_l_i];
-            if (cur_count_alpha == 0)
-                continue;
-            k1 += cur_count_alpha;// gamma_box_count_list[gamma];
+        for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+            k1 += alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+            int x_l_i = alpha_unique_number_array[unique_j];
+            if(x_l_i>=x_l_i_end){
+                break;
+            }
 
             // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
             // upper: x_max
@@ -1631,7 +1646,7 @@ public class FinalPruneBOSTest {
 
         }
 
-        // 63 2172 1660 10537   2051 2180 1386 10821
+        // 2685 2693
 //        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
@@ -1886,8 +1901,8 @@ public class FinalPruneBOSTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();

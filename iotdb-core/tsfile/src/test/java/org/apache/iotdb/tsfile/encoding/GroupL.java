@@ -1,5 +1,8 @@
 package org.apache.iotdb.tsfile.encoding;
 
+import org.junit.Test;
+
+import java.io.IOException;
 import java.util.Arrays;
 
 import static java.lang.Math.pow;
@@ -58,23 +61,24 @@ public class GroupL {
         this.mask =  (1 << left_shift) - 1; //block_size*2-1; //
         this.if_count = 1;
         int[] value_list = new int[this.count];
-        int unique_value_count = 0;
         int[] number_gamma = this.number;
         for (int i = 0; i < this.count; i++) {
             int value = number_gamma[i];
             count_array[value-k1_start]++;
-            value_list[unique_value_count] = value;
-            unique_value_count ++;
+            if (count_array[value-k1_start] == 1) {
+                value_list[unique_number] = value;
+                unique_number++;
+            }
         }
-        this.unique_count_array = new int[unique_value_count];
-        this.unique_number_array = new int[unique_value_count];
-        long[] sorted_value_list = new long[unique_value_count];
-        for(int i=0;i<unique_value_count;i++){
+        this.unique_count_array = new int[unique_number];
+        this.unique_number_array = new int[unique_number];
+        long[] sorted_value_list = new long[unique_number];
+        for(int i=0;i<unique_number;i++){
             int value = value_list[i];
             sorted_value_list[i] = (((long) (value-k1_start)) << left_shift) + count_array[value-k1_start];
         }
         Arrays.sort(sorted_value_list);
-        for(int i=0;i<unique_value_count;i++){
+        for(int i=0;i<unique_number;i++){
             unique_count_array[i] = getCount(sorted_value_list[i]);
             unique_number_array[i]= getUniqueValue(sorted_value_list[i]);
         }
