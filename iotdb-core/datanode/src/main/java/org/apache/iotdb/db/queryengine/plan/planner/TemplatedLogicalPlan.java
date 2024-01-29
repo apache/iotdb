@@ -109,15 +109,15 @@ public class TemplatedLogicalPlan {
           }
         }
       }
+
+      filterLayoutMap = makeLayout(newMeasurementList);
+
+      analysis
+          .getExpressionTypes()
+          .forEach(
+              (key, value) ->
+                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
     }
-
-    filterLayoutMap = makeLayout(newMeasurementList);
-
-    analysis
-        .getExpressionTypes()
-        .forEach(
-            (key, value) ->
-                context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
 
     context
         .getTypeProvider()
