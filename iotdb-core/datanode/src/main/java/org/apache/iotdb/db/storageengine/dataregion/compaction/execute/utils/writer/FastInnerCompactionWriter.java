@@ -25,8 +25,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
@@ -41,8 +40,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   }
 
   @Override
-  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException {
+  public void write(TsBlock tsBlock, int subTaskId) throws IOException {
     throw new RuntimeException("Does not support this method in FastInnerCompactionWriter");
   }
 

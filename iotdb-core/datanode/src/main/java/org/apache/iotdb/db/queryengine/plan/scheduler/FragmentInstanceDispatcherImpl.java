@@ -284,8 +284,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
-  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
+  private void dispatchRemoteHelper(FragmentInstance instance, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException, TException, ClientManagerException,
+          RatisReadUnavailableException {
     try (SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
@@ -348,18 +349,35 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
                   String.format("unknown read type [%s]", instance.getType())));
       }
+    }
+  }
+
+  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException {
+
+    try {
+      dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       logger.warn(
-          "can't execute request on node {}, error msg is {}.",
+          "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage("can't connect to node " + endPoint);
-      // If the DataNode cannot be connected, its endPoint will be put into black list
-      // so that the following retry will avoid dispatching instance towards this DataNode.
-      queryContext.addFailedEndPoint(endPoint);
-      throw new FragmentInstanceDispatchException(status);
+      // we just retry once to clear stale connection for a restart node.
+      try {
+        dispatchRemoteHelper(instance, endPoint);
+      } catch (ClientManagerException | TException | RatisReadUnavailableException e1) {
+        logger.warn(
+            "can't execute request on node  {} in second try, error msg is {}.",
+            endPoint,
+            ExceptionUtils.getRootCause(e1).toString());
+        TSStatus status = new TSStatus();
+        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+        status.setMessage("can't connect to node " + endPoint);
+        // If the DataNode cannot be connected, its endPoint will be put into black list
+        // so that the following retry will avoid dispatching instance towards this DataNode.
+        queryContext.addFailedEndPoint(endPoint);
+        throw new FragmentInstanceDispatchException(status);
+      }
     }
   }
 

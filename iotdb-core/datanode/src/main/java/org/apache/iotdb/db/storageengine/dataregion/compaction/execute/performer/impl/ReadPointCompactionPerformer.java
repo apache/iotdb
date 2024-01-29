@@ -67,15 +67,15 @@ public class ReadPointCompactionPerformer
   @SuppressWarnings("squid:S1068")
   private final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private List<TsFileResource> seqFiles = Collections.emptyList();
-  private List<TsFileResource> unseqFiles = Collections.emptyList();
+  protected List<TsFileResource> seqFiles = Collections.emptyList();
+  protected List<TsFileResource> unseqFiles = Collections.emptyList();
 
   private static final int SUB_TASK_NUM =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   private CompactionTaskSummary summary;
 
-  private List<TsFileResource> targetFiles = Collections.emptyList();
+  protected List<TsFileResource> targetFiles = Collections.emptyList();
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -269,11 +269,7 @@ public class ReadPointCompactionPerformer
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
       if (isAligned) {
-        writer.write(
-            tsBlock.getTimeColumn(),
-            tsBlock.getValueColumns(),
-            subTaskId,
-            tsBlock.getPositionCount());
+        writer.write(tsBlock, subTaskId);
       } else {
         IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
         while (pointReader.hasNextTimeValuePair()) {
@@ -283,7 +279,7 @@ public class ReadPointCompactionPerformer
     }
   }
 
-  private AbstractCompactionWriter getCompactionWriter(
+  protected AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)

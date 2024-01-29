@@ -185,6 +185,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -907,7 +908,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
     return new CreatePipePluginStatement(
-        ctx.pluginName.getText(),
+        parseIdentifier(ctx.pluginName.getText()),
         parseStringLiteral(ctx.className.getText()),
         parseAndValidateURI(ctx.uriClause()));
   }
@@ -915,7 +916,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Drop PipePlugin =====================================================================
   @Override
   public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
-    return new DropPipePluginStatement(ctx.pluginName.getText());
+    return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
   }
 
   // Show PipePlugins =====================================================================
@@ -3172,6 +3173,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return clearCacheStatement;
   }
 
+  // Repair Data
+  @Override
+  public Statement visitRepairData(IoTDBSqlParser.RepairDataContext ctx) {
+    RepairDataStatement repairDataStatement = new RepairDataStatement(StatementType.REPAIR_DATA);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("REPAIR DATA ON CLUSTER is not supported in standalone mode");
+    }
+    repairDataStatement.setOnCluster(ctx.LOCAL() == null);
+    return repairDataStatement;
+  }
+
   // Load Configuration
 
   @Override
@@ -3577,7 +3589,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(ctx.pipeName.getText());
+      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException(
           "Not support for this sql in CREATEPIPE, please enter pipe name.");
@@ -3640,7 +3652,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final DropPipeStatement dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
 
     if (ctx.pipeName != null) {
-      dropPipeStatement.setPipeName(ctx.pipeName.getText());
+      dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
     }
@@ -3653,7 +3665,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final StartPipeStatement startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
 
     if (ctx.pipeName != null) {
-      startPipeStatement.setPipeName(ctx.pipeName.getText());
+      startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException("Not support for this sql in START PIPE, please enter pipename.");
     }
@@ -3666,7 +3678,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final StopPipeStatement stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
 
     if (ctx.pipeName != null) {
-      stopPipeStatement.setPipeName(ctx.pipeName.getText());
+      stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException("Not support for this sql in STOP PIPE, please enter pipename.");
     }
