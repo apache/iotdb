@@ -70,7 +70,7 @@ public class PageIOChannel {
 
   public void renewLogWriter() throws IOException {
     if (logWriter != null) {
-      logWriter.renew();
+      logWriter = logWriter.renew();
     }
   }
 

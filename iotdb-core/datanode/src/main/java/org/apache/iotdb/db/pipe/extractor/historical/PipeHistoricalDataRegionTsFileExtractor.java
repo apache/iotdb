@@ -329,9 +329,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                        // Some resource may be not closed due to the control of
+                        // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
+                            // Some different tsFiles may share the same max progressIndex, thus
+                            // tsFiles with an "equals" max progressIndex must be transmitted to
+                            // avoid data loss
                             && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
@@ -342,9 +345,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
-                        // Some resource may be not closed due to the control of
+                        // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
+                            // Some different tsFiles may share the same max progressIndex, thus
+                            // tsFiles with an "equals" max progressIndex must be transmitted to
+                            // avoid data loss
                             && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))

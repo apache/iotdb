@@ -324,11 +324,14 @@ public class WALNode implements IWALNode {
     private void updateEffectiveInfoRationAndUpdateMetric() {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
+      MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
       long totalCost =
-          (getCurrentWALFileVersion()
-                  - checkpointManager.getOldestUnpinnedMemTableInfo().getFirstFileVersionId()
-                  + 1)
-              * config.getWalFileSizeThresholdInByte();
+          oldestUnpinnedMemTableInfo == null
+              ? costOfActiveMemTables
+              : (getCurrentWALFileVersion()
+                      - oldestUnpinnedMemTableInfo.getFirstFileVersionId()
+                      + 1)
+                  * config.getWalFileSizeThresholdInByte();
       if (totalCost == 0) {
         return;
       }

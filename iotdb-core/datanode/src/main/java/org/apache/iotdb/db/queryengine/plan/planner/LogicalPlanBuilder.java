@@ -792,7 +792,7 @@ public class LogicalPlanBuilder {
               orderByParameter,
               outputColumnNames);
 
-      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
+      // if value filter exists, need add a LimitNode as the child node of TopKNode
       long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
 
       // only order by based on time, use TopKNode + SingleDeviceViewNode
@@ -817,7 +817,7 @@ public class LogicalPlanBuilder {
       analysis.setUseTopKNode();
       this.root = topKNode;
     } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
-      // otherwise use MergeSortNode + SingleDeviceViewNode
+      // use MergeSortNode + SingleDeviceViewNode
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
@@ -876,7 +876,7 @@ public class LogicalPlanBuilder {
   private boolean canUseMergeSortNode(QueryStatement queryStatement, int deviceSize) {
     // 1. `order by based on time` + `no order by expression`.
     // 2. deviceSize is larger than 1.
-    // when satisfy all above cases use MergeSortNode.
+    // when satisfy all above cases use MergeSortNode + SingleDeviceViewNode.
     return queryStatement.isOrderByBasedOnTime()
         && !queryStatement.hasOrderByExpression()
         && deviceSize > 1;

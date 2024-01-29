@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -62,6 +63,15 @@ public abstract class AbstractCompactionEstimator {
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
 
   protected abstract long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException;
+
+  protected boolean isAllSourceFileExist(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
+      if (resource.getStatus() == TsFileResourceStatus.DELETED) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   protected CompactionTaskInfo calculatingCompactionTaskInfo(List<TsFileResource> resources)
       throws IOException {

@@ -790,6 +790,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus repairData() {
+    return configManager.repairData();
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }

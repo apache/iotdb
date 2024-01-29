@@ -553,7 +553,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage());
+          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage(), e);
         }
       }
       file = null;
