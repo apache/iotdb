@@ -30,7 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
@@ -128,7 +128,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
           case TRANSFER_TS_FILE_SEAL:
             return handleTransferFileSeal(PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
           case TRANSFER_SCHEMA_PLAN:
-            return handleTransferSchemaPlan(PipeTransferSchemaPlanReq.fromTPipeTransferReq(req));
+            return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
             return handleTransferFilePiece(
                 PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
@@ -256,7 +256,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferSchemaPlanReq req) {
+  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferPlanNodeReq req) {
     // TODO: parse exception and status for alter logical view node
     return req.getPlanNode() instanceof AlterLogicalViewNode
         ? new TPipeTransferResp(

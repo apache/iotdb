@@ -20,20 +20,18 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -59,7 +57,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class IoTDBAirGapConnector extends IoTDBAirGapCommonConnector {
+public class IoTDBAirGapConnector extends IoTDBAirGapDataNodeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
@@ -91,12 +89,6 @@ public class IoTDBAirGapConnector extends IoTDBAirGapCommonConnector {
             "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
             givenNodeUrls,
             new TEndPoint(ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())));
-  }
-
-  @Override
-  protected byte[] getHandShakeBytes() throws IOException {
-    return PipeTransferDataNodeHandshakeReq.toTPipeTransferBytes(
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   @Override
@@ -196,8 +188,13 @@ public class IoTDBAirGapConnector extends IoTDBAirGapCommonConnector {
   }
 
   @Override
-  public void transfer(Event event) {
-    if (!(event instanceof PipeHeartbeatEvent)) {
+  public void transfer(Event event) throws Exception {
+    final int socketIndex = nextSocketIndex();
+    final Socket socket = sockets.get(socketIndex);
+
+    if (event instanceof PipeWritePlanNodeEvent) {
+      doTransfer(socket, (PipeWritePlanNodeEvent) event);
+    } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn("IoTDBAirGapConnector does not support transferring generic event: {}.", event);
     }
   }

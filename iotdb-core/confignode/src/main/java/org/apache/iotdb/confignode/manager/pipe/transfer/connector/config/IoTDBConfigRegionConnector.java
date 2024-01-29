@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBMetaConnector;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBThriftSyncClientConfigNodeManager;
@@ -34,6 +34,8 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +51,7 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
+public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
 
@@ -62,6 +64,18 @@ public class IoTDBConfigRegionConnector extends IoTDBMetaConnector {
       boolean useLeaderCache) {
     return new IoTDBThriftSyncClientConfigNodeManager(
         nodeUrls, useSSL, trustStorePath, trustStorePwd);
+  }
+
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBConfigRegionConnector can't transfer TabletInsertionEvent.");
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBConfigRegionConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override

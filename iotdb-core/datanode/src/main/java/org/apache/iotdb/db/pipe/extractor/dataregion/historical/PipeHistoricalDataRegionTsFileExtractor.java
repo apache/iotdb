@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -49,6 +51,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
@@ -92,6 +95,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+
+  private boolean needExtractData;
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -168,8 +173,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration) {
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws IllegalPathException {
+    needExtractData = PipeDataRegionFilter.getDataRegionListenPair(parameters).getLeft();
+    // Do nothing if only extract deletion
+    if (!needExtractData) {
+      return;
+    }
+
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
@@ -188,9 +199,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             EXTRACTOR_PATTERN_DEFAULT_VALUE);
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
-    if (dataRegion != null) {
+    if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (databaseName != null
+      if (Objects.nonNull(databaseName)
           && pattern.length() <= databaseName.length()
           && databaseName.startsWith(pattern)) {
         isDbNameCoveredByPattern = true;
@@ -262,7 +273,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private void flushDataRegionAllTsFiles() {
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) {
+    if (Objects.isNull(dataRegion)) {
       return;
     }
 
@@ -276,9 +287,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
+    if (!needExtractData) {
+      return;
+    }
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) {
+    if (Objects.isNull(dataRegion)) {
       pendingQueue = new ArrayDeque<>();
       return;
     }
@@ -385,7 +399,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
-    if (pendingQueue == null) {
+    if (!needExtractData || Objects.isNull(pendingQueue)) {
       return null;
     }
     TsFileResource resource = pendingQueue.poll();
@@ -424,17 +438,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   public synchronized boolean hasConsumedAll() {
-    return pendingQueue != null && pendingQueue.isEmpty();
+    return !needExtractData || (Objects.nonNull(pendingQueue) && pendingQueue.isEmpty());
   }
 
   @Override
   public int getPendingQueueSize() {
-    return pendingQueue != null ? pendingQueue.size() : 0;
+    return Objects.nonNull(pendingQueue) ? pendingQueue.size() : 0;
   }
 
   @Override
   public synchronized void close() {
-    if (pendingQueue != null) {
+    if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
             try {

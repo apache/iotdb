@@ -22,10 +22,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -38,6 +36,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -54,7 +53,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,11 +61,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
+public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
@@ -113,17 +110,6 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
   }
 
   @Override
-  protected IoTDBThriftSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
-    return new IoTDBThriftSyncClientDataNodeManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
-  }
-
-  @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
@@ -148,10 +134,9 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
       return;
     } else {
       // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-          return;
-        }
+      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+          && ((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
+        return;
       }
     }
 
@@ -209,7 +194,12 @@ public class IoTDBThriftSyncConnector extends IoTDBSyncSslConnector {
   }
 
   @Override
-  public void transfer(Event event) throws TException, IOException {
+  public void transfer(Event event) throws Exception {
+    if (event instanceof PipeWritePlanNodeEvent) {
+      doTransfer((PipeWritePlanNodeEvent) event);
+      return;
+    }
+
     // in order to commit in order
     if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
       doTransfer();

@@ -28,19 +28,19 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 
-public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
+public class PipeWritePlanNodeEvent extends PipeWritePlanEvent {
   private PlanNode planNode;
 
-  public PipeWriteSchemaPlanEvent() {
+  public PipeWritePlanNodeEvent() {
     // Used for deserialization
     this(null, false);
   }
 
-  public PipeWriteSchemaPlanEvent(PlanNode planNode, boolean isGeneratedByPipe) {
+  public PipeWritePlanNodeEvent(PlanNode planNode, boolean isGeneratedByPipe) {
     this(planNode, isGeneratedByPipe, null, null, null);
   }
 
-  public PipeWriteSchemaPlanEvent(
+  public PipeWritePlanNodeEvent(
       PlanNode planNode,
       boolean isGeneratedByPipe,
       String pipeName,
@@ -57,8 +57,7 @@ public class PipeWriteSchemaPlanEvent extends PipeWritePlanEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
-    return new PipeWriteSchemaPlanEvent(
-        planNode, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
+    return new PipeWritePlanNodeEvent(planNode, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override

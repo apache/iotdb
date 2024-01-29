@@ -32,11 +32,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
-public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
+public class PipeTransferPlanNodeReq extends TPipeTransferReq {
 
   private transient PlanNode planNode;
 
-  private PipeTransferSchemaPlanReq() {
+  private PipeTransferPlanNodeReq() {
     // Do nothing
   }
 
@@ -46,8 +46,8 @@ public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferSchemaPlanReq toTPipeTransferReq(PlanNode planNode) {
-    final PipeTransferSchemaPlanReq req = new PipeTransferSchemaPlanReq();
+  public static PipeTransferPlanNodeReq toTPipeTransferReq(PlanNode planNode) {
+    final PipeTransferPlanNodeReq req = new PipeTransferPlanNodeReq();
 
     req.planNode = planNode;
 
@@ -58,8 +58,8 @@ public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferSchemaPlanReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferSchemaPlanReq planNodeReq = new PipeTransferSchemaPlanReq();
+  public static PipeTransferPlanNodeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferPlanNodeReq planNodeReq = new PipeTransferPlanNodeReq();
 
     planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
 
@@ -91,7 +91,7 @@ public class PipeTransferSchemaPlanReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferSchemaPlanReq that = (PipeTransferSchemaPlanReq) obj;
+    PipeTransferPlanNodeReq that = (PipeTransferPlanNodeReq) obj;
     return planNode.equals(that.planNode)
         && version == that.version
         && type == that.type

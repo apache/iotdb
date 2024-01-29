@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapMetaConnector;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
@@ -30,6 +30,8 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -41,7 +43,7 @@ import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.util.Arrays;
 
-public class IoTDBAirGapConfigConnector extends IoTDBAirGapMetaConnector {
+public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConfigConnector.class);
 
@@ -49,6 +51,18 @@ public class IoTDBAirGapConfigConnector extends IoTDBAirGapMetaConnector {
   protected byte[] getHandShakeBytes() throws IOException {
     return PipeTransferConfigNodeHandshakeReq.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapConfigConnector can't transfer TabletInsertionEvent.");
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapConfigConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override

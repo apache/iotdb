@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapSchemaConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.schema.IoTDBSchemaRegionConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
 class PipeSchemaRegionConnectorConstructor extends PipeConnectorConstructor {

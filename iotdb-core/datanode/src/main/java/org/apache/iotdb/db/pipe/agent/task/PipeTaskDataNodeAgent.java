@@ -89,25 +89,25 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeDataNodeTask pipeTask;
       final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
-
-      // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
-      if (Boolean.TRUE.equals(
-              StorageEngine.getInstance()
-                      .getAllDataRegionIds()
-                      .contains(new DataRegionId(consensusGroupId))
-                  && PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft())
-          || SchemaEngine.getInstance()
+      final boolean needConstructDataRegionTask =
+          StorageEngine.getInstance()
+                  .getAllDataRegionIds()
+                  .contains(new DataRegionId(consensusGroupId))
+              && (PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft()
+                  || PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getRight());
+      final boolean needConstructSchemaRegionTask =
+          SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !PipeSchemaNodeFilter.getPipeListenSet(extractorParameters).isEmpty()) {
+              && !PipeSchemaNodeFilter.getPipeListenSet(extractorParameters).isEmpty();
+
+      // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
+      if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
         pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
-      } else {
-        throw new UnsupportedOperationException(
-            "Unsupported consensus group id: " + consensusGroupId);
+        pipeTask.create();
+        pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
       }
-      pipeTask.create();
-      pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
 
     pipeMetaKeeper

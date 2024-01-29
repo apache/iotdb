@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapMetaConnector;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -41,13 +39,19 @@ import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.util.Arrays;
 
-public class IoTDBAirGapSchemaConnector extends IoTDBAirGapMetaConnector {
+public class IoTDBAirGapSchemaConnector extends IoTDBAirGapDataNodeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapSchemaConnector.class);
 
   @Override
-  protected byte[] getHandShakeBytes() throws IOException {
-    return PipeTransferDataNodeHandshakeReq.toTPipeTransferBytes(
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapSchemaConnector can't transfer TabletInsertionEvent.");
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBAirGapSchemaConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -55,25 +59,13 @@ public class IoTDBAirGapSchemaConnector extends IoTDBAirGapMetaConnector {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeWriteSchemaPlanEvent) {
-      doTransfer(socket, (PipeWriteSchemaPlanEvent) event);
+    if (event instanceof PipeWritePlanNodeEvent) {
+      doTransfer(socket, (PipeWritePlanNodeEvent) event);
     } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
       doTransfer(socket, (PipeSchemaRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
-          "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
-    }
-  }
-
-  private void doTransfer(Socket socket, PipeWriteSchemaPlanEvent pipeWriteSchemaPlanEvent)
-      throws PipeException, IOException {
-    if (!send(
-        socket,
-        PipeTransferSchemaPlanReq.toTPipeTransferBytes(pipeWriteSchemaPlanEvent.getPlanNode()))) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeWriteSchemaPlanEvent %s error. Socket: %s.",
-              pipeWriteSchemaPlanEvent, socket));
+          "IoTDBAirGapSchemaConnector does not support transferring generic event: {}.", event);
     }
   }
 
