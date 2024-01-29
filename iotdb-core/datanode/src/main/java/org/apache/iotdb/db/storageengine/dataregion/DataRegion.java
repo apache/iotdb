@@ -625,9 +625,7 @@ public class DataRegion implements IDataRegionForQuery {
   private void recoverCompaction() {
     CompactionRecoverManager compactionRecoverManager =
         new CompactionRecoverManager(tsFileManager, databaseName, dataRegionId);
-    compactionRecoverManager.recoverInnerSpaceCompaction(true);
-    compactionRecoverManager.recoverInnerSpaceCompaction(false);
-    compactionRecoverManager.recoverCrossSpaceCompaction();
+    compactionRecoverManager.recoverCompaction();
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

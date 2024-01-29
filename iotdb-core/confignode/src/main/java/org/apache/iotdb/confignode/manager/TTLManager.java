@@ -57,6 +57,7 @@ public class TTLManager {
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             setTTLPlan.getTTL(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
     setTTLPlan.setTTL(ttl);
 
     return configManager.getProcedureManager().setTTL(setTTLPlan);

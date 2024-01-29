@@ -284,7 +284,7 @@ public class TsFileNameGenerator {
                       + tsFileName.innerCompactionCnt
                       + FILE_NAME_SEPARATOR
                       + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+                      + IoTDBConstant.SETTLE_SUFFIX),
               TsFileResourceStatus.COMPACTING));
     }
     return targetFileResources;

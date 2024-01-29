@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
@@ -82,6 +83,32 @@ public class CompactionLogger implements AutoCloseable {
                   || name.endsWith(INSERTION_COMPACTION_LOG_NAME_SUFFIX);
             }
           });
+    } else {
+      return new File[0];
+    }
+  }
+
+  public static File[] findCompactionLogs(CompactionTaskType type, File timePartitionDir) {
+    if (timePartitionDir.exists()) {
+      final String logNameSuffix;
+      switch (type) {
+        case INNER_SEQ:
+        case INNER_UNSEQ:
+          logNameSuffix = INNER_COMPACTION_LOG_NAME_SUFFIX;
+          break;
+        case CROSS:
+          logNameSuffix = CROSS_COMPACTION_LOG_NAME_SUFFIX;
+          break;
+        case INSERTION:
+          logNameSuffix = INSERTION_COMPACTION_LOG_NAME_SUFFIX;
+          break;
+        case SETTLE:
+          logNameSuffix = SETTLE_COMPACTION_LOG_NAME_SUFFIX;
+          break;
+        default:
+          return new File[0];
+      }
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(logNameSuffix));
     } else {
       return new File[0];
     }

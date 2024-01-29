@@ -221,13 +221,21 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void recover() {
+  public void recover() {
+    LOGGER.info(
+        "{}-{} [Compaction][Recover] Start to recover settle compaction.",
+        storageGroupName,
+        dataRegionId);
     try {
       if (needRecoverTaskInfoFromLogFile) {
         recoverTaskInfoFromLogFile();
       }
       recoverAllDeletedFiles();
       recoverPartialDeletedFiles();
+      LOGGER.info(
+          "{}-{} [Compaction][Recover] Finish to recover settle compaction successfully.",
+          storageGroupName,
+          dataRegionId);
     } catch (Exception e) {
       handleRecoverException(e);
     }
@@ -307,6 +315,11 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   }
 
   private void recoverTaskInfoFromLogFile() throws IOException {
+    LOGGER.info(
+        "{}-{} [Compaction][Recover] compaction log is {}",
+        storageGroupName,
+        dataRegionId,
+        logFile);
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
@@ -345,9 +358,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
           File targetFile =
               new File(
                   x.getFilePath()
-                      .replace(
-                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-                          TsFileConstant.TSFILE_SUFFIX));
+                      .replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
           TsFileResource resource;
           if (tmpTargetFile.exists()) {
             resource = new TsFileResource(tmpTargetFile);
@@ -358,10 +369,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
             resource = new TsFileResource();
             // check if target file is deleted after compaction or not
             x.setFilename(
-                x.getFilename()
-                    .replace(
-                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-                        TsFileConstant.TSFILE_SUFFIX));
+                x.getFilename().replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
             if (deletedTargetFileIdentifiers.contains(x)) {
               // target file is deleted after compaction
               resource.forceMarkDeleted();

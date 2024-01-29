@@ -115,12 +115,8 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   @Override
-  public List<AbstractCompactionTask> selectSettleTask(
-      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    List<AbstractCompactionTask> tasks = new ArrayList<>();
-    tasks.addAll(selectTasks(seqFiles));
-    tasks.addAll(selectTasks(unseqFiles));
-    return tasks;
+  public List<AbstractCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
+    return selectTasks(tsFileResources);
   }
 
   private List<AbstractCompactionTask> selectTasks(List<TsFileResource> resources) {

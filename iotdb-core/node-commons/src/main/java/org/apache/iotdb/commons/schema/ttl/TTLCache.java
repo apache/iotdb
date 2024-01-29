@@ -3,6 +3,7 @@ package org.apache.iotdb.commons.schema.ttl;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -25,9 +26,12 @@ public class TTLCache {
 
   public TTLCache() {
     ttlCacheTree = new CacheNode(IoTDBConstant.PATH_ROOT);
-    ttlCacheTree.addChild(
-        IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    long defaultTTL =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    defaultTTL = defaultTTL <= 0 ? Long.MAX_VALUE : defaultTTL;
+    ttlCacheTree.addChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, defaultTTL);
     ttlCount = 1;
   }
 

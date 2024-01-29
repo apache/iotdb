@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.locks.Lock;
@@ -273,10 +274,16 @@ public class CompactionScheduler {
         new SettleSelectorImpl(
             heavySelect, logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     long startTime = System.currentTimeMillis();
-    List<AbstractCompactionTask> taskList =
-        settleSelector.selectSettleTask(
-            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
-            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+    List<AbstractCompactionTask> taskList = new ArrayList<>();
+    if (config.isEnableSeqSpaceCompaction()) {
+      taskList.addAll(
+          settleSelector.selectSettleTask(
+              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)));
+    } else if (config.isEnableUnseqSpaceCompaction()) {
+      taskList.addAll(
+          settleSelector.selectSettleTask(
+              tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition)));
+    }
     CompactionMetrics.getInstance()
         .updateCompactionTaskSelectionTimeCost(
             CompactionTaskType.SETTLE, System.currentTimeMillis() - startTime);
