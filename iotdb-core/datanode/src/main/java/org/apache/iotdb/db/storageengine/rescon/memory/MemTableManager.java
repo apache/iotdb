@@ -20,21 +20,11 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class MemTableManager {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final Logger logger = LoggerFactory.getLogger(MemTableManager.class);
-
-  private static final int WAIT_TIME = 100;
-  public static final int MEMTABLE_NUM_FOR_EACH_PARTITION = 4;
   private int currentMemtableNumber = 0;
 
   private MemTableManager() {}
@@ -44,35 +34,9 @@ public class MemTableManager {
   }
 
   public synchronized IMemTable getAvailableMemTable(String storageGroup, String dataRegionId)
-      throws WriteProcessException {
-    if (CONFIG.isEnableMemControl()) {
+      {
       currentMemtableNumber++;
       return new PrimitiveMemTable(storageGroup, dataRegionId, CONFIG.isEnableMemControl());
-    }
-
-    if (!reachMaxMemtableNumber()) {
-      currentMemtableNumber++;
-      return new PrimitiveMemTable(storageGroup, dataRegionId);
-    }
-
-    // wait until the total number of memtable is less than the system capacity
-    int waitCount = 1;
-    while (true) {
-      if (!reachMaxMemtableNumber()) {
-        currentMemtableNumber++;
-        return new PrimitiveMemTable(storageGroup, dataRegionId);
-      }
-      try {
-        wait(WAIT_TIME);
-      } catch (InterruptedException e) {
-        logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
-        Thread.currentThread().interrupt();
-        throw new WriteProcessException(e);
-      }
-      if (waitCount++ % 10 == 0) {
-        logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
-      }
-    }
   }
 
   public int getCurrentMemtableNumber() {
@@ -83,12 +47,6 @@ public class MemTableManager {
     currentMemtableNumber--;
     notifyAll();
   }
-
-  /** Called when memory control is disabled */
-  private boolean reachMaxMemtableNumber() {
-    return currentMemtableNumber >= CONFIG.getMaxMemtableNumber();
-  }
-
   public synchronized void close() {
     currentMemtableNumber = 0;
   }
