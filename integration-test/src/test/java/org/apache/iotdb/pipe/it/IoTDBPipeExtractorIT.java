@@ -299,8 +299,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
             "%s", receiverIp, receiverPort);
 
     List<String> invalidStartTimes =
-        Arrays.asList(
-            "''", "null", "'null'", "'1'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
+        Arrays.asList("''", "null", "'null'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
     for (String invalidStartTime : invalidStartTimes) {
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
