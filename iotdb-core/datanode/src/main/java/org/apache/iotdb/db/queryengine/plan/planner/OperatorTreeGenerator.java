@@ -2846,7 +2846,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PlanNode node, LocalExecutionPlanContext context) {
     // children after pipelining
     List<Operator> parentPipelineChildren = new ArrayList<>();
-    int finalExchangeNum = context.getExchangeSumNum();
     if (context.getDegreeOfParallelism() == 1 || node.getChildren().size() == 1) {
       // If dop = 1, we don't create extra pipeline
       for (PlanNode localChild : node.getChildren()) {
@@ -2854,6 +2853,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         parentPipelineChildren.add(childOperation);
       }
     } else {
+      int finalExchangeNum = context.getExchangeSumNum();
       // Keep it since we may change the structure of origin children nodes
       List<PlanNode> afterwardsNodes = new ArrayList<>();
       // 1. Calculate localChildren size
@@ -2949,8 +2949,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           throw new IllegalArgumentException("Unknown node type: " + node.getClass().getName());
         }
       }
+      context.setExchangeSumNum(finalExchangeNum);
     }
-    context.setExchangeSumNum(finalExchangeNum);
     return parentPipelineChildren;
   }
 

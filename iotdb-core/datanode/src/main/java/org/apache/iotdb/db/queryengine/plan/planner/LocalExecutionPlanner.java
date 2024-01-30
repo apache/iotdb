@@ -132,8 +132,8 @@ public class LocalExecutionPlanner {
         throw new MemoryNotEnoughException(
             String.format(
                 "There is not enough memory to execute current fragment instance, "
-                    + "current remaining free memory is %d, "
-                    + "estimated memory usage for current fragment instance is %d",
+                    + "current remaining free memory is %dB, "
+                    + "estimated memory usage for current fragment instance is %dB",
                 freeMemoryForOperators, estimatedMemorySize));
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
@@ -171,8 +171,11 @@ public class LocalExecutionPlanner {
     context
         .getPipelineDriverFactories()
         .forEach(
-            pipeline ->
-                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+            pipeline -> {
+              DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
+              sourcePaths.addAll(dataDriverContext.getPaths());
+              dataDriverContext.clearPaths();
+            });
     return sourcePaths;
   }
 

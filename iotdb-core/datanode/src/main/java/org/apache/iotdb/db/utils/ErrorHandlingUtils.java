@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
+import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+
 public class ErrorHandlingUtils {
 
   private ErrorHandlingUtils() {}
@@ -62,7 +64,17 @@ public class ErrorHandlingUtils {
     } else {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
-    return RpcUtils.getStatus(statusCode, message + e.getMessage());
+    if (e instanceof SemanticException) {
+      Throwable rootCause = getRootCause(e);
+      if (e.getCause() instanceof IoTDBException) {
+        return RpcUtils.getStatus(
+            ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
+      }
+      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
+    }
+    TSStatus status = RpcUtils.getStatus(statusCode, message + e.getMessage());
+    status.setNeedRetry(needRetry(status));
+    return status;
   }
 
   public static TSStatus onNpeOrUnexpectedException(
@@ -91,6 +103,7 @@ public class ErrorHandlingUtils {
           LOGGER.warn(message, e);
         }
       }
+      status.setNeedRetry(needRetry(status));
       return status;
     } else {
       return onNpeOrUnexpectedException(e, operation, statusCode);
@@ -105,7 +118,7 @@ public class ErrorHandlingUtils {
     return onQueryException(e, operation.getName());
   }
 
-  public static TSStatus tryCatchQueryException(Exception e) {
+  private static TSStatus tryCatchQueryException(Exception e) {
     Throwable rootCause = getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
@@ -146,16 +159,19 @@ public class ErrorHandlingUtils {
 
   public static TSStatus onNonQueryException(Exception e, String operation) {
     TSStatus status = tryCatchNonQueryException(e);
-    return status != null
-        ? status
-        : onNpeOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    if (status != null) {
+      status.setNeedRetry(needRetry(status));
+      return status;
+    } else {
+      return onNpeOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
   }
 
   public static TSStatus onNonQueryException(Exception e, OperationType operation) {
     return onNonQueryException(e, operation.getName());
   }
 
-  public static TSStatus tryCatchNonQueryException(Exception e) {
+  private static TSStatus tryCatchNonQueryException(Exception e) {
     String message = "Exception occurred while processing non-read. ";
     if (e instanceof BatchProcessException) {
       BatchProcessException batchException = (BatchProcessException) e;
@@ -184,7 +200,9 @@ public class ErrorHandlingUtils {
         String.format(
             "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
     LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
-    return RpcUtils.getStatus(errorCode, message);
+    TSStatus status = RpcUtils.getStatus(errorCode, message);
+    status.setNeedRetry(needRetry(status));
+    return status;
   }
 
   public static TSStatus onIoTDBException(Exception e, OperationType operation, int errorCode) {

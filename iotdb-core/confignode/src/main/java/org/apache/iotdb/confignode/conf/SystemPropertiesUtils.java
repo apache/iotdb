@@ -45,7 +45,7 @@ public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static final File systemPropertiesFile =
+  private static File systemPropertiesFile =
       new File(
           ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
               + File.separator
@@ -67,6 +67,15 @@ public class SystemPropertiesUtils {
 
   private SystemPropertiesUtils() {
     throw new IllegalStateException("Utility class: SystemPropertiesUtils.");
+  }
+
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    systemPropertiesFile =
+        new File(
+            ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                + File.separator
+                + ConfigNodeConstant.SYSTEM_FILE_NAME);
   }
 
   /**

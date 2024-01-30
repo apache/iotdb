@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -77,11 +79,13 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   private static long timeout = -1;
 
+  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+
   @SuppressWarnings({
     "squid:S3776",
     "squid:S2093"
   }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
-  /** main function of export tsFile tool. */
+  /* main function of export tsFile tool. */
   public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -91,7 +95,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      IoTPrinter.println("Too few params input, please check the following hint.");
+      ioTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -99,7 +103,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      IoTPrinter.println(e.getMessage());
+      ioTPrinter.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -121,9 +125,14 @@ public class ExportTsFile extends AbstractTsFileTool {
         String sql;
 
         if (sqlFile == null) {
-          LineReader lineReader = JlineUtils.getLineReader(username, host, port);
+          LineReader lineReader =
+              JlineUtils.getLineReader(
+                  new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
+                  username,
+                  host,
+                  port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
-          IoTPrinter.println(sql);
+          ioTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             legalCheck(values[i]);
@@ -139,13 +148,13 @@ public class ExportTsFile extends AbstractTsFileTool {
       }
 
     } catch (IOException e) {
-      IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
+      ioTPrinter.println("Failed to operate on file, because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (ArgsErrorException e) {
-      IoTPrinter.println("Invalid args: " + e.getMessage());
+      ioTPrinter.println("Invalid args: " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException e) {
-      IoTPrinter.println("Connect failed because " + e.getMessage());
+      ioTPrinter.println("Connect failed because " + e.getMessage());
       exitCode = CODE_ERROR;
     } finally {
       if (session != null) {
@@ -153,7 +162,7 @@ public class ExportTsFile extends AbstractTsFileTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          IoTPrinter.println(
+          ioTPrinter.println(
               "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
@@ -179,7 +188,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         || sqlLower.contains("variance(")
         || sqlLower.contains("var_pop(")
         || sqlLower.contains("var_samp(")) {
-      IoTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
+      ioTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
   }
@@ -288,12 +297,12 @@ public class ExportTsFile extends AbstractTsFileTool {
       long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
       long end = System.currentTimeMillis();
-      IoTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
         | WriteProcessException e) {
-      IoTPrinter.println("Cannot dump result because: " + e.getMessage());
+      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
@@ -355,7 +364,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         tabletList.add(tablet);
       }
       if (tabletList.isEmpty()) {
-        IoTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
+        ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
         System.exit(CODE_ERROR);
       }
       while (sessionDataSet.hasNext()) {

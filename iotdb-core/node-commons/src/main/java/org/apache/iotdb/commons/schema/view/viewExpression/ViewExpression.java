@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpr
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -62,6 +63,8 @@ import java.util.List;
  * an expression should be transformed into view expression before storage in views.
  */
 public abstract class ViewExpression {
+
+  protected int serSize = -1;
 
   public <R, C> R accept(ViewExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitExpression(this, context);
@@ -117,6 +120,21 @@ public abstract class ViewExpression {
     ReadWriteIOUtils.write(expression.getExpressionType().getExpressionTypeInShortEnum(), stream);
 
     expression.serialize(stream);
+  }
+
+  public static int getSerializeSize(ViewExpression expression) {
+    if (expression.serSize == -1) {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      try {
+        ViewExpression.serialize(expression, baos);
+        expression.serSize = baos.toByteArray().length;
+      } catch (Exception e) {
+        // ByteArrayOutputStream is a memory-based output stream that does not involve disk IO and
+        // will not throw an IOException except for OOM.
+        throw new RuntimeException(e);
+      }
+    }
+    return expression.serSize;
   }
 
   public static ViewExpression deserialize(ByteBuffer byteBuffer) {

@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -96,7 +98,10 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
     if (
@@ -124,7 +129,11 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
           ((PipeHeartbeatEvent) event).onProcessed();
           PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
-          pipeProcessor.process(event, outputEventCollector);
+          pipeProcessor.process(
+              event instanceof UserDefinedEnrichedEvent
+                  ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                  : event,
+              outputEventCollector);
         }
       }
 
@@ -132,12 +141,12 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
-            "Error occurred during executing PipeProcessor#process, perhaps need to check "
-                + "whether the implementation of PipeProcessor is correct "
-                + "according to the pipe-api description.",
+            String.format(
+                "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
+                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.");
+        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
       }
     }
@@ -163,8 +172,9 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       pipeProcessor.close();
     } catch (Exception e) {
       LOGGER.info(
-          "Error occurred during closing PipeProcessor, perhaps need to check whether the "
-              + "implementation of PipeProcessor is correct according to the pipe-api description.",
+          "Exception occurred when closing pipe processor subtask {}, root cause: {}",
+          taskID,
+          ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       outputEventCollector.close();

@@ -196,6 +196,11 @@ public class PlanFragment {
     return root;
   }
 
+  public void clearUselessField() {
+    planNodeTree = null;
+    typeProvider = null;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

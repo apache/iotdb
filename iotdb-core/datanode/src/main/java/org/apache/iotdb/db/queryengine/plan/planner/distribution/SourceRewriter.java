@@ -133,7 +133,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     String device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
-        analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
+        !analysis.useLogicalView()
+            ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
+            : new ArrayList<>(
+                analysis.getPartitionInfo(
+                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
+                    context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
     for (TRegionReplicaSet tRegionReplicaSet : regionReplicaSets) {
@@ -183,7 +188,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.isAllDevicesInOneTemplate()
+          !analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()))
               : new ArrayList<>(

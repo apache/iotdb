@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME;
+import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME_IN_NS;
 import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.MAXIMUM_WINDOW_SIZE;
 
 public class RegionCache {
@@ -61,8 +61,7 @@ public class RegionCache {
     RegionStatus status;
     if (RegionStatus.Removing.equals(lastSample.getStatus())) {
       status = RegionStatus.Removing;
-    } else if (System.currentTimeMillis() - lastSample.getSendTimestamp()
-        > HEARTBEAT_TIMEOUT_TIME) {
+    } else if (System.nanoTime() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();

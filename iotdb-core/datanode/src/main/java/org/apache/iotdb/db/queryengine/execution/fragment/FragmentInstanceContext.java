@@ -61,6 +61,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   private IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
+
+  // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
@@ -361,6 +363,8 @@ public class FragmentInstanceContext extends QueryContext {
   public synchronized QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
       initQueryDataSource(sourcePaths);
+      // friendly for gc
+      sourcePaths = null;
     }
     return sharedQueryDataSource;
   }
