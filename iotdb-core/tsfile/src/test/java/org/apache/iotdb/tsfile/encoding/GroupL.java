@@ -75,6 +75,12 @@ public class GroupL {
             sorted_value_list[i] = (((long) (value-k1_start)) << left_shift) + count_array[value-k1_start];
         }
         Arrays.sort(sorted_value_list);
+
+        int cdf_count = 0;
+        for(int i=0;i<unique_number;i++){
+            cdf_count += getCount(sorted_value_list[i]);
+            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i]) ) << left_shift) + cdf_count;//new_value_list[i]
+        }
     }
 
     public void incrementCount() {

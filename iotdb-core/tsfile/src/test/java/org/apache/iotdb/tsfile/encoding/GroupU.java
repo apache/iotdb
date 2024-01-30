@@ -14,7 +14,7 @@ public class GroupU{
     public int unique_number;
     public int mask;
     public int left_shift;
-    public long[] sorted_value_list;
+    public long[] sorted_value_list; // cdf
 
     public int getCount(long long1) {
         return ((int) (long1 & this.mask));
@@ -74,6 +74,12 @@ public class GroupU{
             sorted_value_list[i] = (((long) (k2_end - value)) << left_shift) + count_array[k2_end - value];
         }
         Arrays.sort(sorted_value_list);
+
+        int cdf_count = 0;
+        for(int i=0;i<unique_number;i++){
+            cdf_count += getCount(sorted_value_list[i]);
+            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i]) ) << left_shift) + cdf_count;//new_value_list[i]
+        }
     }
 
     public void incrementCount() {

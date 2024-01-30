@@ -508,14 +508,7 @@ public class RLEPruneBOSTest {
         block_size = min_delta[1];
         int max_delta_value = min_delta[2];
 
-
-//        int countall = 0;
-//        int count5_7 = 0;
-//        int count5_4 = 0;
-//        int count5_5 = 0;
-//        int count5_6 = 0;
-//        int countC = 0;
-
+        int boundary_index = (int) ((double) block_size / (double) (getBitWith(block_size-1)-1));
 
         int max_bit_width = getBitWith(max_delta_value) + 1;
         int[] lambda_list = {getBitWith(block_size-1),1};
@@ -569,9 +562,9 @@ public class RLEPruneBOSTest {
         int alpha_size = getBitWith(max_delta_value-1);
 
 
-        // --------------------------------
-        // x_min
 
+        // x_min
+        // -------------x_min-------------------
         // lower: x_min
         // upper: x_max
         int k1 = alpha_count_list[0];
@@ -613,7 +606,7 @@ public class RLEPruneBOSTest {
             }
 
             //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-
+//            cur_k2 = k2;
 
             GroupU cur_group_gamma = groupU[gamma];
             int gamma_value_count = cur_group_gamma.count;
@@ -626,27 +619,29 @@ public class RLEPruneBOSTest {
 
             long[] gamma_sorted = cur_group_gamma.sorted_value_list;
             int gamma_unique_number = cur_group_gamma.unique_number;
+            int cur_gamma_count = cur_group_gamma.count;
 //            int x_u_i_end = k2_end - k1_start;
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
-                k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                 int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
 
                 cur_bits = 0;
                 cur_bits += k1;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
 
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) *
+                if (k1 + unique_i_cur_k2 != block_size)
+                    cur_bits += (block_size - k1 - unique_i_cur_k2) *
                             getBitWith(k2_end - x_u_i - 2);
-                cur_bits += k2 * gamma;//min_upper_outlier
+                cur_bits += unique_i_cur_k2 * gamma;//min_upper_outlier
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
                     final_k_end_value = k2_end - x_u_i;
                 }
             }
+            k2 += cur_gamma_count;
 
 
 //            for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
@@ -695,25 +690,25 @@ public class RLEPruneBOSTest {
 //        if (cur_group_gamma.if_count == 0) {
 //            cur_group_gamma.setCount_array(k2_end);
 //        }
-        int gamma_value_count = cur_group_gamma.count;
+
+//        int gamma_value_count = cur_group_gamma.count;
 
         long[] gamma_sorted = cur_group_gamma.sorted_value_list;
         int gamma_unique_number = cur_group_gamma.unique_number;
-//            int x_u_i_end = k2_end - k1_start;
 
         for(int unique_i=0;unique_i<gamma_unique_number-1;unique_i++){
-            k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+            int  unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
             int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
 
             cur_bits = 0;
             cur_bits += k1;
-            cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+            cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
 
-            if (k1 + k2 != block_size)
-                cur_bits += (block_size - k1 - k2) *
+            if (k1 + unique_i_cur_k2 != block_size)
+                cur_bits += (block_size - k1 - unique_i_cur_k2) *
                         getBitWith(k2_end - x_u_i - 2);
-            cur_bits += k2 * alpha_size;
+            cur_bits += unique_i_cur_k2 * alpha_size;
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
                 final_k_start_value = k1_start;
@@ -721,30 +716,12 @@ public class RLEPruneBOSTest {
             }
         }
 
-//        for (int x_u_i = 1; x_u_i < k2_end; x_u_i++) {
-//            int cur_count_gamma = gamma_value_count_list[x_u_i];
-//            if (cur_count_gamma == 0)
-//                continue;
-//            k2 += cur_count_gamma;
-//            cur_bits = 0;
-//            cur_bits += k1;
-//            cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-//
-//            if (k1 + k2 != block_size)
-//                cur_bits += (block_size - k1 - k2) *
-//                        getBitWith(k2_end - x_u_i - 2);
-//            cur_bits += k2 * alpha_size;
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k1_start;
-//                final_k_end_value = k2_end - x_u_i;
-//            }
-//        }
+//        k2 += gamma_value_count;
 
-
-        // --------------------------------
+        // -------------x_min-------------------
 
         // [x_min+2^{alpha-1},x_min+2^{alpha})
+        // -----------------[x_min+2^{alpha-1},x_min+2^{alpha})-------------------
         // alpha_size = getBitWith(max_delta_value);
 
         for (int alpha = 1; alpha < alpha_size; alpha++){
@@ -752,6 +729,8 @@ public class RLEPruneBOSTest {
             GroupL cur_group_alpha = groupL[alpha];
             k1 += alpha_count_list[alpha]; // count[x_min, x_min+2^{alpha-1}]
 
+
+            // -----------------x_min+2^{alpha-1}-------------------
             //lower: x_min+2^{alpha-1}
             // upper: x_max
             k2 = gamma_count_list[0];
@@ -790,44 +769,34 @@ public class RLEPruneBOSTest {
                     final_k_start_value = k1_start;
                     final_k_end_value = k2_end;
                 }
+
                 //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-//                gamma_value_count_list = new int[gap_gamma];
-                gamma_value_count = cur_group_gamma.count;
+
+                int gamma_value_count = cur_group_gamma.count;
                 if (gamma_value_count == 0)
                     continue;
-//                if (cur_group_gamma.if_count == 0) {
-//                    cur_group_gamma.setCount_array(k2_end);
-//                }
-//                int gamma_value_count = cur_group_gamma.count;
-                gamma_value_count_list = cur_group_gamma.count_array;
-//                number_gamma = cur_group_gamma.number;
-//                for (int i = 0; i < gamma_value_count; i++) {
-//                    int value = number_gamma[i];
-//                    gamma_value_count_list[k2_end - value]++;
-//                }
 
-                for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
-//                    if (k2_end - x_u_i <= 0) {
-//                        break;
-//                    }
-                    int cur_count_gamma = gamma_value_count_list[x_u_i];
-                    if (cur_count_gamma == 0)
-                        continue;
-                    k2 += cur_count_gamma;
+                gamma_sorted = cur_group_gamma.sorted_value_list;
+                gamma_unique_number = cur_group_gamma.unique_number;
+
+                for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
+                    int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                    int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
                     cur_bits = 0;
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                    cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
                     cur_bits += k1 * alpha;
-                    if (k1 + k2 != block_size)
-                        cur_bits += (block_size - k1 - k2) *
-                                getBitWith(k2_end - x_u_i -k1_start- 2);
-                    cur_bits += k2 * gamma;//min_upper_outlier
+                    if (k1 + unique_i_cur_k2 != block_size)
+                        cur_bits += (block_size - k1 - unique_i_cur_k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
+                    cur_bits += unique_i_cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
                         final_k_start_value = k1_start;
                         final_k_end_value = k2_end - x_u_i; //need to check again
                     }
                 }
+
+                k2 += gamma_value_count;
             }
 
             //lower: x_min+2^{alpha-1}
@@ -854,28 +823,23 @@ public class RLEPruneBOSTest {
 
             cur_group_gamma = groupU[gamma_size_smaller+1];
 
-
-//            if (cur_group_gamma.if_count == 0) {
-//                cur_group_gamma.setCount_array(k2_end);
-//            }
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
             int x_u_i_end = k2_end - k1_start;
-//            int x_u_i_end = k2_end - k1_start;
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
-                k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                 int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
                 if(x_u_i>=x_u_i_end){
                     break;
                 }
 
                 cur_bits = 0;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
                 cur_bits += k1 * alpha;
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
-                cur_bits += k2 * (gamma_size_smaller+1);
+                if (k1 + unique_i_cur_k2 != block_size)
+                    cur_bits += (block_size - k1 - unique_i_cur_k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
+                cur_bits += unique_i_cur_k2 * (gamma_size_smaller+1);
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
@@ -883,29 +847,9 @@ public class RLEPruneBOSTest {
                 }
             }
 
+            // -----------------x_min+2^{alpha-1}-------------------
 
-//            int x_u_i_end = k2_end - k1_start;
-//            for (int x_u_i = 1; x_u_i < x_u_i_end; x_u_i++) {
-//                int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                if (cur_count_gamma == 0)
-//                    continue;
-//                k2 += cur_count_gamma;
-//                cur_bits = 0;
-//
-//                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-//                cur_bits += k1 * alpha;
-//                if (k1 + k2 != block_size)
-//                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
-//                cur_bits += k2 * (gamma_size_smaller+1);
-//                if (cur_bits < min_bits) {
-//                    min_bits = cur_bits;
-//                    final_k_start_value = k1_start;
-//                    final_k_end_value = k2_end - x_u_i; //need to check again
-//                }
-//            }
-
-
-
+            // -----------------(x_min+2^{alpha-1},x_min+2^{alpha})-------------------
             // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper: x_max
             int gap_alpha = (int) pow(2,alpha-1);
@@ -914,54 +858,47 @@ public class RLEPruneBOSTest {
                 continue;
             }
 
-//            if (cur_group_alpha.if_count == 0) {
-//                cur_group_alpha.setCount_array(k1_start);
-//            }
+
             long[] alpha_sorted = cur_group_alpha.sorted_value_list;
             int alpha_unique_number = cur_group_alpha.unique_number;
 
             int cur_k1 = k1; //count[x_min, x_min+2^{alpha-1}]
             for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-                cur_k1 += cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+
+                int unique_i_cur_k1 = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
                 int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
-//                int cur_count_alpha = alpha_value_count_list[x_l_i];
-//                if (cur_count_alpha == 0)
-//                    continue;
-                //cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
 
                 // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                 // upper: x_max
                 k2 = gamma_count_list[0];
                 k2_end = max_delta_value;
-                cur_bits = Math.min((cur_k1 + k2) * getBitWith(block_size - 1), block_size + cur_k1 + k2);
-                cur_bits += cur_k1 * alpha;
+                cur_bits = Math.min((unique_i_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_i_cur_k1 + k2);
+                cur_bits += unique_i_cur_k1 * alpha;
                 cur_bits += k2;
-                if (cur_k1 + k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
+                if (unique_i_cur_k1 + k2 != block_size)
+                    cur_bits += (block_size - unique_i_cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start + x_l_i;
                     final_k_end_value = k2_end;
                 }
             }
+//            cur_k1 += alpha_value_count;
+
             // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
             int gamma_size = (int) (log(max_delta_value - (int) pow(2, alpha)) / log(2));
 
 
             // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
-            // --------------------------------
 
             // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper:  x_max - 2^{gamma-1}
             cur_k1 = k1; //count[x_min, x_min+2^{alpha-1}]
             int cur_k2= k2;
             for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-//                int cur_count_alpha = alpha_value_count_list[x_l_i];
-//                if (cur_count_alpha == 0)
-//                    continue;
-//                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
-                cur_k1 += cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+
+                int unique_j_cur_k1 = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
                 int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
                 cur_k2 = k2; // count(x_max)
 
@@ -974,10 +911,10 @@ public class RLEPruneBOSTest {
 
 
                     cur_bits = 0;
-                    cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
-                    cur_bits += cur_k1 * alpha;
-                    if (cur_k1 + cur_k2 != block_size)
-                        cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
+                    cur_bits += Math.min((unique_j_cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + cur_k2);
+                    cur_bits += unique_j_cur_k1 * alpha;
+                    if (unique_j_cur_k1 + cur_k2 != block_size)
+                        cur_bits += (block_size - unique_j_cur_k1 - cur_k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
                     cur_bits += cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
@@ -992,12 +929,14 @@ public class RLEPruneBOSTest {
                 }
 
             }
+//            cur_k1 += alpha_value_count;
 
             // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}):  k2_end - gap_gamma, k2_end
             //  gamma_value_count_list = new int[gap_gamma];
 
-
+            int max_pow_2_lambda = (int) pow(2, lambda_0);
+            int max_lambda = lambda_0;
             cur_k2 = k2; // count(x_max)
             for (int gamma = 1; gamma <= gamma_size; gamma++) {
                 cur_k1 = k1; // count[x_min,x_min+2^{alpha-1}]
@@ -1007,30 +946,23 @@ public class RLEPruneBOSTest {
                 cur_k2 += gamma_count_list[gamma]; // += x_max - 2^{gamma-1}   // count[x_max - 2^{gamma-1}, x_max]
                 // ----------------
                 cur_group_gamma = groupU[gamma]; // (x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                gamma_value_count = cur_group_gamma.count;
+                int gamma_value_count = cur_group_gamma.count;
                 if (gamma_value_count == 0) {
                     continue;
                 }
 
-//                if (cur_group_gamma.if_count == 0) {
-//                    cur_group_gamma.setCount_array(k2_end);
-//                }
-//                    int gamma_value_count = cur_group_gamma.count;
-//                gamma_value_count_list = cur_group_gamma.count_array;
+
+                if(cur_k1+cur_k2>boundary_index){
+                    max_pow_2_lambda = (int) pow(2, 1);
+                    max_lambda = 1;
+                }
 
                 gamma_sorted = cur_group_gamma.sorted_value_list;
                 gamma_unique_number = cur_group_gamma.unique_number;
 
                 int cur_k1_start = k1_start + gap_alpha - 1;
                 int cur_k2_end = k2_end - gap_gamma + 1;
-//                for (int i = 0; i < 2; i++) {
-//
-//
-//                    int lambda = lambda_list[i];
-//                    int zeta = zeta_list[i];
-//                    int pow_2_lambda = (int) pow(2, lambda);
-                int max_pow_2_lambda = (int) pow(2, lambda_0);
-                int min_pow_2_lambda = (int) pow(2, 1);
+
 
                 int pow_2_alpha = (int) pow(2, alpha);
                 int pow_2_gamma = (int) pow(2, gamma);
@@ -1042,7 +974,7 @@ public class RLEPruneBOSTest {
 
                 int cur_cur_k1 = k1 + alpha_value_count; // count[x_min, 2^{alpha}-1]
 
-                if ((long)(max_pow_2_lambda + 1) * (long)pow_2_alpha + (long)pow_2_gamma <= (long)max_delta_value
+                if ((long)(max_pow_2_lambda + 1) * (long)pow_2_alpha +(long)pow_2_gamma <= (long)max_delta_value
                         && (long)pow_2_alpha + (long)(max_pow_2_lambda + 1) * (long)pow_2_gamma <= (long)max_delta_value) {
 
                     cur_k2_start_of_lambda += gamma_value_count; // count[x_max - 2^{gamma}+1, x_max]
@@ -1057,8 +989,9 @@ public class RLEPruneBOSTest {
                         final_k_start_value = cur_k1_start;
                         final_k_end_value = cur_k2_end;
                     }
-//                    count5_7++;
-                } else {
+//                        count5_7++;
+                }
+                else {
 
                     // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                     // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}):  k2_end - gap_gamma, k2_end
@@ -1067,12 +1000,12 @@ public class RLEPruneBOSTest {
                     int max_beta = getBitWith(k2_end-k1_start);
                     int min_pow_2_beta = (int) pow(2, min_beta);
                     int max_pow_2_beta = (int) pow(2, max_beta);
-//                    countall++;
+//                        countall++;
 
 
 //                        for(int beta = min_beta;beta <= max_beta;beta++){
 //                            int pow_2_beta = (int) pow(2,beta);
-                    if(min_beta >= alpha+lambda_0 && max_beta <= gamma+1 && min_pow_2_beta+pow_2_alpha+gap_gamma >= max_delta_value){
+                    if(min_beta >= alpha+max_lambda && max_beta <= gamma+1 && min_pow_2_beta+pow_2_alpha+gap_gamma >= max_delta_value){
                         // prop 5.4
                         int cur_xl = k1_start + gap_alpha-1; // x_min+2^{alpha}-1
                         int cur_xu = k2_end; //x_max - 2^{gamma-1}
@@ -1090,9 +1023,9 @@ public class RLEPruneBOSTest {
                             final_k_end_value = cur_xu;
                         }
                         //continue;
-//                        count5_4++;
+//                                count5_4++;
                     }
-                    else if (max_beta <= alpha+1 && min_beta >= gamma+lambda_0 && min_pow_2_beta+pow_2_alpha/2+pow_2_gamma >= max_delta_value) {
+                    else if (max_beta <= alpha+1 && min_beta >= gamma+max_lambda && min_pow_2_beta+pow_2_alpha/2+pow_2_gamma >= max_delta_value) {
                         // prop 5.5
                         int cur_xl = k1_start; // x_min+2^{alpha-1}
                         int cur_xu = k2_end - gap_gamma + 1; //x_max - 2^{gamma}+1
@@ -1109,7 +1042,7 @@ public class RLEPruneBOSTest {
                             final_k_start_value = cur_xl;
                             final_k_end_value = cur_xu;
                         }
-//                        count5_5++;
+//                                count5_5++;
                         //continue;
                     }
                     else if (max_beta <= alpha+1 && max_beta <= gamma+1 && min_pow_2_beta+ pow_2_alpha/2+gap_gamma > max_delta_value) {
@@ -1129,20 +1062,20 @@ public class RLEPruneBOSTest {
                             final_k_start_value = cur_xl;
                             final_k_end_value = cur_xu;
                         }
-//                        count5_6++;
+//                                count5_6++;
                         //continue;
                     }
                     else{
-                        int cur_k1_start_of_lambda = cur_k1;
+                        int cur_k1_start_of_lambda;
                         for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-                            cur_k1_start_of_lambda += cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
+                            cur_k1_start_of_lambda = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
                             int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
 
 //                                    int cur_count_alpha = alpha_value_count_list[x_l_i];
 //                                    if (cur_count_alpha == 0)
 //                                        continue;
 //                                    cur_k1_start_of_lambda += cur_count_alpha;// gamma_box_count_list[gamma];
-                            int cur_cur_k2 = cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
+                            int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
                             int x_u_i_start = 0;// Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
 //                                    x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
@@ -1153,7 +1086,8 @@ public class RLEPruneBOSTest {
 //                                        if(x_u_i > x_u_i_end){
 //                                            break;
 //                                        }
-                                cur_cur_k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                                cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
+
                                 cur_bits = 0;
                                 cur_bits +=Math.min((cur_k1_start_of_lambda + cur_cur_k2) * lambda_0, block_size + cur_k1_start_of_lambda + cur_cur_k2);
                                 // (lambda * (cur_k1_start_of_lambda + cur_cur_k2) + zeta); // Math.min((cur_k1 + cur_cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
@@ -1169,37 +1103,9 @@ public class RLEPruneBOSTest {
                                 }
 
                             }
-
-//                                    for (int x_u_i = x_u_i_start + 1; x_u_i <= x_u_i_end; x_u_i++) {
-//                                        int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                                        if (cur_count_gamma == 0)
-//                                            continue;
-//
-//                                        cur_cur_k2 += cur_count_gamma; // cur_k1 =  count[x_min, 2^{alpha}+x_l_i], cur_k2 count[x_max - 2^{gamma-1}-x_u_i, x_max]
-//
-////                                        if(k1_start + x_l_i == 63 && k2_end -x_u_i == 2172){
-////                                            int temp =1;
-////                                        }
-//
-//                                        cur_bits = 0;
-//                                        cur_bits +=(lambda * (cur_k1_start_of_lambda + cur_cur_k2) + zeta); // Math.min((cur_k1 + cur_cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
-//                                        cur_bits += cur_k1_start_of_lambda * alpha;
-//                                        if (cur_k1_start_of_lambda + cur_cur_k2 != block_size)
-//                                            cur_bits += (block_size - cur_k1_start_of_lambda - cur_cur_k2) *
-//                                                    getBitWith(k2_end - x_u_i - k1_start - x_l_i - 2);
-//                                        cur_bits += cur_cur_k2 * gamma;
-//                                        if (cur_bits < min_bits) {
-//                                            min_bits = cur_bits;
-//                                            final_k_start_value = k1_start + x_l_i;
-//                                            final_k_end_value = k2_end - x_u_i;
-//                                        }
-//                                    }
-
                         }
                     }
 
-
-//                        }
 
 
 
@@ -1210,21 +1116,15 @@ public class RLEPruneBOSTest {
 
             }
             k2 = cur_k2;
+
             // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) (16, 32) (0,16)
             // gamma:  gamma_size+1 to ....
             // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}] (52 - 64, 52 -32] (0, 20]
             // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
             cur_k1 = k1;
             for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-                cur_k1 += cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
+                int unique_j_cur_k1 = cur_k1+ cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
                 int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
-
-
-//                int cur_count_alpha = alpha_value_count_list[x_l_i];
-//                if (cur_count_alpha == 0)
-//                    continue;
-//                cur_k1 += cur_count_alpha;// gamma_box_count_list[gamma];
-
 
                 gap_gamma = (int) pow(2, gamma_size);
                 k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
@@ -1239,10 +1139,10 @@ public class RLEPruneBOSTest {
                     // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
                     // upper:  x_max - 2^{gamma-1}
                     cur_bits = 0;
-                    cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
-                    cur_bits += cur_k1*alpha;
-                    if (cur_k1 + cur_k2 != block_size)
-                        cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
+                    cur_bits += Math.min((unique_j_cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + cur_k2);
+                    cur_bits += unique_j_cur_k1*alpha;
+                    if (unique_j_cur_k1 + cur_k2 != block_size)
+                        cur_bits += (block_size - unique_j_cur_k1 - cur_k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
                     cur_bits += cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
@@ -1254,7 +1154,7 @@ public class RLEPruneBOSTest {
                     // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
 
 //                    gamma_value_count_list = new int[gap_gamma];
-                    gamma_value_count = cur_group_gamma.count;
+                    int gamma_value_count = cur_group_gamma.count;
                     if (gamma_value_count == 0) {
                         gap_gamma = (int) pow(2, gamma);
                         k2_end = max_delta_value - gap_gamma;
@@ -1284,33 +1184,40 @@ public class RLEPruneBOSTest {
                         if(k2_end - x_u_i <= k1_start+x_l_i){
                             break;
                         }
-                        cur_k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                        int unique_i_cur_k2 = cur_k2+ cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                         cur_bits = 0;
-                        cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);
-                        cur_bits += cur_k1*alpha;
-                        if (cur_k1 + cur_k2 != block_size)
-                            cur_bits += (block_size - cur_k1 - cur_k2) *
+                        cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
+                        cur_bits += unique_j_cur_k1*alpha;
+                        if (unique_j_cur_k1 + unique_i_cur_k2 != block_size)
+                            cur_bits += (block_size - unique_j_cur_k1 - unique_i_cur_k2) *
                                     getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
-                        cur_bits += cur_k2 * gamma;
+                        cur_bits += unique_i_cur_k2 * gamma;
                         if (cur_bits < min_bits) {
                             min_bits = cur_bits;
                             final_k_start_value = k1_start + x_l_i;
                             final_k_end_value = k2_end - x_u_i;
                         }
                     }
+                    cur_k2 += gamma_value_count;
 
                     gap_gamma = (int) pow(2, gamma);
                     k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ; gamma :  gamma_size to ....
                 }
 
             }
-            k2 = cur_k2;
+
+//            k2 = cur_k2;
+            cur_k1 += alpha_value_count;
             k1 = cur_k1;
-            // --------------------------------
+            // -----------------(x_min+2^{alpha-1},x_min+2^{alpha})-------------------
         }
+        // -------------------[x_min+2^{alpha-1},x_min+2^{alpha})-----------------
+
 
         //  [x_min+2^{alpha_size-1},x_max)
+        // ----------------[x_min+2^{alpha_size-1},x_max)--------------------
+
         // x_min+2^{alpha_size-1} < x_max && x_min+2^{alpha_size} >= x_max
         // alpha_size - 1  < log(xmax) && alpha_size >= log(xmax)
         // alpha_size = \lceil log(x_max-1+1) \rceil
@@ -1320,6 +1227,8 @@ public class RLEPruneBOSTest {
         GroupL cur_group_alpha = groupL[alpha_size];
         k1 += alpha_count_list[alpha_size]; //=x_min+2^{alpha_size-1}
 
+
+        // ----------------x_min+2^{alpha_size-1}--------------------
         // lower: x_min+2^{alpha_size-1}
         // upper: x_max
         k2 = gamma_count_list[0];
@@ -1336,8 +1245,8 @@ public class RLEPruneBOSTest {
             final_k_end_value = k2_end;
         }
 
-        // lower: x_min+2^{alpha_size-1}  32
-        // (x_max - 2^{gamma}, x_max - 2^{gamma-1}] gamma = 5 : (32,48] gamma = 6 :
+        // lower: x_min+2^{alpha_size-1}
+        // (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
         // x_min+2^{alpha_size-1} <= x_max - 2^{gamma}
 
         int gamma_size_smaller = (int) (log(max_delta_value  - (int) pow(2,alpha_size-1) )/log(2));
@@ -1348,6 +1257,9 @@ public class RLEPruneBOSTest {
 
 
             cur_group_gamma = groupU[gamma];
+
+            // lower: x_min+2^{alpha_size-1}
+            //upper: ( x_max - 2^{gamma}, x_max - 2^{gamma-1})
             k2 += gamma_count_list[gamma]; //= x_max - 2^{gamma-1}
             cur_bits = 0;
 
@@ -1361,56 +1273,38 @@ public class RLEPruneBOSTest {
                 final_k_start_value = k1_start;
                 final_k_end_value = k2_end;
             }
-            //( x_max - 2^{gamma}, x_max - 2^{gamma-1})
-//            gamma_value_count_list = new int[gap_gamma];
-            gamma_value_count = cur_group_gamma.count;
+
+            // lower: x_min+2^{alpha_size-1}
+            //upper: ( x_max - 2^{gamma}, x_max - 2^{gamma-1})
+
+            int gamma_value_count = cur_group_gamma.count;
             if (gamma_value_count == 0)
                 continue;
 
-//            if (cur_group_gamma.if_count == 0) {
-//                cur_group_gamma.setCount_array(k2_end);
-//            }
+
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
-                k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                 int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
                 cur_bits = 0;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
                 cur_bits += k1 * alpha_size;
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) *
+                if (k1 + unique_i_cur_k2 != block_size)
+                    cur_bits += (block_size - k1 - unique_i_cur_k2) *
                             getBitWith(k2_end - x_u_i -k1_start- 2);
-                cur_bits += k2 * gamma;//min_upper_outlier
+                cur_bits += unique_i_cur_k2 * gamma;//min_upper_outlier
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
                     final_k_end_value = k2_end - x_u_i; //need to check again
                 }
             }
+            k2 += gamma_value_count;
 
-//            for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
-//                int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                if (cur_count_gamma == 0)
-//                    continue;
-//                k2 += cur_count_gamma;
-//
-//                cur_bits = 0;
-//                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-//                cur_bits += k1 * alpha_size;
-//                if (k1 + k2 != block_size)
-//                    cur_bits += (block_size - k1 - k2) *
-//                            getBitWith(k2_end - x_u_i -k1_start- 2);
-//                cur_bits += k2 * gamma;//min_upper_outlier
-//                if (cur_bits < min_bits) {
-//                    min_bits = cur_bits;
-//                    final_k_start_value = k1_start;
-//                    final_k_end_value = k2_end - x_u_i; //need to check again
-//                }
-//            }
         }
 
         //lower: x_min+2^{alpha_size-1}
@@ -1431,41 +1325,36 @@ public class RLEPruneBOSTest {
                 final_k_start_value = k1_start;
                 final_k_end_value = k2_end;
             }
+
             //lower: x_min+2^{alpha_size-1}
             //upper: (x_min+2^{alpha_size-1},x_max - 2^{gamma_size_smaller) \in (x_max - 2^{gamma_size_smaller+1}, x_max - 2^{gamma_size_smaller)
 
             gap_gamma = (int) pow(2, gamma_size_smaller);
-//            gamma_value_count_list = new int[gap_gamma];
-            cur_group_gamma = groupU[gamma_size_smaller + 1];
-            gamma_value_count = cur_group_gamma.count;
-//            number_gamma = cur_group_gamma.number;
-//            for (int i = 0; i < gamma_value_count; i++) {
-//                int value = number_gamma[i];
-//                gamma_value_count_list[k2_end - value]++;
-//            }
 
-//            if (cur_group_gamma.if_count == 0) {
-//                cur_group_gamma.setCount_array(k2_end);
-//            }
+            cur_group_gamma = groupU[gamma_size_smaller + 1];
+            int gamma_value_count = cur_group_gamma.count;
+
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
             int x_u_i_end = k2_end - (int) pow(2, alpha_size - 1);
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
-                k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+
                 int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
                 if(x_u_i>=x_u_i_end){
                     break;
                 }
 
+                int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
+
                 cur_bits = 0;
 
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                cur_bits += Math.min((k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + k1 + unique_i_cur_k2);
                 cur_bits += k1 * alpha_size;
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
-                cur_bits += k2 * (gamma_size_smaller + 1);
+                if (k1 + unique_i_cur_k2 != block_size)
+                    cur_bits += (block_size - k1 - unique_i_cur_k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
+                cur_bits += unique_i_cur_k2 * (gamma_size_smaller + 1);
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     final_k_start_value = k1_start;
@@ -1473,44 +1362,26 @@ public class RLEPruneBOSTest {
                 }
             }
 
+//            k2+=gamma_value_count;
 
 
-//            for (int x_u_i = 1; x_u_i < x_u_i_end; x_u_i++) {
-//                int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                if (cur_count_gamma == 0)
-//                    continue;
-//                k2 += cur_count_gamma;
-//                cur_bits = 0;
-//
-//                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-//                cur_bits += k1 * alpha_size;
-//                if (k1 + k2 != block_size)
-//                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - x_u_i - k1_start - 2);
-//                cur_bits += k2 * (gamma_size_smaller + 1);
-//                if (cur_bits < min_bits) {
-//                    min_bits = cur_bits;
-//                    final_k_start_value = k1_start;
-//                    final_k_end_value = k2_end - x_u_i; //need to check again
-//                }
-//            }
         }
+        // ----------------x_min+2^{alpha_size-1}--------------------
+
 
         // lower: (x_min+2^{alpha_size-1},x_max)
-        // upper: x_max
-//        if (cur_group_alpha.if_count == 0) {
-//            cur_group_alpha.setCount_array(k1_start);
-//        }
-//            int gamma_value_count = cur_group_gamma.count;
+        // ----------------- (x_min+2^{alpha_size-1},x_max)----------------------
         long[] alpha_sorted = cur_group_alpha.sorted_value_list;
         int alpha_unique_number = cur_group_alpha.unique_number;
 
         int x_l_i_end = max_delta_value - k1_start; // [1, x_max - x_min+2^{alpha_size-1})
         for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
-            k1 += cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
+
             int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
             if(x_l_i>=x_l_i_end){
                 break;
             }
+            int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
 
             // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
             // upper: x_max
@@ -1518,11 +1389,11 @@ public class RLEPruneBOSTest {
             k2_end = max_delta_value;
 
             cur_bits =0;
-            cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-            cur_bits += k1*alpha_size;
+            cur_bits += Math.min((unique_j_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + k2);
+            cur_bits += unique_j_cur_k1*alpha_size;
             cur_bits += k2;
-            if (k1 + k2 != block_size)
-                cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start -x_l_i - 2);
+            if (unique_j_cur_k1 + k2 != block_size)
+                cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start -x_l_i - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
                 final_k_start_value = k1_start +  x_l_i;
@@ -1531,8 +1402,8 @@ public class RLEPruneBOSTest {
 
 
             // lower: (x_min+2^{alpha_size-1},x_max)
-            // gamma:  gamma_size+1 to ....
             // upper: (x_max - 2^{gamma}, x_max)
+            // gamma:  gamma_size+1 to ....
 
             k2_end = max_delta_value - 1; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
             for (int gamma = 1; gamma <= alpha_size; gamma++) {
@@ -1545,10 +1416,10 @@ public class RLEPruneBOSTest {
                 // lower: (x_min+2^{alpha_size-1},x_max): k1_start, k1_start + gap_alpha
                 // upper:  x_max - 2^{gamma-1}
                 cur_bits = 0;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-                cur_bits += k1*alpha_size;
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
+                cur_bits += Math.min((unique_j_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + k2);
+                cur_bits += unique_j_cur_k1*alpha_size;
+                if (unique_j_cur_k1 + k2 != block_size)
+                    cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start-  x_l_i - 2);
                 cur_bits += k2 * gamma;
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
@@ -1559,8 +1430,7 @@ public class RLEPruneBOSTest {
                 // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
                 // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}) : k2_end - gap_gamma, k2_end
 
-//                gamma_value_count_list = new int[gap_gamma];
-                gamma_value_count = cur_group_gamma.count;
+                int gamma_value_count = cur_group_gamma.count;
                 if (gamma_value_count == 0){
                     gap_gamma = (int) pow(2, gamma);
                     k2_end = max_delta_value - gap_gamma;
@@ -1568,28 +1438,25 @@ public class RLEPruneBOSTest {
                 }
 
 
-//                if (cur_group_gamma.if_count == 0) {
-//                    cur_group_gamma.setCount_array(k2_end);
-//                }
                 gamma_sorted = cur_group_gamma.sorted_value_list;
                 gamma_unique_number = cur_group_gamma.unique_number;
                 int x_u_i_end = Math.min(k2_end - k1_start - x_l_i,gap_gamma); // x_u_i>= k2_end - k1_start - x_l_i; break ;
 
                 for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
-                    k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                    int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
                     if(x_u_i>=x_u_i_end){
                         break;
                     }
 
                     cur_bits = 0;
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-                    cur_bits += k1*alpha_size;
-                    if (k1 + k2 != block_size)
-                        cur_bits += (block_size - k1 - k2) *
+                    cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
+                    cur_bits += unique_j_cur_k1*alpha_size;
+                    if (unique_j_cur_k1 + unique_i_cur_k2 != block_size)
+                        cur_bits += (block_size - unique_j_cur_k1 - unique_i_cur_k2) *
                                 getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
-                    cur_bits += k2 * gamma;
+                    cur_bits += unique_i_cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
                         final_k_start_value = k1_start + x_l_i;
@@ -1598,39 +1465,19 @@ public class RLEPruneBOSTest {
                 }
 
 
-//                int x_u_i_end = Math.min(k2_end - k1_start - x_l_i,gap_gamma); // x_u_i>= k2_end - k1_start - x_l_i; break ;
-//                for (int x_u_i = 1; x_u_i < x_u_i_end; x_u_i++) {
-////                    if(k2_end - x_u_i <= k1_start+x_l_i){
-////                        break;
-////                    }
-//                    int cur_count_gamma = gamma_value_count_list[x_u_i];
-//                    if (cur_count_gamma == 0)
-//                        continue;
-//                    k2 += cur_count_gamma;
-//
-//                    cur_bits = 0;
-//                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
-//                    cur_bits += k1*alpha_size;
-//                    if (k1 + k2 != block_size)
-//                        cur_bits += (block_size - k1 - k2) *
-//                                getBitWith(k2_end - x_u_i-k1_start-x_l_i - 2);
-//                    cur_bits += k2 * gamma;
-//                    if (cur_bits < min_bits) {
-//                        min_bits = cur_bits;
-//                        final_k_start_value = k1_start + x_l_i;
-//                        final_k_end_value = k2_end - x_u_i;
-//                    }
-//                }
-
                 // cur upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
                 // next upper:  (x_max - 2^{gamma+1}, x_max - 2^{gamma})
 
+                k2 += gamma_value_count;
                 gap_gamma = (int) pow(2, gamma);
                 k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ;
                 //k1_start = x_min+2^{alpha-1}, x_max - 2^{gamma}
             }
 
         }
+        // ------------------ (x_min+2^{alpha_size-1},x_max)--------------------
+
+        // ----------------[x_min+2^{alpha_size-1},x_max)--------------------
 
 //        // 2685 2693
 //        System.out.println("group_num, "+ max_bit_width);
@@ -1639,12 +1486,6 @@ public class RLEPruneBOSTest {
 //        System.out.println("count5_4, "+count5_4);
 //        System.out.println("count5_5, "+count5_5);
 //        System.out.println("count5_6, "+count5_6);
-
-//        if(block_i==3){
-//            System.out.println(final_k_start_value);
-//            System.out.println(final_k_end_value);
-//            System.out.println(min_bits);
-//        }
         encode_pos = BOSEncodeBits(ts_block_delta, init_block_size, final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, repeat_count, encode_pos, cur_byte);
 
@@ -1966,7 +1807,7 @@ public class RLEPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 1;
 //        for (int file_i = 0; file_i < 1; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
