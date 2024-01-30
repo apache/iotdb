@@ -115,6 +115,11 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();
         pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
+      } else {
+        LOGGER.info(
+            "Skip constructing dataNode pipe task on region {}, because the extractor parameters {} is irrelevant.",
+            consensusGroupId,
+            extractorParameters);
       }
     }
 
