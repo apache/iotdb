@@ -94,6 +94,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private Queue<TsFileResource> pendingQueue;
 
+  private final boolean isRestarted;
+
+  public PipeHistoricalDataRegionTsFileExtractor(boolean isRestarted) {
+    this.isRestarted = isRestarted;
+  }
+
   @Override
   public void validate(PipeParameterValidator validator) {
     PipeParameters parameters = validator.getParameters();
@@ -128,9 +134,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
     isHistoricalExtractorEnabled =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
-            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
+        isRestarted
+            || parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
 
     try {
       historicalDataExtractionStartTime =

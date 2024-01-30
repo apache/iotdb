@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -46,6 +48,10 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
+      if (pipeExtractor instanceof IoTDBDataRegionExtractor) {
+        ((IoTDBDataRegionExtractor) pipeExtractor)
+            .setRestarted(!pipeTaskMeta.getProgressIndex().equals(MinimumProgressIndex.INSTANCE));
+      }
       // 1. Validate extractor parameters
       pipeExtractor.validate(new PipeParameterValidator(extractorParameters));
 
