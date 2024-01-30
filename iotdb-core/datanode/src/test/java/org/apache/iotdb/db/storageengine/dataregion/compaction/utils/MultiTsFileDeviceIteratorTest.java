@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -455,7 +456,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -601,7 +603,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -745,7 +748,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -897,7 +901,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -1041,7 +1046,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -1193,7 +1199,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);

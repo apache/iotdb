@@ -203,7 +203,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.updateProgressIndex(
             targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
         CompactionUtils.moveTargetFile(
-            targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+            targetTsFileList,
+            isSequence() ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
+            storageGroupName + "-" + dataRegionId);
 
         LOGGER.info(
             "{}-{} [InnerSpaceCompactionTask] start to rename mods file",

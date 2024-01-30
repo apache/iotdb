@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -200,7 +201,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -285,7 +287,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -372,7 +375,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -446,7 +450,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -549,7 +554,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -623,7 +629,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -700,7 +707,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -770,7 +778,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -843,7 +852,8 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new FastCompactionTaskSummary());
       performer.perform();
-      CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

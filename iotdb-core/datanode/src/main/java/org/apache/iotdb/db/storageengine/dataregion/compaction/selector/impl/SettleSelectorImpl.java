@@ -40,8 +40,6 @@ public class SettleSelectorImpl implements ISettleSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final float dirtyDataRate = config.getExpiredDataRate();
-  private static final long longestOutdatedTime = config.getLongestExpiredTime();
 
   boolean heavySelect;
 
@@ -169,6 +167,7 @@ public class SettleSelectorImpl implements ISettleSelector {
           break;
         }
       }
+      partialDirtyResource.submitTmpResources();
       return createTask(allDirtyResource, partialDirtyResource);
     } catch (Exception e) {
       LOGGER.error(
@@ -229,7 +228,8 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
         long outdatedTimeDiff = currentTime - deviceTimeIndex.getEndTime(device);
         hasExpiredTooLong =
-            hasExpiredTooLong || outdatedTimeDiff > Math.min(longestOutdatedTime, 3 * deviceTTL);
+            hasExpiredTooLong
+                || outdatedTimeDiff > Math.min(config.getLongestExpiredTime(), 3 * deviceTTL);
       }
 
       if (isDeleted) {
@@ -242,7 +242,8 @@ public class SettleSelectorImpl implements ISettleSelector {
       // the whole file is completely dirty
       return DirtyStatus.ALL_DELETED;
     }
-    if (hasExpiredTooLong || deletedDeviceRate >= dirtyDataRate) {
+    hasExpiredTooLong = config.getLongestExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
+    if (hasExpiredTooLong || deletedDeviceRate >= config.getExpiredDataRate()) {
       // evaluate dirty data size in the tsfile
       DirtyStatus partialDeleted = DirtyStatus.PARTIAL_DELETED;
       partialDeleted.setDirtyDataSize((long) (deletedDeviceRate * resource.getTsFileSize()));
@@ -256,14 +257,10 @@ public class SettleSelectorImpl implements ISettleSelector {
       Collection<Modification> modifications, String device, long startTime, long endTime)
       throws IllegalPathException {
     for (Modification modification : modifications) {
-      boolean isPathMatched = false;
-      for (PartialPath modDevicePath : modification.getPath().getDevicePathPattern()) {
-        if (modDevicePath.matchFullPath(new PartialPath(device))) {
-          isPathMatched = true;
-          break;
-        }
-      }
-      if (isPathMatched && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      PartialPath path = modification.getPath();
+      if (path.endWithMultiLevelWildcard()
+          && path.getDevicePath().matchFullPath(new PartialPath(device))
+          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }

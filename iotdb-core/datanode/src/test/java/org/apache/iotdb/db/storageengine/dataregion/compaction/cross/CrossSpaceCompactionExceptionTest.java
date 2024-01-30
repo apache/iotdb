@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -187,7 +188,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         compactionLogFile,
@@ -261,7 +262,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
@@ -346,7 +347,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -463,7 +464,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -595,7 +596,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     seqResources.get(0).remove();
 
@@ -695,7 +696,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
 
     // meet errors and handle exception

@@ -190,7 +190,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.updateProgressIndex(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
-            targetTsfileResourceList, false, storageGroupName + "-" + dataRegionId);
+            targetTsfileResourceList,
+            CompactionTaskType.CROSS,
+            storageGroupName + "-" + dataRegionId);
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 

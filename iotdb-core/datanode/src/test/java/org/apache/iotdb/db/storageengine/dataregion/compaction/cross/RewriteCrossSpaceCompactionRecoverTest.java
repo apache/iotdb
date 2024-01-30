@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -234,7 +235,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
         .doCompaction();
     // all source file should still exist
@@ -297,7 +298,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
@@ -362,7 +363,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -461,7 +462,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     compactionLogger.close();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
@@ -698,7 +699,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     compactionLogger.logFile(targetResources.get(0), STR_DELETED_TARGET_FILES);
     compactionLogger.close();
@@ -775,7 +776,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
     compactionLogger.logFile(targetResources.get(0), CompactionLogger.STR_DELETED_TARGET_FILES);
     compactionLogger.close();
@@ -874,7 +875,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
 
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)

@@ -195,7 +195,8 @@ public class SettleCompactionTask extends AbstractCompactionTask {
 
       CompactionUtils.updateProgressIndex(
           singleTargetList, singleSourceList, Collections.emptyList());
-      CompactionUtils.moveTargetFile(singleTargetList, true, storageGroupName + "-" + dataRegionId);
+      CompactionUtils.moveTargetFile(
+          singleTargetList, CompactionTaskType.SETTLE, storageGroupName + "-" + dataRegionId);
       CompactionUtils.combineModsInInnerCompaction(singleSourceList, targetResource);
 
       validateCompactionResult(

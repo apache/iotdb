@@ -153,9 +153,9 @@ public class FastCompactionPerformer
     } finally {
       // readers of source files have been closed in MultiTsFileDeviceIterator
       // clean cache
-      sortedSourceFiles = null;
-      readerCacheMap = null;
-      modificationCache = null;
+      sortedSourceFiles.clear();
+      readerCacheMap.clear();
+      modificationCache.clear();
     }
   }
 
