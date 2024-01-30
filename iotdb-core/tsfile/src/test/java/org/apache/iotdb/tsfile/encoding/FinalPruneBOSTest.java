@@ -1635,7 +1635,7 @@ public class FinalPruneBOSTest {
         }
 
         // 2685 2693
-        System.out.println(min_bits);
+//        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1889,8 +1889,8 @@ public class FinalPruneBOSTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1939,7 +1939,7 @@ public class FinalPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 1;
+        int repeatTime2 = 100;
 //        for (int file_i = 4; file_i < 5; file_i++) {
 //
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
