@@ -182,27 +182,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
     PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
-    // check unexpected pipe source plugin alter
-    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute())
-            .toString())
-        .equals(new TreeMap<>(alterPipeRequest.getExtractorAttributes()).toString())) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter pipe %s, unexpected pipe source plugin alter, source plugin from CN: %s, source plugin from DN: %s",
-              alterPipeRequest.getPipeName(),
-              pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute(),
-              alterPipeRequest.getExtractorAttributes());
-      LOGGER.info(exceptionMessage);
-      throw new PipeException(exceptionMessage);
-    }
-    // check useless alter from the perspective of CN
+    // fill empty attributes and check useless alter from the perspective of CN
     boolean needToAlter = false;
-    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
+    if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
+      alterPipeRequest.setProcessorAttributes(
+          pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
+    } else if (!(new TreeMap<>(
+                pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
             .toString())
         .equals(new TreeMap<>(alterPipeRequest.getProcessorAttributes()).toString())) {
       needToAlter = true;
     }
-    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
+    if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
+      alterPipeRequest.setConnectorAttributes(
+          pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+    } else if (!(new TreeMap<>(
+                pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
             .toString())
         .equals(new TreeMap<>(alterPipeRequest.getConnectorAttributes()).toString())) {
       needToAlter = true;
@@ -317,11 +312,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isPipeStopped(String pipeName) {
+  public boolean isPipeUserStopped(String pipeName) {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName)
-          && PipeStatus.STOPPED.equals(getPipeStatus(pipeName));
+          && PipeStatus.STOPPED.equals(getPipeStatus(pipeName))
+          && !isStoppedByRuntimeException(pipeName);
     } finally {
       releaseReadLock();
     }

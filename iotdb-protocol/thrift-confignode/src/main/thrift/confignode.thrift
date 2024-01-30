@@ -701,9 +701,8 @@ struct TCreatePipeReq {
 
 struct TAlterPipeReq {
     1: required string pipeName
-    2: optional map<string, string> extractorAttributes
-    3: optional map<string, string> processorAttributes
-    4: required map<string, string> connectorAttributes
+    2: optional map<string, string> processorAttributes
+    3: optional map<string, string> connectorAttributes
 }
 
 // Deprecated, restored for compatibility

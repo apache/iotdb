@@ -37,7 +37,6 @@ import java.util.Map;
 public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
-  private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
 
@@ -47,10 +46,6 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   public String getPipeName() {
     return pipeName;
-  }
-
-  public Map<String, String> getExtractorAttributes() {
-    return extractorAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
@@ -63,10 +58,6 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
-  }
-
-  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
-    this.extractorAttributes = extractorAttributes;
   }
 
   public void setProcessorAttributes(Map<String, String> processorAttributes) {

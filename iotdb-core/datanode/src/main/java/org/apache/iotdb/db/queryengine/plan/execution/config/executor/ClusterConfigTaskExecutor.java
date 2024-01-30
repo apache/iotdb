@@ -40,7 +40,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -228,8 +227,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -1664,54 +1661,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Get pipe static meta
-    final String pipeName = alterPipeStatement.getPipeName();
-    final PipeStaticMeta pipeStaticMeta = PipeAgent.task().getPipeStaticMeta(pipeName);
-    if (Objects.isNull(pipeStaticMeta)) {
-      future.setException(
-          new IoTDBException(
-              String.format("Failed to alter pipe %s, the pipe does not exist", pipeName),
-              TSStatusCode.PIPE_ERROR.getStatusCode()));
-      return future;
-    }
-
-    // We do not support alter source plugin of pipe, so the previous configuration will be reused.
-    alterPipeStatement.setExtractorAttributes(
-        pipeStaticMeta.getExtractorParameters().getAttribute());
-
-    // Fill empty attributes and check useless alter
-    boolean needToAlter = false;
-    if (alterPipeStatement.getProcessorAttributes().isEmpty()) {
-      alterPipeStatement.setProcessorAttributes(
-          pipeStaticMeta.getProcessorParameters().getAttribute());
-    } else if (!(new TreeMap<>(alterPipeStatement.getProcessorAttributes()).toString())
-        .equals(new TreeMap<>(pipeStaticMeta.getProcessorParameters().getAttribute()).toString())) {
-      // To keep it simple, we only determine whether an alter operation is needed by comparing
-      // whether the ordered strings corresponding to the parameters before and after remain
-      // consistent.
-      needToAlter = true;
-    }
-    if (alterPipeStatement.getConnectorAttributes().isEmpty()) {
-      alterPipeStatement.setConnectorAttributes(
-          pipeStaticMeta.getConnectorParameters().getAttribute());
-    } else if (!(new TreeMap<>(alterPipeStatement.getConnectorAttributes()).toString())
-        .equals(new TreeMap<>(pipeStaticMeta.getConnectorParameters().getAttribute()).toString())) {
-      needToAlter = true;
-    }
-    if (!needToAlter) {
-      future.setException(
-          new IoTDBException(
-              String.format("Failed to alter pipe %s, nothing to alter", pipeName),
-              TSStatusCode.PIPE_ERROR.getStatusCode()));
-      return future;
-    }
-
-    // Validate before creation
+    // Validate before alteration
     try {
       PipeAgent.plugin()
           .validate(
               alterPipeStatement.getPipeName(),
-              alterPipeStatement.getExtractorAttributes(),
+              new HashMap<>(),
               alterPipeStatement.getProcessorAttributes(),
               alterPipeStatement.getConnectorAttributes());
     } catch (Exception e) {
@@ -1726,7 +1681,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TAlterPipeReq req =
           new TAlterPipeReq()
               .setPipeName(alterPipeStatement.getPipeName())
-              .setExtractorAttributes(alterPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(alterPipeStatement.getProcessorAttributes())
               .setConnectorAttributes(alterPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.alterPipe(req);

@@ -103,8 +103,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      // alter pipe will reset pipe status to running
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // alter pipe will reset pipe creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > firstCreationTime);
       // alter pipe will clear exception messages
