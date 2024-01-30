@@ -26,31 +26,33 @@ import java.lang.Character.UnicodeScript;
 import java.util.List;
 
 public class IoTPrinter {
-  private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
+  private final PrintStream screenPrinter;
 
-  private IoTPrinter() {}
-
-  public static void printf(String format, Object... args) {
-    SCREEN_PRINTER.printf(format, args);
+  public IoTPrinter(PrintStream screenPrinter) {
+    this.screenPrinter = screenPrinter;
   }
 
-  public static void print(String msg) {
-    SCREEN_PRINTER.print(msg);
+  public void printf(String format, Object... args) {
+    screenPrinter.printf(format, args);
   }
 
-  public static void printException(Exception msg) {
-    SCREEN_PRINTER.println(msg);
+  public void print(String msg) {
+    screenPrinter.print(msg);
   }
 
-  public static void println() {
-    SCREEN_PRINTER.println();
+  public void printException(Exception msg) {
+    screenPrinter.println(msg);
   }
 
-  public static void println(String msg) {
-    SCREEN_PRINTER.println(msg);
+  public void println() {
+    screenPrinter.println();
   }
 
-  public static void printBlockLine(List<Integer> maxSizeList) {
+  public void println(String msg) {
+    screenPrinter.println(msg);
+  }
+
+  public void printBlockLine(List<Integer> maxSizeList) {
     StringBuilder blockLine = new StringBuilder();
     for (Integer integer : maxSizeList) {
       blockLine.append("+").append(StringUtils.repeat("-", integer));
@@ -59,7 +61,7 @@ public class IoTPrinter {
     println(blockLine.toString());
   }
 
-  public static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
+  public void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
     printf("|");
     int count;
     int maxSize;
@@ -86,7 +88,7 @@ public class IoTPrinter {
     println();
   }
 
-  public static void printCount(int cnt) {
+  public void printCount(int cnt) {
     if (cnt == 0) {
       println("Empty set.");
     } else {
@@ -94,7 +96,7 @@ public class IoTPrinter {
     }
   }
 
-  public static StringBuilder padding(int count) {
+  public StringBuilder padding(int count) {
     StringBuilder sb = new StringBuilder();
     for (int k = 0; k < count; k++) {
       sb.append(' ');
@@ -104,7 +106,7 @@ public class IoTPrinter {
   }
 
   /** compute the number of Chinese characters included in the String */
-  public static int computeHANCount(String s) {
+  public int computeHANCount(String s) {
     return (int)
         s.codePoints()
             .filter(codePoint -> UnicodeScript.of(codePoint) == UnicodeScript.HAN)

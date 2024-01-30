@@ -117,6 +117,8 @@ public abstract class AbstractCsvTool {
   protected static String timeZoneID;
   protected static String timeFormat;
   protected static Session session;
+
+  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCsvTool.class);
 
   protected AbstractCsvTool() {}
@@ -160,7 +162,7 @@ public abstract class AbstractCsvTool {
       }
     }
     LOGGER.info(
-        "Input time format %s is not supported, "
+        "Input time format {} is not supported, "
             + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n",
         timeFormat);
     return false;
@@ -232,7 +234,7 @@ public abstract class AbstractCsvTool {
       csvPrinterWrapper.close();
       return true;
     } catch (IOException e) {
-      IoTPrinter.printException(e);
+      ioTPrinter.printException(e);
       return false;
     }
   }
@@ -265,14 +267,14 @@ public abstract class AbstractCsvTool {
         try {
           csvPrinter = csvFormat.print(new PrintWriter(filePath));
         } catch (IOException e) {
-          IoTPrinter.printException(e);
+          ioTPrinter.printException(e);
           return;
         }
       }
       try {
         csvPrinter.print(value);
       } catch (IOException e) {
-        IoTPrinter.printException(e);
+        ioTPrinter.printException(e);
       }
     }
 

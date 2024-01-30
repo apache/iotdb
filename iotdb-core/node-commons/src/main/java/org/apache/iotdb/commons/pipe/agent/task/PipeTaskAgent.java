@@ -555,34 +555,29 @@ public abstract class PipeTaskAgent {
   }
 
   protected void stopPipe(String pipeName, long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
-    if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
-      return;
-    }
-
-    // Get pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
-    if (pipeTasks == null) {
+    if (!checkBeforeStopPipe(pipeMeta, pipeName, creationTime)) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-              + "Skip stopping.",
-          pipeName,
-          creationTime);
+          "Stop Pipe: Pipe {} has already been dropped or has not been created. Skip stopping.",
+          pipeName);
       return;
     }
 
-    // Trigger stop() method for each pipe task by parallel stream
+    // 1. Drop the pipe task
     final long startTime = System.currentTimeMillis();
-    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
+
+    // 2. Set pipe meta status to STOPPED
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+
+    // 3. create a new pipe with the same pipeMeta
+    createPipe(pipeMeta);
+
     LOGGER.info(
         "Stop all pipe tasks on Pipe {} successfully within {} ms",
         pipeName,
         System.currentTimeMillis() - startTime);
-
-    // Set pipe meta status to STOPPED
-    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
   }
 
   ////////////////////////// Checker //////////////////////////

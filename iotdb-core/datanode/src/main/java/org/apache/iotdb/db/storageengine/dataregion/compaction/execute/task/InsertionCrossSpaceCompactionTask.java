@@ -179,14 +179,14 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           String.format("%.2f", costTime));
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        printLogWhenException(LOGGER, e);
+        handleException(LOGGER, e);
       }
       targetFile.setStatus(TsFileResourceStatus.NORMAL);
     }
@@ -226,6 +226,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
+    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
   }
 
   private boolean recoverTaskInfoFromLogFile() throws IOException {
@@ -271,7 +272,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        printLogWhenException(LOGGER, e);
+        handleException(LOGGER, e);
       }
     }
   }

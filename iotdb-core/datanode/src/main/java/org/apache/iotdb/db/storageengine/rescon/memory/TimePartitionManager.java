@@ -56,12 +56,6 @@ public class TimePartitionManager {
               timePartitionInfoMap.computeIfAbsent(
                   timePartitionInfo.dataRegionId, k -> new TreeMap<>());
 
-      Map.Entry<Long, TimePartitionInfo> entry =
-          timePartitionInfoMapForRegion.floorEntry(timePartitionInfo.partitionId);
-      if (entry != null) {
-        entry.getValue().isLatestPartition = false;
-      }
-
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
 
       // We need to ensure that the following method is called before
@@ -92,7 +86,7 @@ public class TimePartitionManager {
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
         if (memCost > timePartitionInfoMemoryThreshold) {
-          evictOldPartition();
+          degradeLastFlushTime();
         }
       }
     }
@@ -110,7 +104,7 @@ public class TimePartitionManager {
     }
   }
 
-  private void evictOldPartition() {
+  private void degradeLastFlushTime() {
     TreeSet<TimePartitionInfo> treeSet = new TreeSet<>(TimePartitionInfo::comparePriority);
     synchronized (timePartitionInfoMap) {
       for (Map.Entry<DataRegionId, Map<Long, TimePartitionInfo>> entry :
@@ -123,13 +117,13 @@ public class TimePartitionManager {
         if (timePartitionInfo == null) {
           return;
         }
-        memCost -= timePartitionInfo.memSize;
+        memCost -= timePartitionInfo.memSize + Long.BYTES;
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
-          dataRegion.releaseFlushTimeMap(timePartitionInfo.partitionId);
+          dataRegion.degradeFlushTimeMap(timePartitionInfo.partitionId);
           logger.info(
-              "[{}]evict LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
+              "[{}]degrade LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
               timePartitionInfo.dataRegionId,
               timePartitionInfo.partitionId,
               timePartitionInfo.memSize,
@@ -142,20 +136,7 @@ public class TimePartitionManager {
     }
   }
 
-  public void removePartition(DataRegionId dataRegionId, long partitionId) {
-    synchronized (timePartitionInfoMap) {
-      Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
-          timePartitionInfoMap.get(dataRegionId);
-      if (timePartitionInfoMapForDataRegion != null) {
-        TimePartitionInfo timePartitionInfo = timePartitionInfoMapForDataRegion.get(partitionId);
-        if (timePartitionInfo != null) {
-          timePartitionInfoMapForDataRegion.remove(partitionId);
-          memCost -= timePartitionInfo.memSize;
-        }
-      }
-    }
-  }
-
+  @TestOnly
   public TimePartitionInfo getTimePartitionInfo(DataRegionId dataRegionId, long timePartitionId) {
     synchronized (timePartitionInfoMap) {
       Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =

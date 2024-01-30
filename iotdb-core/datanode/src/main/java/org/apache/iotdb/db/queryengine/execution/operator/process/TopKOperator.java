@@ -53,11 +53,11 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 public class TopKOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
 
-  private final List<Operator> deviceOperators;
-  private int deviceIndex;
+  private final List<Operator> childrenOperators;
+  private int childIndex;
   // read step operators each invoking
-  private int deviceBatchStep;
-  private boolean[] canCallNext;
+  private final int childBatchStep;
+  private final boolean[] canCallNext;
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -84,13 +84,13 @@ public class TopKOperator implements ProcessOperator {
 
   public TopKOperator(
       OperatorContext operatorContext,
-      List<Operator> deviceOperators,
+      List<Operator> childrenOperators,
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator,
       int topValue,
       boolean childrenDataInOrder) {
     this.operatorContext = operatorContext;
-    this.deviceOperators = deviceOperators;
+    this.childrenOperators = childrenOperators;
     this.dataTypes = dataTypes;
     this.mergeSortHeap = new MergeSortHeap(topValue, comparator.reversed());
     this.comparator = comparator;
@@ -100,11 +100,11 @@ public class TopKOperator implements ProcessOperator {
 
     initResultTsBlock();
 
-    deviceBatchStep =
+    childBatchStep =
         OPERATOR_BATCH_UPPER_BOUND % topValue == 0
             ? OPERATOR_BATCH_UPPER_BOUND / topValue
             : OPERATOR_BATCH_UPPER_BOUND / topValue + 1;
-    canCallNext = new boolean[deviceOperators.size()];
+    canCallNext = new boolean[childrenOperators.size()];
   }
 
   @Override
@@ -116,8 +116,8 @@ public class TopKOperator implements ProcessOperator {
   public ListenableFuture<?> isBlocked() {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
-    for (int i = deviceIndex;
-        i < Math.min(deviceIndex + deviceBatchStep, deviceOperators.size());
+    for (int i = childIndex;
+        i < Math.min(childIndex + childBatchStep, childrenOperators.size());
         i++) {
       if (getOperator(i) == null) {
         continue;
@@ -142,7 +142,7 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    if (deviceIndex >= deviceOperators.size()) {
+    if (childIndex >= childrenOperators.size()) {
       if (topKResult == null) {
         return false;
       }
@@ -154,7 +154,7 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (deviceIndex >= deviceOperators.size() && resultReturnSize < topKResult.length) {
+    if (childIndex >= childrenOperators.size() && resultReturnSize < topKResult.length) {
       return getResultFromCachedTopKResult();
     }
 
@@ -162,8 +162,8 @@ public class TopKOperator implements ProcessOperator {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
 
     boolean batchFinished = true;
-    int operatorBatchEnd = Math.min(deviceIndex + deviceBatchStep, deviceOperators.size());
-    for (int i = deviceIndex; i < operatorBatchEnd; i++) {
+    int operatorBatchEnd = Math.min(childIndex + childBatchStep, childrenOperators.size());
+    for (int i = childIndex; i < operatorBatchEnd; i++) {
       if (getOperator(i) == null) {
         continue;
       }
@@ -212,8 +212,8 @@ public class TopKOperator implements ProcessOperator {
     }
 
     if (batchFinished) {
-      deviceIndex = deviceIndex + deviceBatchStep;
-      if (deviceIndex >= deviceOperators.size()) {
+      childIndex = childIndex + childBatchStep;
+      if (childIndex >= childrenOperators.size()) {
         return getResultFromCachedTopKResult();
       }
     }
@@ -223,8 +223,8 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (int i = deviceIndex; i < deviceOperators.size(); i++) {
-      final Operator operator = deviceOperators.get(i);
+    for (int i = childIndex; i < childrenOperators.size(); i++) {
+      final Operator operator = childrenOperators.get(i);
       if (operator != null) {
         operator.close();
       }
@@ -236,7 +236,7 @@ public class TopKOperator implements ProcessOperator {
     // traverse each child serial,
     // so no need to accumulate the returnSize and retainedSize of each child
     long maxPeekMemory = calculateMaxReturnSize();
-    for (Operator operator : deviceOperators) {
+    for (Operator operator : childrenOperators) {
       maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
     }
     return Math.max(maxPeekMemory, topValue * getMemoryUsageOfOneMergeSortKey() * 2);
@@ -379,11 +379,11 @@ public class TopKOperator implements ProcessOperator {
   }
 
   private Operator getOperator(int i) {
-    return deviceOperators.get(i);
+    return childrenOperators.get(i);
   }
 
   private void closeOperator(int i) throws Exception {
     getOperator(i).close();
-    deviceOperators.set(i, null);
+    childrenOperators.set(i, null);
   }
 }
