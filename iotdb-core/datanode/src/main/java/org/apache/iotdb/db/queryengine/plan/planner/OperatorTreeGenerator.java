@@ -364,7 +364,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       maxTsBlockLineNum =
           (int)
               Math.min(
-                  context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
+                  maxTsBlockLineNum, context.getTypeProvider().getTemplatedInfo().getLimitValue());
+
+      if (((DataDriverContext) context.getDriverContext()).getSourceOperators().size() > 1) {
+        maxTsBlockLineNum =
+            context.getTypeProvider().getTemplatedInfo().getOptimizedMaxTsBlockLineNum();
+      }
     }
 
     AlignedSeriesScanOperator seriesScanOperator =
