@@ -244,7 +244,7 @@ public class StorageEngine implements IService {
       for (DataRegionId dataRegionId : entry.getValue()) {
         Callable<Void> recoverDataRegionTask =
             () -> {
-              DataRegion dataRegion = null;
+              DataRegion dataRegion;
               try {
                 dataRegion =
                     buildNewDataRegion(

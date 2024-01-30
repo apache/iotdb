@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -55,6 +56,10 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   }
 
   private void onEnrichedEventFailure(Throwable throwable) {
+    int maxRetryTimes =
+        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+            ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
+            : MAX_RETRY_TIMES;
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
@@ -62,11 +67,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           creationTime,
           this.getClass().getSimpleName(),
           throwable.getMessage(),
-          MAX_RETRY_TIMES,
+          maxRetryTimes,
           throwable);
     }
 
-    if (retryCount.get() < MAX_RETRY_TIMES) {
+    if (retryCount.get() < maxRetryTimes) {
       retryCount.incrementAndGet();
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}]",
@@ -74,7 +79,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
-          MAX_RETRY_TIMES);
+          maxRetryTimes);
       try {
         Thread.sleep(1000L * retryCount.get());
       } catch (InterruptedException e) {
