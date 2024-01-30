@@ -459,12 +459,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_priority", conf.getCompactionPriority().toString())));
 
-    conf.setEnableCompactionMemControl(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_compaction_mem_control",
-                Boolean.toString(conf.isEnableCompactionMemControl()))));
-
     int subtaskNum =
         Integer.parseInt(
             properties.getProperty(
