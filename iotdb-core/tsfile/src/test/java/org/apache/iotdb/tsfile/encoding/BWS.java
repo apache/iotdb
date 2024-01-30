@@ -1193,8 +1193,8 @@ public class BWS {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "block_size_bos";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_bws";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1239,7 +1239,8 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < 8; file_i++) {
+//        for (int file_i = 8; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1287,7 +1288,7 @@ public class BWS {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
-                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
@@ -1306,14 +1307,14 @@ public class BWS {
                     double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                        BOSDecoder(encoded_result);
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+BWS",
+                            "TS_2DIFF+BOS-L",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1332,38 +1333,38 @@ public class BWS {
         }
     }
 
-    @Test
-    public void BWSTest2() throws IOException {
-        int[] testarray = {0,1,2,3,4,5,6,7};
-        int max_delta_value = 7;
-        int max_bit = getBitWith(max_delta_value);
-        int[] alpha_count_list = new int[max_bit+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
-        int[] alpha_box_count_list = new int[max_bit+1];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
-        int[] gamma_count_list = new int[max_bit+1];
-        int[] gamma_box_count_list = new int[max_bit+1];
-        for(int value:testarray){
-            if (value == 0){
-                alpha_count_list[0]++;
-            }
-            else if (value == pow(2,getBitWith(value)-1)){
-                alpha_count_list[getBitWith(value)]++;
-            }else {
-                alpha_box_count_list[getBitWith(value)]++;
-            }
-            if (value == max_delta_value){
-                gamma_count_list[0]++;
-            }
-            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
-                gamma_count_list[getBitWith(max_delta_value-value)]++;
-            }else {
-                gamma_box_count_list[getBitWith(max_delta_value-value)]++;
-            }
-        }
-
-        for(int value: alpha_box_count_list){
-            System.out.println(value);
-        }
-
-    }
+//    @Test
+//    public void BWSTest2() throws IOException {
+//        int[] testarray = {0,1,2,3,4,5,6,7};
+//        int max_delta_value = 7;
+//        int max_bit = getBitWith(max_delta_value);
+//        int[] alpha_count_list = new int[max_bit+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
+//        int[] alpha_box_count_list = new int[max_bit+1];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
+//        int[] gamma_count_list = new int[max_bit+1];
+//        int[] gamma_box_count_list = new int[max_bit+1];
+//        for(int value:testarray){
+//            if (value == 0){
+//                alpha_count_list[0]++;
+//            }
+//            else if (value == pow(2,getBitWith(value)-1)){
+//                alpha_count_list[getBitWith(value)]++;
+//            }else {
+//                alpha_box_count_list[getBitWith(value)]++;
+//            }
+//            if (value == max_delta_value){
+//                gamma_count_list[0]++;
+//            }
+//            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
+//                gamma_count_list[getBitWith(max_delta_value-value)]++;
+//            }else {
+//                gamma_box_count_list[getBitWith(max_delta_value-value)]++;
+//            }
+//        }
+//
+//        for(int value: alpha_box_count_list){
+//            System.out.println(value);
+//        }
+//
+//    }
 
 }
