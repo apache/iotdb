@@ -1250,11 +1250,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       List<AggregationDescriptor> descriptorList = new ArrayList<>();
       for (AggregationDescriptor originalDescriptor : handle.getAggregationDescriptorList()) {
         boolean keep = false;
-        String groupedInputExpressionsString = originalDescriptor.getInputExpressionsAsString();
         for (String childColumn : childrenOutputColumns) {
-          if (isAggColumnMatchExpression(childColumn, groupedInputExpressionsString)) {
-            keep = true;
-            break;
+          for (String groupedInputExpressionsString :
+              originalDescriptor.getInputExpressionsAsStringList()) {
+            if (isAggColumnMatchExpression(childColumn, groupedInputExpressionsString)) {
+              keep = true;
+              break;
+            }
           }
         }
         if (keep) {
