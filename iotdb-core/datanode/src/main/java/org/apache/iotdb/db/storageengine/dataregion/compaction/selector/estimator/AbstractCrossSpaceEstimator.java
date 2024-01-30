@@ -45,6 +45,9 @@ public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEsti
 
     long cost = 0;
     try {
+      if (!isAllSourceFileExist(resources)) {
+        return -1L;
+      }
       CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
       cost += calculatingMetadataMemoryCost(taskInfo);
       cost += calculatingDataMemoryCost(taskInfo);
