@@ -388,9 +388,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Add failure event to retry queue.
+   * Add failure {@link Event} to retry queue.
    *
-   * @param event event to retry
+   * @param event {@link Event} to retry
    */
   public synchronized void addFailureEventToRetryQueue(Event event) {
     retryEventQueue.offer(event);
@@ -402,7 +402,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   /**
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued events in the output pipe connector.
+   * its queued {@link Event}s in the output pipe connector.
    */
   public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
     retryEventQueue.removeIf(

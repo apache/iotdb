@@ -88,4 +88,8 @@ public class PipeDataRegionFilter {
 
     return new Pair<>(listenTypes.contains("data.insert"), listenTypes.contains("data.delete"));
   }
+
+  private PipeDataRegionFilter() {
+    // Utility class
+  }
 }

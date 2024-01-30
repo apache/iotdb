@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
@@ -146,7 +147,10 @@ public class CommonConfig {
 
   private boolean pipeHardLinkWALEnabled = false;
 
-  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
+  /**
+   * The maximum number of threads that can be used to execute subtasks in {@link
+   * PipeSubtaskExecutor}.
+   */
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
