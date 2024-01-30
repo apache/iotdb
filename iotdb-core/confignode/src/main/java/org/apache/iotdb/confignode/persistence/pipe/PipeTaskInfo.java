@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -55,6 +56,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -171,7 +173,40 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void checkBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest) throws PipeException {
     if (isPipeExisted(alterPipeRequest.getPipeName())) {
-      return;
+      PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
+      PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
+      // check unexpected pipe source plugin alter
+      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute())
+              .toString())
+          .equals(new TreeMap<>(alterPipeRequest.getExtractorAttributes()).toString())) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to alter pipe %s, unexpected pipe source plugin alter, source plugin from CN: %s, source plugin from DN: %s",
+                alterPipeRequest.getPipeName(),
+                pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute(),
+                alterPipeRequest.getExtractorAttributes());
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      // check useless alter from the perspective of CN
+      boolean needToAlter = false;
+      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
+              .toString())
+          .equals(new TreeMap<>(alterPipeRequest.getProcessorAttributes()).toString())) {
+        needToAlter = true;
+      }
+      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
+              .toString())
+          .equals(new TreeMap<>(alterPipeRequest.getConnectorAttributes()).toString())) {
+        needToAlter = true;
+      }
+      if (!needToAlter) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
     }
 
     final String exceptionMessage =

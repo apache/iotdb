@@ -1732,7 +1732,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to create PIPE {} in config node, status is {}.",
+            "Failed to alter PIPE {} in config node, status is {}.",
             alterPipeStatement.getPipeName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
