@@ -128,15 +128,15 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     env.getConfigManager()
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
+                final PipeTaskMeta currentPipeTaskMeta =
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId);
+                if (databaseName != null
+                    && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
+                    && currentPipeTaskMeta.getLeaderDataNodeId() == regionLeaderNodeId) {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
-                      new PipeTaskMeta(
-                          currentConsensusGroupId2PipeTaskMeta
-                              .get(regionGroupId)
-                              .getProgressIndex(),
-                          regionLeaderNodeId));
+                      new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
                 }
               }
             });
