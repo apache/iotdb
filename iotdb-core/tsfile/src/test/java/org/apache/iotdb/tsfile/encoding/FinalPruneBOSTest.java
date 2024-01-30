@@ -1098,7 +1098,7 @@ public class FinalPruneBOSTest {
                                     final_k_start_value = cur_xl;
                                     final_k_end_value = cur_xu;
                                 }
-                                continue;
+                                //continue;
                             }
                             else if (max_beta <= alpha+1 && min_beta >= gamma+lambda_0 && min_pow_2_beta+pow_2_alpha/2+pow_2_gamma >= max_delta_value) {
                                 // prop 5.5
@@ -1118,7 +1118,7 @@ public class FinalPruneBOSTest {
                                     final_k_end_value = cur_xu;
                                 }
 
-                                continue;
+                                //continue;
                             }
                             else if (max_beta <= alpha+1 && max_beta <= gamma+1 && min_pow_2_beta+ pow_2_alpha/2+gap_gamma > max_delta_value) {
                                 // prop 5.6
@@ -1138,7 +1138,7 @@ public class FinalPruneBOSTest {
                                     final_k_end_value = cur_xu;
                                 }
 
-                                continue;
+                                //continue;
                             }
                             else{
                                 int cur_k1_start_of_lambda = cur_k1;
@@ -1162,9 +1162,6 @@ public class FinalPruneBOSTest {
 //                                            break;
 //                                        }
                                         cur_cur_k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
-                                        if (k1_start + x_l_i == 2047 && k2_end == 3078){
-                                            int temp = 10;
-                                        }
                                         cur_bits = 0;
                                         cur_bits +=Math.min((cur_k1_start_of_lambda + cur_cur_k2) * lambda_0, block_size + cur_k1_start_of_lambda + cur_cur_k2);
                                         // (lambda * (cur_k1_start_of_lambda + cur_cur_k2) + zeta); // Math.min((cur_k1 + cur_cur_k2) * getBitWith(block_size - 1), block_size + cur_k1 + cur_k2);

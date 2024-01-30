@@ -620,6 +620,10 @@ public class Exact_BOS {
 
                 k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
 
+                if (k_start_value == 2047 && k_end_value == 2056){
+                    int temp = 1;
+                }
+
                 cur_bits = 0;
                 cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
 
