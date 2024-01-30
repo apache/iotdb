@@ -36,6 +36,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected boolean isEmptyFile;
 
   protected TsFileResource targetResource;
+
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
         (long)

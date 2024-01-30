@@ -57,6 +57,7 @@ public class CompactionConfigRestorer {
 
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
   public CompactionConfigRestorer() {}
 
   public void restoreCompactionConfig() {

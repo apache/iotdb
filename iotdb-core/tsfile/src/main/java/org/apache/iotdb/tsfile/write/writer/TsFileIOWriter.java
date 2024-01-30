@@ -149,8 +149,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /** for write with memory control */
-  public TsFileIOWriter(File file, long maxMetadataSize)
-      throws IOException {
+  public TsFileIOWriter(File file, long maxMetadataSize) throws IOException {
     this(file);
     this.maxMetadataSize = maxMetadataSize;
     chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);

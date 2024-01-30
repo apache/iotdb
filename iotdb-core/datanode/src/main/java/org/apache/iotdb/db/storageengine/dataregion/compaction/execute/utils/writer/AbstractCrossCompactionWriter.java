@@ -93,7 +93,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
     for (CompactionTsFileWriter targetFileWriter : targetFileWriters) {
-        chunkGroupHeaderSize = targetFileWriter.startChunkGroup(deviceId);
+      chunkGroupHeaderSize = targetFileWriter.startChunkGroup(deviceId);
     }
   }
 
@@ -165,7 +165,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
     for (CompactionTsFileWriter fileIoWriter : targetFileWriters) {
-        fileIoWriter.checkMetadataSizeAndMayFlush();
+      fileIoWriter.checkMetadataSizeAndMayFlush();
     }
   }
 

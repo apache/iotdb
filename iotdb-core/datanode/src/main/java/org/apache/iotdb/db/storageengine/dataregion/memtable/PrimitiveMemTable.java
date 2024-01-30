@@ -31,6 +31,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
   public PrimitiveMemTable(String database, String dataRegionId) {
     super(database, dataRegionId);
   }
+
   public PrimitiveMemTable(
       String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     super(database, dataRegionId, memTableMap);

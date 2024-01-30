@@ -57,6 +57,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
     List<TSDataType> dataTypeList = new ArrayList<>();

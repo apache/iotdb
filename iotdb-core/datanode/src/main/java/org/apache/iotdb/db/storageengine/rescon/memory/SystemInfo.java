@@ -361,8 +361,7 @@ public class SystemInfo {
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(
-              selectedTsFileProcessor::submitAFlushTask);
+      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }
@@ -427,5 +426,4 @@ public class SystemInfo {
   public double getRejectThershold() {
     return REJECT_THRESHOLD;
   }
-
 }

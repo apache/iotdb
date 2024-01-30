@@ -3033,7 +3033,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
       throws WriteProcessException, BatchProcessException {
-      StorageEngine.blockInsertionIfReject(null);
+    StorageEngine.blockInsertionIfReject(null);
     long startTime = System.nanoTime();
     writeLock("InsertRowsOfOneDevice");
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);

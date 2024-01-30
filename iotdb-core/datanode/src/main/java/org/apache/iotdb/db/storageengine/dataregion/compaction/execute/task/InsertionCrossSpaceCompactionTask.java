@@ -283,10 +283,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private boolean shouldRollback() {
     // if target file or its responding file does not exist, then return true
-      return targetFile == null
-              || !targetFile.tsFileExists()
-              || !targetFile.resourceFileExists()
-              || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists());
+    return targetFile == null
+        || !targetFile.tsFileExists()
+        || !targetFile.resourceFileExists()
+        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists());
   }
 
   private void rollback() throws IOException {

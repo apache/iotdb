@@ -46,10 +46,9 @@ public class MemUtils {
   private MemUtils() {}
 
   /**
-   * Function for obtaining the value size.
-   * For text values, there are two conditions:
-   * 1. During insertion, their size has already been added to memory.
-   * 2. During flushing, their size needs to be calculated.
+   * Function for obtaining the value size. For text values, there are two conditions: 1. During
+   * insertion, their size has already been added to memory. 2. During flushing, their size needs to
+   * be calculated.
    */
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
     if (dataType == TSDataType.TEXT) {
@@ -59,11 +58,10 @@ public class MemUtils {
   }
 
   /**
-   * Function for obtaining the value size.
-   * For text values, their size has already been added to memory before insertion
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getRecordSize(
-      List<TSDataType> dataTypes, Object[] value) {
+  public static long getRecordSize(List<TSDataType> dataTypes, Object[] value) {
     int emptyRecordCount = 0;
     long memSize = 0L;
     for (int i = 0; i < value.length; i++) {
@@ -77,11 +75,10 @@ public class MemUtils {
   }
 
   /**
-   * Function for obtaining the value size.
-   * For text values, their size has already been added to memory before insertion
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getAlignedRecordSize(
-      List<TSDataType> dataTypes, Object[] value) {
+  public static long getAlignedRecordSize(List<TSDataType> dataTypes, Object[] value) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
@@ -107,11 +104,10 @@ public class MemUtils {
   }
 
   /**
-   * Function for obtaining the value size.
-   * For text values, their size has already been added to memory before insertion
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getTabletSize(
-      InsertTabletNode insertTabletNode, int start, int end) {
+  public static long getTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
     if (start >= end) {
       return 0L;
     }
@@ -129,8 +125,7 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getAlignedTabletSize(
-      InsertTabletNode insertTabletNode, int start, int end) {
+  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
     if (start >= end) {
       return 0L;
     }
@@ -139,7 +134,7 @@ public class MemUtils {
       if (insertTabletNode.getMeasurements()[i] == null) {
         continue;
       }
-      if (insertTabletNode.getDataTypes()[i] != TSDataType.TEXT){
+      if (insertTabletNode.getDataTypes()[i] != TSDataType.TEXT) {
         memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
       }
     }
