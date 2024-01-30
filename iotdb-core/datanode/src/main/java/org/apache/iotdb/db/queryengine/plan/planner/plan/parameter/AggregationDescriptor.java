@@ -232,6 +232,22 @@ public class AggregationDescriptor {
     }
   }
 
+  public String getInputExpressionsAsString() {
+    return getInputString(inputExpressions);
+  }
+
+  protected String getInputString(List<Expression> expressions) {
+    StringBuilder builder = new StringBuilder();
+    if (!(expressions.size() == 0)) {
+      builder.append(expressions.get(0).getExpressionString());
+      for (int i = 1; i < expressions.size(); ++i) {
+        builder.append(", ").append(expressions.get(i).getExpressionString());
+      }
+    }
+    appendAttributes(builder);
+    return builder.toString();
+  }
+
   public List<Expression> getInputExpressions() {
     return inputExpressions;
   }

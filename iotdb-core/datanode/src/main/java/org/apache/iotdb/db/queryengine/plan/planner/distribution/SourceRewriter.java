@@ -1114,9 +1114,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     Map<String, List<Expression>> columnNameToExpression = new HashMap<>();
     for (CrossSeriesAggregationDescriptor originalDescriptor :
         newRoot.getGroupByLevelDescriptors()) {
-      for (Expression exp : originalDescriptor.getInputExpressions()) {
-        columnNameToExpression.put(exp.getExpressionString(), Collections.singletonList(exp));
-      }
+      columnNameToExpression.putAll(originalDescriptor.getGroupedInputStringToExpressionsMap());
       // for example, max_by(root.*.x1, root.*.y1), we have "root.*.x1, root.*.y1" =>
       // [root.*.x1(TimeSeriesOperand), root.*.y1(TimeSeriesOperand)]
       columnNameToExpression.put(
@@ -1252,11 +1250,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       List<AggregationDescriptor> descriptorList = new ArrayList<>();
       for (AggregationDescriptor originalDescriptor : handle.getAggregationDescriptorList()) {
         boolean keep = false;
+        String groupedInputExpressionsString = originalDescriptor.getInputExpressionsAsString();
         for (String childColumn : childrenOutputColumns) {
-          for (Expression exp : originalDescriptor.getInputExpressions()) {
-            if (isAggColumnMatchExpression(childColumn, exp)) {
-              keep = true;
-            }
+          if (isAggColumnMatchExpression(childColumn, groupedInputExpressionsString)) {
+            keep = true;
+            break;
           }
         }
         if (keep) {
@@ -1274,30 +1272,27 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
       Map<String, List<Expression>> columnNameToExpression = context.getColumnNameToExpression();
-      Set<Expression> childrenExpressionSet = new HashSet<>();
+      Map<String, List<Expression>> childrenExpressionMap = new HashMap<>();
       for (String childColumn : childrenOutputColumns) {
-        List<Expression> childExpression =
-            columnNameToExpression.get(
-                childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
-        childrenExpressionSet.addAll(childExpression);
+        String childInput =
+            childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")"));
+        childrenExpressionMap.put(childInput, columnNameToExpression.get(childInput));
       }
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
 
-        originalDescriptor
-            .getOutputExpressions()
-            .forEach(
-                x -> {
-                  if (childrenExpressionSet.contains(x)) {
-                    descriptorExpressions.add(x);
-                  }
-                });
+        if (childrenExpressionMap.containsKey(originalDescriptor.getParametersString())) {
+          descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
+        }
 
-        for (Expression exp : originalDescriptor.getInputExpressions()) {
-          if (childrenExpressionSet.contains(exp)) {
-            descriptorExpressions.add(exp);
+        for (String groupedInputExpressionString :
+            originalDescriptor.getGroupedInputExpressionStrings()) {
+          List<Expression> inputExpressions =
+              childrenExpressionMap.get(groupedInputExpressionString);
+          if (inputExpressions != null && !inputExpressions.isEmpty()) {
+            descriptorExpressions.addAll(inputExpressions);
           }
         }
 
@@ -1376,11 +1371,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   // TODO: (xingtanzjr) need to confirm the logic when processing UDF
-  private boolean isAggColumnMatchExpression(String columnName, Expression expression) {
+  private boolean isAggColumnMatchExpression(String columnName, String expression) {
     if (columnName == null) {
       return false;
     }
-    return columnName.contains(expression.getExpressionString());
+    return columnName.contains(expression);
   }
 
   /**

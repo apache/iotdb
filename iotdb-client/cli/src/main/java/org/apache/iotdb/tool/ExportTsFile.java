@@ -189,7 +189,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         || sqlLower.contains("var_pop(")
         || sqlLower.contains("var_samp(")
         || sqlLower.contains("max_by(")) {
-      IoTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
+      ioTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
   }

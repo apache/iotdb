@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +38,8 @@ import java.util.stream.Collectors;
 public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private final List<Expression> outputExpressions;
+
+  private final List<List<Expression>> groupedInputExpressions = new ArrayList<>();
 
   /**
    * Records how many Expressions are in one input, used for calculation of inputColumnNames
@@ -56,6 +59,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     super(aggregationFuncName, step, inputExpressions, inputAttributes);
     this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = inputExpressions.size() / numberOfInput;
+    initGroupedInputExpressions();
   }
 
   /**
@@ -71,6 +75,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     super(aggregationFuncName, step, inputExpressions, inputAttributes);
     this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = 1;
+    initGroupedInputExpressions();
   }
 
   public CrossSeriesAggregationDescriptor(
@@ -80,6 +85,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     super(aggregationDescriptor);
     this.outputExpressions = outputExpressions;
     this.expressionNumOfOneInput = expressionNumOfOneInput;
+    initGroupedInputExpressions();
   }
 
   public List<Expression> getOutputExpressions() {
@@ -126,35 +132,26 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     }
 
     List<List<String>> inputColumnNamesList = new ArrayList<>();
-    Expression[] expressions = new Expression[expressionNumOfOneInput];
-    for (int i = 0; i < inputExpressions.size(); i += expressionNumOfOneInput) {
-      for (int j = 0; j < expressionNumOfOneInput; j++) {
-        expressions[j] = inputExpressions.get(i + j);
-      }
-      inputColumnNamesList.add(getInputColumnNames(expressions));
-    }
+    groupedInputExpressions.forEach(list -> inputColumnNamesList.add(getInputColumnNames(list)));
     return inputColumnNamesList;
   }
 
-  private List<String> getInputColumnNames(Expression[] expressions) {
-    List<String> inputAggregationNames = getActualAggregationNames(step.isInputPartial());
-    List<String> inputColumnNames = new ArrayList<>();
-    for (String funcName : inputAggregationNames) {
-      inputColumnNames.add(funcName + "(" + getInputString(expressions) + ")");
-    }
-    return inputColumnNames;
+  /**
+   * For an aggregate function that takes two inputs, the inputExpressions may be like
+   * [root.sg.d1.s1, root.sg.d1.s2, root.sg.d2.s1, root.sg.d2.s2]. The inputExpressions is a
+   * one-dimensional List, but it is split by expressionNumOfOneInput. The split result is stored in
+   * groupedInputExpressions So the returned map of this method is : <"root.sg.d1.s1,
+   * root.sg.d1.s2", [root.sg.d1.s1, root.sg.d1.s2]> <"root.sg.d2.s1, root.sg.d2.s2",
+   * [root.sg.d2.s1, root.sg.d2.s2]>
+   */
+  public Map<String, List<Expression>> getGroupedInputStringToExpressionsMap() {
+    Map<String, List<Expression>> map = new HashMap<>();
+    groupedInputExpressions.forEach(list -> map.put(getInputString(list), list));
+    return map;
   }
 
-  private String getInputString(Expression[] expressions) {
-    StringBuilder builder = new StringBuilder();
-    if (!(expressions.length == 0)) {
-      builder.append(expressions[0].getExpressionString());
-      for (int i = 1; i < expressions.length; ++i) {
-        builder.append(", ").append(expressions[i].getExpressionString());
-      }
-    }
-    appendAttributes(builder);
-    return builder.toString();
+  public List<String> getGroupedInputExpressionStrings() {
+    return groupedInputExpressions.stream().map(this::getInputString).collect(Collectors.toList());
   }
 
   public StringBuilder getOutputExpressionsAsBuilder() {
@@ -164,6 +161,25 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     }
     appendAttributes(builder);
     return builder;
+  }
+
+  private void initGroupedInputExpressions() {
+    for (int i = 0; i < inputExpressions.size(); i += expressionNumOfOneInput) {
+      List<Expression> expressions = new ArrayList<>(expressionNumOfOneInput);
+      for (int j = 0; j < expressionNumOfOneInput; j++) {
+        expressions.add(inputExpressions.get(i + j));
+      }
+      groupedInputExpressions.add(expressions);
+    }
+  }
+
+  private List<String> getInputColumnNames(List<Expression> expressions) {
+    List<String> inputAggregationNames = getActualAggregationNames(step.isInputPartial());
+    List<String> inputColumnNames = new ArrayList<>();
+    for (String funcName : inputAggregationNames) {
+      inputColumnNames.add(funcName + "(" + getInputString(expressions) + ")");
+    }
+    return inputColumnNames;
   }
 
   @Override
