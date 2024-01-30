@@ -76,8 +76,8 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   }
 
   /**
-   * Deregister the {@link PipeConnectorSubtask}. If the subtask is the last one, close the {@link
-   * PipeConnectorSubtask}.
+   * Deregister the {@link PipeConnectorSubtask}. If the {@link PipeConnectorSubtask} is the last
+   * one, close the {@link PipeConnectorSubtask}.
    *
    * <p>Note that this method should be called after the {@link PipeConnectorSubtask} is stopped.
    * Otherwise, the {@link PipeConnectorSubtaskLifeCycle#runningTaskCount} might be inconsistent

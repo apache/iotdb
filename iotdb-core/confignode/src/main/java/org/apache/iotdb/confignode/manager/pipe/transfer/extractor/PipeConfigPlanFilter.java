@@ -48,7 +48,7 @@ import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalize
 
 /**
  * {@link PipeConfigPlanFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
- * ConfigPlanListeningQueue} and pipe to collect, and to help receiver execute.
+ * ConfigPlanListeningQueue} and pipe to collect.
  *
  * <p>Note that we do not transfer the rollback version of {@link CommitSetSchemaTemplatePlan}
  * because the rollback is usually useless. Consensus layer ensures that a failed plan won't be

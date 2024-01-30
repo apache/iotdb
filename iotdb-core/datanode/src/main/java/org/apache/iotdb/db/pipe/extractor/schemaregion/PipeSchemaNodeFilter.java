@@ -44,8 +44,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
- * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
- * collect.
+ * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help {@link
+ * SchemaNodeListeningQueue} and pipe to collect.
  */
 public class PipeSchemaNodeFilter {
 
