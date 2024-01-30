@@ -277,7 +277,8 @@ public class CompactionScheduler {
       taskList.addAll(
           settleSelector.selectSettleTask(
               tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)));
-    } else if (config.isEnableUnseqSpaceCompaction()) {
+    }
+    if (config.isEnableUnseqSpaceCompaction()) {
       taskList.addAll(
           settleSelector.selectSettleTask(
               tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition)));

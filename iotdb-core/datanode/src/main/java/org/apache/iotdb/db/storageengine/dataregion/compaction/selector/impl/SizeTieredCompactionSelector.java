@@ -216,7 +216,7 @@ public class SizeTieredCompactionSelector
               config.getInnerCompactionTaskSelectionDiskRedundancy())) {
         taskList.add(
             createCompactionTask(
-                Collections.singletonList(tsFileResource), CompactionTaskPriorityType.MOD_SETTLE));
+                Collections.singletonList(tsFileResource), CompactionTaskPriorityType.SETTLE));
         LOGGER.debug("select tsfile {},the mod file size is {}", tsFileResource, modFile.getSize());
       }
     }

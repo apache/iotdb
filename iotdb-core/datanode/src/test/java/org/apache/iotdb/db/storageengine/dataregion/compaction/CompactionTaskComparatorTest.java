@@ -414,7 +414,7 @@ public class CompactionTaskComparatorTest {
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1)),
             0,
-            CompactionTaskPriorityType.MOD_SETTLE));
+            CompactionTaskPriorityType.SETTLE));
     candidateCompactionTaskQueue.put(
         new FakedInnerSpaceCompactionTask(
             "fakeSg",
@@ -434,14 +434,14 @@ public class CompactionTaskComparatorTest {
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1)),
             0,
-            CompactionTaskPriorityType.MOD_SETTLE));
+            CompactionTaskPriorityType.SETTLE));
 
     Assert.assertEquals(
         candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
-        CompactionTaskPriorityType.MOD_SETTLE);
+        CompactionTaskPriorityType.SETTLE);
     Assert.assertEquals(
         candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
-        CompactionTaskPriorityType.MOD_SETTLE);
+        CompactionTaskPriorityType.SETTLE);
     Assert.assertEquals(
         candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
         CompactionTaskPriorityType.NORMAL);

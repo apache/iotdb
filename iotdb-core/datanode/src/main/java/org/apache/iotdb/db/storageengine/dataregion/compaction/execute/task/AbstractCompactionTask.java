@@ -371,7 +371,7 @@ public abstract class AbstractCompactionTask {
   }
 
   public boolean isDiskSpaceCheckPassed() {
-    if (compactionTaskPriorityType == CompactionTaskPriorityType.MOD_SETTLE) {
+    if (compactionTaskPriorityType == CompactionTaskPriorityType.SETTLE) {
       return true;
     }
     return CompactionUtils.isDiskHasSpace();

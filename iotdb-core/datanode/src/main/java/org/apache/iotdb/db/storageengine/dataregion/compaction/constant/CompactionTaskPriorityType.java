@@ -28,5 +28,5 @@ public enum CompactionTaskPriorityType {
    * 2. the TsFile has .mods file and the disk availability rate is lower than the
    * disk_space_warning_threshold.
    */
-  MOD_SETTLE
+  SETTLE
 }

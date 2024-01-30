@@ -65,7 +65,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private File logFile;
   protected List<TsFileResource> targetTsFileList;
   protected boolean[] isHoldingWriteLock;
-  protected long maxModsFileSize;
+  protected long totalModsFileSize;
   protected AbstractInnerSpaceEstimator innerSpaceEstimator;
 
   public InnerSpaceCompactionTask(
@@ -375,7 +375,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     sumOfCompactionCount = 0;
     maxFileVersion = -1L;
     maxCompactionCount = -1;
-    maxModsFileSize = 0;
+    totalModsFileSize = 0;
     if (selectedTsFileResourceList == null) {
       return;
     }
@@ -392,8 +392,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           maxFileVersion = fileName.getVersion();
         }
         if (!Objects.isNull(resource.getModFile())) {
-          long modsFileSize = resource.getModFile().getSize();
-          maxModsFileSize = Math.max(maxModsFileSize, modsFileSize);
+          totalModsFileSize += resource.getModFile().getSize();
         }
       } catch (IOException e) {
         LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
@@ -421,8 +420,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return maxFileVersion;
   }
 
-  public long getMaxModsFileSize() {
-    return maxModsFileSize;
+  public long getTotalModsFileSize() {
+    return totalModsFileSize;
   }
 
   @Override

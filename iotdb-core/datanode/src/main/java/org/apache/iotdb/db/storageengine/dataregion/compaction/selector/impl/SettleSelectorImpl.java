@@ -12,6 +12,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -80,6 +81,7 @@ public class SettleSelectorImpl implements ISettleSelector {
 
     List<TsFileResource> tmpResources = new ArrayList<>();
     long totalTmpFileSize = 0;
+    long totalSettleFileSize = 0;
 
     public void add(TsFileResource resource, long dirtyDataSize) {
       tmpResources.add(resource);
@@ -97,6 +99,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       }
       if (tmpResources.size() == 1) {
         resourcesForSettleTask.add(tmpResources.get(0));
+        totalSettleFileSize += tmpResources.get(0).getTsFileSize();
         tmpResources.clear();
       } else {
         resourcesForInnerTasks.add(tmpResources);
@@ -111,6 +114,11 @@ public class SettleSelectorImpl implements ISettleSelector {
 
     public List<List<TsFileResource>> getResourcesForInnerTasks() {
       return resourcesForInnerTasks;
+    }
+
+    public boolean hasSettleResourceReachedThreshold() {
+      return resourcesForSettleTask.size() >= config.getFileLimitPerInnerTask()
+          || totalSettleFileSize >= config.getTargetCompactionFileSize();
     }
   }
 
@@ -151,6 +159,15 @@ public class SettleSelectorImpl implements ISettleSelector {
           default:
             // do nothing
         }
+
+        // Non-heavy selection are triggered more frequently. In order to avoid selecting too many
+        // files containing mods for compaction when the disk is insufficient, the number and size
+        // of files are limited here.
+        if (!heavySelect
+            && (!partialDirtyResource.getResourcesForInnerTasks().isEmpty()
+                || partialDirtyResource.hasSettleResourceReachedThreshold())) {
+          break;
+        }
       }
       return createTask(allDirtyResource, partialDirtyResource);
     } catch (Exception e) {
@@ -165,10 +182,10 @@ public class SettleSelectorImpl implements ISettleSelector {
     if (modFile == null || !modFile.exists()) {
       return DirtyStatus.NOT_SATISFIED;
     }
-    return modFile.getSize()
-            > IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getInnerCompactionTaskSelectionModsFileThreshold()
+    return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
+            || (!heavySelect
+                && !CompactionUtils.isDiskHasSpace(
+                    config.getInnerCompactionTaskSelectionDiskRedundancy()))
         ? PARTIAL_DELETED
         : DirtyStatus.NOT_SATISFIED;
   }
@@ -282,7 +299,7 @@ public class SettleSelectorImpl implements ISettleSelector {
               tsFileResources.get(0).isSeq(),
               new FastCompactionPerformer(false),
               tsFileManager.getNextCompactionTaskId(),
-              CompactionTaskPriorityType.MOD_SETTLE));
+              CompactionTaskPriorityType.SETTLE));
     }
     return tasks;
   }

@@ -60,9 +60,11 @@ public class SettleCompactionTask extends AbstractCompactionTask {
         timePartition,
         tsFileManager,
         serialId,
-        CompactionTaskPriorityType.MOD_SETTLE);
+        CompactionTaskPriorityType.SETTLE);
     this.allDeletedFiles = allDeletedFiles;
     this.partialDeletedFiles = partialDeletedFiles;
+    allDeletedFiles.forEach(x -> allDeletedFileSize += x.getTsFileSize());
+    partialDeletedFiles.forEach(x -> partialDeletedFileSize += x.getTsFileSize());
     this.performer = performer;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
       spaceEstimator = new FastCompactionInnerCompactionEstimator();
@@ -73,7 +75,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
 
   public SettleCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.MOD_SETTLE);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.SETTLE);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }
@@ -100,8 +102,6 @@ public class SettleCompactionTask extends AbstractCompactionTask {
             dataRegionId);
       }
       long startTime = System.currentTimeMillis();
-      allDeletedFiles.forEach(x -> allDeletedFileSize += x.getTsFileSize());
-      partialDeletedFiles.forEach(x -> partialDeletedFileSize += x.getTsFileSize());
 
       targetFiles = TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles);
 
@@ -429,5 +429,21 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   @Override
   public CompactionTaskType getCompactionTaskType() {
     return CompactionTaskType.SETTLE;
+  }
+
+  public List<TsFileResource> getAllDeletedFiles() {
+    return allDeletedFiles;
+  }
+
+  public List<TsFileResource> getPartialDeletedFiles() {
+    return partialDeletedFiles;
+  }
+
+  public double getAllDeletedFileSize() {
+    return allDeletedFileSize;
+  }
+
+  public double getPartialDeletedFileSize() {
+    return partialDeletedFileSize;
   }
 }
