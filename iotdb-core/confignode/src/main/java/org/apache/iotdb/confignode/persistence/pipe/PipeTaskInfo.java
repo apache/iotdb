@@ -172,49 +172,48 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private void checkBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest) throws PipeException {
-    if (isPipeExisted(alterPipeRequest.getPipeName())) {
-      PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
-      PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
-      // check unexpected pipe source plugin alter
-      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute())
-              .toString())
-          .equals(new TreeMap<>(alterPipeRequest.getExtractorAttributes()).toString())) {
-        final String exceptionMessage =
-            String.format(
-                "Failed to alter pipe %s, unexpected pipe source plugin alter, source plugin from CN: %s, source plugin from DN: %s",
-                alterPipeRequest.getPipeName(),
-                pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute(),
-                alterPipeRequest.getExtractorAttributes());
-        LOGGER.info(exceptionMessage);
-        throw new PipeException(exceptionMessage);
-      }
-      // check useless alter from the perspective of CN
-      boolean needToAlter = false;
-      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
-              .toString())
-          .equals(new TreeMap<>(alterPipeRequest.getProcessorAttributes()).toString())) {
-        needToAlter = true;
-      }
-      if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
-              .toString())
-          .equals(new TreeMap<>(alterPipeRequest.getConnectorAttributes()).toString())) {
-        needToAlter = true;
-      }
-      if (!needToAlter) {
-        final String exceptionMessage =
-            String.format(
-                "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
-        LOGGER.info(exceptionMessage);
-        throw new PipeException(exceptionMessage);
-      }
-      return;
+    if (!isPipeExisted(alterPipeRequest.getPipeName())) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
 
-    final String exceptionMessage =
-        String.format(
-            "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
-    LOGGER.info(exceptionMessage);
-    throw new PipeException(exceptionMessage);
+    PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
+    PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
+    // check unexpected pipe source plugin alter
+    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute())
+            .toString())
+        .equals(new TreeMap<>(alterPipeRequest.getExtractorAttributes()).toString())) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, unexpected pipe source plugin alter, source plugin from CN: %s, source plugin from DN: %s",
+              alterPipeRequest.getPipeName(),
+              pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute(),
+              alterPipeRequest.getExtractorAttributes());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    // check useless alter from the perspective of CN
+    boolean needToAlter = false;
+    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
+            .toString())
+        .equals(new TreeMap<>(alterPipeRequest.getProcessorAttributes()).toString())) {
+      needToAlter = true;
+    }
+    if (!(new TreeMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
+            .toString())
+        .equals(new TreeMap<>(alterPipeRequest.getConnectorAttributes()).toString())) {
+      needToAlter = true;
+    }
+    if (!needToAlter) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
   }
 
   public void checkBeforeStartPipe(String pipeName) throws PipeException {

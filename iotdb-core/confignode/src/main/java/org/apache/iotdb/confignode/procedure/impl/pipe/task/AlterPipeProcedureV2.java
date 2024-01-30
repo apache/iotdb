@@ -71,7 +71,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.CREATE_PIPE;
+    return PipeTaskOperation.ALTER_PIPE;
   }
 
   @Override
