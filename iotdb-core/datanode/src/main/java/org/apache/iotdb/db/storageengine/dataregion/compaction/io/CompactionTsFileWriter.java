@@ -44,9 +44,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private boolean isEmptyTargetFile = true;
 
   public CompactionTsFileWriter(
-      File file, boolean enableMemoryControl, long maxMetadataSize, CompactionType type)
+      File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    super(file, enableMemoryControl, maxMetadataSize);
+    super(file, maxMetadataSize);
     this.type = type;
   }
 
