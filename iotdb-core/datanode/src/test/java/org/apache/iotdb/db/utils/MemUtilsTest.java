@@ -83,13 +83,13 @@ public class MemUtilsTest {
             null,
             columns,
             1);
-    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1, false));
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
   @Test
   public void getMemSizeTest() {
-    int totalSize = 0;
+    long totalSize = 0;
     String device = "root.sg.d1";
     TSRecord record = new TSRecord(0, device);
 
@@ -123,7 +123,7 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point6);
     record.addTuple(point6);
 
-    totalSize += 8 * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
+    totalSize += 8L * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
 
     Assert.assertEquals(totalSize, MemUtils.getTsRecordMem(record));
   }

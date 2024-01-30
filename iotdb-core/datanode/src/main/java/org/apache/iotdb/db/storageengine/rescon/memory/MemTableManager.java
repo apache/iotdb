@@ -18,13 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 public class MemTableManager {
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private int currentMemtableNumber = 0;
 
   private MemTableManager() {}
@@ -36,7 +32,7 @@ public class MemTableManager {
   public synchronized IMemTable getAvailableMemTable(String storageGroup, String dataRegionId)
       {
       currentMemtableNumber++;
-      return new PrimitiveMemTable(storageGroup, dataRegionId, CONFIG.isEnableMemControl());
+      return new PrimitiveMemTable(storageGroup, dataRegionId);
   }
 
   public int getCurrentMemtableNumber() {
