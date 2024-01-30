@@ -307,8 +307,8 @@ public class TTLTest {
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
     }
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size()
-            + CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
+    while (dataRegion.getTsFileManager().getTsFileList(true).size()
+            + dataRegion.getTsFileManager().getTsFileList(false).size()
         != 0) {
       sleep(200);
       totalWaitingTime += 200;

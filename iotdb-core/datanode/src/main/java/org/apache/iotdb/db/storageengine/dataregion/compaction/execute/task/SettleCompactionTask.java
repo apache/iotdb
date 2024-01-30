@@ -95,7 +95,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
       if (!tsFileManager.isAllowCompaction()) {
         return true;
       }
-      if (allDeletedFiles.isEmpty() || partialDeletedFiles.isEmpty()) {
+      if (allDeletedFiles.isEmpty() && partialDeletedFiles.isEmpty()) {
         LOGGER.info(
             "{}-{} [Compaction] Settle compaction file list is empty, end it",
             storageGroupName,
@@ -162,8 +162,23 @@ public class SettleCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
-  private void settleWithAllDeletedFile() {
-    allDeletedFiles.forEach(this::deleteTsFileOnDisk);
+  private boolean settleWithAllDeletedFile() {
+    boolean isSuccess = true;
+    for (TsFileResource resource : allDeletedFiles) {
+      if (recoverMemoryStatus) {
+        tsFileManager.remove(resource, resource.isSeq());
+        if (resource.getModFile().exists()) {
+          FileMetrics.getInstance().decreaseModFileNum(1);
+          FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
+        }
+      }
+      isSuccess = isSuccess && deleteTsFileOnDisk(resource);
+      if (recoverMemoryStatus) {
+        FileMetrics.getInstance()
+            .deleteTsFile(resource.isSeq(), Collections.singletonList(resource));
+      }
+    }
+    return isSuccess;
   }
 
   private void settleWithPartialDeletedFile(SimpleCompactionLogger compactionLogger)
@@ -242,11 +257,8 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   }
 
   private void recoverAllDeletedFiles() {
-    for (TsFileResource resource : allDeletedFiles) {
-      if (checkRelatedFileExists(resource) && !deleteTsFileOnDisk(resource)) {
-        throw new CompactionRecoverException(
-            String.format("failed to delete all_deleted source file %s", resource));
-      }
+    if (!settleWithAllDeletedFile()) {
+      throw new CompactionRecoverException("Failed to delete all_deleted source file.");
     }
   }
 
@@ -305,13 +317,6 @@ public class SettleCompactionTask extends AbstractCompactionTask {
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(sourceResource));
     }
-  }
-
-  private boolean checkRelatedFileExists(TsFileResource resource) {
-    return resource.tsFileExists()
-        || resource.resourceFileExists()
-        || resource.getModFile().exists()
-        || resource.getCompactionModFile().exists();
   }
 
   private void recoverTaskInfoFromLogFile() throws IOException {
