@@ -39,7 +39,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
 
   private final List<Expression> outputExpressions;
 
-  private final List<List<Expression>> groupedInputExpressions = new ArrayList<>();
+  private List<List<Expression>> groupedInputExpressions;
 
   /**
    * Records how many Expressions are in one input, used for calculation of inputColumnNames
@@ -177,12 +177,13 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   }
 
   private void initGroupedInputExpressions() {
+    this.groupedInputExpressions = new ArrayList<>();
     for (int i = 0; i < inputExpressions.size(); i += expressionNumOfOneInput) {
       List<Expression> expressions = new ArrayList<>(expressionNumOfOneInput);
       for (int j = 0; j < expressionNumOfOneInput; j++) {
         expressions.add(inputExpressions.get(i + j));
       }
-      groupedInputExpressions.add(expressions);
+      this.groupedInputExpressions.add(expressions);
     }
   }
 
@@ -193,6 +194,12 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
       inputColumnNames.add(funcName + "(" + getInputString(expressions) + ")");
     }
     return inputColumnNames;
+  }
+
+  @Override
+  public void setInputExpressions(List<Expression> inputExpressions) {
+    this.inputExpressions = inputExpressions;
+    initGroupedInputExpressions();
   }
 
   @Override
