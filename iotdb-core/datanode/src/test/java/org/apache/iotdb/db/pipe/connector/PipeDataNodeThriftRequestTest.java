@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferSnapshotPieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -78,8 +79,8 @@ public class PipeDataNodeThriftRequestTest {
   @Test
   public void testPipeValidateHandshakeV2Req() throws TException {
     HashMap<String, String> params = new HashMap<>();
-    params.put("clusterId", CLUSTER_ID);
-    params.put("timestampPrecision", TIME_PRECISION);
+    params.put(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID, CLUSTER_ID);
+    params.put(PipeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
 
     PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
     PipeTransferHandshakeV2Req deserializeReq =

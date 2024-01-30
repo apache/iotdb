@@ -221,6 +221,7 @@ public enum TSStatusCode {
   PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR(1805),
   PIPE_NOT_EXIST_ERROR(1806),
   PIPE_PUSH_META_ERROR(1807),
+  PIPE_REJECT_ERROR(1808),
   ;
 
   private final int statusCode;

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
-import org.apache.iotdb.db.pipe.common.PipeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
@@ -43,7 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
@@ -128,7 +127,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
     final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
     final AtomicReference<Exception> exception = new AtomicReference<>();
-    final AtomicInteger statusCode = new AtomicInteger(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    final AtomicReference<TPipeTransferResp> resp = new AtomicReference<>();
 
     AsyncMethodCallback<TPipeTransferResp> asyncMethodCallback =
         new AsyncMethodCallback<TPipeTransferResp>() {
@@ -149,7 +148,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
                           targetNodeUrl.getPort(),
                           response.getStatus().getCode(),
                           response.getStatus().getMessage())));
-              statusCode.set(response.getStatus().getCode());
+              resp.set(response);
             } else {
               LOGGER.info(
                   "Handshake successfully with receiver {}:{}.",
@@ -183,17 +182,11 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
     client.pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params), asyncMethodCallback);
 
-    try {
-      while (!isHandshakeFinished.get()) {
-        Thread.sleep(10);
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new PipeException("Interrupted while waiting for handshake response.", e);
-    }
+    waitHandshakeFinished(isHandshakeFinished);
 
+    // Handle the handshake's result.
     if (exception.get() != null) {
-      if (statusCode.get() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+      if (resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         exception.set(null);
         // Retry to handshake by PipeTransferHandshakeV1Req.
         LOGGER.warn(
@@ -203,24 +196,32 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
             asyncMethodCallback);
 
-        try {
-          while (!isHandshakeFinished.get()) {
-            Thread.sleep(10);
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new PipeException("Interrupted while waiting for handshake response.", e);
-        }
-
-        if (exception.get() != null) {
+        waitHandshakeFinished(isHandshakeFinished);
+      }
+      if (exception.get() != null) {
+        if (resp.get().getStatus().getCode() == TSStatusCode.PIPE_REJECT_ERROR.getStatusCode()) {
+          throw new PipeException(
+              String.format(
+                  "Receiver rejects the handshake request, because %s.",
+                  resp.get().getStatus().getMessage()));
+        } else {
           throw new PipeConnectionException("Failed to handshake.", exception.get());
         }
-      } else {
-        throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
     }
 
     return false;
+  }
+
+  private void waitHandshakeFinished(AtomicBoolean isHandshakeFinished) {
+    try {
+      while (!isHandshakeFinished.get()) {
+        Thread.sleep(10);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new PipeException("Interrupted while waiting for handshake response.", e);
+    }
   }
 
   public void updateLeaderCache(String deviceId, TEndPoint endPoint) {

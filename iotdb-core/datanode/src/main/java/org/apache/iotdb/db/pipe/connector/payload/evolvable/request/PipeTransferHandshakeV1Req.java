@@ -51,7 +51,7 @@ public class PipeTransferHandshakeV1Req extends TPipeTransferReq {
     handshakeReq.timestampPrecision = timestampPrecision;
 
     handshakeReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
+    handshakeReq.type = PipeRequestType.HANDSHAKE_V1.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
@@ -80,7 +80,7 @@ public class PipeTransferHandshakeV1Req extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE.getType(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE_V1.getType(), outputStream);
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
       return byteArrayOutputStream.toByteArray();
     }

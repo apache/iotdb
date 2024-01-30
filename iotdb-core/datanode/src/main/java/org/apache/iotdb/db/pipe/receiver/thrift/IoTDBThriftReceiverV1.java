@@ -32,8 +32,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
-import org.apache.iotdb.db.pipe.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -116,7 +116,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case HANDSHAKE:
+          case HANDSHAKE_V1:
             return handleTransferHandshakeV1(PipeTransferHandshakeV1Req.fromTPipeTransferReq(req));
           case HANDSHAKE_V2:
             return handleTransferHandshakeV2(PipeTransferHandshakeV2Req.fromTPipeTransferReq(req));
@@ -182,7 +182,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         .equals(req.getTimestampPrecision())) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              TSStatusCode.PIPE_REJECT_ERROR,
               String.format(
                   "IoTDB receiver's timestamp precision %s, "
                       + "connector's timestamp precision %s. Validation fails.",
@@ -258,7 +258,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     if (clusterId == null) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR, "Unable to get clusterId in receiver.");
+              TSStatusCode.PIPE_REJECT_ERROR, "Unable to get clusterId in receiver.");
       LOGGER.warn("Handshake failed, response status = {}.", status);
       return new TPipeTransferResp(status);
     }
@@ -267,7 +267,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     if (req.getParams().get(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID).equals(clusterId)) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              TSStatusCode.PIPE_REJECT_ERROR,
               String.format("Unable to transfer data to IoTDB cluster %s itself", clusterId));
       LOGGER.warn("Handshake failed, response status = {}.", status);
       return new TPipeTransferResp(status);

@@ -25,11 +25,12 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
-import org.apache.iotdb.db.pipe.common.PipeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -99,7 +100,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) throws IOException {
+  private void reconstructClient(TEndPoint endPoint) {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -115,6 +116,12 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
       }
     }
 
+    initClientAndStatus(clientAndStatus, endPoint);
+    sendHandshakeReq(clientAndStatus, endPoint);
+  }
+
+  private void initClientAndStatus(
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
           new IoTDBThriftSyncConnectorClient(
@@ -136,7 +143,10 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
               endPoint.getPort()),
           e);
     }
+  }
 
+  public void sendHandshakeReq(
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
       HashMap<String, String> params = new HashMap<>();
       params.put(
@@ -159,6 +169,14 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
                   .pipeTransfer(
                       PipeTransferHandshakeV1Req.toTPipeTransferReq(
                           CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+        }
+
+        // Throw exception if the statusCode is PIPE_REJECT_ERROR
+        if (resp.getStatus().getCode() == TSStatusCode.PIPE_REJECT_ERROR.getStatusCode()) {
+          throw new PipeException(
+              String.format(
+                  "Receiver rejects the handshake request, because %s.",
+                  resp.getStatus().getMessage()));
         }
       }
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -184,6 +202,8 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
           endPoint.getPort(),
           e.getMessage(),
           e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 

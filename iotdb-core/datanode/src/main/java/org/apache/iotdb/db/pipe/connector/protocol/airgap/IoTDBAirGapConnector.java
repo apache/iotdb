@@ -26,11 +26,14 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnect
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -63,6 +66,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -194,11 +198,22 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      if (!send(
-          socket,
-          PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
-              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-        throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
+      // Try to handshake by PipeTransferHandshakeV2Req.
+      HashMap<String, String> params = new HashMap<>();
+      params.put(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID, PipeRuntimeAgent.getClusterId());
+      params.put(
+          PipeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
+        // Retry to handshake with PipeTransferHandshakeV1Req.
+        if (!send(
+            socket,
+            PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+          throw new PipeException(
+              "Handshake error with target server ip: " + ip + ", port: " + port);
+        }
       } else {
         isSocketAlive.set(i, true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());

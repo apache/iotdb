@@ -61,13 +61,13 @@ public class PipeRuntimeAgent implements IService {
 
   //////////////////////////// Getter ////////////////////////////
 
-  public static String getClusterId() {
+  public static synchronized String getClusterId() {
     if (clusterId == null) {
       try (ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         clusterId = configNodeClient.getClusterId().clusterId;
       } catch (Exception e) {
-        LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage());
+        LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage(), e);
       }
     }
 
