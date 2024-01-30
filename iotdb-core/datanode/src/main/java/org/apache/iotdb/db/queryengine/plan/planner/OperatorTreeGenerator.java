@@ -359,18 +359,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 AlignedSeriesScanOperator.class.getSimpleName());
 
-    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    if (context.getTypeProvider().getTemplatedInfo() != null) {
-      maxTsBlockLineNum =
-          (int)
-              Math.min(
-                  maxTsBlockLineNum, context.getTypeProvider().getTemplatedInfo().getLimitValue());
-
-      if (((DataDriverContext) context.getDriverContext()).getSourceOperators().size() > 1) {
-        maxTsBlockLineNum =
-            context.getTypeProvider().getTemplatedInfo().getOptimizedMaxTsBlockLineNum();
-      }
-    }
+    int maxTsBlockLineNum = getMaxTsBlockLineNum(context);
 
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
@@ -389,6 +378,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
     return seriesScanOperator;
+  }
+
+  private static int getMaxTsBlockLineNum(LocalExecutionPlanContext context) {
+    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    if (context.getTypeProvider().getTemplatedInfo() != null) {
+      if (((DataDriverContext) context.getDriverContext()).getSourceOperators().size() <= 1) {
+        maxTsBlockLineNum =
+            (int)
+                Math.min(
+                    maxTsBlockLineNum,
+                    context.getTypeProvider().getTemplatedInfo().getLimitValue());
+      } else {
+
+        maxTsBlockLineNum =
+            context.getTypeProvider().getTemplatedInfo().getOptimizedMaxTsBlockLineNum();
+      }
+    }
+    return maxTsBlockLineNum;
   }
 
   @Override
