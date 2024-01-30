@@ -207,6 +207,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         LOGGER.info(exceptionMessage);
         throw new PipeException(exceptionMessage);
       }
+      return;
     }
 
     final String exceptionMessage =
