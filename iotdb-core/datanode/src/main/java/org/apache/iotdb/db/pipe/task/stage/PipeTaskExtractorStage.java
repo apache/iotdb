@@ -50,7 +50,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
     try {
       if (pipeExtractor instanceof IoTDBDataRegionExtractor) {
         ((IoTDBDataRegionExtractor) pipeExtractor)
-            .setRestarted(!pipeTaskMeta.getProgressIndex().equals(MinimumProgressIndex.INSTANCE));
+            .setRestarted(!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex));
       }
       // 1. Validate extractor parameters
       pipeExtractor.validate(new PipeParameterValidator(extractorParameters));
