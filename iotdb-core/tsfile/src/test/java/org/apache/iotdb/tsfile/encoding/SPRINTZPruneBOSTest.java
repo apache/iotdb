@@ -616,7 +616,7 @@ public class SPRINTZPruneBOSTest {
 
         // lower: x_min
         // k2_end = x_max - 2^{alpha_size-1}
-        // upper: (0,x_max - 2^{alpha_size-1})
+        // upper: (x_min,x_max - 2^{alpha_size-1})
         int gap_gamma = (int) pow(2,alpha_size-1);
         int[] gamma_value_count_list = new int[gap_gamma];
         GroupU cur_group_gamma = groupU[alpha_size];
@@ -629,7 +629,7 @@ public class SPRINTZPruneBOSTest {
         int gamma_unique_number = cur_group_gamma.unique_number;
 //            int x_u_i_end = k2_end - k1_start;
 
-        for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
+        for(int unique_i=0;unique_i<gamma_unique_number-1;unique_i++){
             k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
             int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
@@ -1551,7 +1551,7 @@ public class SPRINTZPruneBOSTest {
 
         }
 
-        // 2685 2693
+        // 0  32589 21617 199800 0 0 12070
 //        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
@@ -1839,7 +1839,7 @@ public class SPRINTZPruneBOSTest {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 10; file_i < 11; file_i++) {
+//        for (int file_i = 6; file_i < 7; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1926,6 +1926,7 @@ public class SPRINTZPruneBOSTest {
                     writer.writeRecord(record);
                     System.out.println(ratio);
 
+//                    break;
 
             }
             writer.close();

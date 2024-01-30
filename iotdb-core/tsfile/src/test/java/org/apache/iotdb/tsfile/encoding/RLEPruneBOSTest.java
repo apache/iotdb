@@ -676,7 +676,7 @@ public class RLEPruneBOSTest {
 
         // lower: x_min
         // k2_end = x_max - 2^{alpha_size-1}
-        // upper: (0,x_max - 2^{alpha_size-1})
+        // upper: (x_min,x_max - 2^{alpha_size-1})
         int gap_gamma = (int) pow(2,alpha_size-1);
         int[] gamma_value_count_list = new int[gap_gamma];
         GroupU cur_group_gamma = groupU[alpha_size];
@@ -689,7 +689,7 @@ public class RLEPruneBOSTest {
         int gamma_unique_number = cur_group_gamma.unique_number;
 //            int x_u_i_end = k2_end - k1_start;
 
-        for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
+        for(int unique_i=0;unique_i<gamma_unique_number-1;unique_i++){
             k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
             int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
@@ -1887,8 +1887,8 @@ public class RLEPruneBOSTest {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_pruning";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1937,7 +1937,7 @@ public class RLEPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        int repeatTime2 = 10;
+        int repeatTime2 = 100;
 //        for (int file_i = 0; file_i < 1; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {

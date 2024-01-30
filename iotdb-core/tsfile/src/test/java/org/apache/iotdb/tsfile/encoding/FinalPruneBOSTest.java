@@ -712,7 +712,7 @@ public class FinalPruneBOSTest {
         int gamma_unique_number = cur_group_gamma.unique_number;
 //            int x_u_i_end = k2_end - k1_start;
 
-        for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
+        for(int unique_i=0;unique_i<gamma_unique_number-1;unique_i++){
             k2 += cur_group_gamma.getCount(gamma_sorted[unique_i]);
             int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
