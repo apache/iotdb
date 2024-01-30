@@ -29,11 +29,15 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
@@ -42,6 +46,8 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDAFOrderByIT {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBUDAFOrderByIT.class);
+
   protected static final String[] dataset =
       new String[] {
         "CREATE DATABASE root.sg",
@@ -426,17 +432,33 @@ public class IoTDBUDAFOrderByIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
-        int i = 0;
+        int count = 0;
+        List<String> actualDeviceList = new ArrayList<>();
+        List<Double> actualValueList = new ArrayList<>();
         while (resultSet.next()) {
-          String deviceName = resultSet.getString(1);
-          double actualVal = resultSet.getDouble(2);
-          assertEquals(deviceName, device);
-          assertEquals(Double.parseDouble(value.toString()), actualVal, 1);
-          if (device.equals("root.sg.d")) device = "root.sg.d2";
-          else device = "root.sg.d";
-          i++;
+          String actualDevice = resultSet.getString(1);
+          double actualValue = resultSet.getDouble(2);
+
+          actualDeviceList.add(actualDevice);
+          actualValueList.add(actualValue);
+
+          count++;
         }
-        assertEquals(i, 2);
+
+        LOGGER.info(actualDeviceList.toString());
+        LOGGER.info(actualValueList.toString());
+
+        assertEquals(count, 2);
+        assertEquals(device, actualDeviceList.get(0));
+        assertEquals(Double.parseDouble(value.toString()), actualValueList.get(0), 1);
+        // Change device name
+        if (device.equals("root.sg.d")) {
+          device = "root.sg.d2";
+        } else {
+          device = "root.sg.d";
+        }
+        assertEquals(device, actualDeviceList.get(1));
+        assertEquals(Double.parseDouble(value.toString()), actualValueList.get(1), 1);
       }
     } catch (Exception e) {
       e.printStackTrace();
