@@ -149,4 +149,26 @@ public class PagePool {
       }
     }
   }
+
+  /**
+   * Evict cached page from page pool.
+   *
+   * @param page page to be evicted
+   * @return true if evicted successfully, false otherwise
+   */
+  public boolean evict(ISchemaPage page) {
+    // TODO(PBTree-Page-Concurrent): 这里实现 evict cached page 的逻辑，这个接口也可以考虑移到 IPageManager 中
+    return true;
+  }
+
+  /**
+   * Flush volatile page to disk.
+   *
+   * @param page page to be flushed
+   * @return true if flushed successfully, false otherwise
+   */
+  public boolean flush(ISchemaPage page) {
+    // TODO(PBTree-Page-Concurrent): 这里实现 flush volatile page 的逻辑，这个接口也可以考虑移到 IPageManager 中
+    return true;
+  }
 }

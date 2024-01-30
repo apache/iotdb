@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.IPageManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,4 +65,6 @@ public interface ISchemaFile {
   Iterator<ICachedMNode> getChildren(ICachedMNode parent) throws MetadataException, IOException;
 
   boolean createSnapshot(File snapshotDir);
+
+  IPageManager getPageManager();
 }

@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.page.PageLifecycleManager;
 
 public class SchemaResourceManager {
 
@@ -33,6 +36,12 @@ public class SchemaResourceManager {
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.PBTree.toString())) {
       initSchemaFileModeResource(engineStatistics);
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      PageLifecycleManager.getInstance()
+          .loadConfiguration(
+              config.getPbtreeCachePageNum() + config.getPbtreeBufferPageNum(),
+              config.getPbtreeCachePageNum(),
+              config.getPbtreeBufferPageNum());
     }
   }
 

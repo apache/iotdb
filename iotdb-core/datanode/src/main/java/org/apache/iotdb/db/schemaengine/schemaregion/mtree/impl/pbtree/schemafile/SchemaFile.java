@@ -453,6 +453,10 @@ public class SchemaFile implements ISchemaFile {
     pageManager.setMetric(metric);
   }
 
+  public IPageManager getPageManager() {
+    return pageManager;
+  }
+
   // endregion
 
   // region Snapshot

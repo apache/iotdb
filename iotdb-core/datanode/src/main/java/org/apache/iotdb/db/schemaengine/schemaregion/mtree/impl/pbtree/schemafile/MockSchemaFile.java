@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import java.io.File;
@@ -101,6 +102,11 @@ public class MockSchemaFile implements ISchemaFile {
   @Override
   public synchronized boolean createSnapshot(File snapshotDir) {
     return false;
+  }
+
+  @Override
+  public IPageManager getPageManager() {
+    return null;
   }
 
   @Override

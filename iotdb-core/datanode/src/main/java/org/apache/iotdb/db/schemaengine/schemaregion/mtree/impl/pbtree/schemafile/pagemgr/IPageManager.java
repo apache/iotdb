@@ -60,4 +60,6 @@ public interface IPageManager {
   void inspect(PrintWriter pw) throws IOException, MetadataException;
 
   void setMetric(SchemaRegionCachedMetric metric);
+
+  PagePool getPagePool();
 }
