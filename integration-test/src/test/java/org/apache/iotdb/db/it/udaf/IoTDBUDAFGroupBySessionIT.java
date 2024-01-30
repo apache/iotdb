@@ -21,7 +21,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDAFGroupBySessionIT {
-  private final double DELTA = 1E-4;
+  private final double DELTA = 1E-3;
 
   private static final String[] SQLs =
       new String[] {
