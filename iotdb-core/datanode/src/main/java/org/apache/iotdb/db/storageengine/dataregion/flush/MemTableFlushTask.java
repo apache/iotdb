@@ -60,7 +60,7 @@ public class MemTableFlushTask {
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
@@ -69,7 +69,7 @@ public class MemTableFlushTask {
 
   private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
   private final LinkedBlockingQueue<Object> ioTaskQueue =
-      (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo())
+      (SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
@@ -118,7 +118,7 @@ public class MemTableFlushTask {
         avgSeriesPointsNum);
 
     long estimatedTemporaryMemSize = 0L;
-    if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
+    if (SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
           memTable.getSeriesNumber() == 0
               ? 0
@@ -192,12 +192,10 @@ public class MemTableFlushTask {
       throw new ExecutionException(e);
     }
 
-    if (config.isEnableMemControl()) {
-      if (estimatedTemporaryMemSize != 0) {
-        SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
-      }
-      SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
+    if (estimatedTemporaryMemSize != 0) {
+      SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
+    SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
 
     MetricService.getInstance()
         .timer(
