@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -127,6 +128,42 @@ public class LastFlushTimeMapTest {
         10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d0"));
     Assert.assertEquals(
         10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d1"));
+  }
+
+  @Test
+  public void testRecoverLastFlushTimeMap()
+      throws IOException, IllegalPathException, WriteProcessException, DataRegionException {
+    TSRecord record = new TSRecord(604_800_000, "root.vehicle.d0");
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    record = new TSRecord(604_799_999, "root.vehicle.d0");
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    for (int j = 1; j <= 10; j++) {
+      record = new TSRecord(j, "root.vehicle.d0");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
+    }
+
+    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
+      tsfileProcessor.syncFlush();
+    }
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertEquals(
+        604_800_000, dataRegion.getLastFlushTimeMap().getFlushedTime(1, "root.vehicle.d0"));
+    Assert.assertEquals(
+        604_799_999, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d0"));
+
+    // recover from disk
+    dataRegion = new DataRegionTest.DummyDataRegion(systemDir, storageGroup);
+    Assert.assertEquals(
+        604_800_000, dataRegion.getLastFlushTimeMap().getFlushedTime(1, "root.vehicle.d0"));
+    Assert.assertEquals(
+        604_799_999, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d0"));
   }
 
   @Test

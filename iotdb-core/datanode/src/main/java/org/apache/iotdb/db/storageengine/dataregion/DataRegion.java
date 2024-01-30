@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -138,6 +139,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
@@ -378,37 +380,40 @@ public class DataRegion implements IDataRegionForQuery {
   private class DataRegionRecoveryContext {
     /** number of files to be recovered. */
     private final long numOfFilesToRecover;
-    /** when the change of recoveredFilesNum exceeds this, log check will be triggered. */
-    private final long filesNumLogCheckTrigger;
+
     /** number of already recovered files. */
     private long recoveredFilesNum;
     /** last recovery log time. */
     private long lastLogTime;
-    /** last recovery log files num. */
-    private long lastLogCheckFilesNum;
+
     /** recover performers of unsealed TsFiles. */
     private final List<UnsealedTsFileRecoverPerformer> recoverPerformers = new ArrayList<>();
 
     public DataRegionRecoveryContext(long numOfFilesToRecover) {
       this.numOfFilesToRecover = numOfFilesToRecover;
       this.recoveredFilesNum = 0;
-      this.filesNumLogCheckTrigger = this.numOfFilesToRecover / 100;
       this.lastLogTime = System.currentTimeMillis();
-      this.lastLogCheckFilesNum = 0;
     }
 
     public void incrementRecoveredFilesNum() {
       recoveredFilesNum++;
-      // check log only when 1% more files have been recovered
-      if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
-        lastLogCheckFilesNum = recoveredFilesNum;
-        // log only when log interval exceeds recovery log interval
-        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+      if (recoveredFilesNum < numOfFilesToRecover) {
+        if (System.currentTimeMillis() - lastLogTime > config.getRecoveryLogIntervalInMs()) {
           logger.info(
-              "The data region {}[{}] has recovered {}%, please wait a moment.",
-              databaseName, dataRegionId, recoveredFilesNum * 100.0 / numOfFilesToRecover);
+              "The TsFiles of data region {}[{}] has recovered {}/{}.",
+              databaseName,
+              dataRegionId,
+              recoveredFilesNum,
+              numOfFilesToRecover);
           lastLogTime = System.currentTimeMillis();
         }
+      } else {
+        logger.info(
+            "The TsFiles of data region {}[{}] has recovered" + " {}/{}.",
+            databaseName,
+            dataRegionId,
+            numOfFilesToRecover,
+            numOfFilesToRecover);
       }
     }
   }
@@ -522,20 +527,12 @@ public class DataRegion implements IDataRegionForQuery {
         }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           recoverFilesInPartition(
-              partitionFiles.getKey(),
-              dataRegionRecoveryContext,
-              partitionFiles.getValue(),
-              true,
-              partitionFiles.getKey() == latestPartitionId);
+              partitionFiles.getKey(), dataRegionRecoveryContext, partitionFiles.getValue(), true);
         }
         for (Entry<Long, List<TsFileResource>> partitionFiles :
             partitionTmpUnseqTsFiles.entrySet()) {
           recoverFilesInPartition(
-              partitionFiles.getKey(),
-              dataRegionRecoveryContext,
-              partitionFiles.getValue(),
-              false,
-              partitionFiles.getKey() == latestPartitionId);
+              partitionFiles.getKey(), dataRegionRecoveryContext, partitionFiles.getValue(), false);
         }
         if (config.isEnableSeparateData()) {
           TimePartitionManager.getInstance()
@@ -545,8 +542,7 @@ public class DataRegion implements IDataRegionForQuery {
                       latestPartitionId,
                       false,
                       Long.MAX_VALUE,
-                      lastFlushTimeMap.getMemSize(latestPartitionId),
-                      true));
+                      lastFlushTimeMap.getMemSize(latestPartitionId)));
         }
       }
       // wait until all unsealed TsFiles have been recovered
@@ -761,7 +757,7 @@ public class DataRegion implements IDataRegionForQuery {
                 dataRegionInfo,
                 tsFileResource,
                 this::closeUnsealedTsFileProcessorCallBack,
-                isSeq ? this::sequenceFlushCallback : this::unsequenceFlushCallback,
+                this::flushCallback,
                 isSeq,
                 writer);
         if (workSequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null
@@ -823,16 +819,31 @@ public class DataRegion implements IDataRegionForQuery {
       long partitionId,
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
-      boolean isSeq,
-      boolean isLatestPartition) {
+      boolean isSeq) {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    if (isLatestPartition && config.isEnableSeparateData()) {
-      lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+    if (config.isEnableSeparateData()) {
+      if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId)) {
+        TimePartitionManager.getInstance()
+            .registerTimePartitionInfo(
+                new TimePartitionInfo(
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
+                    partitionId,
+                    false,
+                    Long.MAX_VALUE,
+                    lastFlushTimeMap.getMemSize(partitionId)));
+      }
       for (TsFileResource tsFileResource : resourceList) {
         updateLastFlushTime(tsFileResource, isSeq);
       }
+      TimePartitionManager.getInstance()
+          .updateAfterFlushing(
+              new DataRegionId(Integer.parseInt(dataRegionId)),
+              partitionId,
+              System.currentTimeMillis(),
+              lastFlushTimeMap.getMemSize(partitionId),
+              false);
     }
   }
 
@@ -883,8 +894,7 @@ public class DataRegion implements IDataRegionForQuery {
                     timePartitionId,
                     true,
                     Long.MAX_VALUE,
-                    0,
-                    tsFileManager.isLatestTimePartition(timePartitionId)));
+                    0));
       }
 
       boolean isSequence =
@@ -976,8 +986,7 @@ public class DataRegion implements IDataRegionForQuery {
                     beforeTimePartition,
                     true,
                     Long.MAX_VALUE,
-                    0,
-                    tsFileManager.isLatestTimePartition(beforeTimePartition)));
+                    0));
       }
 
       long lastFlushTime =
@@ -1403,26 +1412,14 @@ public class DataRegion implements IDataRegionForQuery {
 
   private TsFileProcessor getTsFileProcessor(
       boolean sequence, String filePath, long timePartitionId) throws IOException {
-    TsFileProcessor tsFileProcessor;
-    if (sequence) {
-      tsFileProcessor =
-          new TsFileProcessor(
-              databaseName + FILE_NAME_SEPARATOR + dataRegionId,
-              fsFactory.getFileWithParent(filePath),
-              dataRegionInfo,
-              this::closeUnsealedTsFileProcessorCallBack,
-              this::sequenceFlushCallback,
-              true);
-    } else {
-      tsFileProcessor =
-          new TsFileProcessor(
-              databaseName + FILE_NAME_SEPARATOR + dataRegionId,
-              fsFactory.getFileWithParent(filePath),
-              dataRegionInfo,
-              this::closeUnsealedTsFileProcessorCallBack,
-              this::unsequenceFlushCallback,
-              false);
-    }
+    TsFileProcessor tsFileProcessor =
+        new TsFileProcessor(
+            databaseName + FILE_NAME_SEPARATOR + dataRegionId,
+            fsFactory.getFileWithParent(filePath),
+            dataRegionInfo,
+            this::closeUnsealedTsFileProcessorCallBack,
+            this::flushCallback,
+            sequence);
 
     if (enableMemControl) {
       TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
@@ -2336,26 +2333,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void unsequenceFlushCallback(
-      TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
-    if (!config.isEnableSeparateData()
-        && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      // update globalLastFlushTime if and only if isEnableSeparateData is false and
-      // isLastCacheEnable is true
-      lastFlushTimeMap.updateMultiDeviceGlobalFlushedTime(updateMap);
-    }
-    if (config.isEnableSeparateData()) {
-      TimePartitionManager.getInstance()
-          .updateAfterFlushing(
-              new DataRegionId(Integer.valueOf(dataRegionId)),
-              processor.getTimeRangeId(),
-              systemFlushTime,
-              lastFlushTimeMap.getMemSize(processor.getTimeRangeId()),
-              workSequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
-    }
-  }
-
-  private void sequenceFlushCallback(
+  private void flushCallback(
       TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
     if (config.isEnableSeparateData()
         && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
@@ -2529,6 +2507,21 @@ public class DataRegion implements IDataRegionForQuery {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+  }
+
+  public static Optional<String> getNonSystemDatabaseName(String databaseName) {
+    if (databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return Optional.empty();
+    }
+    int lastIndex = databaseName.lastIndexOf("-");
+    if (lastIndex == -1) {
+      lastIndex = databaseName.length();
+    }
+    return Optional.of(databaseName.substring(0, lastIndex));
+  }
+
+  public Optional<String> getNonSystemDatabaseName() {
+    return getNonSystemDatabaseName(databaseName);
   }
 
   /** merge file under this database processor */
@@ -3103,8 +3096,7 @@ public class DataRegion implements IDataRegionForQuery {
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,
-                      0,
-                      tsFileManager.isLatestTimePartition(timePartitionId)));
+                      0));
         }
 
         boolean isSequence =
@@ -3179,8 +3171,7 @@ public class DataRegion implements IDataRegionForQuery {
                       timePartitionIds[i],
                       true,
                       Long.MAX_VALUE,
-                      0,
-                      tsFileManager.isLatestTimePartition(timePartitionIds[i])));
+                      0));
         }
         areSequence[i] =
             config.isEnableSeparateData()
