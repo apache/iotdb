@@ -136,6 +136,19 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return inputColumnNamesList;
   }
 
+  @Override
+  public List<String> getInputExpressionsAsStringList() {
+    List<String> res = new ArrayList<>();
+    for (int i = 0; i < inputExpressions.size(); i += expressionNumOfOneInput) {
+      List<Expression> expressions = new ArrayList<>();
+      for (int j = 0; j < expressionNumOfOneInput; j++) {
+        expressions.add(inputExpressions.get(i + j));
+      }
+      res.add(getInputString(expressions));
+    }
+    return res;
+  }
+
   /**
    * For an aggregate function that takes two inputs, the inputExpressions may be like
    * [root.sg.d1.s1, root.sg.d1.s2, root.sg.d2.s1, root.sg.d2.s2]. The inputExpressions is a

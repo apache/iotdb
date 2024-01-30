@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -234,16 +233,12 @@ public class AggregationDescriptor {
   }
 
   public List<String> getInputExpressionsAsStringList() {
-    List<String> res = new ArrayList<>();
-    int inputNum = getInputNumByAggregationType();
-    for (int i = 0; i < inputExpressions.size(); i += inputNum) {
-      List<Expression> expressions = new ArrayList<>();
-      for (int j = 0; j < inputNum; j++) {
-        expressions.add(inputExpressions.get(i + j));
-      }
-      res.add(getInputString(expressions));
+    if (TAggregationType.COUNT_IF.equals(aggregationType)) {
+      return inputExpressions.stream()
+          .map(Expression::getExpressionString)
+          .collect(Collectors.toList());
     }
-    return res;
+    return Collections.singletonList(getInputString(inputExpressions));
   }
 
   protected String getInputString(List<Expression> expressions) {
@@ -340,17 +335,5 @@ public class AggregationDescriptor {
 
   public String toString() {
     return String.format("AggregationDescriptor(%s, %s)", aggregationFuncName, step);
-  }
-
-  private int getInputNumByAggregationType() {
-    if (!AccumulatorFactory.isMultiInputAggregation(aggregationType)) {
-      return 1;
-    }
-    switch (aggregationType) {
-      case MAX_BY:
-        return 2;
-      default:
-        throw new IllegalArgumentException();
-    }
   }
 }

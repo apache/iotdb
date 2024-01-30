@@ -678,7 +678,7 @@ public class AggregationDistributionTest {
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
-                    2,
+                    1,
                     Collections.emptyMap(),
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath(groupedPathS2))))),
