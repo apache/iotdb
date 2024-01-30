@@ -938,9 +938,9 @@ public class Exact_BOS {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 1;
-        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
 
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);

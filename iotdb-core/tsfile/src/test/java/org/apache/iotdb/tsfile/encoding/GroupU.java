@@ -54,7 +54,8 @@ public class GroupU{
         this.count = count;
     }
 
-    public void setCount_array(int k2_end){
+    public void setCount_array(int max_){
+        int k2_end = max_ - this.range;
         this.left_shift = getBitWith(this.count);
         this.mask =  (1 << left_shift) - 1; //block_size*2-1; //
         this.if_count = 1;

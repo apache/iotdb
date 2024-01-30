@@ -55,7 +55,8 @@ public class GroupL {
         this.count = count;
     }
 
-    public void setCount_array(int k1_start){
+    public void setCount_array(){
+        int k1_start = this.range;
         this.left_shift = getBitWith(this.count);
         this.mask =  (1 << left_shift) - 1; //block_size*2-1; //
         this.if_count = 1;

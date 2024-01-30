@@ -487,6 +487,10 @@ public class SPRINTZPruneBOSTest {
 //                gamma_box_count_list[gamma_i]++;
             }
         }
+        for (int i = 0; i < max_bit_width; i++) {
+            groupL[i].setCount_array();
+            groupU[i].setCount_array(max_delta_value);
+        }
 
         int final_k_start_value = -1;//getUniqueValue(sorted_value_list[0], left_shift);
         int final_k_end_value = max_delta_value + 1;
@@ -548,9 +552,9 @@ public class SPRINTZPruneBOSTest {
             if (gamma_value_count == 0)
                 continue;
 
-            if (cur_group_gamma.if_count == 0) {
-                cur_group_gamma.setCount_array(k2_end);
-            }
+//            if (cur_group_gamma.if_count == 0) {
+//                cur_group_gamma.setCount_array(k2_end);
+//            }
 
             long[] gamma_sorted = cur_group_gamma.sorted_value_list;
             int gamma_unique_number = cur_group_gamma.unique_number;
@@ -620,9 +624,9 @@ public class SPRINTZPruneBOSTest {
         int gap_gamma = (int) pow(2,alpha_size-1);
         int[] gamma_value_count_list = new int[gap_gamma];
         GroupU cur_group_gamma = groupU[alpha_size];
-        if (cur_group_gamma.if_count == 0) {
-            cur_group_gamma.setCount_array(k2_end);
-        }
+//        if (cur_group_gamma.if_count == 0) {
+//            cur_group_gamma.setCount_array(k2_end);
+//        }
         int gamma_value_count = cur_group_gamma.count;
 
         long[] gamma_sorted = cur_group_gamma.sorted_value_list;
@@ -723,9 +727,9 @@ public class SPRINTZPruneBOSTest {
                 gamma_value_count = cur_group_gamma.count;
                 if (gamma_value_count == 0)
                     continue;
-                if (cur_group_gamma.if_count == 0) {
-                    cur_group_gamma.setCount_array(k2_end);
-                }
+//                if (cur_group_gamma.if_count == 0) {
+//                    cur_group_gamma.setCount_array(k2_end);
+//                }
 //                int gamma_value_count = cur_group_gamma.count;
                 gamma_value_count_list = cur_group_gamma.count_array;
 //                number_gamma = cur_group_gamma.number;
@@ -783,9 +787,9 @@ public class SPRINTZPruneBOSTest {
             cur_group_gamma = groupU[gamma_size_smaller+1];
 
 
-            if (cur_group_gamma.if_count == 0) {
-                cur_group_gamma.setCount_array(k2_end);
-            }
+//            if (cur_group_gamma.if_count == 0) {
+//                cur_group_gamma.setCount_array(k2_end);
+//            }
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
             int x_u_i_end = k2_end - k1_start;
@@ -842,9 +846,9 @@ public class SPRINTZPruneBOSTest {
                 continue;
             }
 
-            if (cur_group_alpha.if_count == 0) {
-                cur_group_alpha.setCount_array(k1_start);
-            }
+//            if (cur_group_alpha.if_count == 0) {
+//                cur_group_alpha.setCount_array(k1_start);
+//            }
             long[] alpha_sorted = cur_group_alpha.sorted_value_list;
             int alpha_unique_number = cur_group_alpha.unique_number;
 
@@ -940,9 +944,9 @@ public class SPRINTZPruneBOSTest {
                     continue;
                 }
 
-                if (cur_group_gamma.if_count == 0) {
-                    cur_group_gamma.setCount_array(k2_end);
-                }
+//                if (cur_group_gamma.if_count == 0) {
+//                    cur_group_gamma.setCount_array(k2_end);
+//                }
 //                    int gamma_value_count = cur_group_gamma.count;
 //                gamma_value_count_list = cur_group_gamma.count_array;
 
@@ -1191,9 +1195,9 @@ public class SPRINTZPruneBOSTest {
 //                        gamma_value_count_list[k2_end - value]++;
 //                    }
 
-                    if (cur_group_gamma.if_count == 0) {
-                        cur_group_gamma.setCount_array(k2_end);
-                    }
+//                    if (cur_group_gamma.if_count == 0) {
+//                        cur_group_gamma.setCount_array(k2_end);
+//                    }
                     gamma_value_count_list = cur_group_gamma.count_array;
                     //todo
                     for (int x_u_i = 1; x_u_i < gap_gamma; x_u_i++) {
@@ -1286,9 +1290,9 @@ public class SPRINTZPruneBOSTest {
             if (gamma_value_count == 0)
                 continue;
 
-            if (cur_group_gamma.if_count == 0) {
-                cur_group_gamma.setCount_array(k2_end);
-            }
+//            if (cur_group_gamma.if_count == 0) {
+//                cur_group_gamma.setCount_array(k2_end);
+//            }
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
 
@@ -1363,9 +1367,9 @@ public class SPRINTZPruneBOSTest {
 //                gamma_value_count_list[k2_end - value]++;
 //            }
 
-            if (cur_group_gamma.if_count == 0) {
-                cur_group_gamma.setCount_array(k2_end);
-            }
+//            if (cur_group_gamma.if_count == 0) {
+//                cur_group_gamma.setCount_array(k2_end);
+//            }
             gamma_sorted = cur_group_gamma.sorted_value_list;
             gamma_unique_number = cur_group_gamma.unique_number;
             int x_u_i_end = k2_end - (int) pow(2, alpha_size - 1);
@@ -1416,9 +1420,9 @@ public class SPRINTZPruneBOSTest {
 
         // lower: (x_min+2^{alpha_size-1},x_max)
         // upper: x_max
-        if (cur_group_alpha.if_count == 0) {
-            cur_group_alpha.setCount_array(k1_start);
-        }
+//        if (cur_group_alpha.if_count == 0) {
+//            cur_group_alpha.setCount_array(k1_start);
+//        }
 //            int gamma_value_count = cur_group_gamma.count;
         long[] alpha_sorted = cur_group_alpha.sorted_value_list;
         int alpha_unique_number = cur_group_alpha.unique_number;
@@ -1487,9 +1491,9 @@ public class SPRINTZPruneBOSTest {
                 }
 
 
-                if (cur_group_gamma.if_count == 0) {
-                    cur_group_gamma.setCount_array(k2_end);
-                }
+//                if (cur_group_gamma.if_count == 0) {
+//                    cur_group_gamma.setCount_array(k2_end);
+//                }
                 gamma_sorted = cur_group_gamma.sorted_value_list;
                 gamma_unique_number = cur_group_gamma.unique_number;
                 int x_u_i_end = Math.min(k2_end - k1_start - x_l_i,gap_gamma); // x_u_i>= k2_end - k1_start - x_l_i; break ;
