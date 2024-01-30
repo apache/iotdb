@@ -16,9 +16,9 @@ import java.nio.ByteBuffer;
 
 public class UDAFAvg implements UDAF {
   static class AvgState implements State {
-    private double sum;
+    double sum;
 
-    private long count;
+    long count;
 
     @Override
     public void reset() {

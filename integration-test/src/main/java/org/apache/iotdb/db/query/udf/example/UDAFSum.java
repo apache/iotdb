@@ -16,9 +16,9 @@ import java.nio.ByteBuffer;
 
 public class UDAFSum implements UDAF {
   static class SumState implements State {
-    private double sum = 0;
+    double sum = 0;
 
-    private boolean initResult = false;
+    boolean initResult = false;
 
     @Override
     public void reset() {

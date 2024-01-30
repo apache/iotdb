@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
 
 public class UDAFCount implements UDAF {
   static class CountState implements State {
-    private long count;
+    long count;
 
     @Override
     public void reset() {
