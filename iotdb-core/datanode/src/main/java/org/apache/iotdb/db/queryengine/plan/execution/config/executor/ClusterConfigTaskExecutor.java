@@ -1663,12 +1663,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate before alteration
     try {
-      PipeAgent.plugin()
-          .validate(
-              alterPipeStatement.getPipeName(),
-              new HashMap<>(),
-              alterPipeStatement.getProcessorAttributes(),
-              alterPipeStatement.getConnectorAttributes());
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+      }
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+        PipeAgent.plugin()
+            .validateConnector(
+                alterPipeStatement.getPipeName(), alterPipeStatement.getConnectorAttributes());
+      }
     } catch (Exception e) {
       LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
       future.setException(
