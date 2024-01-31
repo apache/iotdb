@@ -359,6 +359,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 AlignedSeriesScanOperator.class.getSimpleName());
+
+    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    if (context.getTypeProvider().getTemplatedInfo() != null) {
+      maxTsBlockLineNum =
+          (int)
+              Math.min(
+                  context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
+    }
+
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
             operatorContext,
@@ -369,7 +378,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isQueryAllSensors(),
             context.getTypeProvider().getTemplatedInfo() != null
                 ? context.getTypeProvider().getTemplatedInfo().getDataTypes()
-                : null);
+                : null,
+            maxTsBlockLineNum);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
