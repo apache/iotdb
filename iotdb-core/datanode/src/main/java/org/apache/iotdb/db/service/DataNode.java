@@ -88,12 +88,14 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.apache.derby.drda.NetworkServerControl;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -119,6 +121,9 @@ public class DataNode implements DataNodeMBean {
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
           config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+
+  // start Derby
+  private static NetworkServerControl serverControl;
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -154,10 +159,12 @@ public class DataNode implements DataNodeMBean {
     return DataNodeHolder.INSTANCE;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     new DataNodeServerCommandLine().doMain(args);
+    serverControl = new NetworkServerControl(InetAddress.getByName("127.0.0.1"), 1527);
+    serverControl.start(null);
   }
 
   protected void doAddNode() {
@@ -916,6 +923,9 @@ public class DataNode implements DataNodeMBean {
       }
       if (dataRegionConsensusStarted) {
         DataRegionConsensusImpl.getInstance().stop();
+      }
+      if (serverControl != null) {
+        serverControl.shutdown();
       }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
