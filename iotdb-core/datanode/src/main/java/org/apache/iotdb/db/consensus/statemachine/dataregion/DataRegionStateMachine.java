@@ -233,9 +233,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    if (true) {
-      return StatusUtils.OK;
-    }
     try {
       return write((PlanNode) request);
     } catch (IllegalArgumentException e) {
