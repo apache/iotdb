@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeDataNodeSubtask {
@@ -249,10 +250,25 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     }
 
     if (sourceEvent.shouldParsePatternOrTime()) {
+      AtomicBoolean atLeast1EventGenerated = new AtomicBoolean(false);
       try {
-        sourceEvent.toTabletInsertionEvents().forEach(parsedEventQueue::offer);
+        sourceEvent
+            .toTabletInsertionEvents()
+            .forEach(
+                e -> {
+                  atLeast1EventGenerated.set(true);
+                  if (e instanceof EnrichedEvent) {
+                    ((EnrichedEvent) e)
+                        .increaseReferenceCount(PipeProcessorSubtask.class.getName());
+                  }
+                  parsedEventQueue.offer(e);
+                });
       } finally {
         sourceEvent.close();
+        // If no event is generated after parsing, report progress here.
+        // Otherwise, progress will be reported by generated events.
+        sourceEvent.decreaseReferenceCount(
+            PipeProcessorSubtask.class.getName(), !atLeast1EventGenerated.get());
       }
     } else {
       // If no need to parse, just put it into the queue.
@@ -262,7 +278,13 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
 
   private void parseEventByPatternAndTime(PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParsePatternOrTime()) {
-      parsedEventQueue.offer(sourceEvent.parseEventWithPatternOrTime());
+      TabletInsertionEvent e = sourceEvent.parseEventWithPatternOrTime();
+      if (e instanceof EnrichedEvent) {
+        ((EnrichedEvent) e).increaseReferenceCount(PipeProcessorSubtask.class.getName());
+      }
+      parsedEventQueue.offer(e);
+      // Parsed events will report progress, so do not report here.
+      sourceEvent.decreaseReferenceCount(PipeProcessorSubtask.class.getName(), false);
     } else {
       parsedEventQueue.offer(sourceEvent);
     }
@@ -270,7 +292,13 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
 
   private void parseEventByPatternAndTime(PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParsePatternOrTime()) {
-      parsedEventQueue.offer(sourceEvent.parseEventWithPatternOrTime());
+      TabletInsertionEvent e = sourceEvent.parseEventWithPatternOrTime();
+      if (e instanceof EnrichedEvent) {
+        ((EnrichedEvent) e).increaseReferenceCount(PipeProcessorSubtask.class.getName());
+      }
+      parsedEventQueue.offer(e);
+      // Parsed events will report progress, so do not report here.
+      sourceEvent.decreaseReferenceCount(PipeProcessorSubtask.class.getName(), false);
     } else if (!sourceEvent.hasNoNeedParsingAndIsEmpty()) {
       // Ignore the event if hasNoNeedParsingAndIsEmpty() is true
       parsedEventQueue.offer(sourceEvent);
