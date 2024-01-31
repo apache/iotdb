@@ -35,10 +35,12 @@ import java.util.Set;
 
 public class SettleCompactionTask extends AbstractCompactionTask {
   private List<TsFileResource> allDeletedFiles;
-  private List<TsFileResource> partialDeletedFiles;
+  private List<List<TsFileResource>> partialDeletedFiles;
 
-  /** Only partial deleted files have corresponding target files. */
-  private List<TsFileResource> targetFiles;
+  /** Only partial deleted files have corresponding target file. */
+  private TsFileResource targetFile;
+
+  private int partialDeletedFilesIndex = 0;
 
   private File logFile;
 
@@ -51,7 +53,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
       long timePartition,
       TsFileManager tsFileManager,
       List<TsFileResource> allDeletedFiles,
-      List<TsFileResource> partialDeletedFiles,
+      List<List<TsFileResource>> partialDeletedFiles,
       ICompactionPerformer performer,
       long serialId) {
     super(
@@ -64,7 +66,7 @@ public class SettleCompactionTask extends AbstractCompactionTask {
     this.allDeletedFiles = allDeletedFiles;
     this.partialDeletedFiles = partialDeletedFiles;
     allDeletedFiles.forEach(x -> allDeletedFileSize += x.getTsFileSize());
-    partialDeletedFiles.forEach(x -> partialDeletedFileSize += x.getTsFileSize());
+    partialDeletedFiles.forEach(x -> x.forEach(y -> partialDeletedFileSize += y.getTsFileSize()));
     this.performer = performer;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
       spaceEstimator = new FastCompactionInnerCompactionEstimator();
@@ -83,14 +85,14 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   @Override
   public List<TsFileResource> getAllSourceTsFiles() {
     List<TsFileResource> allSourceFiles = new ArrayList<>(allDeletedFiles);
-    allSourceFiles.addAll(partialDeletedFiles);
+    partialDeletedFiles.forEach(allSourceFiles::addAll);
     return allSourceFiles;
   }
 
   @Override
   protected boolean doCompaction() {
     recoverMemoryStatus = true;
-    boolean isSuccess = true;
+    boolean isSuccess ;
     try {
       if (!tsFileManager.isAllowCompaction()) {
         return true;
@@ -102,8 +104,6 @@ public class SettleCompactionTask extends AbstractCompactionTask {
             dataRegionId);
       }
       long startTime = System.currentTimeMillis();
-
-      targetFiles = TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles);
 
       LOGGER.info(
           "{}-{} [Compaction] SettleCompaction task starts with {} all_deleted files "
@@ -120,40 +120,27 @@ public class SettleCompactionTask extends AbstractCompactionTask {
           allDeletedFileSize / 1024 / 1024,
           partialDeletedFileSize / 1024 / 1024);
 
-      List<TsFileResource> allSourceFiles = getAllSourceTsFiles();
-      logFile =
-          new File(
-              allSourceFiles.get(0).getTsFile().getAbsolutePath()
-                  + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
-      try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
-        compactionLogger.logSourceFiles(allSourceFiles);
-        compactionLogger.logTargetFiles(targetFiles);
-        compactionLogger.force();
 
-        settleWithAllDeletedFile();
-        settleWithPartialDeletedFile(compactionLogger);
-
-        CompactionMetrics.getInstance().recordSummaryInfo(summary);
-        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
-
-        LOGGER.info(
-            "{}-{} [Compaction] SettleCompaction task finishes successfully, "
-                + "time cost is {} s, "
-                + "compaction speed is {} MB/s, {}",
-            storageGroupName,
-            dataRegionId,
-            String.format("%.2f", costTime),
-            String.format(
-                "%.2f",
-                (allDeletedFileSize + partialDeletedFileSize) / 1024.0d / 1024.0d / costTime),
-            summary);
-      } finally {
-        Files.deleteIfExists(logFile.toPath());
-        for (TsFileResource resource : targetFiles) {
-          // may fail to set status if the status of current resource is DELETED
-          resource.setStatus(TsFileResourceStatus.NORMAL);
-        }
+      isSuccess = settleWithAllDeletedFile();
+      if(isSuccess) {
+        settleWithPartialDeletedFile();
       }
+
+      CompactionMetrics.getInstance().recordSummaryInfo(summary);
+      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
+
+      LOGGER.info(
+          "{}-{} [Compaction] SettleCompaction task finishes successfully, "
+              + "time cost is {} s, "
+              + "compaction speed is {} MB/s, {}",
+          storageGroupName,
+          dataRegionId,
+          String.format("%.2f", costTime),
+          String.format(
+              "%.2f",
+              (allDeletedFileSize + partialDeletedFileSize) / 1024.0d / 1024.0d / costTime),
+          summary);
+
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);
@@ -162,7 +149,27 @@ public class SettleCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
-  private boolean settleWithAllDeletedFile() {
+  private boolean settleWithAllDeletedFile() throws IOException {
+    if(allDeletedFiles.isEmpty()){
+      return true;
+    }
+    boolean isSuccess;
+    logFile =
+            new File(
+                    allDeletedFiles.get(0).getTsFile().getAbsolutePath()
+                            + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
+    try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
+      compactionLogger.logSourceFiles(allDeletedFiles);
+      compactionLogger.force();
+
+      isSuccess = settleDeletedFiles();
+    }finally {
+      Files.deleteIfExists(logFile.toPath());
+    }
+    return isSuccess;
+  }
+
+  private boolean settleDeletedFiles(){
     boolean isSuccess = true;
     for (TsFileResource resource : allDeletedFiles) {
       if (recoverMemoryStatus) {
@@ -175,63 +182,88 @@ public class SettleCompactionTask extends AbstractCompactionTask {
       isSuccess = isSuccess && deleteTsFileOnDisk(resource);
       if (recoverMemoryStatus) {
         FileMetrics.getInstance()
-            .deleteTsFile(resource.isSeq(), Collections.singletonList(resource));
+                .deleteTsFile(resource.isSeq(), Collections.singletonList(resource));
       }
     }
     return isSuccess;
   }
 
-  private void settleWithPartialDeletedFile(SimpleCompactionLogger compactionLogger)
+  private void settleWithPartialDeletedFile()
       throws Exception {
-    for (int i = 0; i < partialDeletedFiles.size(); i++) {
-      boolean isSequence = partialDeletedFiles.get(i).isSeq();
-      TsFileResource targetResource = targetFiles.get(i);
-      List<TsFileResource> singleSourceList = Collections.singletonList(partialDeletedFiles.get(i));
-      List<TsFileResource> singleTargetList = Collections.singletonList(targetResource);
-      performer.setSourceFiles(singleSourceList);
-      performer.setTargetFiles(singleTargetList);
-      performer.setSummary(summary);
-      performer.perform();
+    for(List<TsFileResource> sourceFiles : partialDeletedFiles){
+      if(sourceFiles.isEmpty()){
+        continue;
+      }
+      boolean isSequence = sourceFiles.get(0).isSeq();
+      boolean[] isHoldingWriteLock = new boolean[sourceFiles.size()];
+      targetFile = TsFileNameGenerator.getSettleCompactionTargetFileResources(sourceFiles,isSequence);
+      logFile =
+              new File(
+                      targetFile.getTsFile().getAbsolutePath()
+                              + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
+      try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
+        compactionLogger.logSourceFiles(sourceFiles);
+        compactionLogger.logTargetFiles(Collections.singletonList(targetFile));
+        compactionLogger.force();
 
-      CompactionUtils.updateProgressIndex(
-          singleTargetList, singleSourceList, Collections.emptyList());
-      CompactionUtils.moveTargetFile(
-          singleTargetList, CompactionTaskType.SETTLE, storageGroupName + "-" + dataRegionId);
-      CompactionUtils.combineModsInInnerCompaction(singleSourceList, targetResource);
+        performer.setSourceFiles(sourceFiles);
+        performer.setTargetFiles(Collections.singletonList(targetFile));
+        performer.setSummary(summary);
+        performer.perform();
 
-      validateCompactionResult(
-          isSequence ? singleSourceList : Collections.emptyList(),
-          isSequence ? Collections.emptyList() : singleSourceList,
-          singleTargetList);
+        CompactionUtils.updateProgressIndex(
+                Collections.singletonList(targetFile), sourceFiles, Collections.emptyList());
+        CompactionUtils.moveTargetFile(
+                Collections.singletonList(targetFile), CompactionTaskType.SETTLE, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetFile);
 
-      // replace tsfile resource in memory
-      tsFileManager.replace(
-          isSequence ? singleSourceList : Collections.emptyList(),
-          isSequence ? Collections.emptyList() : singleSourceList,
-          singleTargetList,
-          timePartition,
-          isSequence);
+        validateCompactionResult(
+                isSequence ? sourceFiles : Collections.emptyList(),
+                isSequence ? Collections.emptyList() : sourceFiles,
+                Collections.singletonList(targetFile));
 
-      try {
-        targetResource.writeLock();
-        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(singleSourceList, isSequence);
+        // replace tsfile resource in memory
+        tsFileManager.replace(
+                isSequence ? sourceFiles : Collections.emptyList(),
+                isSequence ? Collections.emptyList() : sourceFiles,
+                Collections.singletonList(targetFile),
+                timePartition,
+                isSequence);
 
-        if (!targetResource.isDeleted()) {
+
+        // add write lock
+        for(int i=0;i<sourceFiles.size();i++){
+          sourceFiles.get(i).writeLock();
+          isHoldingWriteLock[i] = true;
+        }
+
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(sourceFiles, isSequence);
+
+        if (!targetFile.isDeleted()) {
           FileMetrics.getInstance()
-              .addTsFile(
-                  targetResource.getDatabaseName(),
-                  targetResource.getDataRegionId(),
-                  targetResource.getTsFileSize(),
-                  isSequence,
-                  targetResource.getTsFile().getName());
+                  .addTsFile(
+                          targetFile.getDatabaseName(),
+                          targetFile.getDataRegionId(),
+                          targetFile.getTsFileSize(),
+                          isSequence,
+                          targetFile.getTsFile().getName());
         } else {
           // target resource is empty after compaction, then add log and delete it
-          compactionLogger.logEmptyTargetFile(targetResource);
+          compactionLogger.logEmptyTargetFile(targetFile);
           compactionLogger.force();
-          targetResource.remove();
+          targetFile.remove();
         }
-      } finally {
-        targetResource.writeUnlock();
+        partialDeletedFilesIndex++;
+      }finally {
+        // release write lock
+        for(int i=0;i<sourceFiles.size();i++){
+          if(isHoldingWriteLock[i]){
+            sourceFiles.get(i).writeUnlock();
+          }
+        }
+        Files.deleteIfExists(logFile.toPath());
+        // may failed to set status if the status of target resource is DELETED
+        targetFile.setStatus(TsFileResourceStatus.NORMAL);
       }
     }
   }
@@ -258,12 +290,14 @@ public class SettleCompactionTask extends AbstractCompactionTask {
   }
 
   private void recoverAllDeletedFiles() {
-    if (!settleWithAllDeletedFile()) {
+    if (!settleDeletedFiles()) {
       throw new CompactionRecoverException("Failed to delete all_deleted source file.");
     }
   }
 
   private void recoverPartialDeletedFiles() throws IOException {
+    // get the partial_deleted source files to be recovered
+    List<TsFileResource> sourceFiles = partialDeletedFiles.get(partialDeletedFilesIndex);
     for (int i = 0; i < partialDeletedFiles.size(); i++) {
       TsFileResource resource = partialDeletedFiles.get(i);
       TsFileResource targetResource = targetFiles.get(i);
@@ -332,57 +366,49 @@ public class SettleCompactionTask extends AbstractCompactionTask {
     List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
     List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
 
-    // target version set, it is used to distinguish all_deleted files and partial_deleted files in
-    // the log
-    Set<Long> targetVersionSet = new HashSet<>();
-    for (TsFileIdentifier identifier : targetFileIdentifiers) {
-      targetVersionSet.add(
-          TsFileNameGenerator.getTsFileName(identifier.getFilename()).getVersion());
-    }
+    if(targetFileIdentifiers.isEmpty()){
+      // in the process of settling all_deleted files
+      sourceFileIdentifiers.forEach(x-> allDeletedFiles.add(new TsFileResource(new File(x.getFilePath()))));
 
-    // recover source files, including all_deleted files and partial_deleted files.
-    sourceFileIdentifiers.forEach(
-        x -> {
-          File sourceFile = new File(x.getFilePath());
-          TsFileResource resource = new TsFileResource(sourceFile);
-          if (!sourceFile.exists()) {
-            // source file has been deleted
-            resource.forceMarkDeleted();
-          }
 
-          if (targetVersionSet.contains(resource.getVersion())) {
-            partialDeletedFiles.add(resource);
-          } else {
-            allDeletedFiles.add(resource);
-          }
-        });
+    }else {
+      // in the process of settling partial_deleted files
+      List<TsFileResource> sourceFiles = new ArrayList<>();
+      // recover source files
+      sourceFileIdentifiers.forEach(x-> {
+        File sourceFile = new File(x.getFilePath());
+        TsFileResource resource = new TsFileResource(sourceFile);
+        if (!sourceFile.exists()) {
+          // source file has been deleted
+          resource.forceMarkDeleted();
+        }
+        sourceFiles.add(resource);
+      });
+      partialDeletedFiles.add(sourceFiles);
 
-    // recover target files. Notes that only partial_delete files have target files.
-    targetFileIdentifiers.forEach(
-        x -> {
-          File tmpTargetFile = new File(x.getFilePath());
-          File targetFile =
+      // recover target file
+      TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
+      File tmpTargetFile = new File(targetIdentifier.getFilePath());
+      File targetFile =
               new File(
-                  x.getFilePath()
-                      .replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-          TsFileResource resource;
-          if (tmpTargetFile.exists()) {
-            resource = new TsFileResource(tmpTargetFile);
-          } else if (targetFile.exists()) {
-            resource = new TsFileResource(targetFile);
-          } else {
-            // target file does not exist, then create empty resource
-            resource = new TsFileResource();
-            // check if target file is deleted after compaction or not
-            x.setFilename(
-                x.getFilename().replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-            if (deletedTargetFileIdentifiers.contains(x)) {
-              // target file is deleted after compaction
-              resource.forceMarkDeleted();
-            }
-          }
-          targetFiles.add(resource);
-        });
+                      targetIdentifier.getFilePath()
+                              .replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+      if (tmpTargetFile.exists()) {
+        this.targetFile = new TsFileResource(tmpTargetFile);
+      } else if (targetFile.exists()) {
+        this.targetFile = new TsFileResource(targetFile);
+      } else {
+        // target file does not exist, then create empty resource
+        this.targetFile = new TsFileResource();
+        // check if target file is deleted after compaction or not
+        targetIdentifier.setFilename(
+                targetIdentifier.getFilename().replace(IoTDBConstant.SETTLE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+        if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
+          // target file is deleted after compaction
+          this.targetFile.forceMarkDeleted();
+        }
+      }
+    }
   }
 
   @Override

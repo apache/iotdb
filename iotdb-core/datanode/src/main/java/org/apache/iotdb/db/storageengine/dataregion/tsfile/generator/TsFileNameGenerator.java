@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -266,28 +268,49 @@ public class TsFileNameGenerator {
             TsFileResourceStatus.COMPACTING);
   }
 
-  public static List<TsFileResource> getSettleCompactionTargetFileResources(
-      List<TsFileResource> tsFileResources) throws IOException {
-    List<TsFileResource> targetFileResources = new ArrayList<>();
+  public static TsFileResource getSettleCompactionTargetFileResources(
+      List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
+    long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
+    long minVersion = Long.MAX_VALUE;
+    long maxVersion = Long.MIN_VALUE;
+    long maxInnerMergeCount = Long.MIN_VALUE;
+    long maxCrossMergeCount = Long.MIN_VALUE;
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
-      tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
-      // set target resource to COMPACTING until the end of this task
-      targetFileResources.add(
-          new TsFileResource(
-              new File(
-                  resource.getTsFile().getParent(),
-                  tsFileName.time
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.version
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.innerCompactionCnt
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.SETTLE_SUFFIX),
-              TsFileResourceStatus.COMPACTING));
+      minTime = Math.min(tsFileName.time, minTime);
+      maxTime = Math.max(tsFileName.time, maxTime);
+      minVersion = Math.min(tsFileName.version, minVersion);
+      maxVersion = Math.max(tsFileName.version, maxVersion);
+      maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
-    return targetFileResources;
+    // set target resource to COMPACTING until the end of this task
+    return sequence
+            ? new TsFileResource(
+            new File(
+                    tsFileResources.get(0).getTsFile().getParent(),
+                    minTime
+                            + FILE_NAME_SEPARATOR
+                            + minVersion
+                            + FILE_NAME_SEPARATOR
+                            + (maxInnerMergeCount + 1)
+                            + FILE_NAME_SEPARATOR
+                            + maxCrossMergeCount
+                            + IoTDBConstant.SETTLE_SUFFIX),
+            TsFileResourceStatus.COMPACTING)
+            : new TsFileResource(
+            new File(
+                    tsFileResources.get(0).getTsFile().getParent(),
+                    maxTime
+                            + FILE_NAME_SEPARATOR
+                            + maxVersion
+                            + FILE_NAME_SEPARATOR
+                            + (maxInnerMergeCount + 1)
+                            + FILE_NAME_SEPARATOR
+                            + maxCrossMergeCount
+                            + IoTDBConstant.SETTLE_SUFFIX),
+            TsFileResourceStatus.COMPACTING);
   }
 
   public static class TsFileName {

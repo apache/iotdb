@@ -193,9 +193,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         // carry out the compaction
         performer.setSourceFiles(selectedTsFileResourceList);
-        // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use
-        // a
-        // mutable list instead of Collections.singletonList()
+        // As elements in targetFiles may be removed in performer, we should use a mutable list instead of Collections.singletonList()
         performer.setTargetFiles(targetTsFileList);
         performer.setSummary(summary);
         performer.perform();
