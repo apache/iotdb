@@ -169,6 +169,8 @@ public abstract class AbstractCompactionEstimator {
     if (resource == null || resource.getTsFile() == null) {
       return;
     }
-    globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
+    synchronized (globalFileInfoCacheForFailedCompaction) {
+      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
+    }
   }
 }
