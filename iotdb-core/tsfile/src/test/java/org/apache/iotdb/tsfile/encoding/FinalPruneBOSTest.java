@@ -11,8 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-import static java.lang.Math.log;
-import static java.lang.Math.pow;
+import static java.lang.Math.*;
 
 public class FinalPruneBOSTest {
 
@@ -1257,14 +1256,16 @@ public class FinalPruneBOSTest {
         // alpha_size - 1  < log(xmax) && alpha_size >= log(xmax)
         // alpha_size = \lceil log(x_max-1+1) \rceil
 
+        //x_max - (x_min+2^{alpha_size-1}) <= 2^{alpha_size-1} \beta <= \alpha , \gamma <= \alpha
 
+        // ----------------x_min+2^{alpha_size-1}--------------------
         k1_start = (int) pow(2,alpha_size-1);
         GroupL cur_group_alpha = groupL[alpha_size];
         k2 = gamma_count_list[0];
         k2_end = max_delta_value;
         if (alpha_count_list[alpha_size] > 0) {
             k1 += alpha_count_list[alpha_size]; //=x_min+2^{alpha_size-1}
-            // ----------------x_min+2^{alpha_size-1}--------------------
+
             // lower: x_min+2^{alpha_size-1}
             // upper: x_max
 
@@ -1280,9 +1281,14 @@ public class FinalPruneBOSTest {
             }
 
             // lower: x_min+2^{alpha_size-1}
-            // (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
+            // upper: (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
             // x_min+2^{alpha_size-1} <= x_max - 2^{gamma}
 
+            //x_max - (x_min+2^{alpha_size-1}) <= 2^{alpha_size-1} \beta <= \alpha , \gamma <= \alpha
+            // -- 1. \beta <= \gamma + lambda  prop 5.6
+            // -- 2. \beta >= \gamma + lambda  prop 5.5
+
+            int cur_k2 = k2;
             int gamma_size_smaller = (int) (log(max_delta_value - (int) pow(2, alpha_size - 1)) / log(2));
             for (int gamma = 1; gamma <= gamma_size_smaller; gamma++) {
 
@@ -1295,14 +1301,14 @@ public class FinalPruneBOSTest {
                 // lower: x_min+2^{alpha_size-1}
                 //upper: ( x_max - 2^{gamma}, x_max - 2^{gamma-1})
                 if (gamma_count_list[gamma] > 0) {
-                    k2 += gamma_count_list[gamma]; //= x_max - 2^{gamma-1}
+                    cur_k2 += gamma_count_list[gamma]; //= x_max - 2^{gamma-1}
                     cur_bits = 0;
 
-                    cur_bits += Math.min((k1 + k2) * getBitWith(block_size - 1), block_size + k1 + k2);
+                    cur_bits += Math.min((k1 + cur_k2) * getBitWith(block_size - 1), block_size + k1 + cur_k2);
                     cur_bits += k1 * alpha_size;
-                    if (k1 + k2 != block_size)
-                        cur_bits += (block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2);
-                    cur_bits += k2 * gamma;
+                    if (k1 + cur_k2 != block_size)
+                        cur_bits += (block_size - k1 - cur_k2) * getBitWith(k2_end - k1_start - 2);
+                    cur_bits += cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
                         final_k_start_value = k1_start;
@@ -1310,9 +1316,33 @@ public class FinalPruneBOSTest {
                     }
                 }
 
+                cur_k2 += cur_group_gamma.count;
+
+            }
+
+
                 // lower: x_min+2^{alpha_size-1}
                 //upper: ( x_max - 2^{gamma}, x_max - 2^{gamma-1})
 
+            //x_max - (x_min+2^{alpha_size-1}) <= 2^{alpha_size-1} \beta <= \alpha , \gamma <= \alpha
+            // -- 1. \beta <= \gamma + lambda  prop 5.6
+            // ------------- \beta <= \gamma + 1
+            // -------------  ->  getbitwidth(x_max - 2^{gamma-1} - 1 - (x_min+2^{alpha_size-1})-2) <= \gamma + 1
+            // -------------  ->  getbitwidth(x_max - 2^{gamma-1}- (x_min+2^{alpha_size-1})-3)  <= \gamma + 1
+            // -------------  -> x_max - 2^{gamma-1}- (x_min+2^{alpha_size-1})-3 < 2^{\gamma+1}
+            // -------------  -> \gamma > log( x_max - (x_min+2^{alpha_size-1})-3) - log5 + 1
+            // -- 2. \beta >= \gamma + lambda  prop 5.5
+            //
+
+            cur_k2 = k2;
+//            int gamma_size_smaller_smaller = min(max((int) ceil(log(max_delta_value- k1_start-3)/log(2) - log(5)/log(2) + 1),1),gamma_size_smaller+1);
+            for (int gamma = 1; gamma <= gamma_size_smaller; gamma++) {
+
+                gap_gamma = (int) pow(2, gamma - 1);
+                k2_end = max_delta_value - gap_gamma;
+                cur_k2 += gamma_count_list[gamma];
+
+                cur_group_gamma = groupU[gamma];
                 int gamma_value_count = cur_group_gamma.count;
                 if (gamma_value_count == 0)
                     continue;
@@ -1323,7 +1353,7 @@ public class FinalPruneBOSTest {
 
                 for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
 
-                    int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
+                    int unique_i_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 
                     cur_bits = 0;
@@ -1339,14 +1369,47 @@ public class FinalPruneBOSTest {
                         final_k_end_value = k2_end - x_u_i; //need to check again
                     }
                 }
-                k2 += gamma_value_count;
+                cur_k2 += gamma_value_count;
 
             }
 
-            //lower: x_min+2^{alpha_size-1}
-            //upper: x_max - 2^{gamma_size_smaller}
+
+//            // -- 1. \beta <= \gamma + lambda  prop 5.6
+//            // C(x_min + 2^{alpha_size-1}, x_max-2^{gamma-1}) is the best one
+//            for (int gamma = gamma_size_smaller_smaller; gamma <= gamma_size_smaller; gamma++) {
+//
+//                gap_gamma = (int) pow(2, gamma - 1);
+//                k2_end = max_delta_value - gap_gamma;
+//                cur_k2 += gamma_count_list[gamma];
+//
+//                cur_group_gamma = groupU[gamma];
+//                int gamma_value_count = cur_group_gamma.count;
+//                if (gamma_value_count == 0)
+//                    continue;
+//
+//                cur_bits = 0;
+//                cur_bits += Math.min((k1 + cur_k2) * getBitWith(block_size - 1), block_size + k1 + cur_k2);
+//                cur_bits += k1 * alpha_size;
+//                if (k1 + cur_k2 != block_size)
+//                    cur_bits += (block_size - k1 - cur_k2) *
+//                            getBitWith(k2_end  - k1_start - 2);
+//                cur_bits += cur_k2 * gamma;//min_upper_outlier
+//                if (cur_bits < min_bits) {
+//                    min_bits = cur_bits;
+//                    final_k_start_value = k1_start;
+//                    final_k_end_value = k2_end; //need to check again
+//                }
+//
+//                cur_k2 += gamma_value_count;
+//
+//            }
+            k2 = cur_k2;
+
 
             if (pow(2, alpha_size - 1) < max_delta_value - pow(2, gamma_size_smaller)) {
+
+                //lower: x_min+2^{alpha_size-1}
+                //upper: x_max - 2^{gamma_size_smaller}
                 gap_gamma = (int) pow(2, gamma_size_smaller);
                 k2_end = max_delta_value - gap_gamma;
                 if (gamma_count_list[gamma_size_smaller + 1] > 0) {
@@ -1378,12 +1441,10 @@ public class FinalPruneBOSTest {
 
                 for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
 
-
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
                     if (x_u_i >= x_u_i_end) {
                         break;
                     }
-
                     int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                     cur_bits = 0;
@@ -1396,7 +1457,7 @@ public class FinalPruneBOSTest {
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
                         final_k_start_value = k1_start;
-                        final_k_end_value = k2_end - x_u_i; //need to check again
+                        final_k_end_value = k2_end - x_u_i;
                     }
                 }
 
@@ -1413,86 +1474,139 @@ public class FinalPruneBOSTest {
         long[] alpha_sorted = cur_group_alpha.sorted_value_list;
         int alpha_unique_number = cur_group_alpha.unique_number;
 
+        // upper: (x_max - 2^{gamma},x_max]
+        //
+
         int x_l_i_end = max_delta_value - k1_start; // [1, x_max - x_min+2^{alpha_size-1})
         for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
 
             int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
-            if(x_l_i>=x_l_i_end){
+            if (x_l_i >= x_l_i_end) {
                 break;
             }
             int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
 
             // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
             // upper: x_max
-            k2=gamma_count_list[0];
+            k2 = gamma_count_list[0];
             k2_end = max_delta_value;
 
-            cur_bits =0;
+            cur_bits = 0;
             cur_bits += Math.min((unique_j_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + k2);
-            cur_bits += unique_j_cur_k1*alpha_size;
+            cur_bits += unique_j_cur_k1 * alpha_size;
             cur_bits += k2;
             if (unique_j_cur_k1 + k2 != block_size)
-                cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start -x_l_i - 2);
+                cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
             if (cur_bits < min_bits) {
                 min_bits = cur_bits;
-                final_k_start_value = k1_start +  x_l_i;
+                final_k_start_value = k1_start + x_l_i;
                 final_k_end_value = k2_end;
             }
+        }
 
 
-            // lower: (x_min+2^{alpha_size-1},x_max)
-            // upper: (x_max - 2^{gamma}, x_max)
-            // gamma:  gamma_size+1 to ....
+        // lower: (x_min+2^{alpha_size-1},x_max)
+        // upper: (x_max - 2^{gamma}, x_max)
+        // gamma:  gamma_size+1 to ....
+
+        for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+            int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
+            if (x_l_i >= x_l_i_end) {
+                break;
+            }
+            int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
 
             k2_end = max_delta_value - 1; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
+            int cur_k2 = k2;
             for (int gamma = 1; gamma <= alpha_size; gamma++) {
-                if(k2_end<=k1_start + x_l_i){
+                if (k2_end <= k1_start + x_l_i) {
                     break;
                 }
                 cur_group_gamma = groupU[gamma];
                 if (gamma_count_list[gamma] > 0) {
-                    k2 += gamma_count_list[gamma];// = x_max - 2^{gamma-1}
+                    cur_k2 += gamma_count_list[gamma];// = x_max - 2^{gamma-1}
 
                     // lower: (x_min+2^{alpha_size-1},x_max): k1_start, k1_start + gap_alpha
                     // upper:  x_max - 2^{gamma-1}
                     cur_bits = 0;
-                    cur_bits += Math.min((unique_j_cur_k1 + k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + k2);
+                    cur_bits += Math.min((unique_j_cur_k1 + cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + cur_k2);
                     cur_bits += unique_j_cur_k1 * alpha_size;
-                    if (unique_j_cur_k1 + k2 != block_size)
-                        cur_bits += (block_size - unique_j_cur_k1 - k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
-                    cur_bits += k2 * gamma;
+                    if (unique_j_cur_k1 + cur_k2 != block_size)
+                        cur_bits += (block_size - unique_j_cur_k1 - cur_k2) * getBitWith(k2_end - k1_start - x_l_i - 2);
+                    cur_bits += cur_k2 * gamma;
                     if (cur_bits < min_bits) {
                         min_bits = cur_bits;
                         final_k_start_value = k1_start + x_l_i;
                         final_k_end_value = k2_end;
                     }
                 }
-
-                // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
-                // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}) : k2_end - gap_gamma, k2_end
-
                 int gamma_value_count = cur_group_gamma.count;
-                if (gamma_value_count == 0){
-                    gap_gamma = (int) pow(2, gamma);
-                    k2_end = max_delta_value - gap_gamma;
-                    continue;
+                gap_gamma = (int) pow(2, gamma);
+                k2_end = max_delta_value - gap_gamma;
+                cur_k2 += gamma_value_count;
+            }
+        }
+
+        // lower: (x_min+2^{alpha_size-1},x_max) : k1_start, k1_start + gap_alpha
+        // upper:  (x_max - 2^{gamma},x_max - 2^{gamma-1} ), (x_max - 2^{gamma-1}, ... , x_max) : k2_end - gap_gamma, k2_end
+        // \beta <= \alpha , \gamma <= \alpha
+        // -- 1. \beta <= \gamma + lambda  2^{alpha-1} +2^{gamma-1}+2^{beta} > x_max  prop 5.6
+
+
+        // -------------  -> \gamma > log( x_max - (x_min+2^{alpha_size-1})-4) - log3 + 1
+        // -------------  -> x_max - 2^{gamma-1}- (x_min+2^{alpha_size-1})-4 < 2^{\gamma}
+        // -------------  ->  getbitwidth(x_max - 2^{gamma-1}- (x_min+2^{alpha_size-1})-4)  <= \gamma
+        // -------------  -> \beta <= getbitwidth(x_max - 2^{gamma-1} - 1 - (x_min+2^{alpha_size-1}+1)-2) <= \gamma
+        // -------------  ->  \beta <= \gamma
+
+        //  2^{gamma-1} + 2^{beta} > x_max -2^{alpha_size-1}
+        //  2^{beta} > x_max -2^{alpha_size-1} - 2^{gamma-1}  ????????????????
+
+
+        int cur_k2 = k2;
+        gap_gamma = 1;
+        k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
+//        int gamma_size_smaller_smaller = max((int) ceil(log(max_delta_value- k1_start-4)/log(2) - log(3)/log(2) + 1),1);
+
+        int gamma = 1;
+        for (; gamma <= alpha_size; gamma++) {
+            // k2_end = x_max - 2^{gamma-1}, upper: (x_max - 2^{gamma},x_max - 2^{gamma-1})
+            if (k2_end <= k1_start ) {
+                break;
+            }
+            cur_k2 += gamma_count_list[gamma];
+                        cur_group_gamma = groupU[gamma];
+            int gamma_value_count = cur_group_gamma.count;
+            if (gamma_value_count == 0){
+                gap_gamma = (int) pow(2, gamma);
+                k2_end = max_delta_value - gap_gamma;
+                continue;
+            }
+
+            gamma_sorted = cur_group_gamma.sorted_value_list;
+            gamma_unique_number = cur_group_gamma.unique_number;
+
+            for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
+                int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
+                if (x_l_i >= x_l_i_end) {
+                    break;
                 }
+                int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
 
 
-                gamma_sorted = cur_group_gamma.sorted_value_list;
-                gamma_unique_number = cur_group_gamma.unique_number;
-                int x_u_i_end = Math.min(k2_end - k1_start - x_l_i,gap_gamma); // x_u_i>= k2_end - k1_start - x_l_i; break ;
+                int x_u_i_end = Math.min(k2_end - k1_start - x_l_i, gap_gamma); // x_u_i >= k2_end - k1_start - x_l_i; break ;
 
                 for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
-                   int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
+
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
                     if(x_u_i>=x_u_i_end){
                         break;
                     }
-
+                    int unique_i_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                     cur_bits = 0;
-                    cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
+                    cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1),
+                            block_size + unique_j_cur_k1 + unique_i_cur_k2);
                     cur_bits += unique_j_cur_k1*alpha_size;
                     if (unique_j_cur_k1 + unique_i_cur_k2 != block_size)
                         cur_bits += (block_size - unique_j_cur_k1 - unique_i_cur_k2) *
@@ -1504,29 +1618,71 @@ public class FinalPruneBOSTest {
                         final_k_end_value = k2_end - x_u_i;
                     }
                 }
-
-
-                // cur upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
-                // next upper:  (x_max - 2^{gamma+1}, x_max - 2^{gamma})
-
-                k2 += gamma_value_count;
-                gap_gamma = (int) pow(2, gamma);
-                k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ;
-                //k1_start = x_min+2^{alpha-1}, x_max - 2^{gamma}
             }
 
+            // cur upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
+            // next upper:  (x_max - 2^{gamma+1}, x_max - 2^{gamma})
+
+            cur_k2 += gamma_value_count;
+            gap_gamma = (int) pow(2, gamma);
+            k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ;
+            //k1_start = x_min+2^{alpha-1}, x_max - 2^{gamma}
+
+
         }
+
+//         -- 1. \beta <= \gamma + lambda  prop 5.6
+//         C(x_min + 2^{alpha_size-1}, x_max-2^{gamma-1}) is the best one
+//        for (; gamma <= alpha_size; gamma++) {
+//            // k2_end = x_max - 2^{gamma-1}, upper: (x_max - 2^{gamma},x_max - 2^{gamma-1})
+//            if (k2_end <= k1_start ) {
+//                break;
+//            }
+//            cur_k2 += gamma_count_list[gamma];
+//            cur_group_gamma = groupU[gamma];
+//            int gamma_value_count = cur_group_gamma.count;
+//            if (gamma_value_count == 0){
+//                gap_gamma = (int) pow(2, gamma);
+//                k2_end = max_delta_value - gap_gamma;
+//                continue;
+//            }
+//
+//            cur_bits = 0;
+//            cur_bits += Math.min((k1 + cur_k2) * getBitWith(block_size - 1), block_size + k1 + cur_k2);
+//            cur_bits += k1 * alpha_size;
+//            if (k1 + cur_k2 != block_size)
+//                cur_bits += (block_size - k1 - cur_k2) *
+//                        getBitWith(k2_end  - k1_start - 2);
+//            cur_bits += cur_k2 * gamma;//min_upper_outlier
+//            if (cur_bits < min_bits) {
+//                min_bits = cur_bits;
+//                final_k_start_value = k1_start;
+//                final_k_end_value = k2_end; //need to check again
+//            }
+//
+//            // cur upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1})
+//            // next upper:  (x_max - 2^{gamma+1}, x_max - 2^{gamma})
+//
+//            cur_k2 += gamma_value_count;
+//            gap_gamma = (int) pow(2, gamma);
+//            k2_end = max_delta_value - gap_gamma; // x_max - 2^{gamma} ;
+//            //k1_start = x_min+2^{alpha-1}, x_max - 2^{gamma}
+//
+//
+//        }
+
         // ------------------ (x_min+2^{alpha_size-1},x_max)--------------------
 
         // ----------------[x_min+2^{alpha_size-1},x_max)--------------------
 
-//        // 2685 2693
+//        // 2685 2693  // th-climate: 143 146  9743 244
 //        System.out.println("group_num, "+ max_bit_width);
 //        System.out.println("count5_7, "+count5_7);
 //        System.out.println("countall, "+countall);
 //        System.out.println("count5_4, "+count5_4);
 //        System.out.println("count5_5, "+count5_5);
 //        System.out.println("count5_6, "+count5_6);
+//        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1780,8 +1936,8 @@ public class FinalPruneBOSTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1831,7 +1987,7 @@ public class FinalPruneBOSTest {
         dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
