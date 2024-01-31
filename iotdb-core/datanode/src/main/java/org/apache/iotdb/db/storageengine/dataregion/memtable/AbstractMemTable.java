@@ -199,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
         dataTypes.add(schema.getType());
       }
     }
-    memSize += MemUtils.getRecordSize(dataTypes, values);
+    memSize += MemUtils.getRowRecordSize(dataTypes, values);
     write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
 
     int pointsInserted =
@@ -246,7 +246,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize += MemUtils.getAlignedRecordSize(dataTypes, values);
+    memSize += MemUtils.getAlignedRowRecordSize(dataTypes, values);
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
         insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();

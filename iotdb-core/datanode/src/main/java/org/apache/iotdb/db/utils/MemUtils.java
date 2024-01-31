@@ -61,7 +61,7 @@ public class MemUtils {
    * Function for obtaining the value size. For text values, their size has already been added to
    * memory before insertion
    */
-  public static long getRecordSize(List<TSDataType> dataTypes, Object[] value) {
+  public static long getRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
     int emptyRecordCount = 0;
     long memSize = 0L;
     for (int i = 0; i < value.length; i++) {
@@ -78,7 +78,7 @@ public class MemUtils {
    * Function for obtaining the value size. For text values, their size has already been added to
    * memory before insertion
    */
-  public static long getAlignedRecordSize(List<TSDataType> dataTypes, Object[] value) {
+  public static long getAlignedRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
@@ -118,9 +118,7 @@ public class MemUtils {
       }
       // time column memSize
       memSize += (end - start) * 8L;
-      if (insertTabletNode.getDataTypes()[i] != TSDataType.TEXT) {
-        memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
-      }
+      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
     }
     return memSize;
   }
@@ -134,9 +132,7 @@ public class MemUtils {
       if (insertTabletNode.getMeasurements()[i] == null) {
         continue;
       }
-      if (insertTabletNode.getDataTypes()[i] != TSDataType.TEXT) {
-        memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
-      }
+      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
     }
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);
