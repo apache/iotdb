@@ -50,7 +50,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   /** @author Yuyuan Kang */
   public IntegerStatistics() {
     minInfo = new MinMaxInfo<>(Integer.MAX_VALUE, -1);
-    maxInfo = new MinMaxInfo<>(Integer.MIN_VALUE, -1);
+    maxInfo = new MinMaxInfo<>(-Integer.MAX_VALUE, -1);
   }
 
   /** @author Yuyuan Kang */

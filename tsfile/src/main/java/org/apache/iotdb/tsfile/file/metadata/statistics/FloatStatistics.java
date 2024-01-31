@@ -44,7 +44,7 @@ public class FloatStatistics extends Statistics<Float> {
   /** @author Yuyuan Kang */
   public FloatStatistics() {
     minInfo = new MinMaxInfo<>(Float.MAX_VALUE, -1);
-    maxInfo = new MinMaxInfo<>(Float.MIN_VALUE, -1);
+    maxInfo = new MinMaxInfo<>(-Float.MAX_VALUE, -1);
   }
 
   @Override

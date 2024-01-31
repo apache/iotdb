@@ -310,7 +310,7 @@ public class StepRegress {
    */
   private void checkOrder() throws IOException {
     double tiltIntercept = Double.MAX_VALUE;
-    double levelIntercept = Double.MIN_VALUE;
+    double levelIntercept = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
     for (int i = 0; i < segmentIntercepts.size(); i++) {
       double intercept = segmentIntercepts.get(i);
       if (i % 2 == 0) {

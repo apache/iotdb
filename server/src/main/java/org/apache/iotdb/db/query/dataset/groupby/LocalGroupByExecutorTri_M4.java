@@ -329,7 +329,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
         double minVal = Double.MAX_VALUE;
         long bottomTime = -1;
-        double maxVal = Double.MIN_VALUE;
+        double maxVal = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
         long topTime = -1;
         long firstTime = -1;
         double firstValue = 0;

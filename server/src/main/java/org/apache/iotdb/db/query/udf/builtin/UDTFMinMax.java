@@ -66,10 +66,10 @@ public class UDTFMinMax implements UDTF {
     this.floatMinV = Float.MAX_VALUE;
     this.doubleMinV = Double.MAX_VALUE;
 
-    this.intMaxV = Integer.MIN_VALUE;
-    this.longMaxV = Long.MIN_VALUE;
-    this.floatMaxV = Float.MIN_VALUE;
-    this.doubleMaxV = Double.MIN_VALUE;
+    this.intMaxV = -Integer.MAX_VALUE;
+    this.longMaxV = -Long.MAX_VALUE;
+    this.floatMaxV = -Float.MAX_VALUE;
+    this.doubleMaxV = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
   }
 
   @Override

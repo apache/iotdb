@@ -43,7 +43,8 @@ public class DoubleStatistics extends Statistics<Double> {
   /** @author Yuyuan Kang */
   public DoubleStatistics() {
     this.minInfo = new MinMaxInfo<>(Double.MAX_VALUE, -1);
-    this.maxInfo = new MinMaxInfo<>(Double.MIN_VALUE, -1);
+    this.maxInfo = new MinMaxInfo<>(-Double.MAX_VALUE, -1);
+    // Double.MIN_VALUE is positive so do not use it!!!
   }
 
   @Override

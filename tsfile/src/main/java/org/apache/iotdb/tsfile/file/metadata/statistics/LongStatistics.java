@@ -48,7 +48,7 @@ public class LongStatistics extends Statistics<Long> {
   /** @author Yuyuan Kang */
   public LongStatistics() {
     this.minInfo = new MinMaxInfo<>(Long.MAX_VALUE, -1);
-    this.maxInfo = new MinMaxInfo<>(Long.MIN_VALUE, -1);
+    this.maxInfo = new MinMaxInfo<>(-Long.MAX_VALUE, -1);
   }
 
   /** @author Yuyuan Kang */

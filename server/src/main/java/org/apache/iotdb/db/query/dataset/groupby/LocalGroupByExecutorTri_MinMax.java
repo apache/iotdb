@@ -301,7 +301,7 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
 
         double minVal = Double.MAX_VALUE;
         long bottomTime = -1;
-        double maxVal = Double.MIN_VALUE;
+        double maxVal = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
         long topTime = -1;
 
         // 1. load page data if it hasn't been loaded
