@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -105,13 +104,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       try {
         historicalDataExtractionStartTime =
             parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
-                ? DateTimeUtils.convertDatetimeStrToLong(
-                    parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+                ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+                    parameters.getStringByKeys(SOURCE_START_TIME_KEY))
                 : Long.MIN_VALUE;
         historicalDataExtractionEndTime =
             parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
-                ? DateTimeUtils.convertDatetimeStrToLong(
-                    parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+                ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+                    parameters.getStringByKeys(SOURCE_END_TIME_KEY))
                 : Long.MAX_VALUE;
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
@@ -138,19 +137,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           isHistoricalExtractorEnabled
                   && parameters.hasAnyAttributes(
                       EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
-              ? DateTimeUtils.convertDatetimeStrToLong(
+              ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
-                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
-                  ZoneId.systemDefault())
+                      EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY))
               : Long.MIN_VALUE;
       historicalDataExtractionEndTime =
           isHistoricalExtractorEnabled
                   && parameters.hasAnyAttributes(
                       EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
-              ? DateTimeUtils.convertDatetimeStrToLong(
+              ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
                   parameters.getStringByKeys(
-                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
-                  ZoneId.systemDefault())
+                      EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY))
               : Long.MAX_VALUE;
       if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
