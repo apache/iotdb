@@ -8,7 +8,6 @@ public class GroupU{
 
     public int[] number;
     public int count;
-    public int if_count;
     public int[] count_array;
     public int range;
     public int unique_number;
@@ -31,7 +30,6 @@ public class GroupU{
     public GroupU(int[] number, int count, int i) {
         this.number = number;
         this.count = count;
-        this.if_count = 0;
         this.range = (int) pow(2,i-1);
         this.count_array = new int[range];
     }
@@ -56,29 +54,50 @@ public class GroupU{
 
     public void setCount_array(int max_){
         int k2_end = max_ - this.range;
+        double par = this.range/(count*Math.log(this.count));
         this.left_shift = getBitWith(this.count);
-        this.mask =  (1 << left_shift) - 1; //block_size*2-1; //
-        this.if_count = 1;
-        int[] value_list = new int[this.count];
-        for (int i = 0; i < this.count; i++) {
-            int value = this.number[i];
-            count_array[k2_end - value]++;
-            if (count_array[k2_end - value] == 1) {
-                value_list[unique_number] = value;
-                unique_number++;
+        this.mask = (1 << left_shift) - 1;
+        if (par > 3) {
+            int[] value_list = new int[this.count];
+            for (int i = 0; i < this.count; i++) {
+                int value = this.number[i];
+                count_array[k2_end - value]++;
+                if (count_array[k2_end - value] == 1) {
+                    value_list[unique_number] = value;
+                    unique_number++;
+                }
             }
-        }
-        this.sorted_value_list = new long[unique_number];
-        for(int i=0;i<unique_number;i++){
-            int value = value_list[i];
-            sorted_value_list[i] = (((long) (k2_end - value)) << left_shift) + count_array[k2_end - value];
-        }
-        Arrays.sort(sorted_value_list);
+            sorted_value_list = new long[unique_number];
+            for (int i = 0; i < unique_number; i++) {
+                int value = value_list[i];
+                sorted_value_list[i] = (((long) (k2_end - value)) << left_shift) + count_array[k2_end - value];
+            }
+            Arrays.sort(sorted_value_list);
 
-        int cdf_count = 0;
-        for(int i=0;i<unique_number;i++){
-            cdf_count += getCount(sorted_value_list[i]);
-            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i]) ) << left_shift) + cdf_count;//new_value_list[i]
+            int cdf_count = 0;
+            for (int i = 0; i < unique_number; i++) {
+                cdf_count += getCount(sorted_value_list[i]);
+                sorted_value_list[i] = (((long) getUniqueValue(sorted_value_list[i])) << left_shift) + cdf_count;//new_value_list[i]
+            }
+        }else{
+            int[] hash = new int[this.range];
+            for (int i = 0; i < this.count; i++) {
+                int value = this.number[i];
+                if (hash[k2_end - value] == 0){
+                    this.unique_number++;
+                }
+                hash[k2_end - value]++;
+            }
+            sorted_value_list = new long[unique_number];
+            int ccount = 0;
+            int index = 0;
+            for(int i = 0; i < this.range;i++){
+                if (hash[i] > 0) {
+                    ccount += hash[i];
+                    sorted_value_list[index] = (((long) i) << left_shift) + ccount;
+                    index++;
+                }
+            }
         }
     }
 
