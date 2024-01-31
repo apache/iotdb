@@ -274,7 +274,8 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
 
     // Handle the rest of parts by handleTransferHandshakeV1.
-    String timestampPrecision = req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    String timestampPrecision =
+        req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION);
     PipeTransferHandshakeV1Req handshakeV1Req =
         PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision);
     return handleTransferHandshakeV1(handshakeV1Req);
