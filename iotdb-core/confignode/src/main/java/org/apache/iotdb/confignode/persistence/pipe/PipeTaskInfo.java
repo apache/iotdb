@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -56,7 +57,6 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -158,7 +158,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         String.format(
             "Failed to create pipe %s, the pipe with the same name has been created",
             createPipeRequest.getPipeName());
-    LOGGER.info(exceptionMessage);
+    LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }
 
@@ -176,7 +176,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
@@ -187,26 +187,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
       alterPipeRequest.setProcessorAttributes(
           pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
-    } else if (!(new TreeMap<>(
-                pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute())
-            .toString())
-        .equals(new TreeMap<>(alterPipeRequest.getProcessorAttributes()).toString())) {
+    } else if (!(new PipeParameters(alterPipeRequest.getProcessorAttributes()))
+        .isEquivalent(pipeStaticMetaFromCoordinator.getProcessorParameters())) {
       needToAlter = true;
     }
     if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
       alterPipeRequest.setConnectorAttributes(
           pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
-    } else if (!(new TreeMap<>(
-                pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute())
-            .toString())
-        .equals(new TreeMap<>(alterPipeRequest.getConnectorAttributes()).toString())) {
+    } else if (!(new PipeParameters(alterPipeRequest.getConnectorAttributes())
+        .isEquivalent(pipeStaticMetaFromCoordinator.getConnectorParameters()))) {
       needToAlter = true;
     }
     if (!needToAlter) {
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
   }
@@ -224,7 +220,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
@@ -232,7 +228,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
   }
@@ -250,7 +246,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
@@ -258,7 +254,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
-      LOGGER.info(exceptionMessage);
+      LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
   }
@@ -312,7 +308,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isPipeUserStopped(String pipeName) {
+  public boolean isPipeStoppedByUser(String pipeName) {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName)

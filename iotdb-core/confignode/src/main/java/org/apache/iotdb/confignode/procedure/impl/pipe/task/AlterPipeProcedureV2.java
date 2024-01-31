@@ -143,7 +143,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     updatedPipeRuntimeMeta = new PipeRuntimeMeta(updatedConsensusGroupIdToTaskMetaMap);
     // If the pipe's previous status was user stopped, then after the alter operation, the pipe's
     // status remains user stopped; otherwise, it becomes running.
-    if (!pipeTaskInfo.get().isPipeUserStopped(alterPipeRequest.getPipeName())) {
+    if (!pipeTaskInfo.get().isPipeStoppedByUser(alterPipeRequest.getPipeName())) {
       updatedPipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     }
   }

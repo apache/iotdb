@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -277,6 +278,33 @@ public class PipeParameters {
             Collectors.toMap(
                 Entry::getKey, entry -> ValueHider.hide(entry.getKey(), entry.getValue())))
         .toString();
+  }
+
+  /**
+   * This method uses {@link KeyReducer} to reduce keys and then sorts them to determine if two
+   * PipeParameters are equivalent.
+   */
+  public boolean isEquivalent(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeParameters that = (PipeParameters) obj;
+    return Objects.equals(
+        this.attributes.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
+                    (oldValue, newValue) -> oldValue, TreeMap::new))
+            .toString(),
+        that.attributes.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
+                    (oldValue, newValue) -> oldValue, TreeMap::new))
+            .toString());
   }
 
   private static class KeyReducer {

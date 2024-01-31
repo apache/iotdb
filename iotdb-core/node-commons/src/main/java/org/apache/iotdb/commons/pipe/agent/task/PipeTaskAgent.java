@@ -765,7 +765,6 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
    */
   protected boolean checkBeforeDropPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) {
@@ -795,7 +794,6 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
    */
   protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName) {
     if (existedPipeMeta == null) {
