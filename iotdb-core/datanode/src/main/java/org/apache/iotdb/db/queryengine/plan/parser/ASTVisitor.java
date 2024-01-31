@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConnectorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -43,8 +44,10 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExtractorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -155,6 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -3593,57 +3597,83 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException(
-          "Not support for this sql in CREATEPIPE, please enter pipe name.");
+          "Not support for this sql in CREATE PIPE, please enter pipe name.");
     }
     if (ctx.extractorAttributesClause() != null) {
       createPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(ctx.extractorAttributesClause()));
+          parseExtractorAttributesClause(
+              ctx.extractorAttributesClause().extractorAttributeClause()));
     } else {
       createPipeStatement.setExtractorAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
-          parseProcessorAttributesClause(ctx.processorAttributesClause()));
+          parseProcessorAttributesClause(
+              ctx.processorAttributesClause().processorAttributeClause()));
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
     createPipeStatement.setConnectorAttributes(
-        parseConnectorAttributesClause(ctx.connectorAttributesClause()));
+        parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
     return createPipeStatement;
   }
 
+  @Override
+  public Statement visitAlterPipe(IoTDBSqlParser.AlterPipeContext ctx) {
+    final AlterPipeStatement alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
+
+    if (ctx.pipeName != null) {
+      alterPipeStatement.setPipeName(ctx.pipeName.getText());
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in ALTER PIPE, please enter pipe name.");
+    }
+    if (ctx.modifyProcessorAttributesClause() != null) {
+      alterPipeStatement.setProcessorAttributes(
+          parseProcessorAttributesClause(
+              ctx.modifyProcessorAttributesClause().processorAttributeClause()));
+    } else {
+      alterPipeStatement.setProcessorAttributes(new HashMap<>());
+    }
+    if (ctx.modifyConnectorAttributesClause() != null) {
+      alterPipeStatement.setConnectorAttributes(
+          parseConnectorAttributesClause(
+              ctx.modifyConnectorAttributesClause().connectorAttributeClause()));
+    } else {
+      alterPipeStatement.setConnectorAttributes(new HashMap<>());
+    }
+    return alterPipeStatement;
+  }
+
   private Map<String, String> parseExtractorAttributesClause(
-      IoTDBSqlParser.ExtractorAttributesClauseContext ctx) {
+      List<ExtractorAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ExtractorAttributeClauseContext singleCtx :
-        ctx.extractorAttributeClause()) {
+    for (IoTDBSqlParser.ExtractorAttributeClauseContext context : contexts) {
       collectorMap.put(
-          parseStringLiteral(singleCtx.extractorKey.getText()),
-          parseStringLiteral(singleCtx.extractorValue.getText()));
+          parseStringLiteral(context.extractorKey.getText()),
+          parseStringLiteral(context.extractorValue.getText()));
     }
     return collectorMap;
   }
 
   private Map<String, String> parseProcessorAttributesClause(
-      IoTDBSqlParser.ProcessorAttributesClauseContext ctx) {
+      List<ProcessorAttributeClauseContext> contexts) {
     final Map<String, String> processorMap = new HashMap<>();
-    for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
-        ctx.processorAttributeClause()) {
+    for (IoTDBSqlParser.ProcessorAttributeClauseContext context : contexts) {
       processorMap.put(
-          parseStringLiteral(singleCtx.processorKey.getText()),
-          parseStringLiteral(singleCtx.processorValue.getText()));
+          parseStringLiteral(context.processorKey.getText()),
+          parseStringLiteral(context.processorValue.getText()));
     }
     return processorMap;
   }
 
   private Map<String, String> parseConnectorAttributesClause(
-      IoTDBSqlParser.ConnectorAttributesClauseContext ctx) {
+      List<ConnectorAttributeClauseContext> contexts) {
     final Map<String, String> connectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
-        ctx.connectorAttributeClause()) {
+    for (IoTDBSqlParser.ConnectorAttributeClauseContext context : contexts) {
       connectorMap.put(
-          parseStringLiteral(singleCtx.connectorKey.getText()),
-          parseStringLiteral(singleCtx.connectorValue.getText()));
+          parseStringLiteral(context.connectorKey.getText()),
+          parseStringLiteral(context.connectorValue.getText()));
     }
     return connectorMap;
   }

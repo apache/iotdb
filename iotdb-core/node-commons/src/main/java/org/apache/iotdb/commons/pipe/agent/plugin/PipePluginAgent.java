@@ -74,6 +74,12 @@ public abstract class PipePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
+    validateExtractor(extractorAttributes);
+    validateProcessor(processorAttributes);
+    validateConnector(pipeName, connectorAttributes);
+  }
+
+  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
     try {
@@ -85,7 +91,9 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
       }
     }
+  }
 
+  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
@@ -97,7 +105,10 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
       }
     }
+  }
 
+  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
+      throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
