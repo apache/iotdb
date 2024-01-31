@@ -1563,7 +1563,7 @@ if (cur_bits < min_bits) {
 //        System.out.println("count5_4, "+count5_4);
 //        System.out.println("count5_5, "+count5_5);
 //        System.out.println("count5_6, "+count5_6);
-        System.out.println("countC = "+ countC + " hathat = " + countU*(countU-1)/2);
+        System.out.println("countC = "+ countC + " predict = " + countU*(countU-1)/2);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
