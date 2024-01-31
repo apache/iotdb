@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -94,10 +95,6 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   public IoTDBDataRegionExtractor() {
     this.hasBeenStarted = new AtomicBoolean(false);
-  }
-
-  public void setRestarted(boolean isRestarted) {
-    this.isRestarted = isRestarted;
   }
 
   @Override
@@ -174,7 +171,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       }
     }
 
-    constructHistoricalExtractor();
+    constructHistoricalExtractor(validator.getParameters());
     constructRealtimeExtractor(validator.getParameters());
 
     historicalExtractor.validate(validator);
@@ -214,9 +211,12 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  private void constructHistoricalExtractor() {
+  private void constructHistoricalExtractor(PipeParameters parameters) {
     // Enable historical extractor by default
-    historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor(isRestarted);
+    historicalExtractor =
+        new PipeHistoricalDataRegionTsFileExtractor(
+            parameters.getBooleanOrDefault(
+                SystemConstant.RESTART_KEY, SystemConstant.RESTART_DEFAULT_VALUE));
   }
 
   private void constructRealtimeExtractor(PipeParameters parameters) {

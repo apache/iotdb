@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.config.constant;
 public class SystemConstant {
 
   public static final String RESTART_KEY = "__system.restart";
+  public static final boolean RESTART_DEFAULT_VALUE = false;
 
   private SystemConstant() {
     throw new IllegalStateException("Utility class");
