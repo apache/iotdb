@@ -80,7 +80,8 @@ public class MyTest_ILTS {
     //    config.setNumIterations(4);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
-    config.setAcc_convex(false);
+    config.setAcc_convex(true);
+    config.setAcc_iterRepeat(true);
 
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
@@ -226,7 +227,7 @@ public class MyTest_ILTS {
   @Test
   public void test2() {
     prepareData2();
-    config.setNumIterations(4);
+    config.setNumIterations(8);
     String res =
         "-1.2079272[0],1.101946[200],-0.523204[300],0.145359[500],-1.014322[700],"
             + "0.532565[900],-0.122525[1200],-0.676077[1300],0.809559[1500],0.315869[1800],"

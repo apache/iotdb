@@ -559,6 +559,9 @@ public class IoTDBDescriptor {
       conf.setAcc_convex(
           Boolean.parseBoolean(
               properties.getProperty("acc_convex", Boolean.toString(conf.isAcc_convex()))));
+      conf.setAcc_iterRepeat(
+          Boolean.parseBoolean(
+              properties.getProperty("acc_iterRepeat", Boolean.toString(conf.isAcc_iterRepeat()))));
 
       conf.setPerformanceStatDisplayInterval(
           Long.parseLong(

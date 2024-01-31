@@ -176,19 +176,37 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
       result.reset();
     }
 
-    long[] lastIter_t = new long[N1]; // N1不包括全局首尾点
+    long[] lastIter_t = new long[N1]; // N1不包括全局首尾点，初始化都是0，假设真实时间戳都大于0
     double[] lastIter_v = new double[N1]; // N1不包括全局首尾点
-    for (int num = 0; num < numIterations; num++) {
+
+    // TODO: 如果和上次迭代时使用的lr一样那么这个bucket这次迭代就使用上次的采点结果，不必重复计算
+    boolean[] needRecalc = new boolean[N1]; // N1不包括全局首尾点，初始化都是false
+
+    int num = 0; // 注意从0开始！
+    for (; num < numIterations; num++) {
       // NOTE: init lt&lv at the start of each iteration is a must, because they are modified in
       // each iteration
       lt = CONFIG.getP1t();
       lv = CONFIG.getP1v();
 
-      StringBuilder series = new StringBuilder(); // TODO debug
-      // 全局首点
-      series.append(p1v).append("[").append(p1t).append("]").append(","); // TODO debug
+      boolean[] currentNeedRecalc = new boolean[N1]; // N1不包括全局首尾点，初始化都是false
+      boolean allFalseFlag = true; // 如果非首轮迭代全部都是false那可以提前结束迭代，因为后面都不会再有任何变化
+
+      //      StringBuilder series = new StringBuilder(); // TODO debug
+      //      // 全局首点
+      //      series.append(p1v).append("[").append(p1t).append("]").append(","); // TODO debug
+
       // 遍历分桶 Assume no empty buckets
       for (int b = 0; b < N1; b++) {
+        if (CONFIG.isAcc_iterRepeat() && num > 0 && !needRecalc[b]) {
+          // 排除num=0，因为第一次迭代要全部算的
+          // 不需要更新本轮迭代本桶选点，或者说本轮迭代本桶选点就是lastIter内已有结果
+          // 也不需要更新currentNeedRecalc
+          // 下一个桶自然地以select_t, select_v作为左桶固定点
+          lt = lastIter_t[b];
+          lv = lastIter_v[b];
+          continue;
+        }
         double rt = 0; // must initialize as zero, because may be used as sum for average
         double rv = 0; // must initialize as zero, because may be used as sum for average
         // 计算右边桶的固定点
@@ -217,7 +235,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               if (CONFIG.isAcc_avg()) {
                 if (chunkSuit4Tri.chunkMetadata.getStartTime() >= rightStartTime
                     && chunkSuit4Tri.chunkMetadata.getEndTime() < rightEndTime) {
-                  System.out.println("herehere");
                   // TODO 以后元数据可以增加sum of timestamps，目前就基于时间戳均匀间隔1的假设来处理
                   rt +=
                       (chunkSuit4Tri.chunkMetadata.getStartTime()
@@ -378,6 +395,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                 maxDistance = distance;
                 select_t = timestamp;
                 select_v = v;
+
+                // TODO 下面假装已经有凸包剪枝，先实验看看如果跳过一些点不用遍历有多少加速效果
+                if (CONFIG.isAcc_convex()) {
+                  break;
+                }
               }
             }
           }
@@ -391,8 +413,22 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             //  还要注意的是如果被rectangle提前剪枝掉了就不会走到这一步，也就是说那个chunk的pageReader可能还留着
           }
         }
-        // 记录结果 // TODO debug
-        series.append(select_v).append("[").append(select_t).append("]").append(",");
+
+        //        // 记录结果 // TODO debug
+        //        series.append(select_v).append("[").append(select_t).append("]").append(",");
+
+        // 更新currentNeedRecalc,注意在记录本轮迭代本桶选点之前判断
+        if (CONFIG.isAcc_iterRepeat() && select_t != lastIter_t[b]) { // 本次迭代选点结果和上一轮不一样
+          allFalseFlag = false;
+          if (b == 0) { // 第一个桶
+            currentNeedRecalc[b + 1] = true; // 作为右边桶的左边固定点变了，所以下一轮右边桶要重新采点
+          } else if (b == N1 - 1) { // 最后一个桶
+            currentNeedRecalc[b - 1] = true; // 作为左边桶的右边固定点变了，所以下一轮左边桶要重新采点
+          } else {
+            currentNeedRecalc[b - 1] = true; // 作为左边桶的右边固定点变了，所以下一轮左边桶要重新采点
+            currentNeedRecalc[b + 1] = true; // 作为右边桶的左边固定点变了，所以下一轮右边桶要重新采点
+          }
+        }
 
         // 更新lt,lv
         // 下一个桶自然地以select_t, select_v作为左桶固定点
@@ -403,10 +439,20 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         lastIter_v[b] = select_v;
       } // 遍历分桶结束
 
-      // 全局尾点 // TODO debug
-      series.append(pnv).append("[").append(pnt).append("]").append(",");
-      System.out.println(series);
+      //      // 全局尾点 // TODO debug
+      //      series.append(pnv).append("[").append(pnt).append("]").append(",");
+      //      System.out.println(series);
+
+      if (CONFIG.isAcc_iterRepeat() && allFalseFlag) {
+        num++; // +1表示是完成的迭代次数
+        break;
+      }
+      // 否则currentNeedRecalc里至少有一个true，因此继续迭代
+      needRecalc = currentNeedRecalc;
+      //      System.out.println(Arrays.toString(needRecalc)); // TODO debug
+
     } // end Iterations
+    //    System.out.println("number of iterations=" + num); // TODO debug
 
     // 全局首点
     series_final.append(p1v).append("[").append(p1t).append("]").append(",");

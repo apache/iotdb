@@ -479,6 +479,15 @@ public class IoTDBConfig {
   private boolean acc_avg = true;
   private boolean acc_rectangle = true;
   private boolean acc_convex = false;
+  private boolean acc_iterRepeat = true;
+
+  public boolean isAcc_iterRepeat() {
+    return acc_iterRepeat;
+  }
+
+  public void setAcc_iterRepeat(boolean acc_iterRepeat) {
+    this.acc_iterRepeat = acc_iterRepeat;
+  }
 
   public long getP1t() {
     return p1t;
