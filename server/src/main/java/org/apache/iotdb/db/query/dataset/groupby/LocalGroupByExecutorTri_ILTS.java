@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -49,8 +42,17 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
 
@@ -236,7 +238,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                   // TODO 以后元数据可以增加sum of timestamps，目前就基于时间戳均匀间隔1的假设来处理
                   rt +=
                       (chunkSuit4Tri.chunkMetadata.getStartTime()
-                          + chunkSuit4Tri.chunkMetadata.getEndTime())
+                              + chunkSuit4Tri.chunkMetadata.getEndTime())
                           * chunkSuit4Tri.chunkMetadata.getStatistics().getCount()
                           / 2.0;
                   rv += chunkSuit4Tri.chunkMetadata.getStatistics().getSumDoubleValue();
@@ -297,18 +299,18 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           //   然后遍历如果这个chunk的非紧致上限<=当前已知的maxDistance，那么整个chunk都不用管了
           for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
             long[] rect_t =
-                new long[]{
-                    chunkSuit4Tri.chunkMetadata.getStartTime(), // FPt
-                    chunkSuit4Tri.chunkMetadata.getEndTime(), // LPt
-                    chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp(), // BPt
-                    chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp() // TPt
+                new long[] {
+                  chunkSuit4Tri.chunkMetadata.getStartTime(), // FPt
+                  chunkSuit4Tri.chunkMetadata.getEndTime(), // LPt
+                  chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp(), // BPt
+                  chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp() // TPt
                 };
             double[] rect_v =
-                new double[]{
-                    (double) chunkSuit4Tri.chunkMetadata.getStatistics().getFirstValue(), // FPv
-                    (double) chunkSuit4Tri.chunkMetadata.getStatistics().getLastValue(), // LPv
-                    (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMinValue(), // BPv
-                    (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMaxValue() // TPv
+                new double[] {
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getFirstValue(), // FPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getLastValue(), // LPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMinValue(), // BPv
+                  (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMaxValue() // TPv
                 };
             // 用落在桶内的元数据点（紧致下限）更新maxDistance&select_t&select_v
             for (int i = 0; i < 4; i++) {
