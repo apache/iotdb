@@ -91,8 +91,6 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   private long creationTime;
   private int dataRegionId;
 
-  private boolean isRestarted;
-
   public IoTDBDataRegionExtractor() {
     this.hasBeenStarted = new AtomicBoolean(false);
   }
