@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.common;
 
-public class PipeConstant {
+public class PipeConnectorConstant {
   public static final String HANDSHAKE_KEY_TIME_PRECISION = "timestampPrecision";
   public static final String HANDSHAKE_KEY_CLUSTER_ID = "clusterID";
 }

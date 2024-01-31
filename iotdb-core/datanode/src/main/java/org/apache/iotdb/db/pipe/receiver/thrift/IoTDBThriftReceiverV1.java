@@ -33,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -264,7 +264,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
 
     // Reject to handshake if the receiver and sender are from the same cluster.
-    if (req.getParams().get(PipeConstant.HANDSHAKE_KEY_CLUSTER_ID).equals(clusterId)) {
+    if (req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID).equals(clusterId)) {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_REJECT_ERROR,
@@ -274,7 +274,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
 
     // Handle the rest of parts by handleTransferHandshakeV1.
-    String timestampPrecision = req.getParams().get(PipeConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    String timestampPrecision = req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION);
     PipeTransferHandshakeV1Req handshakeV1Req =
         PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision);
     return handleTransferHandshakeV1(handshakeV1Req);
