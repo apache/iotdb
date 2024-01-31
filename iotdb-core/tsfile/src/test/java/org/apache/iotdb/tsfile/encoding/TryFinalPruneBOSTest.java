@@ -607,7 +607,6 @@ public class TryFinalPruneBOSTest {
         }
 
 
-        // x_min
         // -------------x_min-------------------
         // lower: x_min
         // upper: x_max
@@ -626,7 +625,7 @@ public class TryFinalPruneBOSTest {
         }
 
         // lower: x_min
-        // upper:  x_max - 1, x_max - 2, x_max - 4  ... gamma_count_list[1] gamma_count_list[2] gamma_count_list[3]
+        // upper:  x_max - 1, x_max - 2, x_max - 4  ...
         //(x_max - 2^{gamma}, x_max - 2^{gamma-1} ]
 
         for (int gamma_i = 0; gamma_i < num_of_gamma_list-1; gamma_i++) {
@@ -641,7 +640,6 @@ public class TryFinalPruneBOSTest {
             long[] gamma_sorted = cur_group_gamma.sorted_value_list;
             int gamma_unique_number = cur_group_gamma.unique_number;
             int cur_gamma_count = cur_group_gamma.count;
-//            int x_u_i_end = k2_end - k1_start;
 
             for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
                 int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
@@ -668,7 +666,7 @@ public class TryFinalPruneBOSTest {
 
         // lower: x_min
         // k2_end = x_max - 2^{alpha_size-1}
-        // upper: (0,x_max - 2^{alpha_size-1})
+        // upper: (0,x_max - 2^{alpha_size-1}]
 
         int gap_gamma = (int) pow(2,alpha_size-1);
         k2_end = max_delta_value - gap_gamma;
@@ -707,11 +705,10 @@ public class TryFinalPruneBOSTest {
         // alpha_size = getBitWith(max_delta_value);
 
         for (int alpha_i = 0; alpha_i < num_of_alpha_list-1; alpha_i++) {
-//            alpha_list[alpha_i] < alpha_size
+
             int alpha = alpha_list[alpha_i];
             int gap_alpha = (int) pow(2,alpha-1);
             k1_start = gap_alpha;
-
             GroupL cur_group_alpha = groupL[alpha];
 
 
@@ -740,8 +737,6 @@ public class TryFinalPruneBOSTest {
                     final_k_end_value = k2_end;
                 }
             }
-//            cur_k1 += alpha_value_count;
-
 
 
 
@@ -767,13 +762,11 @@ public class TryFinalPruneBOSTest {
                 }
 
                 // k1: count[x_min,x_min+2^{alpha-1}]
-                // -------------
+
                 gap_gamma = (int) pow(2, gamma - 1);
                 k2_end = max_delta_value - gap_gamma;
                 cur_group_gamma = groupU[gamma]; // (x_max - 2^{gamma}, x_max - 2^{gamma-1})
                 int gamma_value_count = cur_group_gamma.count;
-
-
                 gamma_sorted = cur_group_gamma.sorted_value_list;
                 gamma_unique_number = cur_group_gamma.unique_number;
 
@@ -855,9 +848,6 @@ public class TryFinalPruneBOSTest {
                     // beta: getBitWidth(x_max - 2^{gamma} -(x_min+2^{alpha})) to getBitWidth(x_max - 2^{gamma-1}-(x_min+2^{alpha-1}) )
                     int min_beta = getBitWith(max_delta_value-pow_2_gamma-pow_2_alpha);
                     int max_beta = getBitWith(k2_end-k1_start);
-//                    int min_pow_2_beta = (int) pow(2, min_beta);
-//                    int max_pow_2_beta = (int) pow(2, max_beta);
-////                        countall++;
 
 
 
@@ -929,12 +919,10 @@ public class TryFinalPruneBOSTest {
 
             // gamma:  gamma_size+1 to ....
             // gamma size : x_min+2^{alpha} <= x_max - 2^{gamma} => 2^{gamma} <= x_max - 2^{alpha}
-
+            //k2_end = x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
             // lower: [x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
             // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}]
 
-
-                 //k2_end = x_max - 2^{gamma-1} ; gamma : 1 to gamma_size
 
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
@@ -997,7 +985,7 @@ public class TryFinalPruneBOSTest {
 
 
         // lower: [x_min+2^{alpha_size-1},x_max)
-        // ----------------- (x_min+2^{alpha_size-1},x_max)----------------------
+        // ----------------- [x_min+2^{alpha_size-1},x_max)----------------------
         long[] alpha_sorted = cur_group_alpha.sorted_value_list;
         int alpha_unique_number = cur_group_alpha.unique_number;
 
@@ -1084,17 +1072,11 @@ public class TryFinalPruneBOSTest {
             }
 
         }
-        // ------------------ (x_min+2^{alpha_size-1},x_max)--------------------
+        // ------------------ [x_min+2^{alpha_size-1},x_max)--------------------
 
-        // ----------------[x_min+2^{alpha_size-1},x_max)--------------------
+
 
 //        // 2685 2693
-//        System.out.println("group_num, "+ max_bit_width);
-//        System.out.println("count5_7, "+count5_7);
-//        System.out.println("countall, "+countall);
-//        System.out.println("count5_4, "+count5_4);
-//        System.out.println("count5_5, "+count5_5);
-//        System.out.println("count5_6, "+count5_6);
 //        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
