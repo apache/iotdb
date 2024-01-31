@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class TsFileExecutor implements QueryExecutor {
 
@@ -50,8 +51,8 @@ public class TsFileExecutor implements QueryExecutor {
   private IChunkLoader chunkLoader;
 
   public TsFileExecutor(IMetadataQuerier metadataQuerier, IChunkLoader chunkLoader) {
-    this.metadataQuerier = metadataQuerier;
-    this.chunkLoader = chunkLoader;
+    this.metadataQuerier = Objects.requireNonNull(metadataQuerier, "metadataQuerier");
+    this.chunkLoader = Objects.requireNonNull(chunkLoader, "chunkLoader");
   }
 
   @Override
