@@ -532,6 +532,7 @@ public class FPBTest {
     private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) {
         int countC = 0;
         int countU = 0;
+        int countC1 = 0;
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
@@ -1445,7 +1446,6 @@ if (cur_bits < min_bits) {
         // ----------------- (x_min+2^{alpha_size-1},x_max)----------------------
         long[] alpha_sorted = cur_group_alpha.sorted_value_list;
         int alpha_unique_number = cur_group_alpha.unique_number;
-
         int x_l_i_end = max_delta_value - k1_start; // [1, x_max - x_min+2^{alpha_size-1})
         for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
 
@@ -1563,7 +1563,8 @@ if (cur_bits < min_bits) {
 //        System.out.println("count5_4, "+count5_4);
 //        System.out.println("count5_5, "+count5_5);
 //        System.out.println("count5_6, "+count5_6);
-        System.out.println("countC = "+ countC + " predict = " + countU*(countU-1)/2);
+//        System.out.println("countC = "+ countC + " predict = " + countU*(countU-1)/2);
+        System.out.println(countC);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
