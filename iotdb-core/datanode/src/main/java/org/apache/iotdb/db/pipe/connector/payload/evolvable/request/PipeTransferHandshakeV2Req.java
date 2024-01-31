@@ -80,7 +80,7 @@ public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE_V2.getType(), outputStream);
-      ReadWriteIOUtils.write(params, outputStream);
+      ReadWriteIOUtils.write(ByteBuffer.wrap(SerializationUtils.serialize(params)), outputStream);
       return byteArrayOutputStream.toByteArray();
     }
   }

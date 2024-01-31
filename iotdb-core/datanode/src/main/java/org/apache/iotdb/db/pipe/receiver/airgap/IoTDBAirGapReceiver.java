@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.airgap;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -117,12 +118,18 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
 
       // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
+      byte version = ReadWriteIOUtils.readByte(byteBuffer);
+      short type = ReadWriteIOUtils.readShort(byteBuffer);
+      if (type == PipeRequestType.HANDSHAKE_V2.getType()) {
+        ReadWriteIOUtils.readInt(byteBuffer);
+      }
+      ByteBuffer body = byteBuffer.slice();
       final AirGapPseudoTPipeTransferRequest req =
           (AirGapPseudoTPipeTransferRequest)
               new AirGapPseudoTPipeTransferRequest()
-                  .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
-                  .setType(ReadWriteIOUtils.readShort(byteBuffer))
-                  .setBody(byteBuffer.slice());
+                  .setVersion(version)
+                  .setType(type)
+                  .setBody(body);
       final TPipeTransferResp resp = agent.receive(req, partitionFetcher, schemaFetcher);
 
       if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

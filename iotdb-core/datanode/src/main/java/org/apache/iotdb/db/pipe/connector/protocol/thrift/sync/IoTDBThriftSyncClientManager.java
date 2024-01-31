@@ -161,7 +161,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Retry to handshake by PipeTransferHandshakeV1Req.
         if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-          LOGGER.warn(
+          LOGGER.info(
               "Handshake error by PipeTransferHandshakeV2Req. Retry to handshake by PipeTransferHandshakeV1Req.");
           resp =
               clientAndStatus
