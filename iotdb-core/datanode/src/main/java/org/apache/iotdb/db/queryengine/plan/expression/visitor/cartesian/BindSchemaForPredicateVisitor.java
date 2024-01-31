@@ -88,11 +88,9 @@ public class BindSchemaForPredicateVisitor
               suffixExpression,
               new Context(context.getPrefixPaths(), context.getSchemaTree(), false)));
 
-      // We just process first input Expression of AggregationFunction,
+      // We just process first input Expression of Count_IF,
       // keep other input Expressions as origin and bind Type
-      // If AggregationFunction need more than one input series,
-      // we need to reconsider the process of it
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (SqlConstant.COUNT_IF.equalsIgnoreCase(predicate.getFunctionName())) {
         List<Expression> children = predicate.getExpressions();
         bindTypeForAggregationNonSeriesInputExpressions(
             predicate.getFunctionName(), children, extendedExpressions);

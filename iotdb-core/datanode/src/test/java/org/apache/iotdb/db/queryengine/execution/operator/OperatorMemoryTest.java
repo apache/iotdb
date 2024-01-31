@@ -1200,7 +1200,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1255,7 +1255,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1328,7 +1328,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1408,7 +1408,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),

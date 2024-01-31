@@ -262,7 +262,7 @@ public class SlidingWindowAggregationOperatorTest {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               rootAggregationTypes.get(i),
-              TSDataType.INT32,
+              Collections.singletonList(TSDataType.INT32),
               Collections.emptyList(),
               Collections.emptyMap(),
               ascending,

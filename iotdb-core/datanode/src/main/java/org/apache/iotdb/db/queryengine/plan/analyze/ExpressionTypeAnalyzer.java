@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -284,7 +285,8 @@ public class ExpressionTypeAnalyzer {
             functionExpression,
             TypeInferenceUtils.getAggrDataType(
                 functionExpression.getFunctionName(),
-                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+                getInputExpressionTypeForAggregation(
+                    inputExpressions, functionExpression.getFunctionName())));
       }
       if (functionExpression.isBuiltInScalarFunction()) {
         return setExpressionType(
@@ -396,6 +398,41 @@ public class ExpressionTypeAnalyzer {
           String.format(
               "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
               expressionString, actual.name(), Arrays.toString(expected)));
+    }
+  }
+
+  private TSDataType getInputExpressionTypeForAggregation(
+      List<Expression> inputExpressions, String aggregateFunctionName) {
+    // Some aggregate functions have a fixed output type, while others determine their output type
+    // based on the data type of their input.
+    // Currently, for all aggregate functions without a fixed output type, the output type is
+    // determined by the first input.
+    switch (aggregateFunctionName.toLowerCase()) {
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.EXTREME:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.COUNT:
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+      case SqlConstant.COUNT_IF:
+      case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
+      case SqlConstant.COUNT_TIME:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
+      case SqlConstant.MAX_BY:
+        return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + aggregateFunctionName);
     }
   }
 }
