@@ -440,7 +440,7 @@ public class IoTDBConfig {
   private long pnt;
   private double pnv;
 
-  private int rps = 2; // fixed
+  private int rps = 2; // fixed, do not change
 
   public int getNumIterations() {
     return numIterations;
@@ -450,7 +450,7 @@ public class IoTDBConfig {
     this.numIterations = numIterations;
   }
 
-  private int numIterations = 8;
+  private int numIterations = 4;
 
   public boolean isAcc_avg() {
     return acc_avg;
@@ -476,7 +476,7 @@ public class IoTDBConfig {
     this.acc_convex = acc_convex;
   }
 
-  private boolean acc_avg = false;
+  private boolean acc_avg = true;
   private boolean acc_rectangle = true;
   private boolean acc_convex = false;
 

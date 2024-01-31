@@ -78,7 +78,7 @@ public class MyTest_ILTS {
 
     config.setEnableTri("ILTS");
     //    config.setNumIterations(4);
-    config.setAcc_avg(false);
+    config.setAcc_avg(true);
     config.setAcc_rectangle(true);
     config.setAcc_convex(false);
 
@@ -141,6 +141,38 @@ public class MyTest_ILTS {
                   // TODO not real min_value here, actually controlled by enableTri
                   + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([2,102),20ms)");
+      // (102-2)/(7-2)=20ms
+      // note keep no empty buckets
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int i = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2);
+          System.out.println(ans);
+          Assert.assertEquals(res, ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void test1_3() {
+    prepareData1();
+    config.setNumIterations(2);
+    String res = "5.0[1],2.0[40],20.0[62],7.0[102],";
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_value(s0)"
+                  // TODO not real min_value here, actually controlled by enableTri
+                  + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
+                  + " FROM root.vehicle.d0 group by ([2,102),40ms)");
       // (102-2)/(7-2)=20ms
       // note keep no empty buckets
 

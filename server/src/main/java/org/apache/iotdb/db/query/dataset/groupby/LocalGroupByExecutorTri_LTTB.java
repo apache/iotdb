@@ -165,7 +165,7 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
 
     // Assume no empty buckets
     for (int b = 0; b < N1; b++) {
-      long rt = 0; // must initialize as zero, because may be used as sum for average
+      double rt = 0; // must initialize as zero, because may be used as sum for average
       double rv = 0; // must initialize as zero, because may be used as sum for average
       // 计算右边桶的固定点
       if (b == N1 - 1) { // 最后一个桶

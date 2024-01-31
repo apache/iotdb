@@ -70,8 +70,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   private final long pnt = CONFIG.getPnt();
   private final double pnv = CONFIG.getPnv();
 
-  private long lt = p1t;
-  private double lv = p1v;
+  private long lt;
+  private double lv;
 
   private final int N1; // 分桶数
 
@@ -179,12 +179,17 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     long[] lastIter_t = new long[N1]; // N1不包括全局首尾点
     double[] lastIter_v = new double[N1]; // N1不包括全局首尾点
     for (int num = 0; num < numIterations; num++) {
-      //      StringBuilder series = new StringBuilder();
+      // NOTE: init lt&lv at the start of each iteration is a must, because they are modified in
+      // each iteration
+      lt = CONFIG.getP1t();
+      lv = CONFIG.getP1v();
+
+      StringBuilder series = new StringBuilder(); // TODO debug
       // 全局首点
-      //      series.append(p1v).append("[").append(p1t).append("]").append(",");
+      series.append(p1v).append("[").append(p1t).append("]").append(","); // TODO debug
       // 遍历分桶 Assume no empty buckets
       for (int b = 0; b < N1; b++) {
-        long rt = 0; // must initialize as zero, because may be used as sum for average
+        double rt = 0; // must initialize as zero, because may be used as sum for average
         double rv = 0; // must initialize as zero, because may be used as sum for average
         // 计算右边桶的固定点
         if (b == N1 - 1) { // 最后一个桶
@@ -212,9 +217,13 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               if (CONFIG.isAcc_avg()) {
                 if (chunkSuit4Tri.chunkMetadata.getStartTime() >= rightStartTime
                     && chunkSuit4Tri.chunkMetadata.getEndTime() < rightEndTime) {
-                  // TODO 元数据增加sum of timestamps!
-                  rt += chunkSuit4Tri.chunkMetadata.getStatistics().getSumDoubleValue();
-
+                  System.out.println("herehere");
+                  // TODO 以后元数据可以增加sum of timestamps，目前就基于时间戳均匀间隔1的假设来处理
+                  rt +=
+                      (chunkSuit4Tri.chunkMetadata.getStartTime()
+                              + chunkSuit4Tri.chunkMetadata.getEndTime())
+                          * chunkSuit4Tri.chunkMetadata.getStatistics().getCount()
+                          / 2.0;
                   rv += chunkSuit4Tri.chunkMetadata.getStatistics().getSumDoubleValue();
                   cnt += chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
                   continue;
@@ -379,10 +388,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             chunkSuit4Tri.pageReader = null;
             // TODO 但是这样有可能导致下一轮迭代到这个桶的时候又要读一遍这个chunk
             //  但是不这样做的话相当于一轮迭代之后几乎所有的点都加载到内存留着了
+            //  还要注意的是如果被rectangle提前剪枝掉了就不会走到这一步，也就是说那个chunk的pageReader可能还留着
           }
         }
-        // 记录结果
-        //        series.append(select_v).append("[").append(select_t).append("]").append(",");
+        // 记录结果 // TODO debug
+        series.append(select_v).append("[").append(select_t).append("]").append(",");
 
         // 更新lt,lv
         // 下一个桶自然地以select_t, select_v作为左桶固定点
@@ -393,10 +403,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         lastIter_v[b] = select_v;
       } // 遍历分桶结束
 
-      // 全局尾点
-      //      series.append(pnv).append("[").append(pnt).append("]").append(",");
-      //      System.out.println(series);
-
+      // 全局尾点 // TODO debug
+      series.append(pnv).append("[").append(pnt).append("]").append(",");
+      System.out.println(series);
     } // end Iterations
 
     // 全局首点
