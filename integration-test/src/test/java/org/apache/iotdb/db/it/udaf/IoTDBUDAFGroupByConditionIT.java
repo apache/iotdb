@@ -194,7 +194,7 @@ public class IoTDBUDAFGroupByConditionIT {
   }
 
   @Test
-  public void groupByConditionTestAlignByDevice() {
+  public void UDAFGroupByConditionTestAlignByDevice() {
     String[][] expected =
         new String[][] {
           {"1", "root.sg.beijing.car01", "2", "1.0", "2", "16.0"},
@@ -221,7 +221,7 @@ public class IoTDBUDAFGroupByConditionIT {
   }
 
   @Test
-  public void groupByConditionTestWithHaving() {
+  public void UDAFGroupByConditionTestWithHaving() {
     String[][] expected =
         new String[][] {
           {"9", "10", "1.0", "2", "60.0"},

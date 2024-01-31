@@ -732,7 +732,6 @@ public class LogicalPlanBuilder {
       TypeProvider typeProvider, String partialAggregationName, String inputExpressionStr) {
     TSDataType aggregationType =
         SchemaUtils.getBuiltinAggregationTypeByFuncName(partialAggregationName);
-    ;
     typeProvider.setType(
         String.format("%s(%s)", partialAggregationName, inputExpressionStr),
         aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
