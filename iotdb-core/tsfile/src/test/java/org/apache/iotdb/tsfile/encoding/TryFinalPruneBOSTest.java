@@ -1102,18 +1102,6 @@ public class TryFinalPruneBOSTest {
         return encode_pos;
     }
 
-    public static int minNumberIndex(int alpha, int beta, int gamma){
-        if(alpha<beta && beta < gamma){
-            return 1; // prop 4.2
-        } else if (alpha>beta && beta > gamma) {
-            return 2;// prop 4.3
-        } else if (beta<alpha && beta <gamma) {
-            return 3;// prop 4.4
-        }else{
-            return 0; // alpha=beta=gamma
-        }
-    }
-
     public static int BOSEncoder(
             int[] data, int block_size, byte[] encoded_result) {
         block_size++;
@@ -1592,7 +1580,7 @@ public class TryFinalPruneBOSTest {
                 byte[] encoded_result = new byte[data2_arr.length*4];
 
 //                for (int block_size_i = 6; block_size_i > 5; block_size_i--) {
-                for (int block_size_i = 15; block_size_i > 4; block_size_i--) {
+                for (int block_size_i = 13; block_size_i > 4; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
                     long encodeTime = 0;
