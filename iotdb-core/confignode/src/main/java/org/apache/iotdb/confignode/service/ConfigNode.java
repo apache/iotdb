@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
+import org.apache.iotdb.commons.utils.StdOutErrRedirect;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
@@ -111,6 +112,7 @@ public class ConfigNode implements ConfigNodeMBean {
         "{} default charset is: {}",
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
+    StdOutErrRedirect.redirectSystemOutAndErrToLog();
     new ConfigNodeCommandLine().doMain(args);
   }
 
