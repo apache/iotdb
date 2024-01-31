@@ -353,7 +353,8 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
         int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
         PageReader pageReader = chunkSuit4Tri.pageReader;
-        for (int i = chunkSuit4Tri.lastReadPos; i < count; i++) {
+        int i;
+        for (i = chunkSuit4Tri.lastReadPos; i < count; i++) {
           long timestamp = pageReader.timeBuffer.getLong(i * 8);
           if (timestamp < curStartTime) {
             // 2. read from lastReadPos until the first point fallen within this bucket (if it
@@ -383,6 +384,12 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
               topTime = timestamp;
             }
           }
+        }
+        // clear for heap space
+        if (i >= count) {
+          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
+          chunkSuit4Tri.pageReader = null;
         }
         // 4. update MinMax by traversing points fallen within this bucket
         if (topTime >= 0) {

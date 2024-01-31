@@ -246,7 +246,9 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
           //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
         }
         PageReader pageReader = chunkSuit4Tri.pageReader;
-        for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+        int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
+        int j;
+        for (j = 0; j < count; j++) {
           long timestamp = pageReader.timeBuffer.getLong(j * 8);
           if (timestamp < localCurStartTime) {
             continue;
@@ -262,6 +264,12 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
               select_v = v;
             }
           }
+        }
+        // clear for heap space
+        if (j >= count) {
+          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
+          chunkSuit4Tri.pageReader = null;
         }
       }
       // 记录结果

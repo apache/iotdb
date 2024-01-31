@@ -209,6 +209,17 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               }
               // TODO: 用元数据sum&count加速
               //  如果chunk没有被桶切开，可以直接用元数据里的sum和count
+              if (CONFIG.isAcc_avg()) {
+                if (chunkSuit4Tri.chunkMetadata.getStartTime() >= rightStartTime
+                    && chunkSuit4Tri.chunkMetadata.getEndTime() < rightEndTime) {
+                  // TODO 元数据增加sum of timestamps!
+                  rt += chunkSuit4Tri.chunkMetadata.getStatistics().getSumDoubleValue();
+
+                  rv += chunkSuit4Tri.chunkMetadata.getStatistics().getSumDoubleValue();
+                  cnt += chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
+                  continue;
+                }
+              }
 
               // 1. load page data if it hasn't been loaded
               if (chunkSuit4Tri.pageReader == null) {
@@ -342,7 +353,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           // TODO: 用凸包bitmap加速
           //   如果块被分桶边界切开，那还是逐点遍历
           //   否则块完整落在桶内时，用凸包规则快速找到这个块中距离lr连线最远的点，最后和全局当前最远结果点比较
-          for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+          int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
+          int j;
+          for (j = 0; j < count; j++) {
             long timestamp = pageReader.timeBuffer.getLong(j * 8);
             if (timestamp < localCurStartTime) {
               continue;
@@ -358,6 +371,14 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                 select_v = v;
               }
             }
+          }
+          // clear for heap space
+          if (j >= count) {
+            // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+            // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
+            chunkSuit4Tri.pageReader = null;
+            // TODO 但是这样有可能导致下一轮迭代到这个桶的时候又要读一遍这个chunk
+            //  但是不这样做的话相当于一轮迭代之后几乎所有的点都加载到内存留着了
           }
         }
         // 记录结果
