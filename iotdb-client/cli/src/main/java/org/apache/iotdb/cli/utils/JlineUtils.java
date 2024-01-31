@@ -52,11 +52,19 @@ public class JlineUtils {
           .filter(w -> SQL_KEYWORD_PATTERN.matcher(w).matches())
           .collect(Collectors.toSet());
 
-  public static LineReader getLineReader(String username, String host, String port)
+  public static LineReader getLineReader(CliContext ctx, String username, String host, String port)
       throws IOException {
     // Defaulting to a dumb terminal when a supported terminal can not be correctly created
     // see https://github.com/jline/jline3/issues/291
-    Terminal terminal = TerminalBuilder.builder().dumb(true).build();
+    Terminal terminal;
+    // This check is needed as TerminalBuilder checks if "in" and "out" are set and takes a wrong
+    // turn, if they are.
+    if (ctx.getIn() == System.in && ctx.getOut() == System.out) {
+      terminal = TerminalBuilder.builder().dumb(true).build();
+    } else {
+      terminal = TerminalBuilder.builder().streams(ctx.getIn(), ctx.getOut()).dumb(true).build();
+    }
+
     if (terminal.getWidth() == 0 || terminal.getHeight() == 0) {
       // Hard coded terminal size when redirecting.
       terminal.setSize(new Size(120, 40));

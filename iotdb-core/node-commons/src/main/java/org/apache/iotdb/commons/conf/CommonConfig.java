@@ -405,6 +405,10 @@ public class CommonConfig {
     return status == NodeStatus.ReadOnly;
   }
 
+  public boolean isRunning() {
+    return status == NodeStatus.Running;
+  }
+
   public NodeStatus getNodeStatus() {
     return status;
   }

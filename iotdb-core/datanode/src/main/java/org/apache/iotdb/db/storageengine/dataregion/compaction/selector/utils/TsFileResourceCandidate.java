@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -49,7 +50,9 @@ public class TsFileResourceCandidate {
     this.selected = false;
     // although we do the judgement here, the task should be validated before executing because
     // the status of file may be changed after the task is submitted to queue
-    this.isValidCandidate = tsFileResource.getStatus() == TsFileResourceStatus.NORMAL;
+    this.isValidCandidate =
+        tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
+            && tsFileResource.getTsFileRepairStatus() == TsFileRepairStatus.NORMAL;
   }
 
   /**

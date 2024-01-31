@@ -53,7 +53,7 @@ ddlStatement
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
     // Pipe Task
-    | createPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
@@ -78,7 +78,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | explain
+    : merge | fullMerge | flush | clearCache | settle | repairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
@@ -561,6 +561,26 @@ connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;
 
+alterPipe
+    : ALTER PIPE pipeName=identifier
+        modifyProcessorAttributesClause?
+        modifyConnectorAttributesClause?
+    ;
+
+modifyProcessorAttributesClause
+    : MODIFY PROCESSOR
+        LR_BRACKET
+        (processorAttributeClause COMMA)* processorAttributeClause?
+        RR_BRACKET
+    ;
+
+modifyConnectorAttributesClause
+    : MODIFY (CONNECTOR | SINK)
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
+    ;
+
 dropPipe
     : DROP PIPE pipeName=identifier
     ;
@@ -936,6 +956,11 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
+// Repair Data
+repairData
+    : REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain

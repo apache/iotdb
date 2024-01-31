@@ -136,7 +136,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
                   chunkHeader.getCompressionType());
           measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), schema);
         }
-        break;
       }
     }
 

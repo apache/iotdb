@@ -104,6 +104,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -1110,7 +1111,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
-    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
+    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
@@ -1124,6 +1125,32 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(createPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(
         createPipePlanV2.getPipeStaticMeta(), createPipePlanV21.getPipeStaticMeta());
+    Assert.assertEquals(
+        createPipePlanV2.getPipeRuntimeMeta(), createPipePlanV21.getPipeRuntimeMeta());
+  }
+
+  @Test
+  public void AlterPipePlanV2Test() throws IOException {
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+    extractorAttributes.put("pattern", "root.db");
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("batch.enable", "false");
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+    AlterPipePlanV2 alterPipePlanV21 =
+        (AlterPipePlanV2)
+            ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(alterPipePlanV2.getPipeStaticMeta(), alterPipePlanV21.getPipeStaticMeta());
+    Assert.assertEquals(
+        alterPipePlanV2.getPipeRuntimeMeta(), alterPipePlanV21.getPipeRuntimeMeta());
   }
 
   @Test

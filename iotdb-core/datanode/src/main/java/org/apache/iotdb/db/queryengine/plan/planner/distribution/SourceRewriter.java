@@ -1111,15 +1111,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
-    Map<String, Expression> columnNameToExpression = new HashMap<>();
+    Map<String, List<Expression>> columnNameToExpression = new HashMap<>();
     for (CrossSeriesAggregationDescriptor originalDescriptor :
         newRoot.getGroupByLevelDescriptors()) {
-      for (Expression exp : originalDescriptor.getInputExpressions()) {
-        columnNameToExpression.put(exp.getExpressionString(), exp);
-      }
+      columnNameToExpression.putAll(originalDescriptor.getGroupedInputStringToExpressionsMap());
+      // for example, max_by(root.*.x1, root.*.y1), we have "root.*.x1, root.*.y1" =>
+      // [root.*.x1(TimeSeriesOperand), root.*.y1(TimeSeriesOperand)]
       columnNameToExpression.put(
-          originalDescriptor.getOutputExpression().getExpressionString(),
-          originalDescriptor.getOutputExpression());
+          originalDescriptor.getParametersString(), originalDescriptor.getOutputExpressions());
     }
 
     context.setColumnNameToExpression(columnNameToExpression);
@@ -1252,9 +1251,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (AggregationDescriptor originalDescriptor : handle.getAggregationDescriptorList()) {
         boolean keep = false;
         for (String childColumn : childrenOutputColumns) {
-          for (Expression exp : originalDescriptor.getInputExpressions()) {
-            if (isAggColumnMatchExpression(childColumn, exp)) {
+          for (String groupedInputExpressionsString :
+              originalDescriptor.getInputExpressionsAsStringList()) {
+            if (isAggColumnMatchExpression(childColumn, groupedInputExpressionsString)) {
               keep = true;
+              break;
             }
           }
         }
@@ -1272,26 +1273,28 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
-      Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
-      Set<Expression> childrenExpressionSet = new HashSet<>();
+      Map<String, List<Expression>> columnNameToExpression = context.getColumnNameToExpression();
+      Map<String, List<Expression>> childrenExpressionMap = new HashMap<>();
       for (String childColumn : childrenOutputColumns) {
-        Expression childExpression =
-            columnNameToExpression.get(
-                childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
-        childrenExpressionSet.add(childExpression);
+        String childInput =
+            childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")"));
+        childrenExpressionMap.put(childInput, columnNameToExpression.get(childInput));
       }
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
 
-        if (childrenExpressionSet.contains(originalDescriptor.getOutputExpression())) {
-          descriptorExpressions.add(originalDescriptor.getOutputExpression());
+        if (childrenExpressionMap.containsKey(originalDescriptor.getParametersString())) {
+          descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
         }
 
-        for (Expression exp : originalDescriptor.getInputExpressions()) {
-          if (childrenExpressionSet.contains(exp)) {
-            descriptorExpressions.add(exp);
+        for (String groupedInputExpressionString :
+            originalDescriptor.getGroupedInputExpressionStrings()) {
+          List<Expression> inputExpressions =
+              childrenExpressionMap.get(groupedInputExpressionString);
+          if (inputExpressions != null && !inputExpressions.isEmpty()) {
+            descriptorExpressions.addAll(inputExpressions);
           }
         }
 
@@ -1370,11 +1373,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   // TODO: (xingtanzjr) need to confirm the logic when processing UDF
-  private boolean isAggColumnMatchExpression(String columnName, Expression expression) {
+  private boolean isAggColumnMatchExpression(String columnName, String expression) {
     if (columnName == null) {
       return false;
     }
-    return columnName.contains(expression.getExpressionString());
+    return columnName.contains(expression);
   }
 
   /**

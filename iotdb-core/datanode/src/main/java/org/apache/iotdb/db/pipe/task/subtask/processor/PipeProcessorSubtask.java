@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -97,7 +98,10 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
     if (
@@ -125,7 +129,11 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
           ((PipeHeartbeatEvent) event).onProcessed();
           PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
-          pipeProcessor.process(event, outputEventCollector);
+          pipeProcessor.process(
+              event instanceof UserDefinedEnrichedEvent
+                  ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                  : event,
+              outputEventCollector);
         }
       }
 

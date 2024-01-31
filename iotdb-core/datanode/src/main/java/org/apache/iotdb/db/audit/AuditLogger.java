@@ -224,6 +224,7 @@ public class AuditLogger {
       case ACTIVATE_TEMPLATE:
       case SETTLE:
       case INTERNAL_CREATE_TIMESERIES:
+      case REPAIR_DATA:
         return AuditLogOperation.DML;
       case LIST_USER:
       case LIST_ROLE:

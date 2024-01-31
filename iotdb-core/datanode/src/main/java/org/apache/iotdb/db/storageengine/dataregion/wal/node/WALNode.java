@@ -324,11 +324,14 @@ public class WALNode implements IWALNode {
     private void updateEffectiveInfoRationAndUpdateMetric() {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
+      MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
       long totalCost =
-          (getCurrentWALFileVersion()
-                  - checkpointManager.getOldestUnpinnedMemTableInfo().getFirstFileVersionId()
-                  + 1)
-              * config.getWalFileSizeThresholdInByte();
+          oldestUnpinnedMemTableInfo == null
+              ? costOfActiveMemTables
+              : (getCurrentWALFileVersion()
+                      - oldestUnpinnedMemTableInfo.getFirstFileVersionId()
+                      + 1)
+                  * config.getWalFileSizeThresholdInByte();
       if (totalCost == 0) {
         return;
       }
@@ -385,11 +388,11 @@ public class WALNode implements IWALNode {
 
     /** Delete obsolete wal files while recording which succeeded or failed */
     private void deleteOutdatedFilesAndUpdateMetric() {
-      for (File currentWal : sortedWalFilesExcludingLast) {
-        long searchIndex = WALFileUtils.parseStartSearchIndex(currentWal.getName());
+      for (int fileArrIdx = 0; fileArrIdx < sortedWalFilesExcludingLast.length; ++fileArrIdx) {
+        File currentWal = sortedWalFilesExcludingLast[fileArrIdx];
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
-        if (canDeleteFile(searchIndex, walFileStatus, versionId)) {
+        if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
           long fileSize = currentWal.length();
           if (currentWal.delete()) {
             deleteFileSize += fileSize;
@@ -406,23 +409,10 @@ public class WALNode implements IWALNode {
     }
 
     private int initFileIndexAfterFilterSafelyDeleteIndex() {
-      int endFileIndex =
-          safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-              ? sortedWalFilesExcludingLast.length
-              : WALFileUtils.binarySearchFileBySearchIndex(
-                  sortedWalFilesExcludingLast, safelyDeletedSearchIndex + 1);
-      // delete files whose file status is CONTAINS_NONE_SEARCH_INDEX
-      if (endFileIndex == -1) {
-        endFileIndex = 0;
-      }
-      while (endFileIndex < sortedWalFilesExcludingLast.length) {
-        if (WALFileUtils.parseStatusCode(sortedWalFilesExcludingLast[endFileIndex].getName())
-            == WALFileStatus.CONTAINS_SEARCH_INDEX) {
-          break;
-        }
-        endFileIndex++;
-      }
-      return endFileIndex;
+      return safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+          ? sortedWalFilesExcludingLast.length
+          : WALFileUtils.binarySearchFileBySearchIndex(
+              sortedWalFilesExcludingLast, safelyDeletedSearchIndex + 1);
     }
 
     /** Return true iff effective information ratio is too small or disk usage is too large. */
@@ -593,13 +583,12 @@ public class WALNode implements IWALNode {
           memTableIdsOfCurrentWal);
     }
 
-    private boolean canDeleteFile(long searchIndex, WALFileStatus walFileStatus, long versionId) {
-      return (searchIndex < safelyDeletedSearchIndex
+    private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
+      return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
-
   // endregion
 
   // region Search interfaces for consensus group

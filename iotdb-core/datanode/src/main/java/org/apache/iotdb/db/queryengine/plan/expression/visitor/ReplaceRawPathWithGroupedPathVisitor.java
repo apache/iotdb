@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,10 +44,8 @@ public class ReplaceRawPathWithGroupedPathVisitor
     for (Expression childExpression : functionExpression.getExpressions()) {
       childrenExpressions.add(process(childExpression, context));
 
-      // We just process first input Expression of AggregationFunction.
-      // If AggregationFunction need more than one input series,
-      // we need to reconsider the process of it
-      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      // We just process first input Expression of Count_IF
+      if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
         List<Expression> children = functionExpression.getExpressions();
         for (int i = 1; i < children.size(); i++) {
           childrenExpressions.add(children.get(i));
