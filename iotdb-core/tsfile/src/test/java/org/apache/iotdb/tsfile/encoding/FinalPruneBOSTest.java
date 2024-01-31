@@ -1964,7 +1964,7 @@ public class FinalPruneBOSTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(256);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
