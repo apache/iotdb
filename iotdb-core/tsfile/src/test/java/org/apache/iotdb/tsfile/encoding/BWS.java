@@ -1072,37 +1072,38 @@ public class BWS {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
 
-        int repeatTime2 = 500;
-        for (int file_i = 0; file_i < 1; file_i++) {
-
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 100;
+//        for (int file_i = 0; file_i < 1; file_i++) {
+//
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1238,9 +1239,9 @@ public class BWS {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-
-        for (int file_i = 0; file_i < 8; file_i++) {
-//        for (int file_i = 8; file_i < input_path_list.size(); file_i++) {
+        int repeatTime2 = 500;
+//        for (int file_i = 0; file_i < 8; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1295,7 +1296,7 @@ public class BWS {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 500;
+
 
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
