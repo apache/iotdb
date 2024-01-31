@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -120,12 +119,6 @@ public class TemplatedLogicalPlan {
                   context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
     }
 
-    int optimizedMaxTsBlockLineNum = -1;
-    if (limitValue < TopKNode.LIMIT_VALUE_USE_TOP_K) {
-      optimizedMaxTsBlockLineNum =
-          (int) Math.ceil((double) limitValue / analysis.getDeviceList().size());
-    }
-
     context
         .getTypeProvider()
         .setTemplatedInfo(
@@ -144,7 +137,6 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
                 OFFSET_VALUE,
                 limitValue,
-                optimizedMaxTsBlockLineNum,
                 whereExpression,
                 queryStatement.getSelectComponent().getZoneId(),
                 analysis.getDeviceTemplate().getSchemaMap(),

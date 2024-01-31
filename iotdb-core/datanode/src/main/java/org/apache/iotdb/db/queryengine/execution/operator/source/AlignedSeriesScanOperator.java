@@ -42,7 +42,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final int valueColumnCount;
   private boolean finished = false;
-  private final int maxTsBlockLineNum;
+  private int maxTsBlockLineNum = -1;
 
   public AlignedSeriesScanOperator(
       OperatorContext context,

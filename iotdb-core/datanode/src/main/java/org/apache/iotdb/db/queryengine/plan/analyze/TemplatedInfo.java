@@ -65,9 +65,7 @@ public class TemplatedInfo {
   private Map<String, IMeasurementSchema> schemaMap;
   // not serialize
   private Map<String, List<InputLocation>> layoutMap;
-  // for `order by time LIMIT N align by device` query, only the first device need to read N
-  // records, other devices just need to read Math.ceil(N/deviceNum) records
-  private final int optimizedMaxTsBlockLineNum;
+  private int maxTsBlockLineNum = -1;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -80,7 +78,6 @@ public class TemplatedInfo {
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
       long limitValue,
-      int optimizedMaxTsBlockLineNum,
       Expression predicate,
       ZoneId zoneId,
       Map<String, IMeasurementSchema> schemaMap,
@@ -95,7 +92,6 @@ public class TemplatedInfo {
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
-    this.optimizedMaxTsBlockLineNum = optimizedMaxTsBlockLineNum;
     this.predicate = predicate;
     if (predicate != null) {
       this.zoneId = zoneId;
@@ -176,10 +172,6 @@ public class TemplatedInfo {
     return this.limitValue;
   }
 
-  public int getOptimizedMaxTsBlockLineNum() {
-    return this.getOptimizedMaxTsBlockLineNum();
-  }
-
   public List<Integer> getDeviceToMeasurementIndexes() {
     return this.deviceToMeasurementIndexes;
   }
@@ -250,7 +242,6 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, byteBuffer);
     ReadWriteIOUtils.write(limitValue, byteBuffer);
-    ReadWriteIOUtils.write(optimizedMaxTsBlockLineNum, byteBuffer);
 
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
@@ -291,7 +282,6 @@ public class TemplatedInfo {
 
     ReadWriteIOUtils.write(offsetValue, stream);
     ReadWriteIOUtils.write(limitValue, stream);
-    ReadWriteIOUtils.write(optimizedMaxTsBlockLineNum, stream);
 
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
@@ -347,8 +337,8 @@ public class TemplatedInfo {
     }
 
     long offsetValue = ReadWriteIOUtils.readLong(byteBuffer);
+
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
-    int optimizedMaxTsBlockLineNum = ReadWriteIOUtils.readInt(byteBuffer);
 
     Expression predicate = null;
     ZoneId zone = null;
@@ -376,7 +366,6 @@ public class TemplatedInfo {
         deviceToMeasurementIndexes,
         offsetValue,
         limitValue,
-        optimizedMaxTsBlockLineNum,
         predicate,
         zone,
         currentSchemaMap,
