@@ -65,20 +65,20 @@ public class MaxByAccumulator implements Accumulator {
 
   // Column should be like: | Time | x | y |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+  public void addInput(Column[] column, BitMap bitMap) {
     checkArgument(column.length == 3, "Length of input Column[] for MaxBy should be 3");
     switch (yDataType) {
       case INT32:
-        addIntInput(column, bitMap, lastIndex);
+        addIntInput(column, bitMap);
         return;
       case INT64:
-        addLongInput(column, bitMap, lastIndex);
+        addLongInput(column, bitMap);
         return;
       case FLOAT:
-        addFloatInput(column, bitMap, lastIndex);
+        addFloatInput(column, bitMap);
         return;
       case DOUBLE:
-        addDoubleInput(column, bitMap, lastIndex);
+        addDoubleInput(column, bitMap);
         return;
       case TEXT:
       case BOOLEAN:
@@ -158,8 +158,9 @@ public class MaxByAccumulator implements Accumulator {
     return xDataType;
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addIntInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -180,8 +181,9 @@ public class MaxByAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addLongInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -202,8 +204,9 @@ public class MaxByAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addFloatInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -224,8 +227,9 @@ public class MaxByAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addDoubleInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }

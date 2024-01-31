@@ -716,8 +716,7 @@ public class LogicalPlanBuilder {
       String inputExpressionStr = getInputExpressionString(aggregationDescriptor);
       partialAggregationsNames.forEach(
           x -> setTypeForPartialAggregation(typeProvider, x, inputExpressionStr));
-      }
-
+    }
   }
 
   private static String getInputExpressionString(AggregationDescriptor aggregationDescriptor) {
@@ -731,7 +730,9 @@ public class LogicalPlanBuilder {
 
   private static void setTypeForPartialAggregation(
       TypeProvider typeProvider, String partialAggregationName, String inputExpressionStr) {
-    TSDataType aggregationType = SchemaUtils.getBuiltinAggregationTypeByFuncName(partialAggregationName);;
+    TSDataType aggregationType =
+        SchemaUtils.getBuiltinAggregationTypeByFuncName(partialAggregationName);
+    ;
     typeProvider.setType(
         String.format("%s(%s)", partialAggregationName, inputExpressionStr),
         aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);

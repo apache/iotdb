@@ -672,7 +672,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     Aggregator aggregator =
         new Aggregator(
             AccumulatorFactory.createAccumulator(
-                aggregationName, aggregationType, Collections.singletonList(dataType), null, null, true, true),
+                aggregationName,
+                aggregationType,
+                Collections.singletonList(dataType),
+                null,
+                null,
+                true,
+                true),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
 

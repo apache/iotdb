@@ -880,7 +880,7 @@ public class AccumulatorTest {
   @Test
   public void maxByAccumulatorTest() {
     Accumulator maxByAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_BY,
             Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -898,7 +898,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndTwoValueColumns(1, 0);
-    maxByAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    maxByAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(maxByAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     maxByAccumulator.outputIntermediate(intermediateResult);
