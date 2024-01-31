@@ -142,10 +142,10 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(
         CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
-        3, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFiles().size()));
+        3, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(0, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
     Assert.assertEquals(
-        3, (((SettleCompactionTask) unseqTasks.get(0)).getPartialDeletedFiles().size()));
+        3, (((SettleCompactionTask) unseqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(
         0, (((SettleCompactionTask) unseqTasks.get(0)).getAllDeletedFiles().size()));
 
@@ -166,10 +166,10 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(
         CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
-        2, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFiles().size()));
+        2, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(0, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
     Assert.assertEquals(
-        2, (((SettleCompactionTask) unseqTasks.get(0)).getPartialDeletedFiles().size()));
+        2, (((SettleCompactionTask) unseqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(
         0, (((SettleCompactionTask) unseqTasks.get(0)).getAllDeletedFiles().size()));
 
@@ -483,7 +483,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(
         CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
-        0, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFiles().size()));
+        0, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(5, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
 
     // select second time
@@ -508,7 +508,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(
         CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
-        5, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFiles().size()));
+        5, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(5, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
   }
 }

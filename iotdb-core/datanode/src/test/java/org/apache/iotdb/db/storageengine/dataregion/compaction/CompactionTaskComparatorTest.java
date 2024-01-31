@@ -465,24 +465,6 @@ public class CompactionTaskComparatorTest {
           serialId);
     }
 
-    public FakedInnerSpaceCompactionTask(
-        String storageGroupName,
-        long timePartition,
-        TsFileManager tsFileManager,
-        boolean sequence,
-        List<TsFileResource> selectedTsFileResourceList,
-        long serialId,
-        CompactionTaskPriorityType compactionTaskPriorityType) {
-      super(
-          timePartition,
-          tsFileManager,
-          selectedTsFileResourceList,
-          sequence,
-          new FastCompactionPerformer(false),
-          serialId,
-          compactionTaskPriorityType);
-    }
-
     @Override
     protected boolean doCompaction() {
       return true;

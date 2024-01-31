@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -84,7 +83,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public InsertionCrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }

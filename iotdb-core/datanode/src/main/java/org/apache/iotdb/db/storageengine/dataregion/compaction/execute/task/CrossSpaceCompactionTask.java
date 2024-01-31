@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -88,7 +87,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public CrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }
@@ -253,12 +252,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 "%.2f",
                 (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
-      } finally {
-        Files.deleteIfExists(logFile.toPath());
-        for (TsFileResource resource : targetTsfileResourceList) {
-          // may failed to set status if the status of current resource is DELETED
-          resource.setStatus(TsFileResourceStatus.NORMAL);
-        }
       }
     } catch (Exception e) {
       isSuccess = false;
@@ -266,6 +259,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       recover();
     } finally {
       releaseAllLocks();
+      try {
+        Files.deleteIfExists(logFile.toPath());
+      } catch (IOException e) {
+        printLogWhenException(LOGGER, e);
+      }
+      for (TsFileResource resource : targetTsfileResourceList) {
+        // may failed to set status if the status of current resource is DELETED
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+      }
     }
     return isSuccess;
   }

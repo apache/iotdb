@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
@@ -58,7 +58,7 @@ public interface ICompactionSelector {
     }
   }
 
-  default List<AbstractCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
+  default List<SettleCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
     throw new RuntimeException("This kind of selector cannot be used to select settle task");
   }
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
@@ -76,36 +75,17 @@ public abstract class AbstractCompactionTask {
 
   protected boolean needRecoverTaskInfoFromLogFile;
 
-  protected CompactionTaskPriorityType compactionTaskPriorityType;
-
   protected AbstractCompactionTask(
       String storageGroupName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       long serialId) {
-    this(
-        storageGroupName,
-        dataRegionId,
-        timePartition,
-        tsFileManager,
-        serialId,
-        CompactionTaskPriorityType.NORMAL);
-  }
-
-  protected AbstractCompactionTask(
-      String storageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager,
-      long serialId,
-      CompactionTaskPriorityType compactionTaskPriorityType) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.serialId = serialId;
-    this.compactionTaskPriorityType = compactionTaskPriorityType;
   }
 
   public abstract List<TsFileResource> getAllSourceTsFiles();
@@ -140,20 +120,24 @@ public abstract class AbstractCompactionTask {
     if (e instanceof CompactionLastTimeCheckFailedException
         || e instanceof CompactionValidationFailedException) {
       logger.error(
-          "{}-{} [Compaction] Meet errors {}: {}.",
-          getCompactionTaskType(),
+          "{}-{} [Compaction] {} task meets error: {}.",
           storageGroupName,
           dataRegionId,
+          getCompactionTaskType(),
           e.getMessage());
     } else if (e instanceof InterruptedException) {
-      logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
+      logger.warn(
+          "{}-{} [Compaction] {} task interrupted",
+          storageGroupName,
+          dataRegionId,
+          getCompactionTaskType());
       Thread.currentThread().interrupt();
     } else {
       logger.error(
-          "{}-{} [Compaction] Meet errors {}.",
-          getCompactionTaskType(),
+          "{}-{} [Compaction] {} task meets error: {}.",
           storageGroupName,
           dataRegionId,
+          getCompactionTaskType(),
           e);
     }
   }
@@ -366,12 +350,8 @@ public abstract class AbstractCompactionTask {
     return summary.getTemporalFileSize();
   }
 
-  public CompactionTaskPriorityType getCompactionTaskPriorityType() {
-    return compactionTaskPriorityType;
-  }
-
   public boolean isDiskSpaceCheckPassed() {
-    if (compactionTaskPriorityType == CompactionTaskPriorityType.SETTLE) {
+    if (getCompactionTaskType() == CompactionTaskType.SETTLE) {
       return true;
     }
     return CompactionUtils.isDiskHasSpace();

@@ -90,28 +90,33 @@ public class CompactionLogger implements AutoCloseable {
 
   public static File[] findCompactionLogs(CompactionTaskType type, File timePartitionDir) {
     if (timePartitionDir.exists()) {
-      final String logNameSuffix;
-      switch (type) {
-        case INNER_SEQ:
-        case INNER_UNSEQ:
-          logNameSuffix = INNER_COMPACTION_LOG_NAME_SUFFIX;
-          break;
-        case CROSS:
-          logNameSuffix = CROSS_COMPACTION_LOG_NAME_SUFFIX;
-          break;
-        case INSERTION:
-          logNameSuffix = INSERTION_COMPACTION_LOG_NAME_SUFFIX;
-          break;
-        case SETTLE:
-          logNameSuffix = SETTLE_COMPACTION_LOG_NAME_SUFFIX;
-          break;
-        default:
-          return new File[0];
-      }
+      String logNameSuffix = getLogSuffix(type);
       return timePartitionDir.listFiles((dir, name) -> name.endsWith(logNameSuffix));
     } else {
       return new File[0];
     }
+  }
+
+  public static String getLogSuffix(CompactionTaskType type) {
+    String logNameSuffix = null;
+    switch (type) {
+      case INNER_SEQ:
+      case INNER_UNSEQ:
+        logNameSuffix = INNER_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case CROSS:
+        logNameSuffix = CROSS_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case INSERTION:
+        logNameSuffix = INSERTION_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case SETTLE:
+        logNameSuffix = SETTLE_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      default:
+        break;
+    }
+    return logNameSuffix;
   }
 
   /**

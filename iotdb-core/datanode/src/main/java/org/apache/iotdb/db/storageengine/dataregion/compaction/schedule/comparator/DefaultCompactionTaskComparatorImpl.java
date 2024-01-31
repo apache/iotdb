@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.compara
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
@@ -38,12 +37,11 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
   @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (o1.getCompactionTaskPriorityType() == CompactionTaskPriorityType.SETTLE
-        && o2.getCompactionTaskPriorityType() == CompactionTaskPriorityType.SETTLE) {
-      return compareTaskWithSettlePriority(o1, o2);
-    } else if (o1.getCompactionTaskPriorityType() == CompactionTaskPriorityType.SETTLE) {
+    if (o1 instanceof SettleCompactionTask && o2 instanceof SettleCompactionTask) {
+      return compareSettleCompactionTask((SettleCompactionTask) o1, (SettleCompactionTask) o2);
+    } else if (o1 instanceof SettleCompactionTask) {
       return -1;
-    } else if (o2.getCompactionTaskPriorityType() == CompactionTaskPriorityType.SETTLE) {
+    } else if (o2 instanceof SettleCompactionTask) {
       return 1;
     }
 
@@ -157,49 +155,6 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     return o2.getSelectedUnsequenceFiles().size() - o1.getSelectedUnsequenceFiles().size();
   }
 
-  public int compareTaskWithSettlePriority(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (o1 instanceof SettleCompactionTask && o2 instanceof SettleCompactionTask) {
-      return compareSettleCompactionTask((SettleCompactionTask) o1, (SettleCompactionTask) o2);
-    } else if (o1 instanceof InnerSpaceCompactionTask && o2 instanceof InnerSpaceCompactionTask) {
-      // we prefer the task with larger mods file
-      long modsFileSizeOfo1 = ((InnerSpaceCompactionTask) o1).getTotalModsFileSize();
-      long modsFileSizeOfo2 = ((InnerSpaceCompactionTask) o2).getTotalModsFileSize();
-      if (modsFileSizeOfo1 != modsFileSizeOfo2) {
-        return modsFileSizeOfo1 > modsFileSizeOfo2 ? -1 : 1;
-      }
-
-      // we prefer the task with more partial_deleted files
-      int sourceFileNumOfo1 =
-          ((InnerSpaceCompactionTask) o1).getSelectedTsFileResourceList().size();
-      int sourceFileNumOfo2 =
-          ((InnerSpaceCompactionTask) o2).getSelectedTsFileResourceList().size();
-      if (sourceFileNumOfo1 != sourceFileNumOfo2) {
-        return sourceFileNumOfo1 > sourceFileNumOfo2 ? -1 : 1;
-      }
-
-      // we prefer the task with larger partial_deleted files
-      long sourceFileSizeOfo1 = ((InnerSpaceCompactionTask) o1).getSelectedFileSize();
-      long sourceFileSizeOfo2 = ((InnerSpaceCompactionTask) o2).getSelectedFileSize();
-      if (sourceFileSizeOfo1 != sourceFileNumOfo2) {
-        return sourceFileSizeOfo1 > sourceFileSizeOfo2 ? -1 : 1;
-      }
-
-      // we prefer task with smaller serial id
-      if (o1.getSerialId() != o2.getSerialId()) {
-        return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
-      }
-    } else {
-      // we prefer task with all_deleted files, otherwise, we prefer task with continuous
-      // partial_deleted files
-      if (o1 instanceof SettleCompactionTask) {
-        return ((SettleCompactionTask) o1).getAllDeletedFiles().size() > 0 ? -1 : 1;
-      } else {
-        return ((SettleCompactionTask) o2).getAllDeletedFiles().size() > 0 ? 1 : -1;
-      }
-    }
-    return 0;
-  }
-
   public int compareSettleCompactionTask(SettleCompactionTask o1, SettleCompactionTask o2) {
     // we prefer the task with more all_deleted files
     if (o1.getAllDeletedFiles().size() != o2.getAllDeletedFiles().size()) {
@@ -210,8 +165,8 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
       return o1.getAllDeletedFileSize() > o2.getAllDeletedFileSize() ? -1 : 1;
     }
     // we prefer the task with more partial_deleted files
-    if (o1.getPartialDeletedFiles().size() != o2.getPartialDeletedFiles().size()) {
-      return o1.getPartialDeletedFiles().size() > o2.getAllDeletedFiles().size() ? -1 : 1;
+    if (o1.getTotalPartialDeletedFilesNum() != o2.getTotalPartialDeletedFilesNum()) {
+      return o1.getTotalPartialDeletedFilesNum() > o2.getTotalPartialDeletedFilesNum() ? -1 : 1;
     }
     // we prefer the task with larger partial_deleted files
     if (o1.getPartialDeletedFileSize() != o2.getPartialDeletedFileSize()) {

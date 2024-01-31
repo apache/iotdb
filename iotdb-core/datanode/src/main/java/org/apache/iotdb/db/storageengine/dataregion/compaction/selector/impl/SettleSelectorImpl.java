@@ -7,10 +7,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
@@ -74,58 +71,52 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   static class PartialDirtyResource {
-    List<TsFileResource> resourcesForSettleTask = new ArrayList<>();
-    List<List<TsFileResource>> resourcesForInnerTasks = new ArrayList<>();
+    List<List<TsFileResource>> resourceGroupList = new ArrayList<>();
 
-    List<TsFileResource> tmpResources = new ArrayList<>();
-    long totalTmpFileSize = 0;
-    long totalSettleFileSize = 0;
+    List<TsFileResource> resources = new ArrayList<>();
+    long resourcesFileSize = 0;
+
+    long totalFileSize = 0;
+    long totalFileNum = 0;
 
     public void add(TsFileResource resource, long dirtyDataSize) {
-      tmpResources.add(resource);
-      totalTmpFileSize += resource.getTsFileSize();
-      totalTmpFileSize -= dirtyDataSize;
-      if (tmpResources.size() >= config.getFileLimitPerInnerTask()
-          || totalTmpFileSize >= config.getTargetCompactionFileSize()) {
+      resources.add(resource);
+      resourcesFileSize += resource.getTsFileSize();
+      resourcesFileSize -= dirtyDataSize;
+      totalFileSize += resource.getTsFileSize();
+      totalFileSize -= dirtyDataSize;
+      totalFileNum++;
+      if (resources.size() >= config.getFileLimitPerInnerTask()
+          || resourcesFileSize >= config.getTargetCompactionFileSize()) {
         submitTmpResources();
       }
     }
 
     public void submitTmpResources() {
-      if (tmpResources.isEmpty()) {
+      if (resources.isEmpty()) {
         return;
       }
-      if (tmpResources.size() == 1) {
-        resourcesForSettleTask.add(tmpResources.get(0));
-        totalSettleFileSize += tmpResources.get(0).getTsFileSize();
-        tmpResources.clear();
-      } else {
-        resourcesForInnerTasks.add(tmpResources);
-        tmpResources = new ArrayList<>();
-      }
-      totalTmpFileSize = 0;
+      resourceGroupList.add(resources);
+      resources = new ArrayList<>();
+      resourcesFileSize = 0;
     }
 
-    public List<TsFileResource> getResourcesForSettleTask() {
-      return resourcesForSettleTask;
+    public List<List<TsFileResource>> getResourceGroupList() {
+      return resourceGroupList;
     }
 
-    public List<List<TsFileResource>> getResourcesForInnerTasks() {
-      return resourcesForInnerTasks;
-    }
-
-    public boolean hasSettleResourceReachedThreshold() {
-      return resourcesForSettleTask.size() >= config.getFileLimitPerInnerTask()
-          || totalSettleFileSize >= config.getTargetCompactionFileSize();
+    public boolean checkHasReachedThreshold() {
+      return totalFileSize >= config.getFileLimitPerInnerTask()
+          || totalFileSize >= config.getTargetCompactionFileSize();
     }
   }
 
   @Override
-  public List<AbstractCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
+  public List<SettleCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
     return selectTasks(tsFileResources);
   }
 
-  private List<AbstractCompactionTask> selectTasks(List<TsFileResource> resources) {
+  private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
     AllDirtyResource allDirtyResource = new AllDirtyResource();
     PartialDirtyResource partialDirtyResource = new PartialDirtyResource();
     try {
@@ -161,9 +152,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         // Non-heavy selection are triggered more frequently. In order to avoid selecting too many
         // files containing mods for compaction when the disk is insufficient, the number and size
         // of files are limited here.
-        if (!heavySelect
-            && (!partialDirtyResource.getResourcesForInnerTasks().isEmpty()
-                || partialDirtyResource.hasSettleResourceReachedThreshold())) {
+        if (!heavySelect && !partialDirtyResource.getResourceGroupList().isEmpty()) {
           break;
         }
       }
@@ -267,38 +256,16 @@ public class SettleSelectorImpl implements ISettleSelector {
     return false;
   }
 
-  private List<AbstractCompactionTask> createTask(
+  private List<SettleCompactionTask> createTask(
       AllDirtyResource allDirtyResource, PartialDirtyResource partialDirtyResource) {
-    List<AbstractCompactionTask> tasks = new ArrayList<>();
-    // create settle compaction task
-    if (!allDirtyResource.getResources().isEmpty()
-        || !partialDirtyResource.getResourcesForSettleTask().isEmpty()) {
-      tasks.add(
-          new SettleCompactionTask(
-              timePartition,
-              tsFileManager,
-              allDirtyResource.getResources(),
-              partialDirtyResource.getResourcesForSettleTask(),
-              new FastCompactionPerformer(false),
-              tsFileManager.getNextCompactionTaskId()));
-    }
-
-    // create inner compaction task
-    for (List<TsFileResource> tsFileResources : partialDirtyResource.getResourcesForInnerTasks()) {
-      if (tsFileResources.isEmpty()) {
-        continue;
-      }
-      tasks.add(
-          new InnerSpaceCompactionTask(
-              timePartition,
-              tsFileManager,
-              tsFileResources,
-              tsFileResources.get(0).isSeq(),
-              new FastCompactionPerformer(false),
-              tsFileManager.getNextCompactionTaskId(),
-              CompactionTaskPriorityType.SETTLE));
-    }
-    return tasks;
+    return Collections.singletonList(
+        new SettleCompactionTask(
+            timePartition,
+            tsFileManager,
+            allDirtyResource.getResources(),
+            partialDirtyResource.getResourceGroupList(),
+            new FastCompactionPerformer(false),
+            tsFileManager.getNextCompactionTaskId()));
   }
 
   enum DirtyStatus {

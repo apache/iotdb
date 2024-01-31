@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -33,7 +32,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -287,29 +285,29 @@ public class TsFileNameGenerator {
     }
     // set target resource to COMPACTING until the end of this task
     return sequence
-            ? new TsFileResource(
+        ? new TsFileResource(
             new File(
-                    tsFileResources.get(0).getTsFile().getParent(),
-                    minTime
-                            + FILE_NAME_SEPARATOR
-                            + minVersion
-                            + FILE_NAME_SEPARATOR
-                            + (maxInnerMergeCount + 1)
-                            + FILE_NAME_SEPARATOR
-                            + maxCrossMergeCount
-                            + IoTDBConstant.SETTLE_SUFFIX),
+                tsFileResources.get(0).getTsFile().getParent(),
+                minTime
+                    + FILE_NAME_SEPARATOR
+                    + minVersion
+                    + FILE_NAME_SEPARATOR
+                    + (maxInnerMergeCount + 1)
+                    + FILE_NAME_SEPARATOR
+                    + maxCrossMergeCount
+                    + IoTDBConstant.SETTLE_SUFFIX),
             TsFileResourceStatus.COMPACTING)
-            : new TsFileResource(
+        : new TsFileResource(
             new File(
-                    tsFileResources.get(0).getTsFile().getParent(),
-                    maxTime
-                            + FILE_NAME_SEPARATOR
-                            + maxVersion
-                            + FILE_NAME_SEPARATOR
-                            + (maxInnerMergeCount + 1)
-                            + FILE_NAME_SEPARATOR
-                            + maxCrossMergeCount
-                            + IoTDBConstant.SETTLE_SUFFIX),
+                tsFileResources.get(0).getTsFile().getParent(),
+                maxTime
+                    + FILE_NAME_SEPARATOR
+                    + maxVersion
+                    + FILE_NAME_SEPARATOR
+                    + (maxInnerMergeCount + 1)
+                    + FILE_NAME_SEPARATOR
+                    + maxCrossMergeCount
+                    + IoTDBConstant.SETTLE_SUFFIX),
             TsFileResourceStatus.COMPACTING);
   }
 
