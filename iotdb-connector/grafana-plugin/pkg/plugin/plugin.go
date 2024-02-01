@@ -292,13 +292,20 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	// create data frame response.
 	frame := data.NewFrame("response")
 	for i := 0; i < len(queryDataResp.Expressions); i++ {
-		if queryDataResp.Timestamps == nil || len(queryDataResp.Timestamps) == 0 {
-			times := make([]time.Time, 1)
-			tmp := make([]float64, 1)
-			frame.Fields = append(frame.Fields,
-				data.NewField("time", nil, times),
-				data.NewField(queryDataResp.Expressions[i], nil, tmp),
-			)
+		if queryDataResp.Timestamps == nil || len(queryDataResp.Timestamps) == 0 || (len(queryDataResp.Timestamps) == 1 && queryDataResp.Timestamps[0] == 0) {
+			if len(queryDataResp.Values) > 0 {
+				values := recoverType(queryDataResp.Values[i])
+				frame.Fields = append(frame.Fields,
+					data.NewField(queryDataResp.Expressions[i], nil, values),
+				)
+			} else {
+				times := make([]time.Time, 1)
+				tmp := make([]float64, 1)
+				frame.Fields = append(frame.Fields,
+					data.NewField("time", nil, times),
+					data.NewField(queryDataResp.Expressions[i], nil, tmp),
+				)
+			}
 			continue
 		}
 		times := make([]time.Time, len(queryDataResp.Timestamps))
