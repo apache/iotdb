@@ -81,7 +81,6 @@ import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -1021,10 +1020,6 @@ public class ProcedureManager {
 
   public IProcedureStore getStore() {
     return store;
-  }
-
-  public void setStore(ProcedureStore store) {
-    this.store = store;
   }
 
   public ConfigNodeProcedureEnv getEnv() {
