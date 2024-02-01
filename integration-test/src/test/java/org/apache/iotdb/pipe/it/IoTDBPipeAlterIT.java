@@ -228,7 +228,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
 
     // clear data on receiver
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv, Collections.singletonList("delete from root.**"))) {
+        receiverEnv, Collections.singletonList("delete from root.**"))) {
       fail();
     }
 
@@ -245,9 +245,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     expectedResSet.add("4000,6.0,");
     expectedResSet.add("6000,10.0,");
     TestUtils.assertDataOnEnv(
-        receiverEnv,
-        "select count(*) from root.**",
-        "count(root.db.d1.at1),",
-        Collections.singleton("5,"));
+        receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
   }
 }
