@@ -873,18 +873,25 @@ public class TryFinalPruneBOSTest {
 
                                     int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
-                                    int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                                    int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
+                                    int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
+                                    int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+//                                int unique_s = 0;
+//                                int unique_e = cur_group_gamma.unique_number;
+//                                if (cur_group_gamma.unique_number>=1);
+                                    int unique_s = cur_group_gamma.invert[x_u_i_start];
+                                    int unique_e = cur_group_gamma.invert[x_u_i_end];
+//                                }
 
 
-                                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+
+                                    for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-                                        if(x_u_i < x_u_i_start){
-                                            continue;
-                                        }
-                                        if(x_u_i > x_u_i_end){
-                                            break;
-                                        }
+//                                        if(x_u_i < x_u_i_start){
+//                                            continue;
+//                                        }
+//                                        if(x_u_i > x_u_i_end){
+//                                            break;
+//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -915,18 +922,25 @@ public class TryFinalPruneBOSTest {
 
                                     int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
-                                    int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                                    int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
+                                    int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
+                                    int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+//                                int unique_s = 0;
+//                                int unique_e = cur_group_gamma.unique_number;
+//                                if (cur_group_gamma.unique_number>=1);
+                                    int unique_s = cur_group_gamma.invert[x_u_i_start];
+                                    int unique_e = cur_group_gamma.invert[x_u_i_end];
+//                                }
 
 
-                                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+
+                                    for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-                                        if(x_u_i < x_u_i_start){
-                                            continue;
-                                        }
-                                        if(x_u_i > x_u_i_end){
-                                            break;
-                                        }
+//                                        if(x_u_i < x_u_i_start){
+//                                            continue;
+//                                        }
+//                                        if(x_u_i > x_u_i_end){
+//                                            break;
+//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -957,18 +971,25 @@ public class TryFinalPruneBOSTest {
 
                                     int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
-                                    int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                                    int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
+                                    int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
+                                    int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+//                                int unique_s = 0;
+//                                int unique_e = cur_group_gamma.unique_number;
+//                                if (cur_group_gamma.unique_number>=1);
+                                    int unique_s = cur_group_gamma.invert[x_u_i_start];
+                                    int unique_e = cur_group_gamma.invert[x_u_i_end];
+//                                }
 
 
-                                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+
+                                    for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-                                        if(x_u_i < x_u_i_start){
-                                            continue;
-                                        }
-                                        if(x_u_i > x_u_i_end){
-                                            break;
-                                        }
+//                                        if(x_u_i < x_u_i_start){
+//                                            continue;
+//                                        }
+//                                        if(x_u_i > x_u_i_end){
+//                                            break;
+//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -996,18 +1017,25 @@ public class TryFinalPruneBOSTest {
 
                                 int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
-                                int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                                int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
+                                int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
+                                int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+//                                int unique_s = 0;
+//                                int unique_e = cur_group_gamma.unique_number;
+//                                if (cur_group_gamma.unique_number>=1);
+                                int unique_s = cur_group_gamma.invert[x_u_i_start];
+                                int unique_e = cur_group_gamma.invert[x_u_i_end];
+//                                }
 
 
-                                for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+
+                                for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-                                    if(x_u_i < x_u_i_start){
-                                        continue;
-                                    }
-                                    if(x_u_i > x_u_i_end){
-                                        break;
-                                    }
+//                                        if(x_u_i < x_u_i_start){
+//                                            continue;
+//                                        }
+//                                        if(x_u_i > x_u_i_end){
+//                                            break;
+//                                        }
                                     cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                     cur_bits = 0;
