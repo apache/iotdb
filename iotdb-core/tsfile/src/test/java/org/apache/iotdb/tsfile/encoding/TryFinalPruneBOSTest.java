@@ -1699,7 +1699,8 @@ public class TryFinalPruneBOSTest {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_prune";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1713,7 +1714,7 @@ public class TryFinalPruneBOSTest {
         dataset_name.add("TY-Fuel");
         dataset_name.add("Cyber-Vehicle");
         dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
+//        dataset_name.add("Nifty-Stocks");
         dataset_name.add("TH-Climate");
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
@@ -1736,7 +1737,7 @@ public class TryFinalPruneBOSTest {
 
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
 
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
 
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
 

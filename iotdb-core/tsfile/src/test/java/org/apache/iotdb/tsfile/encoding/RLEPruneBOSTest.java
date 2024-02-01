@@ -1609,7 +1609,7 @@ public class RLEPruneBOSTest {
 
         int repeatTime2 = 100;
 //        for (int file_i = 8; file_i < 9; file_i++) {
-
+//
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);

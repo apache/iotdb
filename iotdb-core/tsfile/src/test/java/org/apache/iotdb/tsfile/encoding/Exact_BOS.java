@@ -938,9 +938,9 @@ public class Exact_BOS {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 8; file_i < 9; file_i++) {
+//
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1031,7 +1031,8 @@ public class Exact_BOS {
 
     @Test
     public void BOSVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1045,7 +1046,7 @@ public class Exact_BOS {
         dataset_name.add("TY-Fuel");
         dataset_name.add("Cyber-Vehicle");
         dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
+//        dataset_name.add("Nifty-Stocks");
         dataset_name.add("TH-Climate");
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
@@ -1076,7 +1077,7 @@ public class Exact_BOS {
 
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
-        int repeatTime2 = 500;
+        int repeatTime2 = 100;
 //        for (int file_i = 9; file_i < 10; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
