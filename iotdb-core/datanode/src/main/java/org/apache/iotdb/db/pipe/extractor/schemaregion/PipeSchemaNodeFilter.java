@@ -44,8 +44,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
 
 /**
- * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
- * collect.
+ * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help {@link
+ * SchemaNodeListeningQueue} and pipe to collect.
  */
 public class PipeSchemaNodeFilter {
 
@@ -59,9 +59,6 @@ public class PipeSchemaNodeFilter {
       NODE_MAP.put(
           new PartialPath("schema.timeseries.view.alter"),
           Collections.singletonList(PlanNodeType.ALTER_LOGICAL_VIEW));
-      NODE_MAP.put(
-          new PartialPath("schema.timeseries.view.drop"),
-          Collections.singletonList(PlanNodeType.DELETE_LOGICAL_VIEW));
 
       NODE_MAP.put(
           new PartialPath("schema.timeseries.ordinary.create"),
@@ -75,9 +72,6 @@ public class PipeSchemaNodeFilter {
       NODE_MAP.put(
           new PartialPath("schema.timeseries.ordinary.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
-      NODE_MAP.put(
-          new PartialPath("schema.timeseries.ordinary.delete"),
-          Collections.singletonList(PlanNodeType.DELETE_TIMESERIES));
 
       NODE_MAP.put(
           new PartialPath("schema.timeseries.template.activate"),
@@ -86,9 +80,6 @@ public class PipeSchemaNodeFilter {
                   PlanNodeType.ACTIVATE_TEMPLATE,
                   PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
                   PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE)));
-      NODE_MAP.put(
-          new PartialPath("schema.timeseries.template.deactivate"),
-          Collections.singletonList(PlanNodeType.DEACTIVATE_TEMPLATE_NODE));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
     }

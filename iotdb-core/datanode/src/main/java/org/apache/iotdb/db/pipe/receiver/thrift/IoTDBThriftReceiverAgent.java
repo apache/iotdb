@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.thrift;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
 public class IoTDBThriftReceiverAgent extends IoTDBReceiverAgent {

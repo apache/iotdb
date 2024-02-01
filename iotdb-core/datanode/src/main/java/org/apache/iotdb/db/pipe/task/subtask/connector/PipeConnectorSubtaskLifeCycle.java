@@ -35,7 +35,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;
-  private int aliveTaskCount;
+  private int registeredTaskCount;
 
   public PipeConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor,
@@ -46,7 +46,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     this.pendingQueue = pendingQueue;
 
     runningTaskCount = 0;
-    aliveTaskCount = 0;
+    registeredTaskCount = 0;
   }
 
   public PipeConnectorSubtask getSubtask() {
@@ -58,46 +58,46 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   }
 
   public synchronized void register() {
-    if (aliveTaskCount < 0) {
-      throw new IllegalStateException("aliveTaskCount < 0");
+    if (registeredTaskCount < 0) {
+      throw new IllegalStateException("registeredTaskCount < 0");
     }
 
-    if (aliveTaskCount == 0) {
+    if (registeredTaskCount == 0) {
       executor.register(subtask);
       runningTaskCount = 0;
     }
 
-    aliveTaskCount++;
+    registeredTaskCount++;
     LOGGER.info(
-        "Register subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
         subtask,
         runningTaskCount,
-        aliveTaskCount);
+        registeredTaskCount);
   }
 
   /**
-   * Deregister the {@link PipeConnectorSubtask}. If the subtask is the last one, close the {@link
-   * PipeConnectorSubtask}.
+   * Deregister the {@link PipeConnectorSubtask}. If the {@link PipeConnectorSubtask} is the last
+   * one, close the {@link PipeConnectorSubtask}.
    *
    * <p>Note that this method should be called after the {@link PipeConnectorSubtask} is stopped.
    * Otherwise, the {@link PipeConnectorSubtaskLifeCycle#runningTaskCount} might be inconsistent
-   * with the {@link PipeConnectorSubtaskLifeCycle#aliveTaskCount} because of parallel connector
-   * scheduling.
+   * with the {@link PipeConnectorSubtaskLifeCycle#registeredTaskCount} because of parallel
+   * connector scheduling.
    *
    * @param pipeNameToDeregister pipe name
    * @return {@code true} if the {@link PipeConnectorSubtask} is out of life cycle, indicating that
    *     the {@link PipeConnectorSubtask} should never be used again
-   * @throws IllegalStateException if {@link PipeConnectorSubtaskLifeCycle#aliveTaskCount} <= 0
+   * @throws IllegalStateException if {@link PipeConnectorSubtaskLifeCycle#registeredTaskCount} <= 0
    */
   public synchronized boolean deregister(String pipeNameToDeregister) {
-    if (aliveTaskCount <= 0) {
-      throw new IllegalStateException("aliveTaskCount <= 0");
+    if (registeredTaskCount <= 0) {
+      throw new IllegalStateException("registeredTaskCount <= 0");
     }
 
     subtask.discardEventsOfPipe(pipeNameToDeregister);
 
     try {
-      if (aliveTaskCount > 1) {
+      if (registeredTaskCount > 1) {
         return false;
       }
 
@@ -105,12 +105,12 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
       // This subtask is out of life cycle, should never be used again
       return true;
     } finally {
-      aliveTaskCount--;
+      registeredTaskCount--;
       LOGGER.info(
-          "Deregister subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+          "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
           subtask,
           runningTaskCount,
-          aliveTaskCount);
+          registeredTaskCount);
     }
   }
 
@@ -125,10 +125,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount++;
     LOGGER.info(
-        "Start subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
         subtask,
         runningTaskCount,
-        aliveTaskCount);
+        registeredTaskCount);
   }
 
   public synchronized void stop() {
@@ -142,10 +142,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount--;
     LOGGER.info(
-        "Stop subtask {}. runningTaskCount: {}, aliveTaskCount: {}",
+        "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
         subtask,
         runningTaskCount,
-        aliveTaskCount);
+        registeredTaskCount);
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
@@ -134,17 +135,15 @@ public class PipeInsertionDataNodeListener {
   }
 
   public void listenToHeartbeat(boolean shouldPrintMessage) {
-    if (listenToInsertNodeExtractorCount.get() == 0 && listenToTsFileExtractorCount.get() == 0) {
-      return;
-    }
-
-    if (shouldPrintMessage) {
-      System.out.println(dataRegionId2Assigner);
-    }
     dataRegionId2Assigner.forEach(
         (key, value) ->
             value.publishToAssign(
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
+  }
+
+  public void listenToDeleteData(DeleteDataNode node) {
+    dataRegionId2Assigner.forEach(
+        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

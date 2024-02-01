@@ -188,6 +188,10 @@ public abstract class EnrichedEvent implements Event {
     return pipeName;
   }
 
+  public final PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
+
   /**
    * Get the {@link EnrichedEvent#pattern} of this {@link EnrichedEvent}.
    *
@@ -227,10 +231,6 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
-
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
 
   public abstract boolean isGeneratedByPipe();
 

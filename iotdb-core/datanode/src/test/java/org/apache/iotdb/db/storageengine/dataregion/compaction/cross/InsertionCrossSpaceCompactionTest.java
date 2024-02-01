@@ -66,15 +66,15 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     enableInsertionCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(true);
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableInsertionCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
+        .setEnableCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
     super.tearDown();
   }
 

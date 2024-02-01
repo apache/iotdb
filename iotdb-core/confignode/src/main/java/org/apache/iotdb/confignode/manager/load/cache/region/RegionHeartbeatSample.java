@@ -49,7 +49,7 @@ public class RegionHeartbeatSample {
   }
 
   public static RegionHeartbeatSample generateDefaultSample(RegionStatus status) {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     return new RegionHeartbeatSample(currentTime, currentTime, status);
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -82,7 +83,10 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
@@ -104,7 +108,10 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(event);
+        outputPipeConnector.transfer(
+            event instanceof UserDefinedEnrichedEvent
+                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                : event);
       }
 
       releaseLastEvent(true);
@@ -198,19 +205,19 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
     return connectorIndex;
   }
 
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return inputPendingQueue.getTsFileInsertionEventCount();
   }
 
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return inputPendingQueue.getTabletInsertionEventCount();
   }
 
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 
-  public Integer getAsyncConnectorRetryEventQueueSize() {
+  public int getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBThriftAsyncConnector
         ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;

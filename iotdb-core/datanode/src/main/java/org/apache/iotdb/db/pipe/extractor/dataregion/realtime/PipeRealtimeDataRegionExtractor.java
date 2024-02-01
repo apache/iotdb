@@ -20,13 +20,17 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -86,6 +90,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
+  protected boolean extractData;
+
+  protected boolean extractDeletion;
+
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -131,6 +139,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       throws Exception {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+
+    Pair<Boolean, Boolean> needExtractPair =
+        PipeDataRegionFilter.getDataRegionListenPair(parameters);
+    extractData = needExtractPair.getLeft();
+    extractDeletion = needExtractPair.getRight();
 
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
@@ -266,6 +279,103 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public abstract boolean isNeedListenToTsFile();
 
   public abstract boolean isNeedListenToInsertNode();
+
+  protected void extractHeartbeat(PipeRealtimeEvent event) {
+    // Bind extractor so that the heartbeat event can later inform the extractor of queue size
+    ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
+
+    // Record the pending queue size before trying to put heartbeatEvent into queue
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+      // If the last event in the pending queue is a heartbeat event, we should not extract any more
+      // heartbeat events to avoid OOM when the pipe is stopped.
+      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+      return;
+    }
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+    }
+  }
+
+  protected void extractDeleteData(PipeRealtimeEvent event) {
+    if (!pendingQueue.waitedOffer(event)) {
+      // This would not happen, but just in case.
+      // Pending is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of %s %s " + "has reached capacity, discard TsFile event %s",
+              this.getClass().getSimpleName(), this, event);
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // Ignore the event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+    }
+  }
+
+  protected Event supplyHeartbeat(PipeRealtimeEvent event) {
+    if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
+      return event.getEvent();
+    } else {
+      // this would not happen, but just in case.
+      LOGGER.error(
+          "Heartbeat Event {} can not be supplied because "
+              + "the reference count can not be increased",
+          event.getEvent());
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
+      // progress.
+
+      return null;
+    }
+  }
+
+  protected Event supplyDeleteData(PipeRealtimeEvent event) {
+    if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
+      return event.getEvent();
+    } else {
+      // if the event's reference count can not be increased, it means the data represented by
+      // this event is not reliable anymore. the data has been lost. we simply discard this
+      // event
+      // and report the exception to PipeRuntimeAgent.
+      final String errorMessage =
+          String.format(
+              "TsFile Event %s can not be supplied because "
+                  + "the reference count can not be increased, "
+                  + "the data represented by this event is lost",
+              event.getEvent());
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+      return null;
+    }
+  }
+
+  public final boolean isExtractData() {
+    return extractData;
+  }
+
+  public final boolean isExtractDeletion() {
+    return extractDeletion;
+  }
 
   public final String getPattern() {
     return pattern;

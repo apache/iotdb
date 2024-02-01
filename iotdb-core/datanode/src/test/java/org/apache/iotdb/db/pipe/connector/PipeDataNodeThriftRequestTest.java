@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
@@ -115,8 +115,8 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaPlanReq() {
-    PipeTransferSchemaPlanReq req =
-        PipeTransferSchemaPlanReq.toTPipeTransferReq(
+    PipeTransferPlanNodeReq req =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(
             new CreateAlignedTimeSeriesNode(
                 new PlanNodeId(""),
                 new PartialPath(new String[] {"root", "sg", "d"}),
@@ -128,7 +128,7 @@ public class PipeDataNodeThriftRequestTest {
                 null,
                 null));
 
-    PipeTransferSchemaPlanReq deserializeReq = PipeTransferSchemaPlanReq.fromTPipeTransferReq(req);
+    PipeTransferPlanNodeReq deserializeReq = PipeTransferPlanNodeReq.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());

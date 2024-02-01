@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -113,29 +115,44 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
-      if (currentFile.getStatus() != TsFileResourceStatus.NORMAL) {
+      if (cannotSelectCurrentFileToNormalCompaction(currentFile)) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
       }
-      LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
-      selectedFileList.add(currentFile);
-      selectedFileSize += currentFile.getTsFileSize();
-      LOGGER.debug(
-          "Add tsfile {}, current select file num is {}, size is {}",
-          currentFile,
-          selectedFileList.size(),
-          selectedFileSize);
-      // if the file size or file num reach threshold
-      if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
-        // submit the task
+
+      long totalSizeIfSelectCurrentFile = selectedFileSize + currentFile.getTsFileSize();
+      boolean canNotAddCurrentFileIntoCurrentTask =
+          totalSizeIfSelectCurrentFile > targetCompactionFileSize
+              || selectedFileList.size() >= config.getFileLimitPerInnerTask();
+      if (canNotAddCurrentFileIntoCurrentTask) {
+        // total file size or num will beyond the threshold if select current file, stop the
+        // selection of current task
         if (selectedFileList.size() > 1) {
+          // submit the task
           taskList.add(new ArrayList<>(selectedFileList));
         }
+        // add current file in a new selected file list
         selectedFileList = new ArrayList<>();
-        selectedFileSize = 0L;
+        selectedFileList.add(currentFile);
+        selectedFileSize = currentFile.getTsFileSize();
+      } else {
+        LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
+        selectedFileList.add(currentFile);
+        selectedFileSize += currentFile.getTsFileSize();
+        LOGGER.debug(
+            "Add tsfile {}, current select file num is {}, size is {}",
+            currentFile,
+            selectedFileList.size(),
+            selectedFileSize);
       }
+    }
+
+    // if the selected file size reach the condition to submit
+    if (selectedFileList.size() == config.getFileLimitPerInnerTask()) {
+      taskList.add(new ArrayList<>(selectedFileList));
+      selectedFileList.clear();
+      selectedFileSize = 0;
     }
 
     // if next time partition exists
@@ -144,6 +161,12 @@ public class SizeTieredCompactionSelector
       taskList.add(new ArrayList<>(selectedFileList));
     }
     return taskList;
+  }
+
+  private boolean cannotSelectCurrentFileToNormalCompaction(TsFileResource resource) {
+    return resource.getStatus() != TsFileResourceStatus.NORMAL
+        || resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR
+        || resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR;
   }
 
   /**
@@ -161,12 +184,17 @@ public class SizeTieredCompactionSelector
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     this.tsFileResources = tsFileResources;
     try {
-      // 1. preferentially select compaction task based on mod file
-      List<InnerSpaceCompactionTask> taskList = selectTaskBaseOnModFile();
+      // 1. select compaction task based on file which need to repair
+      List<InnerSpaceCompactionTask> taskList = selectFileNeedToRepair();
       if (!taskList.isEmpty()) {
         return taskList;
       }
-      // 2. if a suitable compaction task is not selected in the first step, select the compaction
+      // 2. preferentially select compaction task based on mod file
+      taskList = selectTaskBaseOnModFile();
+      if (!taskList.isEmpty()) {
+        return taskList;
+      }
+      // 3. if a suitable compaction task is not selected in the first step, select the compaction
       // task at the tsFile level
       return selectTaskBaseOnLevel();
     } catch (Exception e) {
@@ -186,6 +214,23 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
+  private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
+    List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (resource.getStatus() == TsFileResourceStatus.NORMAL
+          && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
+        taskList.add(
+            new RepairUnsortedFileCompactionTask(
+                timePartition,
+                tsFileManager,
+                resource,
+                sequence,
+                tsFileManager.getNextCompactionTaskId()));
+      }
+    }
+    return taskList;
+  }
+
   private List<InnerSpaceCompactionTask> selectTaskBaseOnModFile() {
     List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
@@ -193,7 +238,7 @@ public class SizeTieredCompactionSelector
       if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
-      if (tsFileResource.getStatus() != TsFileResourceStatus.NORMAL) {
+      if (cannotSelectCurrentFileToNormalCompaction(tsFileResource)) {
         continue;
       }
       if (modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()

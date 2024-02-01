@@ -122,7 +122,7 @@ public class HeartbeatService {
   private TDataNodeHeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
-    heartbeatReq.setHeartbeatTimestamp(System.currentTimeMillis());
+    heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
@@ -152,7 +152,7 @@ public class HeartbeatService {
 
   private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
-    req.setTimestamp(System.currentTimeMillis());
+    req.setTimestamp(System.nanoTime());
     return req;
   }
 

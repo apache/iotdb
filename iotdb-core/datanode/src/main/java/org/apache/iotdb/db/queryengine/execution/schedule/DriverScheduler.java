@@ -257,7 +257,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           .getThrottleQuotaLimit()
           .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
         throw new MemoryNotEnoughException(
-            "There is not enough memory to execute current fragment instance");
+            "There is no enough memory to execute current fragment instance");
       }
     }
 
