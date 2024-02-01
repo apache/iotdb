@@ -908,8 +908,8 @@ public class RLEExactBOSTest {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -959,7 +959,7 @@ public class RLEExactBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 10;
+        int repeatTime2 = 100;
 //        for (int file_i = 0; file_i < 1; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
