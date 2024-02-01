@@ -371,7 +371,7 @@ public class IoTDBConfig {
   private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
-  private boolean metaDataCacheEnable = true;
+  private boolean metaDataCacheEnable = false;
 
   /** Memory allocated for timeSeriesMetaData cache in read process */
   private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 5;

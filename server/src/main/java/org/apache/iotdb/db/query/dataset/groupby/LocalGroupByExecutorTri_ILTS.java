@@ -382,6 +382,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
           int j;
           for (j = 0; j < count; j++) {
+            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
             long timestamp = pageReader.timeBuffer.getLong(j * 8);
             if (timestamp < localCurStartTime) {
               continue;
@@ -391,30 +392,37 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               ByteBuffer valueBuffer = pageReader.valueBuffer;
               double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
               double distance = IOMonitor2.calculateDistance(lt, lv, timestamp, v, rt, rv);
-              if (distance > maxDistance) {
-                maxDistance = distance;
+
+              // TODO 下面假装已经有凸包剪枝，先实验看看如果跳过一些点不用遍历有多少加速效果
+              if (CONFIG.isAcc_convex()) {
+                //                if (chunkSuit4Tri.chunkMetadata.getEndTime() < localCurEndTime) {
+                //                  chunkSuit4Tri.pageReader = null;
+                //                }
                 select_t = timestamp;
                 select_v = v;
+                break;
 
-                // TODO 下面假装已经有凸包剪枝，先实验看看如果跳过一些点不用遍历有多少加速效果
-                if (CONFIG.isAcc_convex()) {
-                  if (chunkSuit4Tri.chunkMetadata.getEndTime() < localCurEndTime) {
-                    chunkSuit4Tri.pageReader = null;
-                  }
-                  break;
+              } else {
+                if (distance > maxDistance) {
+                  // TODO 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
+                  //     从而acc_convex不会生效？！
+                  maxDistance = distance;
+                  select_t = timestamp;
+                  select_v = v;
                 }
               }
             }
           }
-          // clear for heap space
-          if (j >= count) {
-            // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-            // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
-            chunkSuit4Tri.pageReader = null;
-            // TODO 但是这样有可能导致下一轮迭代到这个桶的时候又要读一遍这个chunk
-            //  但是不这样做的话相当于一轮迭代之后几乎所有的点都加载到内存留着了
-            //  还要注意的是如果被rectangle提前剪枝掉了就不会走到这一步，也就是说那个chunk的pageReader可能还留着
-          }
+          //          // clear for heap space
+          //          if (j >= count) {
+          //            // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+          //            // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap
+          // space不够
+          //            chunkSuit4Tri.pageReader = null;
+          //            // TODO 但是这样有可能导致下一轮迭代到这个桶的时候又要读一遍这个chunk
+          //            //  但是不这样做的话相当于一轮迭代之后几乎所有的点都加载到内存留着了
+          //            //  还要注意的是如果被rectangle提前剪枝掉了就不会走到这一步，也就是说那个chunk的pageReader可能还留着
+          //          }
         }
 
         //        // 记录结果 // TODO debug

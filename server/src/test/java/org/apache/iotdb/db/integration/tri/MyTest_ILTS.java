@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
@@ -80,7 +81,7 @@ public class MyTest_ILTS {
     //    config.setNumIterations(4);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
-    config.setAcc_convex(true);
+    config.setAcc_convex(false);
     config.setAcc_iterRepeat(true);
 
     config.setEnableCPV(false);
@@ -163,7 +164,7 @@ public class MyTest_ILTS {
   @Test
   public void test1_3() {
     prepareData1();
-    config.setNumIterations(2);
+    config.setNumIterations(4);
     String res = "5.0[1],2.0[40],20.0[62],7.0[102],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -186,6 +187,7 @@ public class MyTest_ILTS {
           Assert.assertEquals(res, ans);
         }
       }
+      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

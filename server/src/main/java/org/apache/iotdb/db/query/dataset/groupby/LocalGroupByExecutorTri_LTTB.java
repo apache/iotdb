@@ -265,12 +265,12 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
             }
           }
         }
-        // clear for heap space
-        if (j >= count) {
-          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
-          chunkSuit4Tri.pageReader = null;
-        }
+        //        // clear for heap space
+        //        if (j >= count) {
+        //          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+        //          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
+        //          chunkSuit4Tri.pageReader = null;
+        //        }
       }
       // 记录结果
       series.append(select_v).append("[").append(select_t).append("]").append(",");
