@@ -41,18 +41,19 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  *       and the validation method {@link PipeSink#validate(PipeParameterValidator)} will be called
  *       to validate the parameters.
  *   <li>Before the collaboration task starts, the method {@link PipeSink#customize(PipeParameters,
- *       PipeSinkRuntimeConfiguration)} will be called to config the runtime behavior of the
+ *       PipeSinkRuntimeConfiguration)} will be called to configure the runtime behavior of the
  *       PipeSink and the method {@link PipeSink#handshake()} will be called to create a connection
  *       with sink.
  *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>{@link PipeSource} captures the events and wraps them into three types of {@link
- *             Event} instances.
- *         <li>{@link PipeProcessor} processes the event and then passes them to the {@link
+ *         <li>{@link PipeSource} captures the {@link Event}s and wraps them into three types of
+ *             {@link Event} instances.
+ *         <li>{@link PipeProcessor} processes the {@link Event} and then passes them to the {@link
  *             PipeSink}.
- *         <li>{@link PipeSink} serializes the events into binaries and send them to sinks. The
- *             following 3 methods will be called: {@link PipeSink#transfer(TabletInsertionEvent)},
- *             {@link PipeSink#transfer(TsFileInsertionEvent)} and {@link PipeSink#transfer(Event)}.
+ *         <li>{@link PipeSink} serializes the {@link Event}s into binaries and send them to sinks.
+ *             The following 3 methods will be called: {@link
+ *             PipeSink#transfer(TabletInsertionEvent)}, {@link
+ *             PipeSink#transfer(TsFileInsertionEvent)} and {@link PipeSink#transfer(Event)}.
  *       </ul>
  *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
  *       PipeSink#close() } method will be called.
@@ -70,7 +71,7 @@ public interface PipeSink extends PipeConnector {
    * PipeSink#customize(PipeParameters, PipeSinkRuntimeConfiguration)} is called.
    *
    * @param validator the validator used to validate {@link PipeParameters}
-   * @throws Exception if any parameter is not valid
+   * @throws Exception if any of {@link PipeParameters} is not valid
    */
   void validate(PipeParameterValidator validator) throws Exception;
 
@@ -86,7 +87,7 @@ public interface PipeSink extends PipeConnector {
    * <p>This method is called after the method {@link PipeSink#validate(PipeParameterValidator)} is
    * called and before the method {@link PipeSink#handshake()} is called.
    *
-   * @param parameters used to parse the input parameters entered by the user
+   * @param parameters used to parse the input {@link PipeParameters} entered by the user
    * @param configuration used to set the required properties of the running PipeSink
    * @throws Exception the user can throw errors if necessary
    */
@@ -140,7 +141,7 @@ public interface PipeSink extends PipeConnector {
   /**
    * This method is used to transfer the generic {@link Event}s, including HeartbeatEvent.
    *
-   * @param event Event to be transferred
+   * @param event {@link Event} to be transferred
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */

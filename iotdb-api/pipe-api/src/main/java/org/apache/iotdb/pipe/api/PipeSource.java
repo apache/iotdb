@@ -36,14 +36,14 @@ import org.apache.iotdb.pipe.api.event.Event;
  * <ul>
  *   <li>When a collaboration task is created, the KV pairs of `WITH EXTRACTOR` clause in SQL are
  *       parsed and the validation method {@link PipeSource#validate(PipeParameterValidator)} will
- *       be called to validate the parameters.
+ *       be called to validate the {@link PipeParameters}.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)} will be called to
- *       config the runtime behavior of the {@link PipeSource}.
+ *       configure the runtime behavior of the {@link PipeSource}.
  *   <li>Then the method {@link PipeSource#start()} will be called to start the {@link PipeSource}.
  *   <li>While the collaboration task is in progress, the method {@link PipeSource#supply()} will be
- *       called to capture events from sources and then the events will be passed to the
- *       PipeProcessor.
+ *       called to capture {@link Event}s from sources and then the {@link Event}s will be passed to
+ *       the {@link PipeProcessor}.
  *   <li>The method {@link PipeSource#close()} will be called when the collaboration task is
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
@@ -92,9 +92,9 @@ public interface PipeSource extends PipeExtractor {
    * Event} to the {@link PipeProcessor}. This method is called after {@link PipeSource#start()} is
    * called.
    *
-   * @return the {@link Event} to be supplied. the event may be {@code null} if the {@link
+   * @return the {@link Event} to be supplied. the {@link Event} may be {@code null} if the {@link
    *     PipeSource} has no more {@link Event}s at the moment, but the {@link PipeSource} is still
-   *     running for more events.
+   *     running for more {@link Event}s.
    * @throws Exception the user can throw errors if necessary
    */
   Event supply() throws Exception;
