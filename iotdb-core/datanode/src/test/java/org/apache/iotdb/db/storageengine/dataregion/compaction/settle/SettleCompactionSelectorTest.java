@@ -7,8 +7,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskPriorityType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
@@ -40,7 +38,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testSelectInnerTaskWithLightSelect()
+  public void testSelectContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
@@ -56,20 +54,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(false, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
-    List<AbstractCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof InnerSpaceCompactionTask);
-    Assert.assertTrue(unseqTasks.get(0) instanceof InnerSpaceCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        3, (((InnerSpaceCompactionTask) seqTasks.get(0)).getSelectedTsFileResourceList().size()));
-    Assert.assertEquals(
-        3, (((InnerSpaceCompactionTask) unseqTasks.get(0)).getSelectedTsFileResourceList().size()));
+    Assert.assertEquals(3, (seqTasks.get(0).getSelectedTsFileResourceList().size()));
+    Assert.assertEquals(3, (unseqTasks.get(0).getSelectedTsFileResourceList().size()));
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
@@ -84,16 +74,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof InnerSpaceCompactionTask);
-    Assert.assertTrue(unseqTasks.get(0) instanceof InnerSpaceCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        2, (((InnerSpaceCompactionTask) seqTasks.get(0)).getSelectedTsFileResourceList().size()));
-    Assert.assertEquals(
-        2, (((InnerSpaceCompactionTask) unseqTasks.get(0)).getSelectedTsFileResourceList().size()));
+    Assert.assertEquals(2, (seqTasks.get(0).getSelectedTsFileResourceList().size()));
+    Assert.assertEquals(2, (unseqTasks.get(0).getSelectedTsFileResourceList().size()));
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
@@ -111,7 +93,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testSelectSettleTaskWithLightSelect()
+  public void testSelectUnContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
@@ -131,16 +113,10 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(false, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
-    List<AbstractCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertTrue(unseqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
         3, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(0, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
@@ -159,12 +135,6 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertTrue(unseqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, unseqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
         2, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(0, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
@@ -189,7 +159,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testSelectInnerTaskBaseOnModsSizeWithHeavySelect()
+  public void testSelectContinuousFilesBaseOnModsSizeWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
@@ -205,17 +175,11 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
-    List<AbstractCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(2, seqTasks.size());
     Assert.assertEquals(2, unseqTasks.size());
     for (int i = 0; i < 2; i++) {
-      Assert.assertTrue(seqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertTrue(unseqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, seqTasks.get(i).getCompactionTaskPriorityType());
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, unseqTasks.get(i).getCompactionTaskPriorityType());
       if (i == 0) {
         Assert.assertEquals(
             3,
@@ -258,7 +222,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
   // base on dirty data rate
   @Test
-  public void testSelectInnerTaskBaseOnDirtyDataRateWithHeavySelect()
+  public void testSelectContinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
@@ -279,8 +243,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
-    List<AbstractCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(0, seqTasks.size());
     Assert.assertEquals(0, unseqTasks.size());
 
@@ -312,12 +276,6 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, unseqTasks.size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertTrue(seqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertTrue(unseqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, seqTasks.get(i).getCompactionTaskPriorityType());
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, unseqTasks.get(i).getCompactionTaskPriorityType());
       if (i == 0) {
         Assert.assertEquals(
             3,
@@ -360,7 +318,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
   // base on outdated too long
   @Test
-  public void testSelectInnerTaskBaseOnDirtyDataOutdatedTooLongWithHeavySelect()
+  public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
@@ -381,8 +339,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
-    List<AbstractCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(0, seqTasks.size());
     Assert.assertEquals(0, unseqTasks.size());
 
@@ -395,12 +353,6 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, unseqTasks.size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertTrue(seqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertTrue(unseqTasks.get(i) instanceof InnerSpaceCompactionTask);
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, seqTasks.get(i).getCompactionTaskPriorityType());
-      Assert.assertEquals(
-          CompactionTaskPriorityType.SETTLE, unseqTasks.get(i).getCompactionTaskPriorityType());
       if (i == 0) {
         Assert.assertEquals(
             3,
@@ -443,7 +395,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
   // base on dirty data rate
   @Test
-  public void testSelectSettleTaskBaseOnDirtyDataRateWithHeavySelect()
+  public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
     IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
@@ -477,11 +429,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select first time
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    List<AbstractCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
         0, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(5, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));
@@ -504,9 +453,6 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     }
     seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
-    Assert.assertTrue(seqTasks.get(0) instanceof SettleCompactionTask);
-    Assert.assertEquals(
-        CompactionTaskPriorityType.SETTLE, seqTasks.get(0).getCompactionTaskPriorityType());
     Assert.assertEquals(
         5, (((SettleCompactionTask) seqTasks.get(0)).getPartialDeletedFileGroups().size()));
     Assert.assertEquals(5, (((SettleCompactionTask) seqTasks.get(0)).getAllDeletedFiles().size()));

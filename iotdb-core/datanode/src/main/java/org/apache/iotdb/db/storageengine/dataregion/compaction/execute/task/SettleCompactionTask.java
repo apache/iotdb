@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -47,6 +48,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   private int allDeletedSuccessNum = 0;
   private int partialGroupSuccessNum = 0;
 
+  private long totalModsFileSize;
+
   public SettleCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -66,6 +69,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
       spaceEstimator = new FastCompactionInnerCompactionEstimator();
     }
+    partialDeletedFileGroups.forEach(
+        x -> x.forEach(y -> totalModsFileSize += y.getModFile().getSize()));
   }
 
   public SettleCompactionTask(
@@ -251,6 +256,18 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
+  private void setSourceInfo(boolean isSeq, List<TsFileResource> resources, long memoryCost) {
+    this.sequence = isSeq;
+    this.selectedTsFileResourceList = resources;
+    this.memoryCost = memoryCost;
+    collectSelectedFilesInfo();
+    summary.resetInfo();
+    isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      isHoldingWriteLock[i] = false;
+    }
+  }
+
   @Override
   public void recover() {
     LOGGER.info(
@@ -378,5 +395,14 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   public int getTotalPartialDeletedFilesNum() {
     return totalPartialDeletedFilesNum;
+  }
+
+  @TestOnly
+  public List<Long> getMemoryCostList() {
+    return memoryCostList;
+  }
+
+  public long getTotalModsSize() {
+    return totalModsFileSize;
   }
 }

@@ -50,7 +50,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
@@ -64,7 +63,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected File logFile;
   protected List<TsFileResource> targetTsFileList;
   protected boolean[] isHoldingWriteLock;
-  protected long totalModsFileSize;
   protected AbstractInnerSpaceEstimator innerSpaceEstimator;
 
   private boolean settleFlag = false;
@@ -179,8 +177,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager,
         serialId);
     this.performer = performer;
+    this.selectedTsFileResourceList = Collections.emptyList();
     this.hashCode = this.toString().hashCode();
     this.settleFlag = true;
+    createSummary();
   }
 
   private void prepare() throws IOException {
@@ -277,7 +277,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
       CompactionUtils.moveTargetFile(
           targetTsFileList,
-          isSequence() ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
+          settleFlag
+              ? CompactionTaskType.SETTLE
+              : isSequence() ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
           storageGroupName + "-" + dataRegionId);
 
       CompactionUtils.combineModsInInnerCompaction(
@@ -402,12 +404,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return this.selectedTsFileResourceList;
   }
 
-  private void collectSelectedFilesInfo() {
+  protected void collectSelectedFilesInfo() {
     selectedFileSize = 0L;
     sumOfCompactionCount = 0;
     maxFileVersion = -1L;
     maxCompactionCount = -1;
-    totalModsFileSize = 0;
     if (selectedTsFileResourceList == null) {
       return;
     }
@@ -423,24 +424,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         if (fileName.getVersion() > maxFileVersion) {
           maxFileVersion = fileName.getVersion();
         }
-        if (!Objects.isNull(resource.getModFile())) {
-          totalModsFileSize += resource.getModFile().getSize();
-        }
       } catch (IOException e) {
         LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
       }
-    }
-  }
-
-  protected void setSourceInfo(boolean isSeq, List<TsFileResource> resources, long memoryCost) {
-    this.sequence = isSeq;
-    this.selectedTsFileResourceList = resources;
-    this.memoryCost = memoryCost;
-    collectSelectedFilesInfo();
-    createSummary();
-    isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
-    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-      isHoldingWriteLock[i] = false;
     }
   }
 
@@ -462,10 +448,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   public long getMaxFileVersion() {
     return maxFileVersion;
-  }
-
-  public long getTotalModsFileSize() {
-    return totalModsFileSize;
   }
 
   @Override
