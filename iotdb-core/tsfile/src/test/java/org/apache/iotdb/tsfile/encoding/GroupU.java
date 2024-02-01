@@ -59,7 +59,7 @@ public class GroupU{
         double par = this.range/(count*Math.log(this.count));
         this.left_shift = getBitWith(this.count);
         this.mask = (1 << left_shift) - 1;
-        invert = new int[this.range];
+        invert = new int[this.range+1];
         if (par > 3) {
             int[] value_list = new int[this.count];
             for (int i = 0; i < this.count; i++) {
@@ -112,6 +112,7 @@ public class GroupU{
                 count ++;
             }
         }
+        invert[this.range] = count;
     }
 
     public void incrementCount() {

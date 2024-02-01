@@ -620,10 +620,6 @@ public class Exact_BOS {
 
                 k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
 
-                if (k_start_value == 2047 && k_end_value == 2056){
-                    int temp = 1;
-                }
-
                 cur_bits = 0;
                 cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
 
@@ -646,6 +642,9 @@ public class Exact_BOS {
             }
         }
 //        System.out.println(min_bits);
+//        if (min_bits == 11786){
+//            int temp = 1;
+//        }
 
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
@@ -887,8 +886,8 @@ public class Exact_BOS {
 
     @Test
     public void BOSOptimalTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -939,7 +938,7 @@ public class Exact_BOS {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 1; file_i < 2; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 

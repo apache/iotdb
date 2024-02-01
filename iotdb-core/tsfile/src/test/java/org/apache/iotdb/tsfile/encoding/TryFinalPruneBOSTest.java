@@ -588,6 +588,7 @@ public class TryFinalPruneBOSTest {
                 groupU[i].setCount_array(max_delta_value);
                 gamma_list[num_of_gamma_list] = i;
                 num_of_gamma_list ++;
+                groupU[i].setinvert();
             }
         }
 
@@ -755,11 +756,15 @@ public class TryFinalPruneBOSTest {
             int max_lambda = lambda_0;
             int cur_k2 = k2; // count(x_max)
             int gamma_i = 0;
+//            if (alpha == 12){
+//                int temp = 1;
+//            }
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
                 if(gamma > gamma_size){
                     break;
                 }
+
 
                 // k1: count[x_min,x_min+2^{alpha-1}]
 
@@ -923,7 +928,7 @@ public class TryFinalPruneBOSTest {
                                     int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
-                                    int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+                                    int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
 //                                int unique_s = 0;
 //                                int unique_e = cur_group_gamma.unique_number;
 //                                if (cur_group_gamma.unique_number>=1);
@@ -968,7 +973,6 @@ public class TryFinalPruneBOSTest {
                                 for (int unique_j = 0; unique_j < alpha_unique_number; unique_j++) {
                                     cur_cur_k1 = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
                                     int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);//alpha_unique_number_array[unique_j];
-
                                     int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
@@ -1018,12 +1022,12 @@ public class TryFinalPruneBOSTest {
                                 int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
                                 int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
-                                int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1));
+                                int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
 //                                int unique_s = 0;
 //                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
-                                int unique_s = cur_group_gamma.invert[x_u_i_start];
-                                int unique_e = cur_group_gamma.invert[x_u_i_end];
+//                                if (cur_group_gamma.unique_number>=1){
+                                    int unique_s = cur_group_gamma.invert[x_u_i_start];
+                                    int unique_e = cur_group_gamma.invert[x_u_i_end];
 //                                }
 
 
@@ -1081,6 +1085,9 @@ public class TryFinalPruneBOSTest {
 
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
+//                if (alpha == 12 && gamma == 12){
+//                    int temp = 1;
+//                }
                 gap_gamma = (int) pow(2, gamma-1);
                 cur_group_gamma = groupU[gamma];
                 k2_end = max_delta_value - gap_gamma;
@@ -1096,13 +1103,21 @@ public class TryFinalPruneBOSTest {
                 for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
                     int unique_j_cur_k1 = cur_k1+ cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
                     int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
+                    int x_u_i_end = Math.max(0,Math.min(k2_end - k1_start - x_l_i,gap_gamma));
+                    int unique_e = cur_group_gamma.invert[x_u_i_end];
 
+//                    if (x_l_i == 484){
+//                        int temp2 = 1;
+//                    }
 
-                    for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
+                    for (int unique_i = 0; unique_i < unique_e; unique_i++) {
                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-                        if(k2_end - x_u_i <= k1_start+x_l_i){
-                            break;
-                        }
+//                        if(k2_end - x_u_i <= k1_start+x_l_i){
+//                            break;
+//                        }
+//                        if (unique_i == unique_e - 1){
+//                            int temp2 = 1;
+//                        }
                         int unique_i_cur_k2 = cur_k2+ cur_group_gamma.getCount(gamma_sorted[unique_i]);
                         cur_bits = 0;
                         cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
@@ -1247,18 +1262,19 @@ public class TryFinalPruneBOSTest {
 //                        x_u_i_end -= (pow_2_beta/2+2);
                         int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
 //                        int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-                        x_u_i_end = Math.min(x_u_i_end,gap_gamma);
+                        x_u_i_end = Math.min(x_u_i_end,gap_gamma - 1);
+                        int unique_e = cur_group_gamma.invert[x_u_i_end];
 
 
-                        for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
+                        for(int unique_i=0;unique_i<unique_e;unique_i++){
 
                             int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
 //                            if(x_u_i<x_u_i_start){
 //                                continue;
 //                            }
-                            if(x_u_i>=x_u_i_end){
-                                break;
-                            }
+//                            if(x_u_i>=x_u_i_end){
+//                                break;
+//                            }
 
                             int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                             cur_bits = 0;
@@ -1290,8 +1306,12 @@ public class TryFinalPruneBOSTest {
 
 
 
-//        // 2685 2693
+//        // 8187 12282 14014 20044 alpha = gamma = 13
+        //   2532 2537 6632   2530 2539 6632 11906
 //        System.out.println(min_bits);
+//        if (min_bits == 11786){
+//            int temp = 1;
+//        }
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1533,8 +1553,8 @@ public class TryFinalPruneBOSTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-//        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1584,8 +1604,8 @@ public class TryFinalPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 1;
-//        for (int file_i = 10; file_i < 11; file_i++) {
+        int repeatTime2 = 100;
+//        for (int file_i = 1; file_i < 2; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
