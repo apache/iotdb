@@ -201,6 +201,7 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
           // 2. 计算平均点
           PageReader pageReader = chunkSuit4Tri.pageReader;
           for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
             long timestamp = pageReader.timeBuffer.getLong(j * 8);
             if (timestamp < rightStartTime) {
               continue;
@@ -249,6 +250,7 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
         int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
         int j;
         for (j = 0; j < count; j++) {
+          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
           long timestamp = pageReader.timeBuffer.getLong(j * 8);
           if (timestamp < localCurStartTime) {
             continue;

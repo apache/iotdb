@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -59,9 +58,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+public class LocalGroupByExecutorTri_MinMaxPreselection implements GroupByExecutor {
 
   private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
@@ -73,9 +70,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
   private Filter timeFilter;
 
-  private final int N1; // 分桶数
-
-  public LocalGroupByExecutorTri_M4(
+  public LocalGroupByExecutorTri_MinMaxPreselection(
       PartialPath path,
       Set<String> allSensors,
       TSDataType dataType,
@@ -106,12 +101,6 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
             null,
             fileFilter,
             ascending);
-
-    GroupByFilter groupByFilter = (GroupByFilter) timeFilter;
-    long startTime = groupByFilter.getStartTime();
-    long endTime = groupByFilter.getEndTime();
-    long interval = groupByFilter.getInterval();
-    N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // 分桶数
 
     // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
@@ -273,85 +262,48 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException {
-    // 这里用calcResult一次返回所有buckets结果（可以把MinValueAggrResult的value设为string类型，
-    // 那就把所有buckets结果作为一个string返回。这样的话返回的[t]是没有意义的，只取valueString）
-    // 而不是像MinMax那样在nextWithoutConstraintTri_MinMax()里调用calcResult每次计算一个bucket
-    StringBuilder series = new StringBuilder();
-
     // clear result cache
     for (AggregateResult result : results) {
       result.reset();
     }
 
-    // 全局首点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
-    series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
+    //    long start = System.nanoTime();
+    getCurrentChunkListFromFutureChunkList(curStartTime, curEndTime);
+    //    IOMonitor2.addMeasure(Operation.M4_LSM_MERGE_M4_TIME_SPAN, System.nanoTime() - start);
 
-    // Assume no empty buckets
-    for (int b = 0; b < N1; b++) {
-      long localCurStartTime = startTime + (b) * interval;
-      long localCurEndTime = startTime + (b + 1) * interval;
-
-      getCurrentChunkListFromFutureChunkList(localCurStartTime, localCurEndTime);
-
-      if (currentChunkList.size() == 0) {
-        //        System.out.println("MinMax empty currentChunkList"); // TODO debug
-        // minValue[bottomTime],maxValue[topTime],firstValue[firstTime],lastValue[lastTime]
-        series.append("null[null],null[null],null[null],null[null],");
-        continue;
-      }
-
-      calculateM4(currentChunkList, localCurStartTime, localCurEndTime, series);
+    if (currentChunkList.size() == 0) {
+      //      System.out.println("MinMax empty currentChunkList"); // TODO debug
+      return results;
     }
 
-    // 全局尾点
-    series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
-
-    MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
-    minValueAggrResult.updateResult(new MinMaxInfo<>(series.toString(), 0));
+    //    start = System.nanoTime();
+    calculateMinMax(currentChunkList, curStartTime, curEndTime);
+    //    IOMonitor2.addMeasure(Operation.M4_LSM_FP, System.nanoTime() - start);
 
     return results;
   }
 
-  private void calculateM4(
-      List<ChunkSuit4Tri> currentChunkList,
-      long curStartTime,
-      long curEndTime,
-      StringBuilder series)
-      throws IOException {
-    double minValue = Double.MAX_VALUE;
-    long bottomTime = -1;
-    double maxValue = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
-    long topTime = -1;
-    long firstTime = -1;
-    double firstValue = 0;
-    long lastTime = -1;
-    double lastValue = 0;
-
+  private void calculateMinMax(
+      List<ChunkSuit4Tri> currentChunkList, long curStartTime, long curEndTime) throws IOException {
     for (ChunkSuit4Tri chunkSuit4Tri : currentChunkList) {
 
       Statistics statistics = chunkSuit4Tri.chunkMetadata.getStatistics();
 
       if (canUseStatistics(chunkSuit4Tri, curStartTime, curEndTime)) {
         // update BP
-        double chunkMinValue = (double) statistics.getMinValue();
-        if (chunkMinValue < minValue) {
-          minValue = chunkMinValue;
-          bottomTime = statistics.getBottomTimestamp();
-        }
+        MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
+        minValueAggrResult.updateResult(
+            new MinMaxInfo<>(statistics.getMinValue(), statistics.getBottomTimestamp()));
         // update TP
-        double chunkMaxValue = (double) statistics.getMaxValue();
-        if (chunkMaxValue > maxValue) {
-          maxValue = chunkMaxValue;
-          topTime = statistics.getTopTimestamp();
-        }
-        // update FP
-        if (firstTime < 0) {
-          firstTime = statistics.getStartTime();
-          firstValue = (double) statistics.getFirstValue();
-        }
-        lastTime = statistics.getEndTime(); // assume sequential data
-        lastValue = (double) statistics.getLastValue();
+        MaxValueAggrResult maxValueAggrResult = (MaxValueAggrResult) results.get(1);
+        maxValueAggrResult.updateResult(
+            new MinMaxInfo<>(statistics.getMaxValue(), statistics.getTopTimestamp()));
       } else { // cannot use statistics directly
+
+        double minVal = Double.MAX_VALUE;
+        long bottomTime = -1;
+        double maxVal = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
+        long topTime = -1;
 
         // 1. load page data if it hasn't been loaded
         TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
@@ -387,58 +339,32 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
             // 4. update MinMax by traversing points fallen within this bucket
             ByteBuffer valueBuffer = pageReader.valueBuffer;
             double v = valueBuffer.getDouble(pageReader.timeBufferLength + i * 8);
-            if (firstTime < 0) {
-              firstTime = timestamp;
-              firstValue = v;
-            }
-            lastTime = timestamp;
-            lastValue = v;
-            if (v < minValue) {
-              minValue = v;
+            if (v < minVal) {
+              minVal = v;
               bottomTime = timestamp;
             }
-            if (v > maxValue) {
-              maxValue = v;
+            if (v > maxVal) {
+              maxVal = v;
               topTime = timestamp;
             }
           }
         }
-        //        // clear for heap space
-        //        if (i >= count) {
-        //          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-        //          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
-        //          chunkSuit4Tri.pageReader = null;
-        //        }
+        // clear for heap space
+        if (i >= count) {
+          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
+          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
+          chunkSuit4Tri.pageReader = null;
+        }
+        // 4. update MinMax by traversing points fallen within this bucket
+        if (topTime >= 0) {
+          // update BP
+          MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
+          minValueAggrResult.updateResult(new MinMaxInfo<>(minVal, bottomTime));
+          // update TP
+          MaxValueAggrResult maxValueAggrResult = (MaxValueAggrResult) results.get(1);
+          maxValueAggrResult.updateResult(new MinMaxInfo<>(maxVal, topTime));
+        }
       }
-    }
-    // 记录结果
-    if (topTime >= 0) {
-      // minValue[bottomTime],maxValue[topTime],firstValue[firstTime],lastValue[lastTime]
-      series
-          .append(minValue)
-          .append("[")
-          .append(bottomTime)
-          .append("]")
-          .append(",")
-          .append(maxValue)
-          .append("[")
-          .append(topTime)
-          .append("]")
-          .append(",")
-          .append(firstValue)
-          .append("[")
-          .append(firstTime)
-          .append("]")
-          .append(",")
-          .append(lastValue)
-          .append("[")
-          .append(lastTime)
-          .append("]")
-          .append(",");
-    } else {
-      // empty bucket although statistics cover
-      // minValue[bottomTime],maxValue[topTime],firstValue[firstTime],lastValue[lastTime]
-      series.append("null[null],null[null],null[null],null[null],");
     }
   }
 

@@ -103,7 +103,8 @@ public class MyTest_MinMax {
   @Test
   public void test1() throws Exception {
     prepareData1();
-    String res = "0.0[0],1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null,null,200.0[200],";
+    String res =
+        "0.0[0],1.0[20],15.0[2],8.0[25],8.0[25],3.0[54],3.0[54],null[null],null[null],200.0[200],";
     // 0,P1v[P1t],BPv[t]ofBucket1,TPv[t]ofBucket1,BPv[t]ofBucket2,TPv[t]ofBucket2,...,Pnv[Pnt]
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -232,7 +233,8 @@ public class MyTest_MinMax {
   public void test3_2() {
     prepareData3_2();
 
-    String res = "0.0[0],1.0[10],10.0[2],null,null,4.0[72],20.0[62],1.0[90],11.0[80],200.0[200],";
+    String res =
+        "0.0[0],1.0[10],10.0[2],null[null],null[null],4.0[72],20.0[62],1.0[90],11.0[80],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

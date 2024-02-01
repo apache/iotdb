@@ -261,6 +261,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               // 2. 计算平均点
               PageReader pageReader = chunkSuit4Tri.pageReader;
               for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+                IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
                 long timestamp = pageReader.timeBuffer.getLong(j * 8);
                 if (timestamp < rightStartTime) {
                   continue;

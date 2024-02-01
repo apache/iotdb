@@ -109,7 +109,7 @@ public class MyTest_M4 {
     prepareData1();
     String res =
         "0.0[0],1.0[20],15.0[2],5.0[1],1.0[20],8.0[25],8.0[25],8.0[25],8.0[25],3.0[54],"
-            + "3.0[54],3.0[54],3.0[54],null,null,null[null],null[null],200.0[200],";
+            + "3.0[54],3.0[54],3.0[54],null[null],null[null],null[null],null[null],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -238,7 +238,7 @@ public class MyTest_M4 {
     prepareData3_2();
 
     String res =
-        "0.0[0],1.0[10],10.0[2],5.0[1],5.0[20],null,null,null[null],null[null],4.0[72],"
+        "0.0[0],1.0[10],10.0[2],5.0[1],5.0[20],null[null],null[null],null[null],null[null],4.0[72],"
             + "20.0[62],15.0[60],4.0[72],1.0[90],11.0[80],11.0[80],1.0[90],200.0[200],";
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
