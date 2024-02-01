@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -79,11 +80,9 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       }
       extendedExpressions.add(actualExpressions);
 
-      // We just process first input Expression of AggregationFunction,
+      // We just process first input Expression of Count_IF,
       // keep other input Expressions as origin and bind Type
-      // If AggregationFunction need more than one input series,
-      // we need to reconsider the process of it
-      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
         List<Expression> children = functionExpression.getExpressions();
         bindTypeForAggregationNonSeriesInputExpressions(
             functionExpression.getFunctionName(), children, extendedExpressions);

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,11 +57,9 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
         extendedExpressions.add(concatExpression);
       }
 
-      // We just process first input Expression of AggregationFunction,
+      // We just process first input Expression of COUNT_IF,
       // keep other input Expressions as origin and bind Type
-      // If AggregationFunction need more than one input series,
-      // we need to reconsider the process of it
-      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
         List<Expression> children = functionExpression.getExpressions();
         bindTypeForAggregationNonSeriesInputExpressions(
             functionExpression.getFunctionName(), children, extendedExpressions);
