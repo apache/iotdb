@@ -584,7 +584,7 @@ public class RLEPruneBOSTest {
         // -------------x_min-------------------
         // lower: x_min
         // upper: x_max
-        int k1 =    count_x_min;
+        int k1 = count_x_min;
         int k1_start = 0;
         int k2 = count_x_max;
         int k2_end = max_delta_value;
@@ -1285,9 +1285,9 @@ public class RLEPruneBOSTest {
 //        if (min_bits == 11786){
 //            int temp = 1;
 //        }
+
         encode_pos = BOSEncodeBits(ts_block_delta, init_block_size, final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, repeat_count, encode_pos, cur_byte);
-
 
         return encode_pos;
     }
@@ -1608,7 +1608,7 @@ public class RLEPruneBOSTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 0; file_i < 1; file_i++) {
+//        for (int file_i = 8; file_i < 9; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
