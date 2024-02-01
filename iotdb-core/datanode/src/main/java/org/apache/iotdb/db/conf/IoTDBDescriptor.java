@@ -1753,8 +1753,9 @@ public class IoTDBDescriptor {
     long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
 
     int proportionSum = 10;
-    int writeProportion = 8;
+    int writeProportion = 7;
     int compactionProportion = 2;
+    int devicePathCacheProportion = 1;
     int writeProportionSum = 20;
     int memTableProportion = 19;
     int timePartitionInfo = 1;
@@ -1772,8 +1773,11 @@ public class IoTDBDescriptor {
         proportionSum = loadedProportionSum;
         writeProportion = Integer.parseInt(proportions[0].trim());
         compactionProportion = Integer.parseInt(proportions[1].trim());
+        devicePathCacheProportion = Integer.parseInt(proportions[2].trim());
       }
       conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
+      conf.setDevicePathCacheProportion(
+          (double) devicePathCacheProportion / (double) proportionSum);
     }
 
     String allocationRatioForWrite = properties.getProperty("write_memory_proportion");

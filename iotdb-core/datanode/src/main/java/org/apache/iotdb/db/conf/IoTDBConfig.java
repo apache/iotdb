@@ -166,10 +166,13 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.76;
+  private double writeProportionForMemtable = 0.7;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
+
+  /** The proportion of write memory for device path cache */
+  private double devicePathCacheProportion = 0.1;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
@@ -3204,6 +3207,14 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getDevicePathCacheProportion() {
+    return devicePathCacheProportion;
+  }
+
+  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
+    this.devicePathCacheProportion = devicePathCacheProportion;
   }
 
   public static String getEnvironmentVariables() {
