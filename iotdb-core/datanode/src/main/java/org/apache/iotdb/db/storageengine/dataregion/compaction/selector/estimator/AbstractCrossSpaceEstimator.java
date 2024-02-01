@@ -33,9 +33,6 @@ public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEsti
 
   public long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
-    if (!config.isEnableCompactionMemControl()) {
-      return 0;
-    }
     List<TsFileResource> resources = new ArrayList<>(seqResources.size() + unseqResources.size());
     resources.addAll(seqResources);
     resources.addAll(unseqResources);

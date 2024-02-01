@@ -283,13 +283,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private boolean shouldRollback() {
     // if target file or its responding file does not exist, then return true
-    if (targetFile == null
+    return targetFile == null
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
-        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists())) {
-      return true;
-    }
-    return false;
+        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists());
   }
 
   private void rollback() throws IOException {
@@ -303,7 +300,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(targetFile));
     }
     // delete target file
-    if (targetFile != null && !deleteTsFileOnDisk(targetFile)) {
+    if (!deleteTsFileOnDisk(targetFile)) {
       throw new CompactionRecoverException(
           String.format("failed to delete target file %s", targetFile));
     }
@@ -322,9 +319,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
-    if (!(otherTask instanceof InsertionCrossSpaceCompactionTask)) {
-      return false;
-    }
     return false;
   }
 

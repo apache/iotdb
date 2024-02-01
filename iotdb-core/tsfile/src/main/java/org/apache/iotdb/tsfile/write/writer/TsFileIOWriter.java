@@ -57,7 +57,6 @@ import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +110,6 @@ public class TsFileIOWriter implements AutoCloseable {
   protected volatile boolean hasChunkMetadataInDisk = false;
   // record the total num of path in order to make bloom filter
   protected int pathCount = 0;
-  protected boolean enableMemoryControl = false;
   private Path lastSerializePath = null;
   protected LinkedList<Long> endPosInCMTForDevice = new LinkedList<>();
   private volatile int chunkMetadataCount = 0;
@@ -151,10 +149,8 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /** for write with memory control */
-  public TsFileIOWriter(File file, boolean enableMemoryControl, long maxMetadataSize)
-      throws IOException {
+  public TsFileIOWriter(File file, long maxMetadataSize) throws IOException {
     this(file);
-    this.enableMemoryControl = enableMemoryControl;
     this.maxMetadataSize = maxMetadataSize;
     chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
   }
@@ -306,9 +302,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
   /** end chunk and write some log. */
   public void endCurrentChunk() {
-    if (enableMemoryControl) {
-      this.currentChunkMetadataSize += currentChunkMetadata.getRetainedSizeInBytes();
-    }
+    this.currentChunkMetadataSize += currentChunkMetadata.getRetainedSizeInBytes();
     chunkMetadataCount++;
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
@@ -508,40 +502,6 @@ public class TsFileIOWriter implements AutoCloseable {
     this.file = file;
   }
 
-  /** Remove such ChunkMetadata that its startTime is not in chunkStartTimes */
-  public void filterChunks(Map<Path, List<Long>> chunkStartTimes) {
-    Map<Path, Integer> startTimeIdxes = new HashMap<>();
-    chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
-
-    Iterator<ChunkGroupMetadata> chunkGroupMetaDataIterator = chunkGroupMetadataList.iterator();
-    while (chunkGroupMetaDataIterator.hasNext()) {
-      ChunkGroupMetadata chunkGroupMetaData = chunkGroupMetaDataIterator.next();
-      String deviceId = chunkGroupMetaData.getDevice();
-      int chunkNum = chunkGroupMetaData.getChunkMetadataList().size();
-      Iterator<ChunkMetadata> chunkMetaDataIterator =
-          chunkGroupMetaData.getChunkMetadataList().iterator();
-      while (chunkMetaDataIterator.hasNext()) {
-        IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid(), true);
-        int startTimeIdx = startTimeIdxes.get(path);
-
-        List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
-        boolean chunkValid =
-            startTimeIdx < pathChunkStartTimes.size()
-                && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
-        if (!chunkValid) {
-          chunkMetaDataIterator.remove();
-          chunkNum--;
-        } else {
-          startTimeIdxes.put(path, startTimeIdx + 1);
-        }
-      }
-      if (chunkNum == 0) {
-        chunkGroupMetaDataIterator.remove();
-      }
-    }
-  }
-
   public void writePlanIndices() throws IOException {
     ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
     ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
@@ -630,7 +590,7 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public int checkMetadataSizeAndMayFlush() throws IOException {
     // This function should be called after all data of an aligned device has been written
-    if (enableMemoryControl && currentChunkMetadataSize > maxMetadataSize) {
+    if (currentChunkMetadataSize > maxMetadataSize) {
       try {
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -700,7 +660,7 @@ public class TsFileIOWriter implements AutoCloseable {
       // for each device, we only serialize it once, in order to save io
       writtenSize += ReadWriteIOUtils.write(seriesPath.getDevice(), tempOutput.wrapAsStream());
     }
-    if (isNewPath && iChunkMetadataList.size() > 0) {
+    if (isNewPath && !iChunkMetadataList.isEmpty()) {
       // serialize the public info of this measurement
       writtenSize +=
           ReadWriteIOUtils.writeVar(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
@@ -717,10 +677,6 @@ public class TsFileIOWriter implements AutoCloseable {
     buffer.writeTo(tempOutput);
     writtenSize += buffer.size();
     return writtenSize;
-  }
-
-  public String getCurrentChunkGroupDeviceId() {
-    return currentChunkGroupDeviceId;
   }
 
   public List<ChunkGroupMetadata> getChunkGroupMetadataList() {
