@@ -307,6 +307,24 @@ public class PipeParameters {
             .toString());
   }
 
+  /**
+   * This method uses {@link KeyReducer} to check for equivalent keys in this.attributes and
+   * attributes, and updates the values of this.attributes accordingly.
+   *
+   * @param attributes Provide the key that needs to be updated along with the new value.
+   * @return this pipe parameters
+   */
+  public PipeParameters updateEquivalentAttributes(Map<String, String> attributes) {
+    attributes.forEach(
+        (k, v) ->
+            this.attributes.entrySet().stream()
+                .filter(
+                    entry ->
+                        entry.getKey().equals(k) || entry.getKey().equals(KeyReducer.reduce(k)))
+                .forEach(entry -> entry.setValue(v)));
+    return this;
+  }
+
   private static class KeyReducer {
 
     private static final Set<String> PREFIXES = new HashSet<>();

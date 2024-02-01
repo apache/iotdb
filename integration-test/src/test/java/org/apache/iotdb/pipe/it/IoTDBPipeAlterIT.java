@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
@@ -34,7 +35,10 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -43,7 +47,7 @@ import static org.junit.Assert.fail;
 public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
 
   @Test
-  public void testBasicPipeAlter() throws Exception {
+  public void testBasicAlterPipe() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // create pipe
@@ -58,15 +62,15 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // show pipe and record first creation time
-    long firstCreationTime;
+    // show pipe and record last creation time
+    long lastCreationTime;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      firstCreationTime = showPipeResult.get(0).creationTime;
+      lastCreationTime = showPipeResult.get(0).creationTime;
     }
 
     // stop pipe
@@ -85,14 +89,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
     }
 
-    // alter pipe
-    sql =
-        String.format(
-            "alter pipe a2b modify sink ('node-urls'='%s', 'batch.enable'='true')",
-            receiverDataNode.getIpAndPortString());
+    // alter pipe (modify)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(sql);
+      statement.execute("alter pipe a2b modify sink ('batch.enable'='true')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -103,16 +103,62 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+      // alter pipe (modify) will keep unspecified configurations
+      Assert.assertTrue(
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+      // alter pipe will keep user stopped status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // alter pipe will reset pipe creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > firstCreationTime);
+      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+      lastCreationTime = showPipeResult.get(0).creationTime;
+      // alter pipe will clear exception messages
+      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+    }
+
+    // start pipe
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("start pipe a2b");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    // alter pipe (replace)
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b replace processor ('processor'='down-sampling-processor')");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    // show pipe
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(1, showPipeResult.size());
+      Assert.assertTrue(
+          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+      // alter pipe (without sink clause) will not modify sink's configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+      Assert.assertTrue(
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+      // alter pipe will keep running status
+      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      // alter pipe will reset pipe creation time
+      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       // alter pipe will clear exception messages
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
   }
 
   @Test
-  public void testPipeAlterFailure() {
+  public void testAlterPipeFailure() {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // alter non-existed pipe
@@ -138,17 +184,70 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     } catch (SQLException e) {
       fail(e.getMessage());
     }
+  }
 
-    // useless alter
-    sql =
+  @Test
+  public void testAlterPipeProcessor() {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    // create pipe
+    String sql =
         String.format(
-            "alter pipe a2b modify sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with processor ('processor'='down-sampling-processor', 'down-sampling.interval-seconds'='1') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      fail();
-    } catch (SQLException ignore) {
+    } catch (SQLException e) {
+      fail(e.getMessage());
     }
+
+    // insert data on sender
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Collections.singletonList(
+            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)"))) {
+      fail();
+    }
+
+    // check data on receiver
+    Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1000,1.0,");
+    expectedResSet.add("2000,3.0,");
+    expectedResSet.add("3000,5.0,");
+    TestUtils.assertDataOnEnv(
+        receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
+
+    // alter pipe (modify 'down-sampling.interval-seconds')
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify processor ('down-sampling.interval-seconds'='2')");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    // clear data on receiver
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv, Collections.singletonList("delete from root.**"))) {
+      fail();
+    }
+
+    // insert data on sender
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Collections.singletonList(
+            "insert into root.db.d1 (time, at1) values (4000, 6), (4500, 7), (5000, 8), (5500, 9), (6000, 10)"))) {
+      fail();
+    }
+
+    // check data on receiver
+    expectedResSet.clear();
+    expectedResSet.add("4000,6.0,");
+    expectedResSet.add("6000,10.0,");
+    TestUtils.assertDataOnEnv(
+        receiverEnv,
+        "select count(*) from root.**",
+        "count(root.db.d1.at1),",
+        Collections.singleton("5,"));
   }
 }

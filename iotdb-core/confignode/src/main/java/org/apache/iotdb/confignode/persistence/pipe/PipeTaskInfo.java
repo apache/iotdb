@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -54,6 +53,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -180,30 +180,36 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
-    PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
-    PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
-    // fill empty attributes and check useless alter from the perspective of CN
-    boolean needToAlter = false;
+    PipeStaticMeta pipeStaticMetaFromCoordinator =
+        getPipeMetaByPipeName(alterPipeRequest.getPipeName()).getStaticMeta();
+    // deep copy current pipe static meta
+    PipeStaticMeta copiedPipeStaticMetaFromCoordinator =
+        new PipeStaticMeta(
+            pipeStaticMetaFromCoordinator.getPipeName(),
+            pipeStaticMetaFromCoordinator.getCreationTime(),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
+    // fill or update attributes
     if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
       alterPipeRequest.setProcessorAttributes(
-          pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
-    } else if (!(new PipeParameters(alterPipeRequest.getProcessorAttributes()))
-        .isEquivalent(pipeStaticMetaFromCoordinator.getProcessorParameters())) {
-      needToAlter = true;
+          copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
+    } else if (!alterPipeRequest.isReplaceAllProcessorAttributes) {
+      alterPipeRequest.setProcessorAttributes(
+          copiedPipeStaticMetaFromCoordinator
+              .getProcessorParameters()
+              .updateEquivalentAttributes(alterPipeRequest.getProcessorAttributes())
+              .getAttribute());
     }
     if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
       alterPipeRequest.setConnectorAttributes(
-          pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
-    } else if (!(new PipeParameters(alterPipeRequest.getConnectorAttributes())
-        .isEquivalent(pipeStaticMetaFromCoordinator.getConnectorParameters()))) {
-      needToAlter = true;
-    }
-    if (!needToAlter) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
-      LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
+          copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+    } else if (!alterPipeRequest.isReplaceAllConnectorAttributes) {
+      alterPipeRequest.setConnectorAttributes(
+          copiedPipeStaticMetaFromCoordinator
+              .getConnectorParameters()
+              .updateEquivalentAttributes(alterPipeRequest.getConnectorAttributes())
+              .getAttribute());
     }
   }
 

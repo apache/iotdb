@@ -1663,10 +1663,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate before alteration
     try {
-      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllProcessorAttributes()) {
         PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
       }
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllConnectorAttributes()) {
         PipeAgent.plugin()
             .validateConnector(
                 alterPipeStatement.getPipeName(), alterPipeStatement.getConnectorAttributes());
@@ -1681,10 +1683,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TAlterPipeReq req =
-          new TAlterPipeReq()
-              .setPipeName(alterPipeStatement.getPipeName())
-              .setProcessorAttributes(alterPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(alterPipeStatement.getConnectorAttributes());
+          new TAlterPipeReq(
+              alterPipeStatement.getPipeName(),
+              alterPipeStatement.getProcessorAttributes(),
+              alterPipeStatement.getConnectorAttributes(),
+              alterPipeStatement.isReplaceAllProcessorAttributes(),
+              alterPipeStatement.isReplaceAllConnectorAttributes());
       TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(

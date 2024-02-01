@@ -225,6 +225,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -3628,17 +3629,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
-    if (ctx.modifyProcessorAttributesClause() != null) {
+    if (ctx.alterProcessorAttributesClause() != null) {
       alterPipeStatement.setProcessorAttributes(
           parseProcessorAttributesClause(
-              ctx.modifyProcessorAttributesClause().processorAttributeClause()));
+              ctx.alterProcessorAttributesClause().processorAttributeClause()));
+      alterPipeStatement.setReplaceAllProcessorAttributes(
+          Objects.nonNull(ctx.alterProcessorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    if (ctx.modifyConnectorAttributesClause() != null) {
+    if (ctx.alterConnectorAttributesClause() != null) {
       alterPipeStatement.setConnectorAttributes(
           parseConnectorAttributesClause(
-              ctx.modifyConnectorAttributesClause().connectorAttributeClause()));
+              ctx.alterConnectorAttributesClause().connectorAttributeClause()));
+      alterPipeStatement.setReplaceAllConnectorAttributes(
+          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setConnectorAttributes(new HashMap<>());
     }
