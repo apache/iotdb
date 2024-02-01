@@ -2828,7 +2828,7 @@ public class IoTDBConfig {
     return fileLimitPerCrossTask;
   }
 
-  public int getTotalFileLimitForCrossTask() {
+  public int getTotalFileLimitForCompactionTask() {
     return totalFileLimitForCrossTask;
   }
 

@@ -59,6 +59,10 @@ public class CompactionWorker implements Runnable {
       AbstractCompactionTask task;
       try {
         task = compactionTaskQueue.take();
+        if (task == null) {
+          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+          continue;
+        }
       } catch (InterruptedException e) {
         LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
         Thread.currentThread().interrupt();
@@ -68,7 +72,7 @@ public class CompactionWorker implements Runnable {
     }
   }
 
-  public boolean processOneCompactionTask(AbstractCompactionTask task) {
+  public boolean processOneCompactionTask2(AbstractCompactionTask task) {
     long estimatedMemoryCost = 0L;
     boolean memoryAcquired = false;
     boolean fileHandleAcquired = false;
@@ -131,6 +135,37 @@ public class CompactionWorker implements Runnable {
       }
     }
     return false;
+  }
+
+  public boolean processOneCompactionTask(AbstractCompactionTask task) {
+    if (task == null) {
+      return true;
+    }
+    boolean taskSuccess = false;
+    CompactionTaskType taskType = task.getCompactionTaskType();
+    try {
+      CompactionMetrics.getInstance()
+          .updateCompactionMemoryMetrics(taskType, task.getEstimatedMemoryCost());
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
+      CompactionTaskSummary summary = task.getSummary();
+      CompactionTaskFuture future = new CompactionTaskFuture(summary);
+      CompactionTaskManager.getInstance().recordTask(task, future);
+      taskSuccess = task.start();
+    } catch (Exception e) {
+      LOGGER.warn("Exception occurred when executing compaction task. {}", task, e);
+    } finally {
+      task.resetCompactionCandidateStatusForAllSourceFiles();
+      task.handleTaskCleanup();
+      SystemInfo.getInstance()
+          .resetCompactionMemoryCost(task.getCompactionTaskType(), task.getEstimatedMemoryCost());
+      SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
+      if (taskSuccess) {
+        task.getAllSourceTsFiles()
+            .forEach(AbstractCompactionEstimator::removeFileInfoFromGlobalFileInfoCache);
+      }
+    }
+    return taskSuccess;
   }
 
   static class CompactionTaskFuture implements Future<CompactionTaskSummary> {

@@ -36,6 +36,9 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
   @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
+    if (o1.getRetryAllocateResourcesTimes() != o2.getRetryAllocateResourcesTimes()) {
+      return o1.getRetryAllocateResourcesTimes() > o2.getRetryAllocateResourcesTimes() ? -1 : 1;
+    }
     if (o1 instanceof InsertionCrossSpaceCompactionTask
         && o2 instanceof InsertionCrossSpaceCompactionTask) {
       return o1.getSerialId() < o2.getSerialId() ? -1 : 1;

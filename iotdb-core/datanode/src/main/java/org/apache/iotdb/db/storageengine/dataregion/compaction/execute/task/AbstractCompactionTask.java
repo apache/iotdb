@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -76,6 +77,8 @@ public abstract class AbstractCompactionTask {
 
   protected boolean recoverMemoryStatus;
   protected CompactionTaskPriorityType compactionTaskPriorityType;
+  protected int retryAllocateResourcesTimes = 0;
+  protected long lastTimeAllocateResourceFailed = 0L;
 
   protected AbstractCompactionTask(
       String storageGroupName,
@@ -379,6 +382,18 @@ public abstract class AbstractCompactionTask {
 
   public CompactionTaskPriorityType getCompactionTaskPriorityType() {
     return compactionTaskPriorityType;
+  }
+
+  public int getRetryAllocateResourcesTimes() {
+    return retryAllocateResourcesTimes;
+  }
+
+  public void updateRetryAllocateResourcesTimes() {
+    long now = System.currentTimeMillis();
+    if (now - lastTimeAllocateResourceFailed >= TimeUnit.SECONDS.toMinutes(1)) {
+      retryAllocateResourcesTimes++;
+      lastTimeAllocateResourceFailed = now;
+    }
   }
 
   public boolean isDiskSpaceCheckPassed() {

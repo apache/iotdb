@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Rew
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,15 +170,49 @@ public class CompactionScheduler {
             System.currentTimeMillis() - startTime);
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
+    int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);
+    summary.incrementSubmitTaskNum(
+        sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
+    return trySubmitCount;
+  }
+
+  private static int addTaskToWaitingQueue(List<? extends AbstractCompactionTask> tasks)
+      throws InterruptedException {
     int trySubmitCount = 0;
-    for (InnerSpaceCompactionTask task : innerSpaceTaskList) {
+    for (AbstractCompactionTask task : tasks) {
+      // this check is not correct but it is
+      if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
+        break;
+      }
+      if (!canAddTaskToWaitingQueue(task)) {
+        continue;
+      }
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         trySubmitCount++;
       }
     }
-    summary.incrementSubmitTaskNum(
-        sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
     return trySubmitCount;
+  }
+
+  private static boolean canAddTaskToWaitingQueue(AbstractCompactionTask task) {
+    // check file num
+    long fileNumLimitForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
+    if (task.getProcessedFileNum() > fileNumLimitForCompaction) {
+      return false;
+    }
+    // check disk space
+    if (!task.isDiskSpaceCheckPassed()) {
+      LOGGER.info(
+          "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+      return false;
+    }
+    // check task memory cost
+    long allocatedTotalCompactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
+    long estimatedTaskMemoryCost = task.getEstimatedMemoryCost();
+    if (estimatedTaskMemoryCost < 0 || estimatedTaskMemoryCost > allocatedTotalCompactionMemory) {
+      return false;
+    }
+    return true;
   }
 
   private static int tryToSubmitInsertionCompactionTask(
