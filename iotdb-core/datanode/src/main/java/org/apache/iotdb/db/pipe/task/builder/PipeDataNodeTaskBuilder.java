@@ -44,7 +44,7 @@ public class PipeDataNodeTaskBuilder {
   protected final PipeProcessorSubtaskExecutor processorExecutor;
   protected final PipeConnectorSubtaskExecutor connectorExecutor;
 
-  protected final Map<String, String> systemParameters;
+  protected final Map<String, String> systemParameters = new HashMap<>();
 
   public PipeDataNodeTaskBuilder(
       PipeStaticMeta pipeStaticMeta, int regionId, PipeTaskMeta pipeTaskMeta) {
@@ -53,7 +53,7 @@ public class PipeDataNodeTaskBuilder {
     this.pipeTaskMeta = pipeTaskMeta;
     this.processorExecutor = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
     this.connectorExecutor = PipeSubtaskExecutorManager.getInstance().getConnectorExecutor();
-    systemParameters = generateSystemParameters();
+    generateSystemParameters();
   }
 
   public PipeDataNodeTask build() {
@@ -91,13 +91,10 @@ public class PipeDataNodeTaskBuilder {
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
   }
 
-  private Map<String, String> generateSystemParameters() {
-
-    final Map<String, String> systemParameters = new HashMap<>();
+  private void generateSystemParameters() {
     if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)) {
       systemParameters.put(SystemConstant.RESTART_KEY, Boolean.TRUE.toString());
     }
-    return systemParameters;
   }
 
   private PipeParameters blendUserAndSystemParameters(PipeParameters userParameters) {
