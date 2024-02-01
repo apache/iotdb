@@ -39,10 +39,12 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
@@ -67,22 +69,29 @@ public abstract class IoTDBConnector implements PipeConnector {
     validator.validate(
         args ->
             (boolean) args[0]
-                || ((boolean) args[1] && (boolean) args[2])
-                || (boolean) args[3]
-                || ((boolean) args[4] && (boolean) args[5]),
+                || (boolean) args[1]
+                || (((boolean) args[2]
+                        || (boolean) args[3]
+                        || (boolean) args[4]
+                        || (boolean) args[5])
+                    && ((boolean) args[6] || (boolean) args[7])),
         String.format(
-            "One of %s, %s:%s, %s, %s:%s must be specified",
-            CONNECTOR_IOTDB_NODE_URLS_KEY,
-            CONNECTOR_IOTDB_IP_KEY,
-            CONNECTOR_IOTDB_PORT_KEY,
+            "One of %s/%s, %s/%s/%s/%s:%s/%s must be specified",
             SINK_IOTDB_NODE_URLS_KEY,
+            CONNECTOR_IOTDB_NODE_URLS_KEY,
             SINK_IOTDB_IP_KEY,
+            SINK_IOTDB_HOST_KEY,
+            CONNECTOR_IOTDB_IP_KEY,
+            CONNECTOR_IOTDB_HOST_KEY,
+            CONNECTOR_IOTDB_PORT_KEY,
             SINK_IOTDB_PORT_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
         parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
+        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
         parameters.hasAttribute(SINK_IOTDB_IP_KEY),
+        parameters.hasAttribute(CONNECTOR_IOTDB_HOST_KEY),
+        parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
+        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
         parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
   }
 
@@ -105,20 +114,20 @@ public abstract class IoTDBConnector implements PipeConnector {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
 
     try {
-      if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
-          && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+      if (parameters.hasAnyAttributes(
+              CONNECTOR_IOTDB_IP_KEY,
+              CONNECTOR_IOTDB_HOST_KEY,
+              SINK_IOTDB_IP_KEY,
+              SINK_IOTDB_HOST_KEY)
+          && parameters.hasAnyAttributes(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY)) {
         givenNodeUrls.add(
             new TEndPoint(
-                parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
-                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
-      }
-
-      if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
-          && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
-        givenNodeUrls.add(
-            new TEndPoint(
-                parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
-                parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
+                parameters.getStringByKeys(
+                    CONNECTOR_IOTDB_IP_KEY,
+                    CONNECTOR_IOTDB_HOST_KEY,
+                    SINK_IOTDB_IP_KEY,
+                    SINK_IOTDB_HOST_KEY),
+                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY)));
       }
 
       if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
