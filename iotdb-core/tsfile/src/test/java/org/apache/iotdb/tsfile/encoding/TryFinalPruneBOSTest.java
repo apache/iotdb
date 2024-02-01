@@ -843,25 +843,25 @@ public class TryFinalPruneBOSTest {
                 }
                 else {
 
-//                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
-//                    // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}):  k2_end - gap_gamma, k2_end
-//                    // beta: getBitWidth(x_max - 2^{gamma} -(x_min+2^{alpha})) to getBitWidth(x_max - 2^{gamma-1}-(x_min+2^{alpha-1}) )
-//                    int min_beta = getBitWith(max_delta_value-pow_2_gamma-pow_2_alpha);
-//                    int max_beta = getBitWith(k2_end-k1_start);
-//
-//
-//
-//                    for(int beta = min_beta;beta <= max_beta;beta++) {
-//                        int pow_2_beta = (int) pow(2, beta);
-//                        if (beta >= alpha + max_lambda && beta <= gamma + 1 && pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta >= gamma + max_lambda && pow_2_beta + pow_2_alpha / 2 + pow_2_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta <= gamma + 1 && pow_2_beta + pow_2_alpha / 2 + gap_gamma > max_delta_value) {
-//
-//                        } else {
+                    // lower: (x_min+2^{alpha-1},x_min+2^{alpha}) : k1_start, k1_start + gap_alpha
+                    // upper:  (x_max - 2^{gamma}, x_max - 2^{gamma-1}):  k2_end - gap_gamma, k2_end
+                    // beta: getBitWidth(x_max - 2^{gamma} -(x_min+2^{alpha})) to getBitWidth(x_max - 2^{gamma-1}-(x_min+2^{alpha-1}) )
+                    int min_beta = getBitWith(max_delta_value-pow_2_gamma-pow_2_alpha);
+                    int max_beta = getBitWith(k2_end-k1_start);
+
+
+
+                    for(int beta = min_beta;beta <= max_beta;beta++) {
+                        int pow_2_beta = (int) pow(2, beta);
+                        if (beta >= alpha + max_lambda && beta <= gamma + 1 && pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value) {
+
+                        }
+                        else if (beta <= alpha + 1 && beta >= gamma + max_lambda && pow_2_beta + pow_2_alpha / 2 + pow_2_gamma >= max_delta_value) {
+
+                        }
+                        else if (beta <= alpha + 1 && beta <= gamma + 1 && pow_2_beta + pow_2_alpha / 2 + gap_gamma > max_delta_value) {
+
+                        } else {
                             int cur_cur_k1;
                             for (int unique_j = 0; unique_j < alpha_unique_number; unique_j++) {
                                 cur_cur_k1 = cur_k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);//alpha_unique_count_array[unique_j];// gamma_box_count_list[gamma];
@@ -869,18 +869,18 @@ public class TryFinalPruneBOSTest {
 
                                 int cur_cur_k2 ; // count[x_max - 2^{gamma-1}, x_max]
 
-//                                int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
-//                                int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
+                                int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
+                                int x_u_i_end = Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma-1);
 
 
                                 for (int unique_i = 0; unique_i < gamma_unique_number; unique_i++) {
                                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                    if(x_u_i < x_u_i_start){
-//                                        continue;
-//                                    }
-//                                    if(x_u_i > x_u_i_end){
-//                                        break;
-//                                    }
+                                    if(x_u_i < x_u_i_start){
+                                        continue;
+                                    }
+                                    if(x_u_i > x_u_i_end){
+                                        break;
+                                    }
                                     cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                     cur_bits = 0;
@@ -899,9 +899,9 @@ public class TryFinalPruneBOSTest {
 
                                 }
                             }
-//                        }
-//
-//                    }
+                        }
+
+                    }
 
                 }
 
@@ -1429,7 +1429,7 @@ public class TryFinalPruneBOSTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(1024);
 
-        int repeatTime2 = 100;
+        int repeatTime2 = 1;
 //        for (int file_i = 10; file_i < 11; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
