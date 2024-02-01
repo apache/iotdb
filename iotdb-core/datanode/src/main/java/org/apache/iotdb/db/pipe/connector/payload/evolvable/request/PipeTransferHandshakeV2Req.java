@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
+
   private transient Map<String, String> params;
 
   private PipeTransferHandshakeV2Req() {

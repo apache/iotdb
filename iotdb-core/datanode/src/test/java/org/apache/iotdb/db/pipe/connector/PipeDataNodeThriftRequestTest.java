@@ -95,10 +95,11 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(
-        req.getParams().get("clusterId"), deserializeReq.getParams().get("clusterId"));
+        req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID),
+        deserializeReq.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID));
     Assert.assertEquals(
-        req.getParams().get("timestampPrecision"),
-        deserializeReq.getParams().get("timestampPrecision"));
+        req.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION),
+        deserializeReq.getParams().get(PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION));
   }
 
   @Test
