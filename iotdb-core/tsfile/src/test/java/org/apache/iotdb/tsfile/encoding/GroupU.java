@@ -14,6 +14,8 @@ public class GroupU{
     public int mask;
     public int left_shift;
     public long[] sorted_value_list; // cdf
+    public int[] invert;
+    public int[] invert2;
 
     public int getCount(long long1) {
         return ((int) (long1 & this.mask));
@@ -57,6 +59,7 @@ public class GroupU{
         double par = this.range/(count*Math.log(this.count));
         this.left_shift = getBitWith(this.count);
         this.mask = (1 << left_shift) - 1;
+        invert = new int[this.range];
         if (par > 3) {
             int[] value_list = new int[this.count];
             for (int i = 0; i < this.count; i++) {
@@ -79,11 +82,11 @@ public class GroupU{
                 cdf_count += getCount(sorted_value_list[i]);
                 sorted_value_list[i] = (((long) getUniqueValue(sorted_value_list[i])) << left_shift) + cdf_count;//new_value_list[i]
             }
-        }else{
+        }else {
             int[] hash = new int[this.range];
             for (int i = 0; i < this.count; i++) {
                 int value = this.number[i];
-                if (hash[k2_end - value] == 0){
+                if (hash[k2_end - value] == 0) {
                     this.unique_number++;
                 }
                 hash[k2_end - value]++;
@@ -91,12 +94,22 @@ public class GroupU{
             sorted_value_list = new long[unique_number];
             int ccount = 0;
             int index = 0;
-            for(int i = 0; i < this.range;i++){
+            for (int i = 0; i < this.range; i++) {
                 if (hash[i] > 0) {
                     ccount += hash[i];
                     sorted_value_list[index] = (((long) i) << left_shift) + ccount;
                     index++;
                 }
+            }
+        }
+    }
+
+    public void setinvert(){
+        int count = 0;
+        for (int i = 0; i < this.range; i++) {
+            invert[i] = count;
+            if (count < unique_number && getUniqueValue(sorted_value_list[count]) == i){
+                count ++;
             }
         }
     }
