@@ -37,5 +37,6 @@
         <module>metrics</module>
         <module>node-commons</module>
         <module>tsfile</module>
+        <module>relational-grammar</module>
     </modules>
 </project>
