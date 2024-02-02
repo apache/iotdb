@@ -47,10 +47,18 @@ import java.util.stream.Collectors;
  */
 public class PipeParameters {
 
-  private final Map<String, String> attributes;
+  private final TreeMap<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
-    this.attributes = attributes;
+    // We store the keys sorted after reducing.
+    this.attributes =
+        attributes.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    entry -> KeyReducer.reduce(entry.getKey()),
+                    Entry::getValue,
+                    (oldValue, newValue) -> oldValue,
+                    TreeMap::new));
   }
 
   public Map<String, String> getAttribute() {
@@ -276,52 +284,22 @@ public class PipeParameters {
     return attributes.entrySet().stream()
         .collect(
             Collectors.toMap(
-                Entry::getKey, entry -> ValueHider.hide(entry.getKey(), entry.getValue())))
+                Entry::getKey,
+                entry -> ValueHider.hide(entry.getKey(), entry.getValue()),
+                (oldValue, newValue) -> oldValue,
+                TreeMap::new))
         .toString();
   }
 
   /**
-   * This method uses {@link KeyReducer} to reduce keys and then sorts them to determine if two
-   * PipeParameters are equivalent.
-   */
-  public boolean isEquivalent(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    PipeParameters that = (PipeParameters) obj;
-    return Objects.equals(
-        this.attributes.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
-                    (oldValue, newValue) -> oldValue, TreeMap::new))
-            .toString(),
-        that.attributes.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
-                    (oldValue, newValue) -> oldValue, TreeMap::new))
-            .toString());
-  }
-
-  /**
-   * This method uses {@link KeyReducer} to check for equivalent keys in this.attributes and
-   * attributes, and updates the values of this.attributes accordingly.
+   * This method adds (non-existed) or replaces (existed) attributes in this PipeParameters with
+   * those from another PipeParameters.
    *
-   * @param attributes Provide the key that needs to be updated along with the new value.
+   * @param that provide the key that needs to be updated along with the value
    * @return this pipe parameters
    */
-  public PipeParameters updateEquivalentAttributes(Map<String, String> attributes) {
-    attributes.forEach(
-        (k, v) ->
-            this.attributes.entrySet().stream()
-                .filter(
-                    entry ->
-                        entry.getKey().equals(k) || entry.getKey().equals(KeyReducer.reduce(k)))
-                .forEach(entry -> entry.setValue(v)));
+  public PipeParameters addOrReplaceAttributes(PipeParameters that) {
+    that.attributes.forEach((k, v) -> this.attributes.put(KeyReducer.reduce(k), v));
     return this;
   }
 

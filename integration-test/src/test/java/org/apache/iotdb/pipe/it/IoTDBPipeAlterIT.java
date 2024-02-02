@@ -54,7 +54,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // create pipe
     String sql =
         String.format(
-            "create pipe a2b with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -63,14 +63,23 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // show pipe and record last creation time
+    // show pipe
     long lastCreationTime;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
+      // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      // check configurations
+      Assert.assertTrue(
+          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+      Assert.assertTrue(
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+      // record last creation time
       lastCreationTime = showPipeResult.get(0).creationTime;
     }
 
@@ -87,13 +96,14 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+      // check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
     }
 
     // alter pipe (modify)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify sink ('batch.enable'='true')");
+      statement.execute("alter pipe a2b modify sink ('batch.enable'='false')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -103,19 +113,21 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      // alter pipe (modify) will keep unspecified configurations
+      // check status
+      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
+      // check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
+      Assert.assertTrue(
+          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // alter pipe will keep user stopped status
-      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-      // alter pipe will reset pipe creation time
+      // check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
-      // alter pipe will clear exception messages
+      // check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
 
@@ -140,20 +152,52 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+      // check status
+      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      // check configurations
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
-      // alter pipe (without sink clause) will not modify sink's configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // alter pipe will keep running status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // alter pipe will reset pipe creation time
+      // check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      // alter pipe will clear exception messages
+      lastCreationTime = showPipeResult.get(0).creationTime;
+      // check exception message
+      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+    }
+
+    // alter pipe (modify)
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify sink ('batch.enable'='true')");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    // show pipe
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(1, showPipeResult.size());
+      // check status
+      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      // check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+      Assert.assertTrue(
+          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+      Assert.assertTrue(
+          showPipeResult
+              .get(0)
+              .pipeConnector
+              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+      // check creation time and record last creation time
+      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+      lastCreationTime = showPipeResult.get(0).creationTime;
+      // check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
   }

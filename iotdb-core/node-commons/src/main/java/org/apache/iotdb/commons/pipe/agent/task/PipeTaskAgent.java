@@ -162,11 +162,20 @@ public abstract class PipeTaskAgent {
     final PipeStaticMeta staticMetaInAgent = metaInAgent.getStaticMeta();
     final PipeStaticMeta staticMetaFromCoordinator = metaFromCoordinator.getStaticMeta();
 
-    // First check if pipe static meta has changed, if so, drop the pipe and create a new one
+    // First check if pipe static meta has changed
     if (!staticMetaInAgent.equals(staticMetaFromCoordinator)) {
-      dropPipe(pipeName);
-      if (createPipe(metaFromCoordinator)) {
-        startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
+      if (Objects.equals(staticMetaInAgent.getPipeName(), staticMetaFromCoordinator.getPipeName())
+          && staticMetaInAgent.getCreationTime() < staticMetaFromCoordinator.getCreationTime()) {
+        // Alter pipe to keep progress index from existed pipe meta
+        if (alterPipe(metaFromCoordinator)) {
+          startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
+        }
+      } else {
+        // Drop the pipe and create a new one
+        dropPipe(pipeName);
+        if (createPipe(metaFromCoordinator)) {
+          startPipe(pipeName, metaFromCoordinator.getStaticMeta().getCreationTime());
+        }
       }
       // If the status is STOPPED or DROPPED, do nothing
       return;
@@ -580,6 +589,42 @@ public abstract class PipeTaskAgent {
         System.currentTimeMillis() - startTime);
   }
 
+  private boolean alterPipe(PipeMeta metaFromCoordinator) {
+    final PipeStaticMeta staticMetaFromCoordinator = metaFromCoordinator.getStaticMeta();
+    final String pipeName = staticMetaFromCoordinator.getPipeName();
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (!checkBeforeAlterPipe(existedPipeMeta, pipeName)) {
+      return false;
+    }
+
+    // Step 1: update progress index from coordinator by existed pipe meta on DN
+    final Map<TConsensusGroupId, PipeTaskMeta> existedConsensusGroupId2PipeTaskMeta =
+        existedPipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+    metaFromCoordinator
+        .getRuntimeMeta()
+        .getConsensusGroupId2TaskMetaMap()
+        .forEach(
+            (consensusGroupId, pipeTaskMeta) -> {
+              if (existedConsensusGroupId2PipeTaskMeta.containsKey(consensusGroupId)
+                  && pipeTaskMeta.getLeaderDataNodeId()
+                      == existedConsensusGroupId2PipeTaskMeta
+                          .get(consensusGroupId)
+                          .getLeaderDataNodeId()) {
+                // Update the progress index that DN has not yet reported to CN.
+                pipeTaskMeta.updateProgressIndex(
+                    existedConsensusGroupId2PipeTaskMeta.get(consensusGroupId).getProgressIndex());
+              }
+            });
+
+    // Step 2: drop existed pipe
+    dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+
+    // Step 3: create pipe by updated pipe meta from coordinator
+    return createPipe(metaFromCoordinator);
+  }
+
   ////////////////////////// Checker //////////////////////////
 
   /**
@@ -794,6 +839,21 @@ public abstract class PipeTaskAgent {
     if (existedPipeMeta == null) {
       LOGGER.info(
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if we need to alter pipe tasks.
+   *
+   * @return {@code true} if need to alter pipe tasks, {@code false} if no need to alter.
+   */
+  private boolean checkBeforeAlterPipe(PipeMeta existedPipeMeta, String pipeName) {
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} has already been dropped or has not been created. Skip altering.", pipeName);
       return false;
     }
 

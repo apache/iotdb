@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -198,7 +199,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       alterPipeRequest.setProcessorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getProcessorParameters()
-              .updateEquivalentAttributes(alterPipeRequest.getProcessorAttributes())
+              .addOrReplaceAttributes(new PipeParameters(alterPipeRequest.getProcessorAttributes()))
               .getAttribute());
     }
     if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
@@ -208,7 +209,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       alterPipeRequest.setConnectorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getConnectorParameters()
-              .updateEquivalentAttributes(alterPipeRequest.getConnectorAttributes())
+              .addOrReplaceAttributes(new PipeParameters(alterPipeRequest.getConnectorAttributes()))
               .getAttribute());
     }
   }
