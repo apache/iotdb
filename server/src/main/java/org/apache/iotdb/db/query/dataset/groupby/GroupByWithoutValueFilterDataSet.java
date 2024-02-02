@@ -31,11 +31,9 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
-import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -653,10 +651,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
     if (CONFIG.getEnableTri().equals("MinMax")) {
-      return new LocalGroupByExecutorTri_MinMax( // TODO
+      return new LocalGroupByExecutorTri_MinMax(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
-      return new LocalGroupByExecutorTri_MinMaxPreselection( // TODO
+      return new LocalGroupByExecutorTri_MinMaxPreselection(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("M4")) {
       return new LocalGroupByExecutorTri_M4(
@@ -667,45 +665,54 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     } else if (CONFIG.getEnableTri().equals("ILTS")) {
       return new LocalGroupByExecutorTri_ILTS(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    }
-    // deprecated below
-    else if (CONFIG.isEnableCPV()) {
-      if (TSFileDescriptor.getInstance().getConfig().isEnableMinMaxLSM()) { // MinMax-LSM
-        IOMonitor2.dataSetType =
-            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_EnableMinMaxLSM;
-        return new LocalGroupByExecutor4MinMax(
-            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-      } else { // M4-LSM
-        if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-          IOMonitor2.dataSetType =
-              DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex;
-        } else if (!TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-          IOMonitor2.dataSetType =
-              DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex;
-        } else if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-            && !TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-          IOMonitor2.dataSetType =
-              DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex;
-        } else {
-          IOMonitor2.dataSetType =
-              DataSetType
-                  .GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex;
-        }
-        return new LocalGroupByExecutor4CPV(
-            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-      }
-    } else { // enableCPV=false
-      if (TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
-        IOMonitor2.dataSetType =
-            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics;
-      } else {
-        IOMonitor2.dataSetType =
-            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics;
-      }
+    } else {
+      logger.info("No matched enable_tri!");
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
+
+    //    // deprecated below, note that time&value index are also deprecated in Statistics
+    //    else if (CONFIG.isEnableCPV()) {
+    //      if (TSFileDescriptor.getInstance().getConfig().isEnableMinMaxLSM()) { // MinMax-LSM
+    //        IOMonitor2.dataSetType =
+    //
+    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_EnableMinMaxLSM;
+    //        return new LocalGroupByExecutor4MinMax(
+    //            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    //      } else { // M4-LSM
+    //        if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+    //            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+    //          IOMonitor2.dataSetType =
+    //              DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex;
+    //        } else if (!TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+    //            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+    //          IOMonitor2.dataSetType =
+    //
+    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex;
+    //        } else if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+    //            && !TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+    //          IOMonitor2.dataSetType =
+    //
+    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex;
+    //        } else {
+    //          IOMonitor2.dataSetType =
+    //              DataSetType
+    //                  .GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex;
+    //        }
+    //        return new LocalGroupByExecutor4CPV(
+    //            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    //      }
+    //    } else { // enableCPV=false
+    //      if (TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
+    //        IOMonitor2.dataSetType =
+    //            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics;
+    //      } else {
+    //        IOMonitor2.dataSetType =
+    //
+    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics;
+    //      }
+    //      return new LocalGroupByExecutor(
+    //          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+    //    }
   }
 }

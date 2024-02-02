@@ -32,11 +32,18 @@ import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -63,6 +70,12 @@ public abstract class Statistics<T> {
   private long endTime = Long.MIN_VALUE;
 
   private StepRegress stepRegress = new StepRegress();
+
+  private List<QuickHullPoint> quickHullPoints = new ArrayList<>();
+  private int quickHullIdx = 0;
+  private boolean quickHullLearned = false;
+
+  private BitSet quickHullBitSet = null;
 
   public ValueIndex valueIndex = new ValueIndex();
 
@@ -133,10 +146,12 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
-    // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream, true);
-    // serialize value index
-    byteLen += serializeValueIndex(outputStream, true);
+    //    // serialize stepRegress
+    //    byteLen += serializeStepRegress(outputStream, true);
+    //    // serialize value index
+    //    byteLen += serializeValueIndex(outputStream, true);
+    // serialize convex hull
+    byteLen += serializeConvexHull(outputStream, true);
     return byteLen;
   }
 
@@ -147,10 +162,12 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
-    // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream, log);
-    // serialize value index
-    byteLen += serializeValueIndex(outputStream, log);
+    //    // serialize stepRegress
+    //    byteLen += serializeStepRegress(outputStream, log);
+    //    // serialize value index
+    //    byteLen += serializeValueIndex(outputStream, log);
+    // serialize convex hull
+    byteLen += serializeConvexHull(outputStream, log);
     return byteLen;
   }
 
@@ -196,6 +213,34 @@ public abstract class Statistics<T> {
           "time_index_serialize_byteLen,{},segmentKeys_size_includeFPtLPt,{}",
           byteLen,
           segmentKeys.size());
+    }
+    return byteLen;
+  }
+
+  int serializeConvexHull(OutputStream outputStream, boolean log) throws IOException {
+    if (!quickHullLearned) {
+      // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
+      // causing learn() executed more than once!!
+      quickHullBitSet = QuickHull.quickHull(quickHullPoints);
+      quickHullLearned = true;
+      quickHullPoints = null;
+    }
+    //    System.out.println("debug:::::" + quickHullBitSet);
+
+    // write bitset
+    int byteLen = 0;
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream(baos);
+    oos.writeObject(quickHullBitSet);
+    oos.flush();
+    byte[] bytes = baos.toByteArray();
+    // 参考serializeBloomFilter
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, outputStream);
+    outputStream.write(bytes);
+    byteLen += bytes.length;
+
+    if (log) {
+      LOG.info("convex hull,{}", bytes.length);
     }
     return byteLen;
   }
@@ -273,12 +318,17 @@ public abstract class Statistics<T> {
       // must be sure no overlap between two statistics
       this.count += stats.count;
       mergeStatisticsValue(stats);
-      // TODO M4-LSM assumes that there is always only one page in a chunk
-      // TODO M4-LSM if there are more than one chunk in a time series, then access each
-      // chunkMetadata anyway
-      this.stepRegress = stats.stepRegress;
-      // TODO
-      this.valueIndex = stats.valueIndex;
+      // TODO assumes that there is always only one page in a chunk
+      // TODO if there are more than one chunk in a time series, then access each
+      //    chunkMetadata anyway
+      //      this.stepRegress = stats.stepRegress;
+      //      this.valueIndex = stats.valueIndex;
+
+      // 注意这里要把points也一并赋值，因为当chunk里只有一个page的时候只serialize chunk的metadata
+      this.quickHullPoints = stats.quickHullPoints;
+      this.quickHullBitSet = stats.quickHullBitSet;
+      this.quickHullIdx = stats.quickHullIdx;
+      this.quickHullLearned = stats.quickHullLearned;
 
       isEmpty = false;
     } else {
@@ -311,10 +361,11 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
+    updateStats(value, time); // TP,BP,sum,lastValue,firstValue
     // update time index
-    updateStepRegress(time);
-    updateValueIndex(value);
-    updateStats(value, time);
+    //    updateStepRegress(time);
+    //    updateValueIndex(value);
+    updateConvexHull(time, value);
   }
 
   /** @author Yuyuan Kang */
@@ -326,9 +377,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
     updateStats(value, time);
+    //    updateStepRegress(time);
+    //    updateValueIndex(value);
+    updateConvexHull(time, value);
   }
 
   /** @author Yuyuan Kang */
@@ -340,9 +392,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
     updateStats(value, time);
+    //    updateStepRegress(time);
+    //    updateValueIndex(value);
+    updateConvexHull(time, value);
   }
 
   /** @author Yuyuan Kang */
@@ -354,9 +407,10 @@ public abstract class Statistics<T> {
     if (time > this.endTime) {
       endTime = time;
     }
-    updateStepRegress(time);
-    updateValueIndex(value);
     updateStats(value, time);
+    //    updateStepRegress(time);
+    //    updateValueIndex(value);
+    updateConvexHull(time, value);
   }
 
   @Deprecated
@@ -392,9 +446,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
     updateStats(values, time, batchSize);
+    //    updateStepRegress(time, batchSize);
+    //    updateValueIndex(values, batchSize);
+    updateConvexHull(time, values, batchSize);
   }
 
   /** @author Yuyuan Kang */
@@ -406,9 +461,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
     updateStats(values, time, batchSize);
+    //    updateStepRegress(time, batchSize);
+    //    updateValueIndex(values, batchSize);
+    updateConvexHull(time, values, batchSize);
   }
 
   /** @author Yuyuan Kang */
@@ -420,9 +476,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
     updateStats(values, time, batchSize);
+    //    updateStepRegress(time, batchSize);
+    //    updateValueIndex(values, batchSize);
+    updateConvexHull(time, values, batchSize);
   }
 
   /** @author Yuyuan Kang */
@@ -434,9 +491,10 @@ public abstract class Statistics<T> {
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    updateStepRegress(time, batchSize);
-    updateValueIndex(values, batchSize);
     updateStats(values, time, batchSize);
+    //    updateStepRegress(time, batchSize);
+    //    updateValueIndex(values, batchSize);
+    updateConvexHull(time, values, batchSize);
   }
 
   @Deprecated
@@ -475,9 +533,37 @@ public abstract class Statistics<T> {
     stepRegress.insert(timestamp);
   }
 
+  void updateConvexHull(long timestamp, Object value) {
+    quickHullPoints.add(new QuickHullPoint(timestamp, (double) value, quickHullIdx++));
+  }
+
   void updateStepRegress(long[] timestamps, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStepRegress(timestamps[i]);
+    }
+  }
+
+  void updateConvexHull(long[] timestamps, int[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateConvexHull(timestamps[i], values[i]);
+    }
+  }
+
+  void updateConvexHull(long[] timestamps, long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateConvexHull(timestamps[i], values[i]);
+    }
+  }
+
+  void updateConvexHull(long[] timestamps, float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateConvexHull(timestamps[i], values[i]);
+    }
+  }
+
+  void updateConvexHull(long[] timestamps, double[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateConvexHull(timestamps[i], values[i]);
     }
   }
 
@@ -601,8 +687,9 @@ public abstract class Statistics<T> {
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
     statistics.deserialize(buffer);
-    statistics.deserializeStepRegress(buffer);
-    statistics.deserializeValueIndex(buffer);
+    //    statistics.deserializeStepRegress(buffer);
+    //    statistics.deserializeValueIndex(buffer);
+    statistics.deserializeConvexHull(buffer);
     statistics.isEmpty = false;
     return statistics;
   }
@@ -722,6 +809,18 @@ public abstract class Statistics<T> {
     }
   }
 
+  void deserializeConvexHull(ByteBuffer byteBuffer) throws IOException {
+    try {
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer);
+      ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+      ObjectInputStream ois = new ObjectInputStream(bais);
+      quickHullBitSet = (BitSet) ois.readObject();
+      //      System.out.println("debug:::::" + quickHullBitSet);
+    } catch (ClassNotFoundException e) {
+      System.out.println("deserializeConvexHull: " + e);
+    }
+  }
+
   public long getStartTime() {
     return startTime;
   }
@@ -732,6 +831,10 @@ public abstract class Statistics<T> {
 
   public StepRegress getStepRegress() {
     return stepRegress;
+  }
+
+  public BitSet getQuickHullBitSet() {
+    return quickHullBitSet;
   }
 
   public int getCount() {
