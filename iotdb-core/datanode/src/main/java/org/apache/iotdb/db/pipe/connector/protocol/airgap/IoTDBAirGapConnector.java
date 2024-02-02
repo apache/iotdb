@@ -198,8 +198,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      // Try to handshake by PipeTransferHandshakeV2Req.
-      HashMap<String, String> params = new HashMap<>();
+      final HashMap<String, String> params = new HashMap<>();
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
           PipeAgent.runtime().getClusterIdIfPossible());
@@ -207,15 +206,15 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
-      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
-        // Retry to handshake with PipeTransferHandshakeV1Req.
-        if (!send(
-            socket,
-            PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-          throw new PipeException(
-              "Handshake error with target server ip: " + ip + ", port: " + port);
-        }
+      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))
+          && !send(
+              socket,
+              PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+        throw new PipeConnectionException(
+            "Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
