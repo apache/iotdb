@@ -141,6 +141,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
@@ -257,7 +258,7 @@ public class DataRegion implements IDataRegionForQuery {
    * different IoTDB instance will have identical data, providing convenience for data comparison
    * across different instances. partition number -> max version number
    */
-  private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+  private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
   /** whether it's ready from recovery. */
@@ -629,10 +630,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
-    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
-    if (fileVersion > oldVersion) {
-      partitionMaxFileVersions.put(partitionNum, fileVersion);
-    }
+    partitionMaxFileVersions.compute(
+        partitionNum,
+        (key, oldVersion) ->
+            (oldVersion == null || fileVersion > oldVersion) ? fileVersion : oldVersion);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1391,9 +1392,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     String filePath =
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
@@ -1438,8 +1439,9 @@ public class DataRegion implements IDataRegionForQuery {
    * @return file name
    */
   private String getNewTsFileName(long timePartitionId) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
@@ -2698,8 +2700,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     tsFileResource.setVersion(version);
     return version;
   }
