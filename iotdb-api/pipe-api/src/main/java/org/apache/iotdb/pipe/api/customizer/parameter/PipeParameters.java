@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -47,18 +46,13 @@ import java.util.stream.Collectors;
  */
 public class PipeParameters {
 
-  private final TreeMap<String, String> attributes;
+  private final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
-    // We store the keys sorted after reducing.
+    // Reduce keys using {@link KeyReducer} before storing.
     this.attributes =
         attributes.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    entry -> KeyReducer.reduce(entry.getKey()),
-                    Entry::getValue,
-                    (oldValue, newValue) -> oldValue,
-                    TreeMap::new));
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue));
   }
 
   public Map<String, String> getAttribute() {
@@ -284,10 +278,7 @@ public class PipeParameters {
     return attributes.entrySet().stream()
         .collect(
             Collectors.toMap(
-                Entry::getKey,
-                entry -> ValueHider.hide(entry.getKey(), entry.getValue()),
-                (oldValue, newValue) -> oldValue,
-                TreeMap::new))
+                Entry::getKey, entry -> ValueHider.hide(entry.getKey(), entry.getValue())))
         .toString();
   }
 

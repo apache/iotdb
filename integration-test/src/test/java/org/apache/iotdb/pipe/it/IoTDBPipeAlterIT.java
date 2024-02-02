@@ -103,7 +103,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // alter pipe (modify)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify sink ('batch.enable'='false')");
+      statement.execute("alter pipe a2b modify sink ('sink.batch.enable'='false')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -173,7 +173,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // alter pipe (modify)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify sink ('batch.enable'='true')");
+      statement.execute("alter pipe a2b modify sink ('connector.batch.enable'='true')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
