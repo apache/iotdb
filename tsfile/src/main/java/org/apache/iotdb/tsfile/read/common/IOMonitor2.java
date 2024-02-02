@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.QuickHullPoint;
+
+import java.util.BitSet;
+import java.util.List;
+
 public class IOMonitor2 {
 
   public enum DataSetType { // dataSet, executor, reader, file
@@ -266,6 +271,43 @@ public class IOMonitor2 {
     double numerator = Math.abs((vr - vl) * t + (tl - tr) * v + tr * vl - tl * vr);
     double denominator = Math.sqrt((vr - vl) * (vr - vl) + (tl - tr) * (tl - tr));
     return numerator / denominator;
+  }
+
+  public static BitSet reverse(BitSet bitset) {
+    final BitSet reversed = new BitSet(bitset.length());
+
+    int reversedIndex = 0;
+    for (int i = bitset.length() - 1; i >= 0; i--) {
+      if (bitset.get(i)) {
+        reversed.set(reversedIndex);
+      }
+      reversedIndex++;
+    }
+    return reversed;
+  }
+
+  public static int pointLocation(double tl, double vl, double t, double v, double tr, double vr) {
+    double cp1 = (tr - tl) * (v - vl) - (vr - vl) * (t - tl);
+    return Double.compare(cp1, 0);
+    // return 1 means P is above the line connecting l and r
+    // return -1 means P is below the line connecting l and r
+    // return 0 means P is on the line connecting l and r
+  }
+
+  public static int checkSumSigns(double A, double B, List<QuickHullPoint> points) {
+    int size = points.size();
+    QuickHullPoint p3 = points.get(size - 3);
+    QuickHullPoint p2 = points.get(size - 2);
+    QuickHullPoint p1 = points.get(size - 1);
+
+    double x1 = (p2.t - p1.t) * A + (p2.v - p1.v) * B;
+    double x2 = (p2.t - p3.t) * A + (p2.v - p3.v) * B;
+
+    return sign(x1) + sign(x2);
+  }
+
+  public static int sign(double x) {
+    return Double.compare(x, 0);
   }
 
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {

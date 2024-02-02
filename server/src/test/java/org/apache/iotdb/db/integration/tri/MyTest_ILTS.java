@@ -81,7 +81,7 @@ public class MyTest_ILTS {
     //    config.setNumIterations(4);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
-    config.setAcc_convex(false);
+    config.setAcc_convex(true);
     config.setAcc_iterRepeat(true);
 
     config.setEnableCPV(false);
@@ -123,6 +123,7 @@ public class MyTest_ILTS {
           Assert.assertEquals(res, ans);
         }
       }
+      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

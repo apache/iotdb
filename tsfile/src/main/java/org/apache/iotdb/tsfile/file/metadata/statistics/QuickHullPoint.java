@@ -13,4 +13,14 @@ public class QuickHullPoint {
     this.v = v;
     this.idx = idx;
   }
+
+  public QuickHullPoint(long t, double v) {
+    this.t = t;
+    this.v = v;
+  }
+
+  @Override
+  public String toString() {
+    return "(" + t + "," + v + ")";
+  }
 }

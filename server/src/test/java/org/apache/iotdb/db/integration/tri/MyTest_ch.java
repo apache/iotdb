@@ -4,7 +4,9 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.statistics.QuickHull;
 import org.apache.iotdb.tsfile.file.metadata.statistics.QuickHullPoint;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 
+import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -16,6 +18,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Queue;
 
 public class MyTest_ch {
 
@@ -42,9 +45,19 @@ public class MyTest_ch {
     points.add(new QuickHullPoint(5, 2, 5));
     points.add(new QuickHullPoint(100, 2, 6));
 
+    //    points.add(new QuickHullPoint(0, 0, 0));
+    //    points.add(new QuickHullPoint(1, 0, 1));
+    //    points.add(new QuickHullPoint(2, 0, 2));
+    //    points.add(new QuickHullPoint(3, 0, 3));
+    //    points.add(new QuickHullPoint(4, 0, 4));
+    //    points.add(new QuickHullPoint(5, 0, 5));
+    //    points.add(new QuickHullPoint(100, 0, 6));
+
     BitSet bitSet1 = QuickHull.quickHull(points);
     System.out.println(bitSet1);
-    //    System.out.println(bitSet1.size());
+    System.out.println(bitSet1.nextSetBit(100));
+    System.out.println(bitSet1.length());
+    System.out.println(IOMonitor2.reverse(bitSet1));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
@@ -52,7 +65,7 @@ public class MyTest_ch {
     oos.flush();
     byte[] bytes = baos.toByteArray();
     //    byte[] bytes = bitSet1.toByteArray();
-    System.out.println(bytes.length);
+    //    System.out.println(bytes.length);
 
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     ObjectInputStream ois = new ObjectInputStream(bais);
@@ -61,6 +74,13 @@ public class MyTest_ch {
     //    System.out.println(bitSet.size());
     Assert.assertTrue(bitSet.get(1));
     Assert.assertFalse(bitSet.get(3));
+
+    Queue<QuickHullPoint> LU = new CircularFifoQueue<>(3);
+    LU.add(new QuickHullPoint(0, 0));
+    LU.add(new QuickHullPoint(1, 0));
+    LU.add(new QuickHullPoint(0, 0));
+    LU.add(new QuickHullPoint(2, 0));
+    System.out.println(LU);
   }
 
   //  public static void main(String args[]) throws Exception {
