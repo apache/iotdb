@@ -299,7 +299,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       return new TPipeTransferResp(status);
     }
 
-    // Handle the rest of parts by handleTransferHandshakeV1.
+    // Handle the handshake request as a v1 request.
     return handleTransferHandshakeV1(
         PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision));
   }
