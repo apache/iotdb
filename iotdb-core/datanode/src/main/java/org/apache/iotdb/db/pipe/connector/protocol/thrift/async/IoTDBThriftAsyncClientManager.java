@@ -201,7 +201,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
         waitHandshakeFinished(isHandshakeFinished);
       }
       if (exception.get() != null) {
-        if (resp.get().getStatus().getCode() == TSStatusCode.PIPE_REJECT_ERROR.getStatusCode()) {
+        if (resp.get().getStatus().getCode() == TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode()) {
           throw new PipeException(
               String.format(
                   "Receiver rejects the handshake request, because %s.",

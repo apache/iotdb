@@ -182,7 +182,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         .equals(req.getTimestampPrecision())) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_REJECT_ERROR,
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
               String.format(
                   "IoTDB receiver's timestamp precision %s, "
                       + "connector's timestamp precision %s. Validation fails.",
@@ -253,34 +253,55 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
-    // Reject to handshake if the receiver can not take clusterId from configNode.
-    String clusterId = PipeAgent.runtime().getClusterIdIfPossible();
-    if (clusterId == null) {
+    // Reject to handshake if the receiver can not take clusterId from config node.
+    final String clusterIdFromConfigNode = PipeAgent.runtime().getClusterIdIfPossible();
+    if (clusterIdFromConfigNode == null) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_REJECT_ERROR, "Unable to get clusterId in receiver.");
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Receiver can not get clusterId from config node.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain sender's clusterId.
+    final String clusterIdFromHandshakeRequest =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID);
+    if (clusterIdFromHandshakeRequest == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR, "Handshake request does not contain clusterId.");
       LOGGER.warn("Handshake failed, response status = {}.", status);
       return new TPipeTransferResp(status);
     }
 
     // Reject to handshake if the receiver and sender are from the same cluster.
-    if (req.getParams()
-        .get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID)
-        .equals(clusterId)) {
+    if (Objects.equals(clusterIdFromConfigNode, clusterIdFromHandshakeRequest)) {
       final TSStatus status =
           RpcUtils.getStatus(
-              TSStatusCode.PIPE_REJECT_ERROR,
-              String.format("Unable to transfer data to IoTDB cluster %s itself", clusterId));
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "Receiver and sender are from the same cluster %s.",
+                  clusterIdFromHandshakeRequest));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain timestampPrecision.
+    final String timestampPrecision =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    if (timestampPrecision == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Handshake request does not contain timestampPrecision.");
       LOGGER.warn("Handshake failed, response status = {}.", status);
       return new TPipeTransferResp(status);
     }
 
     // Handle the rest of parts by handleTransferHandshakeV1.
-    String timestampPrecision =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
-    PipeTransferHandshakeV1Req handshakeV1Req =
-        PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision);
-    return handleTransferHandshakeV1(handshakeV1Req);
+    return handleTransferHandshakeV1(
+        PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision));
   }
 
   private TPipeTransferResp handleTransferTabletInsertNode(

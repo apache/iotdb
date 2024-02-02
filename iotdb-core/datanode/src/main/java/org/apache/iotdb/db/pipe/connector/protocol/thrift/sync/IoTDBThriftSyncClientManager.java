@@ -174,7 +174,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
         }
 
         // Throw exception if the statusCode is PIPE_REJECT_ERROR
-        if (resp.getStatus().getCode() == TSStatusCode.PIPE_REJECT_ERROR.getStatusCode()) {
+        if (resp.getStatus().getCode() == TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode()) {
           throw new PipeException(
               String.format(
                   "Receiver rejects the handshake request, because %s.",
