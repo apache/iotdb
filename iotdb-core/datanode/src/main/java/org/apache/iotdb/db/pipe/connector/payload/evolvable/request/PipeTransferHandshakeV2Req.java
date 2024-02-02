@@ -116,10 +116,10 @@ public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
       return false;
     }
     PipeTransferHandshakeV2Req that = (PipeTransferHandshakeV2Req) obj;
-    return params.equals(that.params)
+    return Objects.equals(params, that.params)
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && Objects.equals(body, that.body);
   }
 
   @Override
