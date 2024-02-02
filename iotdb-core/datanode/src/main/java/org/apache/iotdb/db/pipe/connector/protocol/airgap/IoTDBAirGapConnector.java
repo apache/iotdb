@@ -29,7 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
@@ -201,10 +201,10 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       // Try to handshake by PipeTransferHandshakeV2Req.
       HashMap<String, String> params = new HashMap<>();
       params.put(
-          PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
           PipeAgent.runtime().getClusterIdIfPossible());
       params.put(
-          PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
       if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
