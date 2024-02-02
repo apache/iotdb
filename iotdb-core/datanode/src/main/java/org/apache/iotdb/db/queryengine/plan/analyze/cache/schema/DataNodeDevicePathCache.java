@@ -41,7 +41,6 @@ public class DataNodeDevicePathCache {
             .maximumWeight(
                 (long)
                     (config.getAllocateMemoryForStorageEngine()
-                        * config.getWriteProportionForMemtable()
                         * config.getDevicePathCacheProportion()))
             .weigher(
                 (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
