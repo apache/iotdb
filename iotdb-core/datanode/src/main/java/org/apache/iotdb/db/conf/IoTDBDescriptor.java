@@ -1749,10 +1749,10 @@ public class IoTDBDescriptor {
     int proportionSum = 10;
     int writeProportion = 7;
     int compactionProportion = 2;
-    int devicePathCacheProportion = 1;
     int writeProportionSum = 20;
     int memTableProportion = 19;
     int timePartitionInfo = 1;
+    int devicePathCacheProportion = 1;
 
     String storageMemoryAllocatePortion =
         properties.getProperty("storage_engine_memory_proportion");
@@ -1767,11 +1767,8 @@ public class IoTDBDescriptor {
         proportionSum = loadedProportionSum;
         writeProportion = Integer.parseInt(proportions[0].trim());
         compactionProportion = Integer.parseInt(proportions[1].trim());
-        devicePathCacheProportion = Integer.parseInt(proportions[2].trim());
       }
       conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
-      conf.setDevicePathCacheProportion(
-          (double) devicePathCacheProportion / (double) proportionSum);
     }
 
     String allocationRatioForWrite = properties.getProperty("write_memory_proportion");
@@ -1786,6 +1783,7 @@ public class IoTDBDescriptor {
         writeProportionSum = loadedProportionSum;
         memTableProportion = Integer.parseInt(proportions[0].trim());
         timePartitionInfo = Integer.parseInt(proportions[1].trim());
+        devicePathCacheProportion = Integer.parseInt(proportions[2].trim());
       }
       // memtableProportionForWrite = 19/20 default
       double memtableProportionForWrite =
@@ -1793,6 +1791,8 @@ public class IoTDBDescriptor {
 
       // timePartitionInfoForWrite = 1/20 default
       double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
+      double devicePathCacheForWrite =
+          ((double) devicePathCacheProportion / (double) writeProportionSum);
       // proportionForWrite = 8/10 default
       double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
       // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
@@ -1800,6 +1800,8 @@ public class IoTDBDescriptor {
       // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
       conf.setAllocateMemoryForTimePartitionInfo(
           (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
+      conf.setDevicePathCacheProportion(
+          (long) ((proportionForWrite * devicePathCacheForWrite) * storageMemoryTotal));
     }
   }
 

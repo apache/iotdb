@@ -172,7 +172,7 @@ public class IoTDBConfig {
   private double compactionProportion = 0.2;
 
   /** The proportion of write memory for device path cache */
-  private double devicePathCacheProportion = 0.1;
+  private double devicePathCacheProportion = 0.05;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
