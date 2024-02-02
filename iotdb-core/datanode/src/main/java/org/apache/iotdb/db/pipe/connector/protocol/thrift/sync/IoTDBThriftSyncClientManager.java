@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
@@ -152,7 +152,9 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
       params.put(
           PipeConnectorConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-      params.put(PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID, PipeRuntimeAgent.getClusterId());
+      params.put(
+          PipeConnectorConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          PipeAgent.runtime().getClusterIdIfPossible());
 
       TPipeTransferResp resp =
           clientAndStatus

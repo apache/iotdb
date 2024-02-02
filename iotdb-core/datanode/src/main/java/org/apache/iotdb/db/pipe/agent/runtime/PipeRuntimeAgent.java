@@ -44,35 +44,21 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private static volatile String clusterId = null;
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-
-  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
-      new PipePeriodicalJobExecutor();
+  private final AtomicReference<String> clusterId = new AtomicReference<>(null);
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
 
-  //////////////////////////// Getter ////////////////////////////
-
-  public static synchronized String getClusterId() {
-    if (clusterId == null) {
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        clusterId = configNodeClient.getClusterId().clusterId;
-      } catch (Exception e) {
-        LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage(), e);
-      }
-    }
-
-    return clusterId;
-  }
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
 
   //////////////////////////// System Service Interface ////////////////////////////
 
@@ -120,6 +106,22 @@ public class PipeRuntimeAgent implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.PIPE_RUNTIME_AGENT;
+  }
+
+  public String getClusterIdIfPossible() {
+    if (clusterId.get() == null) {
+      synchronized (clusterId) {
+        if (clusterId.get() == null) {
+          try (final ConfigNodeClient configNodeClient =
+              ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+            clusterId.set(configNodeClient.getClusterId().getClusterId());
+          } catch (Exception e) {
+            LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage(), e);
+          }
+        }
+      }
+    }
+    return clusterId.get();
   }
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////

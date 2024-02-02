@@ -31,7 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -254,7 +254,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
     // Reject to handshake if the receiver can not take clusterId from configNode.
-    String clusterId = PipeRuntimeAgent.getClusterId();
+    String clusterId = PipeAgent.runtime().getClusterIdIfPossible();
     if (clusterId == null) {
       final TSStatus status =
           RpcUtils.getStatus(
