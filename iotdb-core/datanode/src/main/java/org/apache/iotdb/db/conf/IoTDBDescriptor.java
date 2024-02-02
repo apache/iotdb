@@ -1786,7 +1786,7 @@ public class IoTDBDescriptor {
             (double) Integer.parseInt(writeProportionArray[1].trim()) / writeMemoryProportion;
         double devicePathCacheProportion =
             (double) Integer.parseInt(writeProportionArray[2].trim()) / writeMemoryProportion;
-        // writeProportionForMemtable = 8/10 * 18/20 = 0.76 default
+        // writeProportionForMemtable = 8/10 * 18/20 = 0.72 default
         conf.setWriteProportionForMemtable(
             writeAllProportionOfStorageEngineMemory * memTableProportion);
 
