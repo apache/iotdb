@@ -49,8 +49,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -81,10 +79,11 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
-  public void testPipeValidateHandshakeV2Req() throws TException {
+  public void testPipeValidateHandshakeV2Req() throws Exception {
     HashMap<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, CLUSTER_ID);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put("Nullable", null);
 
     PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
     PipeTransferHandshakeV2Req deserializeReq =
@@ -100,6 +99,8 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION),
         deserializeReq.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION));
+    Assert.assertEquals(
+        req.getParams().get("Nullable"), deserializeReq.getParams().get("Nullable"));
   }
 
   @Test
@@ -108,22 +109,25 @@ public class PipeDataNodeThriftRequestTest {
     HashMap<String, String> params = new HashMap<>();
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, CLUSTER_ID);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put("Nullable", null);
     ByteBuffer byteBuffer =
         ByteBuffer.wrap(PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params));
 
     // Construct request.
     byte version = ReadWriteIOUtils.readByte(byteBuffer);
     short type = ReadWriteIOUtils.readShort(byteBuffer);
-    ReadWriteIOUtils.readInt(byteBuffer);
     ByteBuffer body = byteBuffer.slice();
     final AirGapPseudoTPipeTransferRequest req =
         (AirGapPseudoTPipeTransferRequest)
             new AirGapPseudoTPipeTransferRequest().setVersion(version).setType(type).setBody(body);
+    final PipeTransferHandshakeV2Req deserializeReq =
+        PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
 
     // Assert.
-    Assert.assertEquals(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), req.getVersion());
-    Assert.assertEquals(PipeRequestType.HANDSHAKE_V2.getType(), req.getType());
-    Assert.assertArrayEquals(SerializationUtils.serialize(params), req.getBody());
+    Assert.assertEquals(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(PipeRequestType.HANDSHAKE_V2.getType(), deserializeReq.getType());
+    Assert.assertEquals(params, deserializeReq.getParams());
   }
 
   @Test
