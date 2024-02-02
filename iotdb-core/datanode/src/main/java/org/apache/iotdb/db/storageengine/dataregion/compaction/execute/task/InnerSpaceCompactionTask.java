@@ -176,11 +176,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         timePartition,
         tsFileManager,
         serialId);
-    this.performer = performer;
     this.selectedTsFileResourceList = Collections.emptyList();
-    this.hashCode = this.toString().hashCode();
     this.settleFlag = true;
-    createSummary();
   }
 
   private void prepare() throws IOException {
@@ -528,7 +525,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  public void setSettleFlag(boolean settleFlag) {
+  protected void setSettleFlag(boolean settleFlag) {
     this.settleFlag = settleFlag;
   }
 }

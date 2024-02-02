@@ -114,7 +114,6 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
-    Assert.assertEquals(partialDeletedFiles.size(), task.getMemoryCostList().size());
     Assert.assertTrue(task.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -161,7 +160,6 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
-    Assert.assertEquals(partialDeletedFiles.size(), task.getMemoryCostList().size());
     Assert.assertTrue(task.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -244,7 +242,6 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
-    Assert.assertEquals(partialDeletedFiles.size(), task.getMemoryCostList().size());
     Assert.assertTrue(task.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -264,7 +261,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
   public void settleWithMixedDirtyFilesByTTL()
       throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 3, 10, 100, 0, 0, 0, 0, false, true);
-    createFiles(6, 6, 10, 100, 0, 0, 0, 0, false, true);
+    createFiles(6, 6, 10, 100, 0, 0, 10000, 0, false, true);
     createFiles(5, 6, 3, 50, 0, 10000, 50, 50, false, false);
 
     generateTTL(3, 50);
@@ -290,7 +287,6 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
-    Assert.assertEquals(partialDeletedFiles.size(), task.getMemoryCostList().size());
     Assert.assertTrue(task.start());
 
     for (TsFileResource tsFileResource : seqResources) {

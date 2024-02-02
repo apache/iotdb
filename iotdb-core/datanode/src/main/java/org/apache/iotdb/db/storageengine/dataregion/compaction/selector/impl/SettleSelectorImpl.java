@@ -258,6 +258,10 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   private List<SettleCompactionTask> createTask(
       AllDirtyResource allDirtyResource, PartialDirtyResource partialDirtyResource) {
+    if (allDirtyResource.getResources().isEmpty()
+        && partialDirtyResource.getResourceGroupList().isEmpty()) {
+      return Collections.emptyList();
+    }
     return Collections.singletonList(
         new SettleCompactionTask(
             timePartition,

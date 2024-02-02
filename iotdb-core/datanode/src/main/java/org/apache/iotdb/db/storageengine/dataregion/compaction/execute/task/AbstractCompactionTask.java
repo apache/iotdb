@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -412,4 +413,9 @@ public abstract class AbstractCompactionTask {
   }
 
   public abstract CompactionTaskType getCompactionTaskType();
+
+  @TestOnly
+  public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {
+    this.recoverMemoryStatus = recoverMemoryStatus;
+  }
 }

@@ -34,7 +34,6 @@ import java.util.List;
 public class SettleCompactionTask extends InnerSpaceCompactionTask {
   private List<TsFileResource> allDeletedFiles;
   private List<List<TsFileResource>> partialDeletedFileGroups;
-  private List<Long> memoryCostList;
 
   private double allDeletedFileSize = 0;
   private double partialDeletedFileSize = 0;
@@ -60,6 +59,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     super(timePartition, tsFileManager, performer, serialId);
     this.allDeletedFiles = allDeletedFiles;
     this.partialDeletedFileGroups = partialDeletedFileGroups;
+    this.performer = performer;
     allDeletedFiles.forEach(x -> allDeletedFileSize += x.getTsFileSize());
     partialDeletedFileGroups.forEach(
         x -> {
@@ -71,6 +71,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
     partialDeletedFileGroups.forEach(
         x -> x.forEach(y -> totalModsFileSize += y.getModFile().getSize()));
+    this.hashCode = this.toString().hashCode();
+    createSummary();
   }
 
   public SettleCompactionTask(
@@ -107,7 +109,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             + "and {} partial_deleted groups with {} files. "
             + "All_deleted files : {}, partial_deleted files : {} . "
             + "All_deleted files size is {} MB, "
-            + "partial_deleted file size is {} MB. ",
+            + "partial_deleted file size is {} MB. "
+            + "Max memory cost is {} MB.",
         storageGroupName,
         dataRegionId,
         allDeletedFiles.size(),
@@ -116,7 +119,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         allDeletedFiles,
         partialDeletedFileGroups,
         allDeletedFileSize / 1024 / 1024,
-        partialDeletedFileSize / 1024 / 1024);
+        partialDeletedFileSize / 1024 / 1024,
+        memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
 
     isSuccess = settleWithAllDeletedFiles();
     // In order to prevent overlap of sequential files after settle task, partial_deleted files can
@@ -144,7 +148,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  private boolean settleWithAllDeletedFiles() {
+  public boolean settleWithAllDeletedFiles() {
     if (allDeletedFiles.isEmpty()) {
       return true;
     }
@@ -210,16 +214,14 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (sourceFiles.isEmpty()) {
         continue;
       }
-      setSourceInfo(sourceFiles.get(0).isSeq(), sourceFiles, memoryCostList.get(i));
+      setSourceInfo(sourceFiles.get(0).isSeq(), sourceFiles);
       LOGGER.info(
-          "{}-{} [Compaction] Start to settle {} {} files, "
-              + "total file size is {} MB, memory cost is {} MB",
+          "{}-{} [Compaction] Start to settle {} {} files, " + "total file size is {} MB",
           storageGroupName,
           dataRegionId,
           selectedTsFileResourceList.size(),
           sequence ? "Sequence" : "Unsequence",
-          selectedFileSize / 1024 / 1024,
-          memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
+          selectedFileSize / 1024 / 1024);
       try {
         long startTime = System.currentTimeMillis();
         compact();
@@ -256,10 +258,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  private void setSourceInfo(boolean isSeq, List<TsFileResource> resources, long memoryCost) {
+  public void setSourceInfo(boolean isSeq, List<TsFileResource> resources) {
     this.sequence = isSeq;
     this.selectedTsFileResourceList = resources;
-    this.memoryCost = memoryCost;
     collectSelectedFilesInfo();
     summary.resetInfo();
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
@@ -331,48 +332,6 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
-  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
-    if (!(otherTask instanceof SettleCompactionTask)) {
-      return false;
-    }
-    SettleCompactionTask otherSettleCompactionTask = (SettleCompactionTask) otherTask;
-    return this.allDeletedFiles.equals(otherSettleCompactionTask.allDeletedFiles)
-        && this.partialDeletedFileGroups.equals(otherSettleCompactionTask.partialDeletedFileGroups)
-        && this.performer.getClass().isInstance(otherSettleCompactionTask.performer);
-  }
-
-  @Override
-  public long getEstimatedMemoryCost() {
-    if (partialDeletedFileGroups.isEmpty()) {
-      return 0;
-    } else {
-      memoryCostList = new ArrayList<>();
-      partialDeletedFileGroups.forEach(
-          x -> {
-            try {
-              long cost = spaceEstimator.estimateInnerCompactionMemory(x);
-              memoryCostList.add(cost);
-              memoryCost = Math.max(memoryCost, cost);
-            } catch (IOException e) {
-              spaceEstimator.cleanup();
-              LOGGER.error("Meet error when estimate settle compaction memory", e);
-              memoryCost = -1;
-            }
-          });
-      return memoryCost;
-    }
-  }
-
-  @Override
-  public int getProcessedFileNum() {
-    int num = 0;
-    for (List<TsFileResource> partialDeletedFileList : partialDeletedFileGroups) {
-      num = Math.max(num, partialDeletedFileList.size());
-    }
-    return num;
-  }
-
-  @Override
   public CompactionTaskType getCompactionTaskType() {
     return CompactionTaskType.SETTLE;
   }
@@ -397,12 +356,96 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return totalPartialDeletedFilesNum;
   }
 
-  @TestOnly
-  public List<Long> getMemoryCostList() {
-    return memoryCostList;
-  }
-
   public long getTotalModsSize() {
     return totalModsFileSize;
+  }
+
+  @Override
+  public String toString() {
+    return storageGroupName
+        + "-"
+        + dataRegionId
+        + "-"
+        + timePartition
+        + " all_deleted file num is "
+        + allDeletedFiles.size()
+        + ", partial_deleted group num is "
+        + partialDeletedFileGroups.size()
+        + ", total partial_deleted files num is "
+        + totalPartialDeletedFilesNum;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof SettleCompactionTask)) {
+      return false;
+    }
+
+    return equalsOtherTask((SettleCompactionTask) other);
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    if (!(otherTask instanceof SettleCompactionTask)) {
+      return false;
+    }
+    SettleCompactionTask otherSettleCompactionTask = (SettleCompactionTask) otherTask;
+    return this.allDeletedFiles.equals(otherSettleCompactionTask.allDeletedFiles)
+        && this.partialDeletedFileGroups.equals(otherSettleCompactionTask.partialDeletedFileGroups)
+        && this.performer.getClass().isInstance(otherSettleCompactionTask.performer);
+  }
+
+  @Override
+  public long getEstimatedMemoryCost() {
+    if (partialDeletedFileGroups.isEmpty()) {
+      return 0;
+    } else {
+      partialDeletedFileGroups.forEach(
+          x -> {
+            try {
+              memoryCost = Math.max(memoryCost, spaceEstimator.estimateInnerCompactionMemory(x));
+            } catch (IOException e) {
+              spaceEstimator.cleanup();
+              LOGGER.error("Meet error when estimate settle compaction memory", e);
+              memoryCost = -1;
+            }
+          });
+      return memoryCost;
+    }
+  }
+
+  @Override
+  public int getProcessedFileNum() {
+    int num = 0;
+    for (List<TsFileResource> partialDeletedFileList : partialDeletedFileGroups) {
+      num = Math.max(num, partialDeletedFileList.size());
+    }
+    return num;
+  }
+
+  @Override
+  public List<TsFileResource> getSelectedTsFileResourceList() {
+    throw new RuntimeException("Does not support this method in SettleCompactionTask.");
+  }
+
+  public boolean isSequence() {
+    throw new RuntimeException("Does not support this method in SettleCompactionTask.");
+  }
+
+  public long getSelectedFileSize() {
+    throw new RuntimeException("Does not support this method in SettleCompactionTask.");
+  }
+
+  public int getSumOfCompactionCount() {
+    throw new RuntimeException("Does not support this method in SettleCompactionTask.");
+  }
+
+  public long getMaxFileVersion() {
+    throw new RuntimeException("Does not support this method in SettleCompactionTask.");
+  }
+
+  @TestOnly
+  public void setHasFinishedSettledAllDeletedFile(boolean hasFinishedSettledAllDeletedFile) {
+    this.hasFinishedSettledAllDeletedFile = hasFinishedSettledAllDeletedFile;
   }
 }
