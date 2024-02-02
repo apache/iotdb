@@ -35,6 +35,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -193,7 +194,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // create pipe
     String sql =
         String.format(
-            "create pipe a2b with processor ('processor'='down-sampling-processor', 'down-sampling.interval-seconds'='1') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with processor ('processor'='down-sampling-processor', 'down-sampling.interval-seconds'='1', 'down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -202,11 +203,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // insert data on sender
+    // insert history data on sender
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         senderEnv,
-        Collections.singletonList(
-            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)"))) {
+        Arrays.asList(
+            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
+            "flush"))) {
       fail();
     }
 
@@ -218,6 +220,12 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
+    // clear data on receiver
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        receiverEnv, Collections.singletonList("delete from root.**"))) {
+      fail();
+    }
+
     // alter pipe (modify 'down-sampling.interval-seconds')
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -226,24 +234,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // clear data on receiver
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv, Collections.singletonList("delete from root.**"))) {
-      fail();
-    }
-
-    // insert data on sender
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv,
-        Collections.singletonList(
-            "insert into root.db.d1 (time, at1) values (4000, 6), (4500, 7), (5000, 8), (5500, 9), (6000, 10)"))) {
-      fail();
-    }
-
     // check data on receiver
     expectedResSet.clear();
-    expectedResSet.add("4000,6.0,");
-    expectedResSet.add("6000,10.0,");
+    expectedResSet.add("1000,1.0,");
+    expectedResSet.add("3000,5.0,");
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
   }
