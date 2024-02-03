@@ -105,6 +105,10 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
+      conf.setWriteConvexHull(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "write_convex_hull", Boolean.toString(conf.isWriteConvexHull()))));
       conf.setEnableMinMaxLSM(
           Boolean.parseBoolean(
               properties.getProperty(

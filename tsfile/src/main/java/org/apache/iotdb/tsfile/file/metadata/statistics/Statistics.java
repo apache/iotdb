@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -151,7 +152,9 @@ public abstract class Statistics<T> {
     //    // serialize value index
     //    byteLen += serializeValueIndex(outputStream, true);
     // serialize convex hull
-    byteLen += serializeConvexHull(outputStream, true);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      byteLen += serializeConvexHull(outputStream, true);
+    }
     return byteLen;
   }
 
@@ -167,7 +170,9 @@ public abstract class Statistics<T> {
     //    // serialize value index
     //    byteLen += serializeValueIndex(outputStream, log);
     // serialize convex hull
-    byteLen += serializeConvexHull(outputStream, log);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      byteLen += serializeConvexHull(outputStream, log);
+    }
     return byteLen;
   }
 
@@ -365,7 +370,9 @@ public abstract class Statistics<T> {
     // update time index
     //    updateStepRegress(time);
     //    updateValueIndex(value);
-    updateConvexHull(time, value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, value);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -380,7 +387,9 @@ public abstract class Statistics<T> {
     updateStats(value, time);
     //    updateStepRegress(time);
     //    updateValueIndex(value);
-    updateConvexHull(time, value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, value);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -395,7 +404,9 @@ public abstract class Statistics<T> {
     updateStats(value, time);
     //    updateStepRegress(time);
     //    updateValueIndex(value);
-    updateConvexHull(time, value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, value);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -410,7 +421,9 @@ public abstract class Statistics<T> {
     updateStats(value, time);
     //    updateStepRegress(time);
     //    updateValueIndex(value);
-    updateConvexHull(time, value);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, value);
+    }
   }
 
   @Deprecated
@@ -449,7 +462,9 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
     //    updateStepRegress(time, batchSize);
     //    updateValueIndex(values, batchSize);
-    updateConvexHull(time, values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, values, batchSize);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -464,7 +479,9 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
     //    updateStepRegress(time, batchSize);
     //    updateValueIndex(values, batchSize);
-    updateConvexHull(time, values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, values, batchSize);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -479,7 +496,9 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
     //    updateStepRegress(time, batchSize);
     //    updateValueIndex(values, batchSize);
-    updateConvexHull(time, values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, values, batchSize);
+    }
   }
 
   /** @author Yuyuan Kang */
@@ -494,7 +513,9 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
     //    updateStepRegress(time, batchSize);
     //    updateValueIndex(values, batchSize);
-    updateConvexHull(time, values, batchSize);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      updateConvexHull(time, values, batchSize);
+    }
   }
 
   @Deprecated
@@ -689,7 +710,9 @@ public abstract class Statistics<T> {
     statistics.deserialize(buffer);
     //    statistics.deserializeStepRegress(buffer);
     //    statistics.deserializeValueIndex(buffer);
-    statistics.deserializeConvexHull(buffer);
+    if (TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()) {
+      statistics.deserializeConvexHull(buffer);
+    }
     statistics.isEmpty = false;
     return statistics;
   }

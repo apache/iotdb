@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 /** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
+  private boolean writeConvexHull = true;
+
   private boolean enableMinMaxLSM = false;
 
   private boolean useStatistics = true;
@@ -158,6 +160,14 @@ public class TSFileConfig implements Serializable {
   private int batchSize = 1000;
 
   public TSFileConfig() {}
+
+  public boolean isWriteConvexHull() {
+    return writeConvexHull;
+  }
+
+  public void setWriteConvexHull(boolean writeConvexHull) {
+    this.writeConvexHull = writeConvexHull;
+  }
 
   public boolean isEnableMinMaxLSM() {
     return enableMinMaxLSM;

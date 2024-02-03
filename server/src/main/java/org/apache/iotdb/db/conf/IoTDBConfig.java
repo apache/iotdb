@@ -450,7 +450,7 @@ public class IoTDBConfig {
     this.numIterations = numIterations;
   }
 
-  private int numIterations = 2;
+  private int numIterations = 4;
 
   public boolean isAcc_avg() {
     return acc_avg;

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
@@ -663,6 +664,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return new LocalGroupByExecutorTri_LTTB(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("ILTS")) {
+      if (!TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()
+          && CONFIG.isAcc_convex()) {
+        throw new QueryProcessException("ILTS use convex hull acceleration, which is not written!");
+      }
       return new LocalGroupByExecutorTri_ILTS(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else {

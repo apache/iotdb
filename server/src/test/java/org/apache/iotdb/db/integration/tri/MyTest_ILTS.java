@@ -81,8 +81,9 @@ public class MyTest_ILTS {
     //    config.setNumIterations(4);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
-    config.setAcc_convex(true);
+    config.setAcc_convex(false);
     config.setAcc_iterRepeat(true);
+    TSFileDescriptor.getInstance().getConfig().setWriteConvexHull(false);
 
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);

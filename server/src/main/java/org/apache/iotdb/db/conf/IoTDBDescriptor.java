@@ -922,6 +922,14 @@ public class IoTDBDescriptor {
   private void loadTsFileProps(Properties properties) {
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setWriteConvexHull(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "write_convex_hull",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isWriteConvexHull()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setEnableMinMaxLSM(
             Boolean.parseBoolean(
                 properties.getProperty(
