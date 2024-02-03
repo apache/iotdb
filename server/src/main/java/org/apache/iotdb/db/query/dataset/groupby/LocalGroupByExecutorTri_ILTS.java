@@ -384,10 +384,40 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           //   否则块完整落在桶内时，用凸包规则快速找到这个块中沿着lr连线法向量最高和最低的点，最后和全局当前最远结果点比较
           //   也可以改成先不管是不是完整落在桶里，先找到最高低点，然后如果这两个点没有当前已知最远点远那就可以排除了，
           //   否则如果最远但是不在当前桶里那还是要遍历，否则最远且在桶里就可以更新当前已知最远点。
-          //   目前先这样只管完全落在桶里的
+          // //目前先这样只管完全落在桶里的
+          //          if (CONFIG.isAcc_convex()
+          //              && chunkSuit4Tri.chunkMetadata.getStartTime() >= localCurStartTime
+          //              && chunkSuit4Tri.chunkMetadata.getEndTime() < localCurEndTime
+          //              && chunkSuit4Tri.chunkMetadata.getStatistics().getCount() >= 3 // 不考虑少于三个点
+          //          ) {
+          //            BitSet bitSet =
+          // chunkSuit4Tri.chunkMetadata.getStatistics().getQuickHullBitSet();
+          //            List<QuickHullPoint> foundPoints =
+          //                convexHullAcc(
+          //                    lt,
+          //                    lv,
+          //                    rt,
+          //                    rv,
+          //                    pageReader,
+          //                    bitSet,
+          //                    chunkSuit4Tri.chunkMetadata.getStatistics().getCount()); //
+          // 有可能不止两个点，当一边是平行线两端点
+          //            //            System.out.println(foundPoints);
+          //            for (QuickHullPoint point : foundPoints) {
+          //              IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+          //              double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v,
+          // rt, rv);
+          //              if (distance > maxDistance) {
+          //                // 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
+          //                //     从而acc_convex不会生效？！
+          //                maxDistance = distance;
+          //                select_t = point.t;
+          //                select_v = point.v;
+          //              }
+          //            }
+          //            continue; // note this
+          //          }
           if (CONFIG.isAcc_convex()
-              && chunkSuit4Tri.chunkMetadata.getStartTime() >= localCurStartTime
-              && chunkSuit4Tri.chunkMetadata.getEndTime() < localCurEndTime
               && chunkSuit4Tri.chunkMetadata.getStatistics().getCount() >= 3 // 不考虑少于三个点
           ) {
             BitSet bitSet = chunkSuit4Tri.chunkMetadata.getStatistics().getQuickHullBitSet();
@@ -401,18 +431,33 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                     bitSet,
                     chunkSuit4Tri.chunkMetadata.getStatistics().getCount()); // 有可能不止两个点，当一边是平行线两端点
             //            System.out.println(foundPoints);
+            double ch_maxDistance = -1;
+            long ch_select_t = -1;
+            double ch_select_v = -1;
+            // 找到foundPoints里的最远点
             for (QuickHullPoint point : foundPoints) {
               IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
               double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v, rt, rv);
-              if (distance > maxDistance) {
+              if (distance > ch_maxDistance) {
                 // 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
                 //     从而acc_convex不会生效？！
-                maxDistance = distance;
-                select_t = point.t;
-                select_v = point.v;
+                ch_maxDistance = distance;
+                ch_select_t = point.t;
+                ch_select_v = point.v;
               }
             }
-            continue; // note this
+            // 和当前找到的最远距离比较
+            if (ch_maxDistance <= maxDistance) {
+              continue; // 这个块里一定没有比当前找到的最远点更远的点，不管块凸包最远点在不在当前桶里都不用管了
+            }
+            // 否则ch_maxDistance>maxDistance，还要判断落在当前桶内才行
+            if (ch_select_t >= localCurStartTime && ch_select_t < localCurEndTime) {
+              maxDistance = ch_maxDistance;
+              select_t = ch_select_t;
+              select_v = ch_select_v;
+              continue; // note this
+            }
+            // 否则ch_maxDistance>maxDistance但是这个块的凸包最远点不在当前桶里，于是继续下面的遍历点操作
           }
           int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
           int j;
