@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -811,7 +812,8 @@ public class LogicalPlanBuilder {
                 outputColumnNames,
                 deviceToMeasurementIndexesMap,
                 deviceNameToSourceNodesMap,
-                valueFilterLimit));
+                valueFilterLimit,
+                queryStatement.isAggregationQuery()));
       }
 
       analysis.setUseTopKNode();
@@ -836,7 +838,8 @@ public class LogicalPlanBuilder {
               outputColumnNames,
               deviceToMeasurementIndexesMap,
               deviceNameToSourceNodesMap,
-              -1);
+              -1,
+              queryStatement.isAggregationQuery());
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
@@ -916,13 +919,24 @@ public class LogicalPlanBuilder {
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
-      long valueFilterLimit) {
-    DeviceViewNode deviceViewNode =
-        new DeviceViewNode(
-            context.getQueryId().genPlanNodeId(),
-            orderByParameter,
-            outputColumnNames,
-            deviceToMeasurementIndexesMap);
+      long valueFilterLimit,
+      boolean isAggregation) {
+    DeviceViewNode deviceViewNode;
+    if (isAggregation) {
+      deviceViewNode =
+          new AggMergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              orderByParameter,
+              outputColumnNames,
+              deviceToMeasurementIndexesMap);
+    } else {
+      deviceViewNode =
+          new DeviceViewNode(
+              context.getQueryId().genPlanNodeId(),
+              orderByParameter,
+              outputColumnNames,
+              deviceToMeasurementIndexesMap);
+    }
 
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();

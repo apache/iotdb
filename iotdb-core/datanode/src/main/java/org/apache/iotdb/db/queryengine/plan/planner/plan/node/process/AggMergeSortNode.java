@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -34,79 +35,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * DeviceViewNode is responsible for constructing a device-based view of a set of series. And output
- * the result with specific order. The order could be 'order by device' or 'order by timestamp'
- *
- * <p>Each output from its children should have the same schema. That means, the columns should be
- * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
- * contain n+1 columns where the new column is Device column.
- */
-public class DeviceViewNode extends MultiChildProcessNode {
+public class AggMergeSortNode extends DeviceViewNode {
 
-  // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first SortItem in this list has higher priority.
-  protected final OrderByParameter mergeOrderParameter;
-
-  // The size devices and children should be the same.
-  protected final List<String> devices = new ArrayList<>();
-
-  // Device column and measurement columns in result output
-  protected final List<String> outputColumnNames;
-
-  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
-  // not 0 because device is the first column
-  protected final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
-
-  public DeviceViewNode(
+  public AggMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    super(id);
-    this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumnNames = outputColumnNames;
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+    super(id, mergeOrderParameter, outputColumnNames, deviceToMeasurementIndexesMap);
   }
 
-  public DeviceViewNode(
+  public AggMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
       List<String> devices,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    super(id);
-    this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumnNames = outputColumnNames;
-    this.devices.addAll(devices);
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+    super(id, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.devices.add(deviceName);
-    this.children.add(childNode);
-  }
-
-  public List<String> getDevices() {
-    return devices;
-  }
-
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitAggMergeSort(this, context);
   }
 
   @Override
   public PlanNode clone() {
-    return new DeviceViewNode(
+    return new AggMergeSortNode(
         getPlanNodeId(),
         mergeOrderParameter,
         outputColumnNames,
         devices,
         deviceToMeasurementIndexesMap);
-  }
-
-  public OrderByParameter getMergeOrderParameter() {
-    return mergeOrderParameter;
   }
 
   @Override
@@ -115,13 +75,8 @@ public class DeviceViewNode extends MultiChildProcessNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceView(this, context);
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_VIEW.serialize(byteBuffer);
+    PlanNodeType.AGG_MERGE_SORT.serialize(byteBuffer);
     mergeOrderParameter.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String column : outputColumnNames) {
@@ -143,7 +98,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    PlanNodeType.AGG_MERGE_SORT.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
     for (String column : outputColumnNames) {
@@ -225,6 +180,6 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return "DeviceView-" + this.getPlanNodeId();
+    return "AggMergeSort-" + this.getPlanNodeId();
   }
 }

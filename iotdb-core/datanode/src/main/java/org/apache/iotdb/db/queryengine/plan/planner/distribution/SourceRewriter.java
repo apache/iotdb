@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
@@ -232,6 +233,30 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return Collections.singletonList(mergeSortNode);
   }
 
+  @Override
+  public List<PlanNode> visitAggMergeSort(AggMergeSortNode node, DistributionPlanContext context) {
+    AggMergeSortNode newRoot =
+        new AggMergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getOutputColumnNames(),
+            node.getDeviceToMeasurementIndexesMap());
+    for (int i = 0; i < node.getDevices().size(); i++) {
+      List<PlanNode> rewroteNode = rewrite(node.getChildren().get(i), context);
+      for (PlanNode planNode : rewroteNode) {
+        if (planNode instanceof AggregationNode) {
+          // if children of AggregationNode can only be AggScanNode?
+          for (PlanNode aggScanNode : planNode.getChildren()) {
+            newRoot.addChildDeviceNode(node.getDevices().get(i), aggScanNode);
+          }
+        } else {
+          newRoot.addChildDeviceNode(node.getDevices().get(i), planNode);
+        }
+      }
+    }
+    return Collections.singletonList(newRoot);
+  }
+
   private List<PlanNode> processSpecialDeviceView(
       DeviceViewNode node, DistributionPlanContext context) {
     DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
@@ -347,23 +372,21 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 }
               });
       schemaRegions.forEach(
-          region -> {
-            addSchemaSourceNode(
-                root,
-                seed.getPath(),
-                region,
-                context.queryContext.getQueryId().genPlanNodeId(),
-                seed);
-          });
+          region ->
+              addSchemaSourceNode(
+                  root,
+                  seed.getPath(),
+                  region,
+                  context.queryContext.getQueryId().genPlanNodeId(),
+                  seed));
       regionsOfSystemDatabase.forEach(
-          region -> {
-            addSchemaSourceNode(
-                root,
-                seed.getPath(),
-                region,
-                context.queryContext.getQueryId().genPlanNodeId(),
-                seed);
-          });
+          region ->
+              addSchemaSourceNode(
+                  root,
+                  seed.getPath(),
+                  region,
+                  context.queryContext.getQueryId().genPlanNodeId(),
+                  seed));
     } else {
       // the path pattern may only overlap with part of storageGroup or storageGroup.**, need filter
       PathPatternTree patternTree = new PathPatternTree();
@@ -394,31 +417,29 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             List<PartialPath> filteredPathPatternList =
                 filterPathPattern(patternTree, storageGroup);
             schemaRegionSet.forEach(
-                region -> {
-                  addSchemaSourceNode(
-                      root,
-                      filteredPathPatternList.size() == 1
-                          ? filteredPathPatternList.get(0)
-                          : seed.getPath(),
-                      region,
-                      context.queryContext.getQueryId().genPlanNodeId(),
-                      seed);
-                });
+                region ->
+                    addSchemaSourceNode(
+                        root,
+                        filteredPathPatternList.size() == 1
+                            ? filteredPathPatternList.get(0)
+                            : seed.getPath(),
+                        region,
+                        context.queryContext.getQueryId().genPlanNodeId(),
+                        seed));
           });
       if (!regionsOfSystemDatabase.isEmpty()) {
         List<PartialPath> filteredPathPatternList =
             filterPathPattern(patternTree, SchemaConstant.SYSTEM_DATABASE);
         regionsOfSystemDatabase.forEach(
-            region -> {
-              addSchemaSourceNode(
-                  root,
-                  filteredPathPatternList.size() == 1
-                      ? filteredPathPatternList.get(0)
-                      : seed.getPath(),
-                  region,
-                  context.queryContext.getQueryId().genPlanNodeId(),
-                  seed);
-            });
+            region ->
+                addSchemaSourceNode(
+                    root,
+                    filteredPathPatternList.size() == 1
+                        ? filteredPathPatternList.get(0)
+                        : seed.getPath(),
+                    region,
+                    context.queryContext.getQueryId().genPlanNodeId(),
+                    seed));
       }
     }
     return Collections.singletonList(root);
@@ -462,11 +483,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
         .forEach(
-            (storageGroup, deviceGroup) -> {
-              deviceGroup.forEach(
-                  (deviceGroupId, schemaRegionReplicaSet) ->
-                      schemaRegions.add(schemaRegionReplicaSet));
-            });
+            (storageGroup, deviceGroup) ->
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet)));
     schemaRegions.forEach(
         region -> {
           SchemaQueryScanNode schemaQueryScanNode = (SchemaQueryScanNode) seed.clone();
@@ -564,14 +584,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
-            descriptor -> {
-              leafAggDescriptorList.add(
-                  new AggregationDescriptor(
-                      descriptor.getAggregationFuncName(),
-                      AggregationStep.PARTIAL,
-                      descriptor.getInputExpressions(),
-                      descriptor.getInputAttributes()));
-            });
+            descriptor ->
+                leafAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationFuncName(),
+                        AggregationStep.PARTIAL,
+                        descriptor.getInputExpressions(),
+                        descriptor.getInputAttributes())));
     leafAggDescriptorList.forEach(
         d ->
             LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
@@ -579,14 +598,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
-            descriptor -> {
-              rootAggDescriptorList.add(
-                  new AggregationDescriptor(
-                      descriptor.getAggregationFuncName(),
-                      context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
-                      descriptor.getInputExpressions(),
-                      descriptor.getInputAttributes()));
-            });
+            descriptor ->
+                rootAggDescriptorList.add(
+                    new AggregationDescriptor(
+                        descriptor.getAggregationFuncName(),
+                        context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
+                        descriptor.getInputExpressions(),
+                        descriptor.getInputAttributes())));
 
     AggregationNode aggregationNode =
         new AggregationNode(

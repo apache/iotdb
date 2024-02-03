@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -197,6 +198,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitAggMergeSort(AggMergeSortNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
@@ -377,7 +383,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             .map(child -> visit(child, context))
             .collect(Collectors.toList());
 
-    // DataRegion which node locates
+    // DataRegion in which node locates
     TRegionReplicaSet dataRegion;
     boolean isChildrenDistributionSame = nodeDistributionIsSame(visitedChildren, context);
     NodeDistributionType distributionType =
@@ -406,10 +412,14 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
+    if (node instanceof AggMergeSortNode) {
+      return processAggMergeSortNode(node, visitedChildren, context, newNode, dataRegion);
+    }
+
     // optimize `order by time|expression limit N align by device` query,
     // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
     if (node instanceof TopKNode) {
-      return processTopNode(node, visitedChildren, context, newNode, dataRegion);
+      return processTopKNode(node, visitedChildren, context, newNode, dataRegion);
     }
 
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
@@ -450,7 +460,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return newNode;
   }
 
-  private PlanNode processTopNode(
+  private PlanNode processTopKNode(
       MultiChildProcessNode node,
       List<PlanNode> visitedChildren,
       NodeGroupContext context,
@@ -491,6 +501,52 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         newNode.addChild(exchangeNode);
       } else {
         newNode.addChild(topKNode);
+      }
+    }
+    return newNode;
+  }
+
+  private PlanNode processAggMergeSortNode(
+      MultiChildProcessNode node,
+      List<PlanNode> visitedChildren,
+      NodeGroupContext context,
+      MultiChildProcessNode newNode,
+      TRegionReplicaSet dataRegion) {
+    AggMergeSortNode aggMergeSortNode = (AggMergeSortNode) node;
+    Map<TRegionReplicaSet, DeviceViewNode> regionTopKNodeMap = new HashMap<>();
+    for (PlanNode child : visitedChildren) {
+      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+      regionTopKNodeMap
+          .computeIfAbsent(
+              region,
+              k -> {
+                DeviceViewNode childDeviceViewNode =
+                    new DeviceViewNode(
+                        context.queryContext.getQueryId().genPlanNodeId(),
+                        aggMergeSortNode.getMergeOrderParameter(),
+                        aggMergeSortNode.getOutputColumnNames(),
+                        aggMergeSortNode.getDeviceToMeasurementIndexesMap());
+                context.putNodeDistribution(
+                    childDeviceViewNode.getPlanNodeId(),
+                    new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
+                return childDeviceViewNode;
+              })
+          .addChild(child);
+    }
+
+    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionTopKNodeMap.entrySet()) {
+      TRegionReplicaSet deviceViewNodeLocatedRegion = entry.getKey();
+      DeviceViewNode deviceViewNode = entry.getValue();
+
+      if (!dataRegion.equals(deviceViewNodeLocatedRegion)) {
+        ExchangeNode exchangeNode =
+            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+        exchangeNode.setChild(deviceViewNode);
+        exchangeNode.setOutputColumnNames(deviceViewNode.getOutputColumnNames());
+        context.hasExchangeNode = true;
+        newNode.addChild(exchangeNode);
+      } else {
+        newNode.addChild(deviceViewNode);
       }
     }
     return newNode;
