@@ -433,7 +433,7 @@ public class IoTDBConfig {
 
   private boolean enableCPV = false;
 
-  private String enableTri = "MinMax"; // MinMax, MinMaxLTTB, M4, LTTB, ILTS
+  private String enableTri = "ILTS"; // MinMax, MinMaxLTTB, M4, LTTB, ILTS
 
   private long p1t;
   private double p1v;
@@ -450,7 +450,7 @@ public class IoTDBConfig {
     this.numIterations = numIterations;
   }
 
-  private int numIterations = 4;
+  private int numIterations = 2;
 
   public boolean isAcc_avg() {
     return acc_avg;
