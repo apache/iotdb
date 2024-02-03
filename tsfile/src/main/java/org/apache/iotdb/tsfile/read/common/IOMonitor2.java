@@ -300,8 +300,10 @@ public class IOMonitor2 {
     QuickHullPoint p2 = points.get(size - 2);
     QuickHullPoint p1 = points.get(size - 1);
 
-    double x1 = (p2.t - p1.t) * A + (p2.v - p1.v) * B;
-    double x2 = (p2.t - p3.t) * A + (p2.v - p3.v) * B;
+    //    double x1 = (p2.t - p1.t) * A + (p2.v - p1.v) * B;
+    //    double x2 = (p2.t - p3.t) * A + (p2.v - p3.v) * B;
+    double x1 = (p1.t - p2.t) * A + (p1.v - p2.v) * B;
+    double x2 = (p3.t - p2.t) * A + (p3.v - p2.v) * B;
 
     return sign(x1) + sign(x2);
   }
