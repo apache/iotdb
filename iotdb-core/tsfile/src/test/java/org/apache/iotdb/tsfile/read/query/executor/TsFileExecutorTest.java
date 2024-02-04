@@ -23,8 +23,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class TsFileExecutorTest {
-    @Test
-    public void constructorNullTest() {
-        Assert.assertThrows(NullPointerException.class, () -> {new TsFileExecutor(null, null);});
-    }
+  @Test
+  public void constructorNullTest() {
+    Assert.assertThrows(
+        NullPointerException.class,
+        () -> {
+          new TsFileExecutor(null, null);
+        });
+  }
 }
