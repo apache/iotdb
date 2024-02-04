@@ -108,13 +108,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             allSourceFiles.get(0).getTsFile().getAbsolutePath()
                 + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
-      targetTsFileResource =
-          TsFileNameGenerator.getSettleCompactionTargetFileResources(
-              selectedTsFileResourceList, sequence);
       compactionLogger.logSourceFiles(allDeletedFiles);
       compactionLogger.logEmptyTargetFiles(allDeletedFiles);
       compactionLogger.logSourceFiles(selectedTsFileResourceList);
-      if (targetTsFileResource != null) {
+      if (!selectedTsFileResourceList.isEmpty()) {
+        targetTsFileResource =
+            TsFileNameGenerator.getSettleCompactionTargetFileResources(
+                selectedTsFileResourceList, sequence);
         compactionLogger.logTargetFile(targetTsFileResource);
       }
       compactionLogger.force();
@@ -249,12 +249,15 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
           "{}-{} [Compaction][Recover] Finish to recover settle compaction successfully.",
           storageGroupName,
           dataRegionId);
+      if (needRecoverTaskInfoFromLogFile) {
+        Files.deleteIfExists(logFile.toPath());
+      }
     } catch (Exception e) {
       handleRecoverException(e);
     }
   }
 
-  private void recoverAllDeletedFiles() {
+  public void recoverAllDeletedFiles() {
     if (!settleWithAllDeletedFiles()) {
       throw new CompactionRecoverException("Failed to delete all_deleted source file.");
     }
@@ -268,7 +271,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  private void recoverTaskInfoFromLogFile() throws IOException {
+  public void recoverTaskInfoFromLogFile() throws IOException {
     LOGGER.info(
         "{}-{} [Compaction][Recover] compaction log is {}",
         storageGroupName,
@@ -280,13 +283,23 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
     List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
 
+    allDeletedFiles = new ArrayList<>();
+    selectedTsFileResourceList = new ArrayList<>();
     // recover source files, including all_deleted files and partial_deleted files
     sourceFileIdentifiers.forEach(
         x -> {
-          if (deletedTargetFileIdentifiers.contains(x)) {
-            allDeletedFiles.add(new TsFileResource(x.getFileFromDataDirs()));
+          File sourceFile = x.getFileFromDataDirsIfAnyAdjuvantFileExists();
+          TsFileResource resource;
+          if (sourceFile == null) {
+            // source file has been deleted, create empty resource
+            resource = new TsFileResource(new File(x.getFilePath()));
           } else {
-            selectedTsFileResourceList.add(new TsFileResource(x.getFileFromDataDirs()));
+            resource = new TsFileResource(sourceFile);
+          }
+          if (deletedTargetFileIdentifiers.contains(x)) {
+            allDeletedFiles.add(resource);
+          } else {
+            selectedTsFileResourceList.add(resource);
           }
         });
 
@@ -329,7 +342,11 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         + " all_deleted file num is "
         + allDeletedFiles.size()
         + ", partial_deleted file num is "
-        + selectedTsFileResourceList.size();
+        + selectedTsFileResourceList.size()
+        + ", all_deleted files is "
+        + allDeletedFiles
+        + ", partial_deleted files is "
+        + selectedTsFileResourceList;
   }
 
   @Override

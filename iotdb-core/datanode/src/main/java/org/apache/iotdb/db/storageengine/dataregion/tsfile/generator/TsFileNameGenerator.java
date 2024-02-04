@@ -268,9 +268,6 @@ public class TsFileNameGenerator {
 
   public static TsFileResource getSettleCompactionTargetFileResources(
       List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
-    if (tsFileResources.isEmpty()) {
-      return null;
-    }
     long minTime = Long.MAX_VALUE;
     long maxTime = Long.MIN_VALUE;
     long minVersion = Long.MAX_VALUE;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -97,36 +98,28 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       return;
     }
     TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
-    File tmpTargetFile = new File(targetIdentifier.getFilePath());
-    File targetFile =
-        new File(
-            targetIdentifier
-                .getFilePath()
-                .replace(
-                    settleFlag
-                        ? IoTDBConstant.SETTLE_SUFFIX
-                        : IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-                    TsFileConstant.TSFILE_SUFFIX));
-    if (tmpTargetFile.exists()) {
+    File tmpTargetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+    targetIdentifier.setFilename(
+        targetIdentifier
+            .getFilename()
+            .replace(
+                settleFlag
+                    ? IoTDBConstant.SETTLE_SUFFIX
+                    : IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                TsFileConstant.TSFILE_SUFFIX));
+    File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+    if (tmpTargetFile != null) {
       targetTsFileResource = new TsFileResource(tmpTargetFile);
-    } else if (targetFile.exists()) {
+    } else if (targetFile != null) {
       targetTsFileResource = new TsFileResource(targetFile);
     } else {
       // target file does not exist, then create empty resource
-      targetTsFileResource = new TsFileResource();
-      // check if target file is deleted after compaction or not
-      targetIdentifier.setFilename(
-          targetIdentifier
-              .getFilename()
-              .replace(
-                  settleFlag
-                      ? IoTDBConstant.SETTLE_SUFFIX
-                      : IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-                  TsFileConstant.TSFILE_SUFFIX));
-      if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
-        // target file is deleted after compaction
-        targetTsFileResource.forceMarkDeleted();
-      }
+      targetTsFileResource = new TsFileResource(new File(targetIdentifier.getFilePath()));
+    }
+    // check if target file is deleted after compaction or not
+    if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
+      // target file is deleted after compaction
+      targetTsFileResource.forceMarkDeleted();
     }
   }
 
@@ -356,13 +349,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected void finishTask() throws IOException {
     if (targetTsFileResource.isDeleted()) {
       // it means the target file is empty after compaction
-      if (targetTsFileResource.remove()) {
+      if (!targetTsFileResource.remove()) {
         throw new CompactionRecoverException(
             String.format("failed to delete empty target file %s", targetTsFileResource));
       }
     } else {
       File targetFile = targetTsFileResource.getTsFile();
-      if (targetFile == null || !TsFileUtils.isTsFileComplete(targetTsFileResource.getTsFile())) {
+      if (targetFile == null
+          || !targetFile.exists()
+          || !TsFileUtils.isTsFileComplete(targetTsFileResource.getTsFile())) {
         throw new CompactionRecoverException(
             String.format("Target file is not completed. %s", targetFile));
       }
@@ -526,5 +521,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       return CompactionTaskType.INNER_UNSEQ;
     }
+  }
+
+  @TestOnly
+  public void setTargetTsFileResource(TsFileResource targetTsFileResource) {
+    this.targetTsFileResource = targetTsFileResource;
   }
 }

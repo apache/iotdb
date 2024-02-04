@@ -230,7 +230,7 @@ public abstract class AbstractCompactionTask {
 
   protected boolean checkAllSourceFileExists(List<TsFileResource> tsFileResources) {
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.getTsFile().exists() || !tsFileResource.resourceFileExists()) {
+      if (!tsFileResource.tsFileExists() || !tsFileResource.resourceFileExists()) {
         return false;
       }
     }

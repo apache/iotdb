@@ -313,7 +313,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource target : targetTsfileResourceList) {
       if (target.isDeleted() || emptyTargetTsFileResourceList.contains(target)) {
         // it means the target file is empty after compaction
-        if (target.remove()) {
+        if (!target.remove()) {
           throw new CompactionRecoverException(
               String.format("failed to delete empty target file %s", target));
         }
