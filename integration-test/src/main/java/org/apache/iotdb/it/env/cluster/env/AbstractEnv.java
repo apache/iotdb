@@ -265,7 +265,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public boolean checkClusterStatusWithoutUnknown() {
-    return checkClusterStatus(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+    return checkClusterStatus(
+        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
   }
 
   public boolean checkClusterStatusOneUnknownOtherRunning() {
@@ -277,19 +278,20 @@ public abstract class AbstractEnv implements BaseEnv {
         });
   }
   /**
-  * Returns whether the all nodes' status all match the provided predicate.
-  * @param statusCheck the predicate to test the status of nodes
-  * @return {@code true} if all nodes' status of the cluster match the provided
-   * predicate, otherwise {@code false}
-  */
-  public boolean checkClusterStatus(Predicate<Map<Integer, String>> statusCheck){
+   * Returns whether the all nodes' status all match the provided predicate.
+   *
+   * @param statusCheck the predicate to test the status of nodes
+   * @return {@code true} if all nodes' status of the cluster match the provided predicate,
+   *     otherwise {@code false}
+   */
+  public boolean checkClusterStatus(Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
     boolean flag;
     for (int i = 0; i < testWorkingRetryCount; i++) {
       try (SyncConfigNodeIServiceClient client =
-                   (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+          (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         flag = true;
         showClusterResp = client.showCluster();
 
@@ -300,7 +302,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
-                != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
+            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
           flag = false;
         }
 
@@ -325,11 +327,15 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     if (lastException != null) {
-      logger.error("exception in testWorking of ClusterID, message: {}", lastException.getMessage(), lastException);
+      logger.error(
+          "exception in testWorking of ClusterID, message: {}",
+          lastException.getMessage(),
+          lastException);
     }
-    logger.info("checkNodeHeartbeat failed after {} retries",testWorkingRetryCount);
+    logger.info("checkNodeHeartbeat failed after {} retries", testWorkingRetryCount);
     return false;
   }
+
   @Override
   public void cleanClusterEnvironment() {
     for (AbstractNodeWrapper nodeWrapper :
@@ -360,6 +366,7 @@ public abstract class AbstractEnv implements BaseEnv {
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
         getReadConnections(null, username, password));
   }
+
   @Override
   public Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
