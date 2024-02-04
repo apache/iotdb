@@ -38,12 +38,12 @@ public class SettleSelectorImpl implements ISettleSelector {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  boolean heavySelect;
-
-  protected String storageGroupName;
-  protected String dataRegionId;
-  protected long timePartition;
-  protected TsFileManager tsFileManager;
+  private final boolean heavySelect;
+  private final String storageGroupName;
+  private final String dataRegionId;
+  private final long timePartition;
+  private final TsFileManager tsFileManager;
+  private boolean isSeq;
 
   public SettleSelectorImpl(
       boolean heavySelect,
@@ -71,68 +71,50 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   static class PartialDirtyResource {
-    List<List<TsFileResource>> resourceGroupList = new ArrayList<>();
-
     List<TsFileResource> resources = new ArrayList<>();
-    long resourcesFileSize = 0;
-
     long totalFileSize = 0;
-    long totalFileNum = 0;
 
-    public void add(TsFileResource resource, long dirtyDataSize) {
+    public boolean add(TsFileResource resource, long dirtyDataSize) {
       resources.add(resource);
-      resourcesFileSize += resource.getTsFileSize();
-      resourcesFileSize -= dirtyDataSize;
       totalFileSize += resource.getTsFileSize();
       totalFileSize -= dirtyDataSize;
-      totalFileNum++;
-      if (resources.size() >= config.getFileLimitPerInnerTask()
-          || resourcesFileSize >= config.getTargetCompactionFileSize()) {
-        submitTmpResources();
-      }
+      return checkHasReachedThreshold();
     }
 
-    public void submitTmpResources() {
-      if (resources.isEmpty()) {
-        return;
-      }
-      resourceGroupList.add(resources);
-      resources = new ArrayList<>();
-      resourcesFileSize = 0;
-    }
-
-    public List<List<TsFileResource>> getResourceGroupList() {
-      return resourceGroupList;
+    public List<TsFileResource> getResources() {
+      return resources;
     }
 
     public boolean checkHasReachedThreshold() {
-      return totalFileSize >= config.getFileLimitPerInnerTask()
+      return resources.size() >= config.getFileLimitPerInnerTask()
           || totalFileSize >= config.getTargetCompactionFileSize();
     }
   }
 
   @Override
   public List<SettleCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
+    if (tsFileResources.isEmpty()) {
+      return Collections.emptyList();
+    }
+    this.isSeq = tsFileResources.get(0).isSeq();
     return selectTasks(tsFileResources);
   }
 
   private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
     AllDirtyResource allDirtyResource = new AllDirtyResource();
+    List<PartialDirtyResource> partialDirtyResourceList = new ArrayList<>();
     PartialDirtyResource partialDirtyResource = new PartialDirtyResource();
     try {
       for (TsFileResource resource : resources) {
         if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
           continue;
         }
-
+        boolean shouldStop = false;
         DirtyStatus dirtyStatus;
         if (!heavySelect) {
           dirtyStatus = selectFileBaseOnModSize(resource);
         } else {
           dirtyStatus = selectFileBaseOnDirtyData(resource);
-          if (dirtyStatus == DirtyStatus.NOT_SATISFIED) {
-            dirtyStatus = selectFileBaseOnModSize(resource);
-          }
         }
 
         switch (dirtyStatus) {
@@ -140,24 +122,30 @@ public class SettleSelectorImpl implements ISettleSelector {
             allDirtyResource.add(resource);
             break;
           case PARTIAL_DELETED:
-            partialDirtyResource.add(resource, dirtyStatus.getDirtyDataSize());
+            shouldStop = partialDirtyResource.add(resource, dirtyStatus.getDirtyDataSize());
             break;
           case NOT_SATISFIED:
-            partialDirtyResource.submitTmpResources();
+            shouldStop = !partialDirtyResource.getResources().isEmpty();
             break;
           default:
             // do nothing
         }
 
-        // Non-heavy selection are triggered more frequently. In order to avoid selecting too many
-        // files containing mods for compaction when the disk is insufficient, the number and size
-        // of files are limited here.
-        if (!heavySelect && !partialDirtyResource.getResourceGroupList().isEmpty()) {
-          break;
+        if (shouldStop) {
+          partialDirtyResourceList.add(partialDirtyResource);
+          partialDirtyResource = new PartialDirtyResource();
+          if (!heavySelect) {
+            // Non-heavy selection is triggered more frequently. In order to avoid selecting too
+            // many
+            // files containing mods for compaction when the disk is insufficient, the number and
+            // size
+            // of files are limited here.
+            break;
+          }
         }
       }
-      partialDirtyResource.submitTmpResources();
-      return createTask(allDirtyResource, partialDirtyResource);
+      partialDirtyResourceList.add(partialDirtyResource);
+      return creatTask(allDirtyResource, partialDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
           "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
@@ -256,20 +244,40 @@ public class SettleSelectorImpl implements ISettleSelector {
     return false;
   }
 
-  private List<SettleCompactionTask> createTask(
-      AllDirtyResource allDirtyResource, PartialDirtyResource partialDirtyResource) {
-    if (allDirtyResource.getResources().isEmpty()
-        && partialDirtyResource.getResourceGroupList().isEmpty()) {
-      return Collections.emptyList();
+  private List<SettleCompactionTask> creatTask(
+      AllDirtyResource allDirtyResource, List<PartialDirtyResource> partialDirtyResourceList) {
+    List<SettleCompactionTask> tasks = new ArrayList<>();
+    for (int i = 0; i < partialDirtyResourceList.size(); i++) {
+      if (i == 0) {
+        if (allDirtyResource.getResources().isEmpty()
+            && partialDirtyResourceList.get(i).getResources().isEmpty()) {
+          continue;
+        }
+        tasks.add(
+            new SettleCompactionTask(
+                timePartition,
+                tsFileManager,
+                allDirtyResource.getResources(),
+                partialDirtyResourceList.get(i).getResources(),
+                isSeq,
+                new FastCompactionPerformer(false),
+                tsFileManager.getNextCompactionTaskId()));
+      } else {
+        if (partialDirtyResourceList.get(i).getResources().isEmpty()) {
+          continue;
+        }
+        tasks.add(
+            new SettleCompactionTask(
+                timePartition,
+                tsFileManager,
+                Collections.emptyList(),
+                partialDirtyResourceList.get(i).getResources(),
+                isSeq,
+                new FastCompactionPerformer(false),
+                tsFileManager.getNextCompactionTaskId()));
+      }
     }
-    return Collections.singletonList(
-        new SettleCompactionTask(
-            timePartition,
-            tsFileManager,
-            allDirtyResource.getResources(),
-            partialDirtyResource.getResourceGroupList(),
-            new FastCompactionPerformer(false),
-            tsFileManager.getNextCompactionTaskId()));
+    return tasks;
   }
 
   enum DirtyStatus {

@@ -67,12 +67,8 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
-        readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
-
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources);
-    partialDeletedFiles.add(unseqResources.subList(2, 5));
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(unseqResources.subList(2, 5));
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(unseqResources.subList(0, 2));
 
@@ -82,6 +78,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             partialDeletedFiles,
+            false,
             new FastCompactionPerformer(false),
             0);
 
@@ -102,7 +99,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
     Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
   }
 
@@ -122,9 +119,8 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources);
-    partialDeletedFiles.add(unseqResources.subList(2, 5));
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(unseqResources.subList(2, 5));
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(unseqResources.subList(0, 2));
 
@@ -134,6 +130,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             partialDeletedFiles,
+            false,
             new FastCompactionPerformer(false),
             0);
     // add compaction mods
@@ -142,24 +139,20 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
     task.settleWithAllDeletedFiles();
-    task.setHasFinishedSettledAllDeletedFile(true);
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
-    List<TsFileResource> selectedTsFileResourceList = partialDeletedFiles.get(0);
-    task.setSourceInfo(true, selectedTsFileResourceList);
     TsFileResource targetResource =
-        TsFileNameGenerator.getSettleCompactionTargetFileResources(
-            selectedTsFileResourceList, true);
+        TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
     File logFile =
         new File(
             targetResource.getTsFilePath() + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
       // Here is tmpTargetFile, which is xxx.target
-      compactionLogger.logSourceFiles(selectedTsFileResourceList);
+      compactionLogger.logSourceFiles(partialDeletedFiles);
       compactionLogger.logTargetFile(targetResource);
       compactionLogger.force();
 
       // carry out the compaction
-      performer.setSourceFiles(selectedTsFileResourceList);
+      performer.setSourceFiles(partialDeletedFiles);
       // As elements in targetFiles may be removed in performer, we should use a mutable list
       // instead of Collections.singletonList()
       performer.setTargetFiles(Collections.singletonList(targetResource));

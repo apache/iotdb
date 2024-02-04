@@ -330,7 +330,8 @@ public class CompactionTaskComparatorTest {
               0,
               tsFileManager,
               Collections.emptyList(),
-              Collections.singletonList(resources),
+              resources,
+              true,
               new FastCompactionPerformer(false),
               0);
       compactionTaskQueue.put(settleTask);
@@ -345,12 +346,12 @@ public class CompactionTaskComparatorTest {
             0,
             tsFileManager,
             Collections.emptyList(),
-            Collections.singletonList(Collections.singletonList(fakedTsFileResource)),
+            Collections.singletonList(fakedTsFileResource),
+            true,
             new FastCompactionPerformer(false),
             0));
     SettleCompactionTask task = (SettleCompactionTask) compactionTaskQueue.take();
-    Assert.assertEquals(
-        targetFileName, task.getPartialDeletedFileGroups().get(0).get(0).getTsFile().getName());
+    Assert.assertEquals(targetFileName, task.getPartialDeletedFiles().get(0).getTsFile().getName());
     fakedTsFileResource.getModFile().remove();
   }
 
@@ -423,8 +424,8 @@ public class CompactionTaskComparatorTest {
             tsFileManager,
             Collections.emptyList(),
             Collections.singletonList(
-                Collections.singletonList(
-                    new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1))),
+                new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1)),
+            true,
             new FastCompactionPerformer(false),
             0));
     candidateCompactionTaskQueue.put(
@@ -442,8 +443,8 @@ public class CompactionTaskComparatorTest {
             tsFileManager,
             Collections.emptyList(),
             Collections.singletonList(
-                Collections.singletonList(
-                    new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1))),
+                new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1)),
+            true,
             new FastCompactionPerformer(false),
             0));
 

@@ -169,8 +169,8 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
       return o1.getTotalModsSize() > o2.getTotalModsSize() ? -1 : 1;
     }
     // we prefer the task with more partial_deleted files
-    if (o1.getTotalPartialDeletedFilesNum() != o2.getTotalPartialDeletedFilesNum()) {
-      return o1.getTotalPartialDeletedFilesNum() > o2.getTotalPartialDeletedFilesNum() ? -1 : 1;
+    if (o1.getPartialDeletedFiles().size() != o2.getPartialDeletedFiles().size()) {
+      return o1.getPartialDeletedFiles().size() > o2.getPartialDeletedFiles().size() ? -1 : 1;
     }
     // we prefer the task with larger partial_deleted files
     if (o1.getPartialDeletedFileSize() != o2.getPartialDeletedFileSize()) {

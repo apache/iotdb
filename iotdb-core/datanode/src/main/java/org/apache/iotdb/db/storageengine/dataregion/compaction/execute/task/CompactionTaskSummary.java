@@ -57,19 +57,6 @@ public class CompactionTaskSummary {
     }
   }
 
-  public void resetInfo() {
-    processChunkNum = 0;
-    directlyFlushChunkNum = 0;
-    deserializeChunkCount = 0;
-    directlyFlushPageCount = 0;
-    deserializePageCount = 0;
-    mergedChunkNum = 0;
-    processPointNum = 0;
-    rewritePointNum = 0;
-    temporalFileSize = 0;
-    temporalFileNum = 0;
-  }
-
   public boolean isCancel() {
     return this.status == Status.CANCELED;
   }

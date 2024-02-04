@@ -48,18 +48,6 @@ public class FastCompactionTaskSummary extends CompactionTaskSummary {
   }
 
   @Override
-  public void resetInfo() {
-    super.resetInfo();
-    chunkNoneOverlap = 0;
-    chunkNoneOverlapButDeserialize = 0;
-    chunkOverlapOrModified = 0;
-    pageNoneOverlap = 0;
-    pageOverlapOrModified = 0;
-    pageFakeOverlap = 0;
-    pageNoneOverlapButDeserialize = 0;
-  }
-
-  @Override
   public String toString() {
     return String.format(
         "CHUNK_NONE_OVERLAP num is %d, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is %d,"

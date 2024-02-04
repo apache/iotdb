@@ -68,6 +68,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             Collections.emptyList(),
+            true,
             new FastCompactionPerformer(false),
             0);
     Assert.assertTrue(task.start());
@@ -101,9 +102,9 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources);
-    unseqResources.forEach(x -> partialDeletedFiles.add(Collections.singletonList(x)));
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(seqResources);
+    partialDeletedFiles.addAll(unseqResources);
 
     SettleCompactionTask task =
         new SettleCompactionTask(
@@ -111,6 +112,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             Collections.emptyList(),
             partialDeletedFiles,
+            true,
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
@@ -124,7 +126,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     }
 
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(5, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
 
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
@@ -145,9 +147,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources);
-    partialDeletedFiles.add(unseqResources.subList(2, 5));
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(unseqResources.subList(2, 5));
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(unseqResources.subList(0, 2));
 
@@ -157,20 +158,36 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             partialDeletedFiles,
+            false,
             new FastCompactionPerformer(false),
             0);
-    task.getEstimatedMemoryCost();
     Assert.assertTrue(task.start());
 
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    validateTargetDatas(sourceDatas, Collections.emptyList());
+
+    partialDeletedFiles.clear();
+    partialDeletedFiles.addAll(seqResources);
+    task =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            allDeletedFiles,
+            partialDeletedFiles,
+            true,
+            new FastCompactionPerformer(false),
+            0);
+    Assert.assertTrue(task.start());
+
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
     for (TsFileResource tsFileResource : seqResources) {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
     for (TsFileResource tsFileResource : unseqResources) {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
-
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
 
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
@@ -198,6 +215,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             Collections.emptyList(),
+            true,
             new FastCompactionPerformer(false),
             0);
     Assert.assertTrue(task.start());
@@ -229,9 +247,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources);
-    unseqResources.forEach(x -> partialDeletedFiles.add(Collections.singletonList(x)));
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(seqResources);
 
     SettleCompactionTask task =
         new SettleCompactionTask(
@@ -239,6 +256,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             Collections.emptyList(),
             partialDeletedFiles,
+            true,
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
@@ -248,7 +266,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
     }
 
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
@@ -272,9 +290,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<List<TsFileResource>> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.add(seqResources.subList(3, 9));
-    partialDeletedFiles.add(unseqResources);
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(seqResources.subList(3, 9));
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(seqResources.subList(0, 3));
 
@@ -284,6 +301,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
             tsFileManager,
             allDeletedFiles,
             partialDeletedFiles,
+            true,
             new FastCompactionPerformer(false),
             0);
     task.getEstimatedMemoryCost();
@@ -293,11 +311,11 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
     }
 
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(5, tsFileManager.getTsFileList(false).size());
 
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
