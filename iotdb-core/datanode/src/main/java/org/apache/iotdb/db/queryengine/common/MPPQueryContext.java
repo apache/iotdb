@@ -61,6 +61,8 @@ public class MPPQueryContext {
 
   private int acquiredLockNum;
 
+  private boolean isExplainAnalyze = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -173,5 +175,13 @@ public class MPPQueryContext {
   public Filter getGlobalTimeFilter() {
     // time filter may be stateful, so we need to copy it
     return globalTimeFilter != null ? globalTimeFilter.copy() : null;
+  }
+
+  public void setExplainAnalyze(boolean explainAnalyze) {
+    isExplainAnalyze = explainAnalyze;
+  }
+
+  public boolean isExplainAnalyze() {
+    return isExplainAnalyze;
   }
 }

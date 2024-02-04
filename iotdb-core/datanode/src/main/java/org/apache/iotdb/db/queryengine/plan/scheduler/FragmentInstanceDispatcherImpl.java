@@ -134,7 +134,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } finally {
         // friendly for gc, clear the plan node tree, for some queries select all devices, it will
         // release lots of memory
-        instance.getFragment().clearUselessField();
+        // EXPLAIN ANALYZE will use these instances, so we can't clear the plan node tree when
+        // needed.
+        if (!queryContext.isExplainAnalyze()) {
+          instance.getFragment().clearUselessField();
+        }
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }

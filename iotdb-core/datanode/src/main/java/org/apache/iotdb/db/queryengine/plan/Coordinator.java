@@ -192,6 +192,15 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public IQueryExecution getQueryExecution(QueryId queryId) {
+    for (IQueryExecution queryExecution : queryExecutionMap.values()) {
+      if (queryExecution.getQueryId().equals(queryId.getId())) {
+        return queryExecution;
+      }
+    }
+    return null;
+  }
+
   public List<IQueryExecution> getAllQueryExecutions() {
     return new ArrayList<>(queryExecutionMap.values());
   }

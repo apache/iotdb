@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -29,7 +30,7 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return Collections.singletonList("Explain Analyze");
+    return Collections.singletonList(ColumnHeaderConstant.EXPLAIN_ANALYZE);
   }
 
   @Override

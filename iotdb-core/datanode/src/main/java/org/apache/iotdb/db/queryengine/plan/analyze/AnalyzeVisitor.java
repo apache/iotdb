@@ -237,10 +237,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitExplainAnalyze(
       ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
     Analysis analysis = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
+    context.setExplainAnalyze(true);
     analysis.setStatement(explainAnalyzeStatement);
     analysis.setRespDatasetHeader(
         new DatasetHeader(
-            Collections.singletonList(new ColumnHeader("Explain Analyze", TSDataType.TEXT, null)),
+            Collections.singletonList(
+                new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT, null)),
             true));
     return analysis;
   }
