@@ -36,7 +36,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -247,7 +246,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // insert history data on sender
+    // insert data on sender
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         senderEnv,
         Arrays.asList(
@@ -264,12 +263,6 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    // clear data on receiver
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv, Collections.singletonList("delete from root.**"))) {
-      fail();
-    }
-
     // alter pipe (modify 'down-sampling.interval-seconds')
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -278,11 +271,23 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
+    // insert data on sender
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList(
+            "insert into root.db.d1 (time, at1) values (11000, 1), (11500, 2), (12000, 3), (12500, 4), (13000, 5)",
+            "flush"))) {
+      fail();
+    }
+
     // check data on receiver
     expectedResSet.clear();
-    expectedResSet.add("1000,1.0,");
-    expectedResSet.add("3000,5.0,");
+    expectedResSet.add("11000,1.0,");
+    expectedResSet.add("13000,5.0,");
     TestUtils.assertDataOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
+        receiverEnv,
+        "select * from root.** where time > 10000",
+        "Time,root.db.d1.at1,",
+        expectedResSet);
   }
 }
