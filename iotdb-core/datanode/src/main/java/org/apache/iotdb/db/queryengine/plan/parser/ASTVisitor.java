@@ -188,7 +188,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -3120,27 +3119,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseStringLiteral(ctx.getText());
     }
     return parseIdentifier(ctx.getText());
-  }
-
-  // Merge
-  @Override
-  public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
-    }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
-  }
-
-  @Override
-  public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
-    }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
   }
 
   // Flush
