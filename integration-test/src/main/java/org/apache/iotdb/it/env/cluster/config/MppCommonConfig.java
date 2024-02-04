@@ -419,6 +419,11 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
         "driver_task_execution_time_slice_in_ms", String.valueOf(driverTaskExecutionTimeSliceInMs));
     return this;
   }
+  @Override
+  public CommonConfig setWalMode(String walMode) {
+    setProperty("wal_mode", walMode);
+    return this;
+  }
 
   // For part of the log directory
   public String getClusterConfigStr() {

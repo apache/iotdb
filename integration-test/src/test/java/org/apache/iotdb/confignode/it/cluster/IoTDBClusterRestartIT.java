@@ -93,35 +93,17 @@ public class IoTDBClusterRestartIT {
   }
 
   @Test
-  public void clusterRestartTest() throws InterruptedException {
+  public void clusterRestartTest(){
     // Shutdown all cluster nodes
-    for (int i = 0; i < testConfigNodeNum; i++) {
-      EnvFactory.getEnv().shutdownConfigNode(i);
-    }
-    for (int i = 0; i < testDataNodeNum; i++) {
-      EnvFactory.getEnv().shutdownDataNode(i);
-    }
-
-    // Sleep 1s before restart
-    TimeUnit.SECONDS.sleep(1);
+    logger.info("Shutting down all ConfigNodes and DataNodes...");
+    EnvFactory.getEnv().shutdownAllConfigNodes();
+    EnvFactory.getEnv().shutdownAllDataNodes();
 
     // Restart all cluster nodes
     logger.info("Restarting all ConfigNodes...");
-    for (int i = 0; i < testConfigNodeNum; i++) {
-      EnvFactory.getEnv().startConfigNode(i);
-    }
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // Do noting, just try to connect to the ConfigNode-leader
-      // in order to ensure the ConfigNode-leader is ready
-    } catch (Exception e) {
-      logger.error("Failed to get ConfigNode-leader connection", e);
-    }
+    EnvFactory.getEnv().startAllConfigNodes();
     logger.info("Restarting all DataNodes...");
-    for (int i = 0; i < testDataNodeNum; i++) {
-      EnvFactory.getEnv().startDataNode(i);
-    }
-
+    EnvFactory.getEnv().startAllDataNodes();
     ((AbstractEnv) EnvFactory.getEnv()).testWorkingNoUnknown();
   }
 

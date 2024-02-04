@@ -611,24 +611,6 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
-    Exception lastException = null;
-    ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
-    for (int i = 0; i < 30; i++) {
-      try {
-        return clientManager.borrowClient(
-            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
-      } catch (Exception e) {
-        lastException = e;
-      }
-      // Sleep 1s before next retry
-      TimeUnit.SECONDS.sleep(1);
-    }
-    throw new IOException(
-        "Failed to get connection to this ConfigNode. Last error: " + lastException);
-  }
-
-  @Override
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
@@ -676,8 +658,22 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void startAllConfigNodes(){
+    for(ConfigNodeWrapper configNodeWrapper:configNodeWrapperList){
+      configNodeWrapper.start();
+    }
+  }
+
+  @Override
   public void shutdownConfigNode(int index) {
     configNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public void shutdownAllConfigNodes() {
+    for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+      configNodeWrapper.stop();
+    }
   }
 
   @Override
@@ -800,8 +796,22 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void startAllDataNodes() {
+    for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+      dataNodeWrapper.start();
+    }
+  }
+
+  @Override
   public void shutdownDataNode(int index) {
     dataNodeWrapperList.get(index).stop();
+  }
+
+  @Override
+  public void shutdownAllDataNodes() {
+    for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
+      dataNodeWrapper.stop();
+    }
   }
 
   @Override
@@ -856,12 +866,6 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     throw new IllegalStateException(lastException);
-  }
-
-  @Override
-  public int getMqttPort() {
-    int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
-    return dataNodeWrapperList.get(randomIndex).getMqttPort();
   }
 
   @Override
