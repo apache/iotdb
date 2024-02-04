@@ -645,7 +645,7 @@ public class TestUtils {
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.startDataNode(i);
     }
-    ((AbstractEnv) env).testWorkingNoUnknown();
+    ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
   }
 
   public static void assertDataOnEnv(

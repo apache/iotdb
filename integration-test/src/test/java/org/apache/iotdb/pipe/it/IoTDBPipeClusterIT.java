@@ -237,7 +237,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           }
           try {
             senderEnv.startDataNode(i);
-            ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+            Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
           } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -637,7 +637,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+        Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
       } catch (Exception e) {
         e.printStackTrace();
         return;

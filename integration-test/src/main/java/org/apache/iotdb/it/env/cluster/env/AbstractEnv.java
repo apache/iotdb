@@ -45,7 +45,6 @@ import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.runtime.*;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
-import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
@@ -133,7 +132,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
-    initEnvironment(configNodesNum, dataNodesNum, 30);
+    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
@@ -245,7 +244,7 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
-    testWorkingNoUnknown();
+    checkClusterStatusWithoutUnknown();
   }
 
   public String getTestClassName() {
@@ -265,66 +264,32 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
-  public void testWorkingNoUnknown() {
-    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+  public boolean checkClusterStatusWithoutUnknown() {
+    return checkClusterStatus(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
   }
 
-  public void testWorkingOneUnknownOtherRunning() {
-    testWorking(
+  public boolean checkClusterStatusOneUnknownOtherRunning() {
+    return checkClusterStatus(
         nodeStatus -> {
           Map<String, Integer> count = countNodeStatus(nodeStatus);
           return count.getOrDefault("Unknown", 0) == 1
               && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
         });
   }
-
-  public void testWorking(Predicate<Map<Integer, String>> statusCheck) {
-    logger.info("Testing DataNode connection...");
-    List<String> endpoints =
-        dataNodeWrapperList.stream()
-            .map(DataNodeWrapper::getIpAndPortString)
-            .collect(Collectors.toList());
-    RequestDelegate<Void> testDelegate =
-        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
-      final String dataNodeEndpoint = dataNode.getIpAndPortString();
-      testDelegate.addRequest(
-          () -> {
-            Exception lastException = null;
-            for (int i = 0; i < testWorkingRetryCount; i++) {
-              try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
-                logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
-                return null;
-              } catch (Exception e) {
-                lastException = e;
-                TimeUnit.SECONDS.sleep(1L);
-              }
-            }
-            throw lastException;
-          });
-    }
-    try {
-      long startTime = System.currentTimeMillis();
-      testDelegate.requestAll();
-      if (!configNodeWrapperList.isEmpty()) {
-        checkNodeHeartbeat(statusCheck);
-      }
-      logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
-    } catch (Exception e) {
-      logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
-      throw new AssertionError(
-          String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
-    }
-  }
-
-  private void checkNodeHeartbeat(Predicate<Map<Integer, String>> statusCheck) throws Exception {
+  /**
+  * Returns whether the all nodes' status all match the provided predicate.
+  * @param statusCheck the predicate to test the status of nodes
+  * @return {@code true} if all nodes' status of the cluster match the provided
+   * predicate, otherwise {@code false}
+  */
+  public boolean checkClusterStatus(Predicate<Map<Integer, String>> statusCheck){
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
     boolean flag;
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < testWorkingRetryCount; i++) {
       try (SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+                   (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         flag = true;
         showClusterResp = client.showCluster();
 
@@ -335,7 +300,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
-            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
+                != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
           flag = false;
         }
 
@@ -347,20 +312,24 @@ public abstract class AbstractEnv implements BaseEnv {
 
         if (flag) {
           logger.info("The cluster is now ready for testing!");
-          return;
+          return true;
         }
       } catch (Exception e) {
         lastException = e;
       }
-      TimeUnit.SECONDS.sleep(1L);
+      try {
+        TimeUnit.SECONDS.sleep(1L);
+      } catch (InterruptedException e) {
+        lastException = e;
+        Thread.currentThread().interrupt();
+      }
     }
-
     if (lastException != null) {
-      throw lastException;
+      logger.error("exception in testWorking of ClusterID, message: {}", lastException.getMessage(), lastException);
     }
-    throw new Exception("Check not pass");
+    logger.info("checkNodeHeartbeat failed after {} retries",testWorkingRetryCount);
+    return false;
   }
-
   @Override
   public void cleanClusterEnvironment() {
     for (AbstractNodeWrapper nodeWrapper :
@@ -391,19 +360,6 @@ public abstract class AbstractEnv implements BaseEnv {
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
         getReadConnections(null, username, password));
   }
-
-  private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
-    IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + endpoint + getParam(null, queryTimeout),
-                System.getProperty("User", "root"),
-                System.getProperty("Password", "root"));
-    connection.setQueryTimeout(queryTimeout);
-
-    return connection;
-  }
-
   @Override
   public Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
@@ -570,7 +526,7 @@ public abstract class AbstractEnv implements BaseEnv {
       throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < testWorkingRetryCount; i++) {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
         try {
           lastErrorNode = configNodeWrapper;
@@ -614,7 +570,7 @@ public abstract class AbstractEnv implements BaseEnv {
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
-    for (int retry = 0; retry < 30; retry++) {
+    for (int retry = 0; retry < testWorkingRetryCount; retry++) {
       for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
         ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
         lastErrorNode = configNodeWrapper;
@@ -761,7 +717,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingNoUnknown();
+      checkClusterStatusWithoutUnknown();
     }
   }
 
@@ -786,7 +742,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingNoUnknown();
+      checkClusterStatusWithoutUnknown();
     }
   }
 
@@ -818,7 +774,7 @@ public abstract class AbstractEnv implements BaseEnv {
   public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus)
       throws IllegalStateException {
     Throwable lastException = null;
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < testWorkingRetryCount; i++) {
       try (SyncConfigNodeIServiceClient client =
           (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
         List<String> errorMessages = new ArrayList<>(nodes.size());
