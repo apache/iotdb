@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
@@ -85,19 +84,16 @@ public class CompactionWorker implements Runnable {
         return false;
       }
       task.transitSourceFilesToMerging();
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
-        estimatedMemoryCost = task.getEstimatedMemoryCost();
-        if (estimatedMemoryCost < 0) {
-          return false;
-        }
-        CompactionTaskType taskType = task.getCompactionTaskType();
-        memoryAcquired =
-            SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
-        CompactionMetrics.getInstance()
-            .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
-        CompactionMetrics.getInstance()
-            .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
+      estimatedMemoryCost = task.getEstimatedMemoryCost();
+      if (estimatedMemoryCost < 0) {
+        return false;
       }
+      CompactionTaskType taskType = task.getCompactionTaskType();
+      memoryAcquired =
+          SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
+      CompactionMetrics.getInstance().updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+      CompactionMetrics.getInstance()
+          .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
       CompactionTaskSummary summary = task.getSummary();
