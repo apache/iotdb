@@ -93,7 +93,7 @@ public class IoTDBClusterRestartIT {
   }
 
   @Test
-  public void clusterRestartTest(){
+  public void clusterRestartTest() {
     // Shutdown all cluster nodes
     logger.info("Shutting down all ConfigNodes and DataNodes...");
     EnvFactory.getEnv().shutdownAllConfigNodes();

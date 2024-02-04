@@ -218,7 +218,6 @@ public interface BaseEnv {
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
 
-
   String getIP();
 
   String getPort();

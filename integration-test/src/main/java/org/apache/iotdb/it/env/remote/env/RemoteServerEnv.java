@@ -245,7 +245,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void startAllConfigNodes(){
+  public void startAllConfigNodes() {
     throw new UnsupportedOperationException();
   }
 
@@ -255,10 +255,9 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void shutdownAllConfigNodes(){
+  public void shutdownAllConfigNodes() {
     throw new UnsupportedOperationException();
   }
-
 
   @Override
   public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus) {
@@ -321,7 +320,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void shutdownAllDataNodes(){
+  public void shutdownAllDataNodes() {
     throw new UnsupportedOperationException();
   }
 

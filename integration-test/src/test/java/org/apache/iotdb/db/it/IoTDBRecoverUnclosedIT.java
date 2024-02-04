@@ -82,7 +82,7 @@ public class IoTDBRecoverUnclosedIT {
             + "values(5, 5.5, false, 55)"
       };
 
-    @Before
+  @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     EnvFactory.getEnv().initClusterEnvironment();
@@ -104,33 +104,31 @@ public class IoTDBRecoverUnclosedIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count(TEMPERATURE_STR));
-          assertEquals(retArray[0], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(TEMPERATURE_STR));
+        assertEquals(retArray[0], ans);
       }
 
       selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where time > 3";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(minTime(TEMPERATURE_STR));
-          assertEquals(retArray[1], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(minTime(TEMPERATURE_STR));
+        assertEquals(retArray[1], ans);
       }
 
       selectSql = "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(minTime(TEMPERATURE_STR));
-          assertEquals(retArray[2], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(minTime(TEMPERATURE_STR));
+        assertEquals(retArray[2], ans);
       }
 
     } catch (Exception e) {
@@ -162,7 +160,7 @@ public class IoTDBRecoverUnclosedIT {
       String d0s0 = "root.vehicle.d0.s0";
       String d0s1 = "root.vehicle.d0.s1";
       String d0s2 = "root.vehicle.d0.s2";
-        assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
+      assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
 
       // test max, min value
       retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
@@ -172,26 +170,26 @@ public class IoTDBRecoverUnclosedIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxValue(d0s0))
-                  + ","
-                  + resultSet.getString(minValue(d0s2));
-          assertEquals(retArray[0], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(maxValue(d0s0))
+                + ","
+                + resultSet.getString(minValue(d0s2));
+        assertEquals(retArray[0], ans);
       }
 
       selectSql = "select max_value(s1),min_value(s2) from root.vehicle.d0 where time < 2500";
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxValue(d0s1))
-                  + ","
-                  + resultSet.getString(minValue(d0s2));
-          assertEquals(retArray[1], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(maxValue(d0s1))
+                + ","
+                + resultSet.getString(minValue(d0s2));
+        assertEquals(retArray[1], ans);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -220,43 +218,44 @@ public class IoTDBRecoverUnclosedIT {
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite file
-      String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
+      String insertTemplate =
+          "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
       for (int i = 5000; i < 7000; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.executeBatch();
       for (int i = 7500; i < 8500; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       for (int i = 3000; i < 6500; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.executeBatch();
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
         statement.addBatch(
-                String.format(
-                        Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
+            String.format(
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.executeBatch();
     } catch (Exception e) {

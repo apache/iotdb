@@ -175,29 +175,29 @@ public class EnvironmentUtils {
 
   private static boolean examinePorts() {
     TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
-      if (transport != null && !transport.isOpen()) {
-          try {
-              transport.open();
-              logger.error("stop daemon failed. 6667 can be connected now.");
-              transport.close();
-              return false;
-          } catch (TTransportException e) {
-              // do nothing
-          }
+    if (transport != null && !transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop daemon failed. 6667 can be connected now.");
+        transport.close();
+        return false;
+      } catch (TTransportException e) {
+        // do nothing
       }
-      // try sync service
+    }
+    // try sync service
     transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
-      if (transport != null && !transport.isOpen()) {
-          try {
-              transport.open();
-              logger.error("stop Sync daemon failed. 5555 can be connected now.");
-              transport.close();
-              return false;
-          } catch (TTransportException e) {
-              // do nothing
-          }
+    if (transport != null && !transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop Sync daemon failed. 5555 can be connected now.");
+        transport.close();
+        return false;
+      } catch (TTransportException e) {
+        // do nothing
       }
-      // try jmx connection
+    }
+    // try jmx connection
     try {
       JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
       JMXConnector jmxConnector = JMXConnectorFactory.connect(url);

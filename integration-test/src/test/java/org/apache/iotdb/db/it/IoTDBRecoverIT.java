@@ -86,7 +86,7 @@ public class IoTDBRecoverIT {
   private final String d0s2 = "root.vehicle.d0.s2";
   private final String d0s3 = "root.vehicle.d0.s3";
 
-    @Before
+  @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
@@ -118,10 +118,8 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count(TEMPERATURE_STR));
+        String ans =
+            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(TEMPERATURE_STR));
         Assert.assertEquals(retArray[0], ans);
       }
 
@@ -129,10 +127,10 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(minTime(TEMPERATURE_STR));
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(minTime(TEMPERATURE_STR));
         Assert.assertEquals(retArray[1], ans);
       }
 
@@ -163,13 +161,13 @@ public class IoTDBRecoverIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(maxValue(d0s0))
-                  + ","
-                  + resultSet.getString(minValue(d0s2));
-          Assert.assertEquals(retArray[0], ans);
+        String ans =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(maxValue(d0s0))
+                + ","
+                + resultSet.getString(minValue(d0s2));
+        Assert.assertEquals(retArray[0], ans);
       }
 
       selectSql = "select max_value(s0),min_value(s2) from root.vehicle.d0 where time < 2500";
@@ -191,7 +189,7 @@ public class IoTDBRecoverIT {
   }
 
   @Test
-  public void recoverTest2(){
+  public void recoverTest2() {
     // stop cluster
     EnvFactory.getEnv().shutdownAllDataNodes();
     logger.info("All DataNodes are shut down");
@@ -224,7 +222,7 @@ public class IoTDBRecoverIT {
                 + resultSet.getString(count(d0s2))
                 + ","
                 + resultSet.getString(count(d0s3));
-          Assert.assertEquals(retArray[0], ans);
+        Assert.assertEquals(retArray[0], ans);
       }
 
       selectSql = "select count(s0),count(s1),count(s2),count(s3) from root.vehicle.d0";
@@ -262,8 +260,9 @@ public class IoTDBRecoverIT {
       }
 
       // prepare BufferWrite file
-        String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-        for (int i = 5000; i < 7000; i++) {
+      String insertTemplate =
+          "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
+      for (int i = 5000; i < 7000; i++) {
         statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));

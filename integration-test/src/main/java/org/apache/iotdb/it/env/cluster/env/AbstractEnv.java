@@ -658,8 +658,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public void startAllConfigNodes(){
-    for(ConfigNodeWrapper configNodeWrapper:configNodeWrapperList){
+  public void startAllConfigNodes() {
+    for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
       configNodeWrapper.start();
     }
   }
