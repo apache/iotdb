@@ -46,8 +46,9 @@ public class MemUtils {
   private MemUtils() {}
 
   /**
-   * function for getting the value size. If mem control enabled, do not add text data size here,
-   * the size will be added to memtable before inserting.
+   * Function for obtaining the value size. For text values, there are two conditions: 1. During
+   * insertion, their size has already been added to memory. 2. During flushing, their size needs to
+   * be calculated.
    */
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
     if (dataType == TSDataType.TEXT) {
@@ -57,11 +58,10 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the value size. If mem control enabled, do not add text data size here,
-   * the size will be added to memtable before inserting.
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getRecordsSize(
-      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+  public static long getRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
     int emptyRecordCount = 0;
     long memSize = 0L;
     for (int i = 0; i < value.length; i++) {
@@ -69,28 +69,23 @@ public class MemUtils {
         emptyRecordCount++;
         continue;
       }
-      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], addingTextDataSize);
+      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], false);
     }
     return memSize;
   }
 
   /**
-   * function for getting the vector value size. If mem control enabled, do not add text data size
-   * here, the size will be added to memtable before inserting.
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getAlignedRecordsSize(
-      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+  public static long getAlignedRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null) {
+      if (value[i] == null || dataTypes.get(i) == TSDataType.TEXT) {
         continue;
       }
-      if (dataTypes.get(i) == TSDataType.TEXT) {
-        memSize += (addingTextDataSize ? getBinarySize((Binary) value[i]) : 0);
-      } else {
-        memSize += dataTypes.get(i).getDataTypeSize();
-      }
+      memSize += dataTypes.get(i).getDataTypeSize();
     }
     return memSize;
   }
@@ -101,7 +96,7 @@ public class MemUtils {
 
   public static long getBinaryColumnSize(Binary[] column, int start, int end) {
     long memSize = 0;
-    memSize += (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
       memSize += RamUsageEstimator.sizeOf(column[i].getValues());
     }
@@ -109,11 +104,10 @@ public class MemUtils {
   }
 
   /**
-   * If mem control enabled, do not add text data size here, the size will be added to memtable
-   * before inserting.
+   * Function for obtaining the value size. For text values, their size has already been added to
+   * memory before insertion
    */
-  public static long getTabletSize(
-      InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
+  public static long getTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
     if (start >= end) {
       return 0L;
     }
@@ -124,19 +118,12 @@ public class MemUtils {
       }
       // time column memSize
       memSize += (end - start) * 8L;
-      if (insertTabletNode.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
-        for (int j = start; j < end; j++) {
-          memSize += getBinarySize(((Binary[]) insertTabletNode.getColumns()[i])[j]);
-        }
-      } else {
-        memSize += (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
-      }
+      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
     }
     return memSize;
   }
 
-  public static long getAlignedTabletSize(
-      InsertTabletNode insertTabletNode, int start, int end, boolean addingTextDataSize) {
+  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
     if (start >= end) {
       return 0L;
     }
@@ -145,16 +132,7 @@ public class MemUtils {
       if (insertTabletNode.getMeasurements()[i] == null) {
         continue;
       }
-      TSDataType valueType;
-      // value columns memSize
-      valueType = insertTabletNode.getDataTypes()[i];
-      if (valueType == TSDataType.TEXT && addingTextDataSize) {
-        for (int j = start; j < end; j++) {
-          memSize += getBinarySize(((Binary[]) insertTabletNode.getColumns()[i])[j]);
-        }
-      } else {
-        memSize += (long) (end - start) * valueType.getDataTypeSize();
-      }
+      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
     }
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);
@@ -162,11 +140,11 @@ public class MemUtils {
   }
 
   /** Calculate how much memory will be used if the given record is written to sequence file. */
-  public static long getTsRecordMem(TSRecord record) {
+  public static long getTsRecordMem(TSRecord tsRecord) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
-    memUsed += getStringMem(record.deviceId);
-    for (DataPoint dataPoint : record.dataPointList) {
+    memUsed += getStringMem(tsRecord.deviceId);
+    for (DataPoint dataPoint : tsRecord.dataPointList) {
       memUsed += 8; // dataPoint reference
       memUsed += getDataPointMem(dataPoint);
     }
@@ -176,7 +154,7 @@ public class MemUtils {
   /** function for getting the memory size of the given string. */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
-    return str.length() * 2 + 64L;
+    return str.length() * 2L + 64L;
   }
 
   /** function for getting the memory size of the given data point. */

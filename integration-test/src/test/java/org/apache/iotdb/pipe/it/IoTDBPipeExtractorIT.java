@@ -228,7 +228,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
       fail(e.getMessage());
     }
 
-    // Scenario 2.4: test when only 'source.end-time' is set
+    // Scenario 2.4: test when only when 'source.start-time' is less than 'source.end-time'
     String p2_4 =
         String.format(
             "create pipe p2_4"
@@ -249,6 +249,32 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
     }
 
     assertPipeCount(9);
+
+    // ---------------------------------------------------------------------- //
+    // Scenario 3: when 'source.start-time' or 'source.end-time' is timestamp //
+    // ---------------------------------------------------------------------- //
+
+    // Scenario 3.1: test when 'source.start-time' is timestamp string
+    String p3_1 =
+        String.format(
+            "create pipe p3_1"
+                + " with source ("
+                + "'source.start-time'='1000',"
+                + "'source.end-time'='2000.01.01T08:00:00')"
+                + " with connector ("
+                + "'connector'='iotdb-thrift-connector',"
+                + "'connector.ip'='%s',"
+                + "'connector.port'='%s',"
+                + "'connector.batch.enable'='false')",
+            receiverIp, receiverPort);
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(p3_1);
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    assertPipeCount(10);
   }
 
   @Test
@@ -273,8 +299,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
             "%s", receiverIp, receiverPort);
 
     List<String> invalidStartTimes =
-        Arrays.asList(
-            "''", "null", "'null'", "'1'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
+        Arrays.asList("''", "null", "'null'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
     for (String invalidStartTime : invalidStartTimes) {
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -639,7 +664,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
       extractorAttributes.put("extractor.history.enable", "true");
-      extractorAttributes.put("extractor.history.start-time", "1970-01-01T08:00:02+08:00");
+      // 1970-01-01T08:00:02+08:00
+      extractorAttributes.put("extractor.history.start-time", "2000");
       extractorAttributes.put("extractor.history.end-time", "1970-01-01T08:00:04+08:00");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -806,7 +832,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualIT {
 
       extractorAttributes.put("source.pattern", "root.db.d1");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
-      extractorAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
+      // 1970-01-01T08:00:04+08:00
+      extractorAttributes.put("source.end-time", "4000");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

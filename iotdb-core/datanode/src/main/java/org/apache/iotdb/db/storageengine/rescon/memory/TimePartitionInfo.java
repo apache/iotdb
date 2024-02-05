@@ -31,8 +31,6 @@ public class TimePartitionInfo {
 
   long lastSystemFlushTime;
 
-  boolean isLatestPartition;
-
   long memSize;
 
   public TimePartitionInfo(
@@ -40,14 +38,12 @@ public class TimePartitionInfo {
       long partitionId,
       boolean isActive,
       long lastSystemFlushTime,
-      long memsize,
-      boolean isLatestPartition) {
+      long memsize) {
     this.dataRegionId = dataRegionId;
     this.partitionId = partitionId;
     this.isActive = isActive;
     this.lastSystemFlushTime = lastSystemFlushTime;
     this.memSize = memsize;
-    this.isLatestPartition = isLatestPartition;
   }
 
   public int comparePriority(TimePartitionInfo timePartitionInfo) {
@@ -59,12 +55,6 @@ public class TimePartitionInfo {
     if (cmp != 0) {
       return cmp;
     }
-
-    cmp = Boolean.compare(isLatestPartition, timePartitionInfo.isLatestPartition);
-    if (cmp != 0) {
-      return cmp;
-    }
-
     return Long.compare(lastSystemFlushTime, timePartitionInfo.lastSystemFlushTime);
   }
 }

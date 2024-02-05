@@ -99,7 +99,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
             2,
             Collections.emptyMap(),
-            new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
@@ -109,7 +109,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
             2,
             Collections.emptyMap(),
-            new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.COUNT.name().toLowerCase(),
@@ -119,7 +119,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1"))),
             2,
             Collections.emptyMap(),
-            new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
     groupByLevelDescriptorList.add(
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
@@ -129,7 +129,7 @@ public class AggregationDescriptorTest {
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1"))),
             2,
             Collections.emptyMap(),
-            new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
+            Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.*.s1")))));
   }
 
   @Test

@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -39,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,12 +57,14 @@ public class AccumulatorTest {
   private void initInputTsBlock() {
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.INT32);
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int i = 0; i < 100; i++) {
       timeColumnBuilder.writeLong(i);
       columnBuilders[0].writeDouble(i * 1.0);
+      columnBuilders[1].writeInt(-i);
       tsBlockBuilder.declarePosition();
     }
     rawData = tsBlockBuilder.build();
@@ -69,10 +73,18 @@ public class AccumulatorTest {
     statistics.update(100L, 100d);
   }
 
-  public Column[] getTimeAndValueColumn(int columnIndex) {
+  private Column[] getTimeAndValueColumn(int columnIndex) {
     Column[] columns = new Column[2];
     columns[0] = rawData.getTimeColumn();
     columns[1] = rawData.getColumn(columnIndex);
+    return columns;
+  }
+
+  private Column[] getTimeAndTwoValueColumns(int columnIndex1, int columnIndex2) {
+    Column[] columns = new Column[3];
+    columns[0] = rawData.getTimeColumn();
+    columns[1] = rawData.getColumn(columnIndex1);
+    columns[2] = rawData.getColumn(columnIndex2);
     return columns;
   }
 
@@ -81,7 +93,7 @@ public class AccumulatorTest {
     Accumulator avgAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.AVG,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -134,7 +146,7 @@ public class AccumulatorTest {
     Accumulator countAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.COUNT,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -180,7 +192,7 @@ public class AccumulatorTest {
     Accumulator countTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.COUNT_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -223,7 +235,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.EXTREME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -263,7 +275,7 @@ public class AccumulatorTest {
     Accumulator firstValueAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.FIRST_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -309,7 +321,7 @@ public class AccumulatorTest {
     Accumulator lastValueAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.LAST_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -354,7 +366,7 @@ public class AccumulatorTest {
     Accumulator maxTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MAX_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -394,7 +406,7 @@ public class AccumulatorTest {
     Accumulator minTimeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MIN_TIME,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -434,7 +446,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MAX_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -474,7 +486,7 @@ public class AccumulatorTest {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.MIN_VALUE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -514,7 +526,7 @@ public class AccumulatorTest {
     Accumulator sumAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.SUM,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -560,7 +572,7 @@ public class AccumulatorTest {
     Accumulator stddevAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -614,7 +626,7 @@ public class AccumulatorTest {
     Accumulator stddevPopAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV_POP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -661,7 +673,7 @@ public class AccumulatorTest {
     Accumulator stddevSampAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.STDDEV_SAMP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -715,7 +727,7 @@ public class AccumulatorTest {
     Accumulator varianceAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VARIANCE,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -769,7 +781,7 @@ public class AccumulatorTest {
     Accumulator varPopAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VAR_POP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -816,7 +828,7 @@ public class AccumulatorTest {
     Accumulator varSampAccumulator =
         AccumulatorFactory.createAccumulator(
             TAggregationType.VAR_SAMP,
-            TSDataType.DOUBLE,
+            Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
             Collections.emptyMap(),
             true);
@@ -863,5 +875,38 @@ public class AccumulatorTest {
     finalResult = new DoubleColumnBuilder(null, 1);
     varSampAccumulator.outputFinal(finalResult);
     Assert.assertEquals(841.6666666666666, finalResult.build().getDouble(0), 0.001);
+  }
+
+  @Test
+  public void maxByAccumulatorTest() {
+    Accumulator maxByAccumulator =
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.MAX_BY,
+            Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE),
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    Assert.assertEquals(TSDataType.TEXT, maxByAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.INT32, maxByAccumulator.getFinalType());
+    // Returns null if there's no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    maxByAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new IntColumnBuilder(null, 1);
+    maxByAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndTwoValueColumns(1, 0);
+    maxByAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(maxByAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    maxByAccumulator.outputIntermediate(intermediateResult);
+
+    // add intermediate result as input
+    maxByAccumulator.addIntermediate(new Column[] {intermediateResult[0].build()});
+    finalResult = new IntColumnBuilder(null, 1);
+    maxByAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(-99, finalResult.build().getInt(0));
   }
 }

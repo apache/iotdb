@@ -56,12 +56,6 @@ public class TimePartitionManager {
               timePartitionInfoMap.computeIfAbsent(
                   timePartitionInfo.dataRegionId, k -> new TreeMap<>());
 
-      Map.Entry<Long, TimePartitionInfo> entry =
-          timePartitionInfoMapForRegion.floorEntry(timePartitionInfo.partitionId);
-      if (entry != null) {
-        entry.getValue().isLatestPartition = false;
-      }
-
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
 
       // We need to ensure that the following method is called before
