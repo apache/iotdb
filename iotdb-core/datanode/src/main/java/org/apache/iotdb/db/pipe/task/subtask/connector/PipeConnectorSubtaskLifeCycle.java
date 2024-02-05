@@ -38,9 +38,9 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   private int registeredTaskCount;
 
   public PipeConnectorSubtaskLifeCycle(
-          PipeConnectorSubtaskExecutor executor,
-          PipeConnectorSubtask subtask,
-          BoundedBlockingPendingQueue<Event> pendingQueue) {
+      PipeConnectorSubtaskExecutor executor,
+      PipeConnectorSubtask subtask,
+      BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
@@ -69,10 +69,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     registeredTaskCount++;
     LOGGER.info(
-            "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-            subtask,
-            runningTaskCount,
-            registeredTaskCount);
+        "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        registeredTaskCount);
   }
 
   /**
@@ -107,10 +107,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     } finally {
       registeredTaskCount--;
       LOGGER.info(
-              "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-              subtask,
-              runningTaskCount,
-              registeredTaskCount);
+          "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+          subtask,
+          runningTaskCount,
+          registeredTaskCount);
     }
   }
 
@@ -125,10 +125,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount++;
     LOGGER.info(
-            "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-            subtask,
-            runningTaskCount,
-            registeredTaskCount);
+        "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        registeredTaskCount);
   }
 
   public synchronized void stop() {
@@ -142,10 +142,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount--;
     LOGGER.info(
-            "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-            subtask,
-            runningTaskCount,
-            registeredTaskCount);
+        "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        registeredTaskCount);
   }
 
   @Override

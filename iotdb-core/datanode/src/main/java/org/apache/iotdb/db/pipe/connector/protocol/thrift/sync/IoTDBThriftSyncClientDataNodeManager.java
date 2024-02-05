@@ -21,12 +21,14 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class IoTDBThriftSyncClientDataNodeManager extends IoTDBThriftSyncLeaderCacheClientManager {
 
@@ -40,8 +42,14 @@ public class IoTDBThriftSyncClientDataNodeManager extends IoTDBThriftSyncLeaderC
   }
 
   @Override
-  protected TPipeTransferReq buildHandShakeReq() throws IOException {
+  protected PipeTransferDataNodeHandshakeV1Req buildHandshakeV1Req() throws IOException {
     return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  protected PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
+      throws IOException {
+    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
   }
 }

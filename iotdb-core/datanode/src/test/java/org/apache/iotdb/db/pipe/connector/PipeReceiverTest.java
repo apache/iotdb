@@ -39,7 +39,7 @@ public class PipeReceiverTest {
     IoTDBThriftReceiverV1 receiver = new IoTDBThriftReceiverV1();
     try {
       receiver.receive(
-              PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+          PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       receiver.receive(
           PipeTransferTabletRawReq.toTPipeTransferReq(

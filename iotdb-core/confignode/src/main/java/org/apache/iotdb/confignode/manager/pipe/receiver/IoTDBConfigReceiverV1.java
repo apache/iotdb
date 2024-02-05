@@ -86,8 +86,8 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case CONFIGNODE_HANDSHAKE:
-            return handleTransferHandshake(
+          case CONFIGNODE_HANDSHAKE_V1:
+            return handleTransferHandshakeV1(
                 PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_PLAN:
             return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));

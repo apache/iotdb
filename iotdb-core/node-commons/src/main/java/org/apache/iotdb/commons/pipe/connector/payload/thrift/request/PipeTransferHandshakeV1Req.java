@@ -41,13 +41,13 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected final PipeTransferHandshakeV1Req convertToTPipeTransferReq(String timestampPrecision)
-          throws IOException {
+      throws IOException {
     this.timestampPrecision = timestampPrecision;
 
     this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
       this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -56,7 +56,7 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
   }
 
   protected final PipeTransferHandshakeV1Req translateFromTPipeTransferReq(
-          TPipeTransferReq transferReq) {
+      TPipeTransferReq transferReq) {
     timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
 
     version = transferReq.version;
@@ -69,9 +69,9 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
   /////////////////////////////// Air Gap ///////////////////////////////
 
   protected final byte[] convertToTransferHandshakeBytes(String timestampPrecision)
-          throws IOException {
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
@@ -91,9 +91,9 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
     }
     PipeTransferHandshakeV1Req that = (PipeTransferHandshakeV1Req) obj;
     return timestampPrecision.equals(that.timestampPrecision)
-            && version == that.version
-            && type == that.type
-            && body.equals(that.body);
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
   }
 
   @Override

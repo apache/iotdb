@@ -58,18 +58,18 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
   private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
-          new PipeHeartbeatEvent("cron", false);
+      new PipeHeartbeatEvent("cron", false);
   private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
-          PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
   private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
-          String taskID,
-          long creationTime,
-          String attributeSortedString,
-          int connectorIndex,
-          BoundedBlockingPendingQueue<Event> inputPendingQueue,
-          PipeConnector outputPipeConnector) {
+      String taskID,
+      long creationTime,
+      String attributeSortedString,
+      int connectorIndex,
+      BoundedBlockingPendingQueue<Event> inputPendingQueue,
+      PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
     this.connectorIndex = connectorIndex;
@@ -84,16 +84,16 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
     }
 
     final Event event =
-            lastEvent != null
-                    ? lastEvent
-                    : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
     try {
       if (event == null) {
         if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-                > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
           transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         }
         return false;
@@ -109,9 +109,9 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
         outputPipeConnector.transfer(
-                event instanceof UserDefinedEnrichedEvent
-                        ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
-                        : event);
+            event instanceof UserDefinedEnrichedEvent
+                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                : event);
       }
 
       releaseLastEvent(true);
@@ -120,18 +120,18 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
         throw e;
       } else {
         LOGGER.info(
-                "{} in pipe transfer, ignored because pipe is dropped.",
-                e.getClass().getSimpleName(),
-                e);
+            "{} in pipe transfer, ignored because pipe is dropped.",
+            e.getClass().getSimpleName(),
+            e);
         releaseLastEvent(false);
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
-                String.format(
-                        "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                        taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
-                e);
+            String.format(
+                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
+                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+            e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
         releaseLastEvent(false);
@@ -147,9 +147,9 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       outputPipeConnector.transfer(event);
     } catch (Exception e) {
       LOGGER.warn(
-              "PipeConnector: {} heartbeat failed, or encountered failure when transferring generic event. Failure: {}",
-              outputPipeConnector.getClass().getName(),
-              e.getMessage());
+          "PipeConnector: {} heartbeat failed, or encountered failure when transferring generic event. Failure: {}",
+          outputPipeConnector.getClass().getName(),
+          e.getMessage());
       throw e;
     }
 
@@ -167,17 +167,17 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       outputPipeConnector.close();
     } catch (Exception e) {
       LOGGER.info(
-              "Exception occurred when closing pipe connector subtask {}, root cause: {}",
-              taskID,
-              ErrorHandlingUtils.getRootCause(e).getMessage(),
-              e);
+          "Exception occurred when closing pipe connector subtask {}, root cause: {}",
+          taskID,
+          ErrorHandlingUtils.getRootCause(e).getMessage(),
+          e);
     } finally {
       inputPendingQueue.forEach(
-              event -> {
-                if (event instanceof EnrichedEvent) {
-                  ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
-                }
-              });
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+            }
+          });
       inputPendingQueue.clear();
 
       // Should be called after outputPipeConnector.close()
@@ -219,8 +219,8 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
 
   public int getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBThriftAsyncConnector
-            ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
-            : 0;
+        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+        : 0;
   }
 
   //////////////////////////// Error report ////////////////////////////

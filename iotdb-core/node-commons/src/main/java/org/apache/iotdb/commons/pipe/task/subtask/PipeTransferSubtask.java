@@ -51,7 +51,7 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
 
   protected PipeTransferSubtask(
-          String taskID, long creationTime, PipeConnector outputPipeConnector) {
+      String taskID, long creationTime, PipeConnector outputPipeConnector) {
     super(taskID, creationTime);
     this.outputPipeConnector = outputPipeConnector;
   }
@@ -69,9 +69,9 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
 
   @Override
   public void bindExecutors(
-          ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-          ExecutorService subtaskCallbackListeningExecutor,
-          PipeSubtaskScheduler subtaskScheduler) {
+      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ExecutorService subtaskCallbackListeningExecutor,
+      PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
@@ -130,41 +130,41 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     // because the upper layer relies on this to stop all the related pipe tasks
     // Other exceptions may cause the subtask to stop forever and can not be restarted
     super.onFailure(
-            throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
-                    ? throwable
-                    : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+            ? throwable
+            : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
   /** @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise */
   private boolean onPipeConnectionException(Throwable throwable) {
     LOGGER.warn(
-            "PipeConnectionException occurred, {} retries to handshake with the target system.",
-            outputPipeConnector.getClass().getName(),
-            throwable);
+        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+        outputPipeConnector.getClass().getName(),
+        throwable);
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
       try {
         outputPipeConnector.handshake();
         LOGGER.info(
-                "{} handshakes with the target system successfully.",
-                outputPipeConnector.getClass().getName());
+            "{} handshakes with the target system successfully.",
+            outputPipeConnector.getClass().getName());
         break;
       } catch (Exception e) {
         retry++;
         LOGGER.warn(
-                "{} failed to handshake with the target system for {} times, "
-                        + "will retry at most {} times.",
-                outputPipeConnector.getClass().getName(),
-                retry,
-                MAX_RETRY_TIMES,
-                e);
+            "{} failed to handshake with the target system for {} times, "
+                + "will retry at most {} times.",
+            outputPipeConnector.getClass().getName(),
+            retry,
+            MAX_RETRY_TIMES,
+            e);
         try {
           Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
         } catch (InterruptedException interruptedException) {
           LOGGER.info(
-                  "Interrupted while sleeping, will retry to handshake with the target system.",
-                  interruptedException);
+              "Interrupted while sleeping, will retry to handshake with the target system.",
+              interruptedException);
           Thread.currentThread().interrupt();
         }
       }
@@ -174,20 +174,20 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     // the target system after MAX_RETRY_TIMES times
     if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
       report(
-              (EnrichedEvent) lastEvent,
-              new PipeRuntimeConnectorCriticalException(
-                      throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
+          (EnrichedEvent) lastEvent,
+          new PipeRuntimeConnectorCriticalException(
+              throwable.getMessage() + ", root cause: " + getRootCause(throwable)));
       LOGGER.warn(
-              "{} failed to handshake with the target system after {} times, "
-                      + "stopping current subtask {} (creation time: {}, simple class: {}). "
-                      + "Status shown when query the pipe will be 'STOPPED'. "
-                      + "Please restart the task by executing 'START PIPE' manually if needed.",
-              outputPipeConnector.getClass().getName(),
-              MAX_RETRY_TIMES,
-              taskID,
-              creationTime,
-              this.getClass().getSimpleName(),
-              throwable);
+          "{} failed to handshake with the target system after {} times, "
+              + "stopping current subtask {} (creation time: {}, simple class: {}). "
+              + "Status shown when query the pipe will be 'STOPPED'. "
+              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          outputPipeConnector.getClass().getName(),
+          MAX_RETRY_TIMES,
+          taskID,
+          creationTime,
+          this.getClass().getSimpleName(),
+          throwable);
 
       // Although the pipe task will be stopped, we still don't release the last event here
       // Because we need to keep it for the next retry. If user wants to restart the task,

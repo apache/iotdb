@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.io.IOException;
 public class PipeTransferConfigNodeHandshakeV1Req extends PipeTransferHandshakeV1Req {
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.CONFIGNODE_HANDSHAKE;
+    return PipeRequestType.CONFIGNODE_HANDSHAKE_V1;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

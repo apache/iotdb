@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.common;
+package org.apache.iotdb.commons.pipe.connector.payload.thrift.common;
 
 public class PipeTransferHandshakeConstant {
 

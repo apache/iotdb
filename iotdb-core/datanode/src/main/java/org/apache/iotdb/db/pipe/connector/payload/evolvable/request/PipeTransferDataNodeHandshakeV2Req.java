@@ -21,19 +21,10 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.thrift.TException;
-
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class PipeTransferDataNodeHandshakeV2Req extends PipeTransferHandshakeV2Req {
 
@@ -45,22 +36,21 @@ public class PipeTransferDataNodeHandshakeV2Req extends PipeTransferHandshakeV2R
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferDataNodeHandshakeV2Req toTPipeTransferReq(Map<String, String> params)
-          throws IOException {
+      throws IOException {
     return (PipeTransferDataNodeHandshakeV2Req)
-            new PipeTransferDataNodeHandshakeV2Req().convertToTPipeTransferReq(params);
+        new PipeTransferDataNodeHandshakeV2Req().convertToTPipeTransferReq(params);
   }
 
   public static PipeTransferDataNodeHandshakeV2Req fromTPipeTransferReq(
-          TPipeTransferReq transferReq) {
+      TPipeTransferReq transferReq) {
     return (PipeTransferDataNodeHandshakeV2Req)
-            new PipeTransferDataNodeHandshakeV2Req().translateFromTPipeTransferReq(transferReq);
+        new PipeTransferDataNodeHandshakeV2Req().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(Map<String, String> params) throws IOException {
-    return new PipeTransferDataNodeHandshakeV2Req()
-            .convertToTransferHandshakeBytes(params);
+    return new PipeTransferDataNodeHandshakeV2Req().convertToTransferHandshakeBytes(params);
   }
 
   /////////////////////////////// Object ///////////////////////////////
