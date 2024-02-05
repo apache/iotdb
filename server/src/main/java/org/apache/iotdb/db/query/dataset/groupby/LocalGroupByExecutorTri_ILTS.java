@@ -75,7 +75,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   private long lt;
   private double lv;
 
-  private final int N1; // 分桶数
+  private final int N1;
 
   private final int numIterations = CONFIG.getNumIterations(); // do not make it static
 
@@ -113,7 +113,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             fileFilter,
             ascending);
 
-    // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
       // : this might be bad to load all chunk metadata at first
       List<ChunkSuit4Tri> futureChunkList =
@@ -141,16 +140,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         }
       }
 
-      //      // debug
-      //      for (int i = 0; i < N1; i++) {
-      //        List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(i);
-      //        if (chunkSuit4TriList != null) {
-      //          for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
-      //            System.out.println(i + "," + chunkSuit4Tri.chunkMetadata.getStartTime());
-      //          }
-      //        }
-      //      }
-
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -168,9 +157,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException {
-    // 这里用calcResult一次返回所有buckets结果（可以把MinValueAggrResult的value设为string类型，
-    // 那就把所有buckets结果作为一个string返回。这样的话返回的[t]是没有意义的，只取valueString）
-    // 而不是像MinMax那样在nextWithoutConstraintTri_MinMax()里调用calcResult每次计算一个bucket
     StringBuilder series_final = new StringBuilder();
 
     // clear result cache
@@ -178,47 +164,36 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
       result.reset();
     }
 
-    long[] lastIter_t = new long[N1]; // N1不包括全局首尾点，初始化都是0，假设真实时间戳都大于0
-    double[] lastIter_v = new double[N1]; // N1不包括全局首尾点
+    long[] lastIter_t = new long[N1];
+    double[] lastIter_v = new double[N1];
 
-    // TODO: 如果和上次迭代时使用的lr一样那么这个bucket这次迭代就使用上次的采点结果，不必重复计算
-    boolean[] needRecalc = new boolean[N1]; // N1不包括全局首尾点，初始化都是false
+    boolean[] lastSame = new boolean[N1 + 1];
+    lastSame[N1] = true;
 
-    int num = 0; // 注意从0开始！
+    int num = 0;
     for (; num < numIterations; num++) {
       // NOTE: init lt&lv at the start of each iteration is a must, because they are modified in
       // each iteration
       lt = CONFIG.getP1t();
       lv = CONFIG.getP1v();
 
-      boolean[] currentNeedRecalc = new boolean[N1]; // N1不包括全局首尾点，初始化都是false
-      boolean allFalseFlag = true; // 如果非首轮迭代全部都是false那可以提前结束迭代，因为后面都不会再有任何变化
+      boolean allSameFlag = true;
+      boolean currentLeftSame = true;
 
-      //      StringBuilder series = new StringBuilder(); // TODO debug
-      //      // 全局首点
-      //      series.append(p1v).append("[").append(p1t).append("]").append(","); // TODO debug
-
-      // 遍历分桶 Assume no empty buckets
       for (int b = 0; b < N1; b++) {
-        if (CONFIG.isAcc_iterRepeat() && num > 0 && !needRecalc[b]) {
-          // 排除num=0，因为第一次迭代要全部算的
-          // 不需要更新本轮迭代本桶选点，或者说本轮迭代本桶选点就是lastIter内已有结果
-          // 也不需要更新currentNeedRecalc
-          // 下一个桶自然地以select_t, select_v作为左桶固定点
+        if (CONFIG.isAcc_iterRepeat() && num > 0 && lastSame[b + 1] && currentLeftSame) {
           lt = lastIter_t[b];
           lv = lastIter_v[b];
+          lastSame[b] = true;
           continue;
         }
         double rt = 0; // must initialize as zero, because may be used as sum for average
         double rv = 0; // must initialize as zero, because may be used as sum for average
-        // 计算右边桶的固定点
-        if (b == N1 - 1) { // 最后一个桶
-          // 全局尾点
+        if (b == N1 - 1) {
           rt = pnt;
           rv = pnv;
-        } else { // 不是最后一个桶
-          if (num == 0) { // 是第一次迭代的话，就使用右边桶的平均点
-            // ========计算右边桶的平均点========
+        } else {
+          if (num == 0) {
             List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b + 1);
             if (chunkSuit4TriList == null) {
               throw new IOException("Empty bucket!");
@@ -226,18 +201,14 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             long rightStartTime = startTime + (b + 1) * interval;
             long rightEndTime = startTime + (b + 2) * interval;
             int cnt = 0;
-            // 遍历所有与右边桶overlap的chunks
             for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
               TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
               if (dataType != TSDataType.DOUBLE) {
                 throw new UnSupportedDataTypeException(String.valueOf(dataType));
               }
-              // TODO: 用元数据sum&count加速
-              //  如果chunk没有被桶切开，可以直接用元数据里的sum和count
               if (CONFIG.isAcc_avg()) {
                 if (chunkSuit4Tri.chunkMetadata.getStartTime() >= rightStartTime
                     && chunkSuit4Tri.chunkMetadata.getEndTime() < rightEndTime) {
-                  // TODO 以后元数据可以增加sum of timestamps，目前就基于时间戳均匀间隔1的假设来处理
                   rt +=
                       (chunkSuit4Tri.chunkMetadata.getStartTime()
                               + chunkSuit4Tri.chunkMetadata.getEndTime())
@@ -260,7 +231,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                 //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
                 //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
               }
-              // 2. 计算平均点
+              // 2. calculate avg
               PageReader pageReader = chunkSuit4Tri.pageReader;
               for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
                 IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
@@ -283,12 +254,11 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             }
             rt = rt / cnt;
             rv = rv / cnt;
-          } else { // 不是第一次迭代也不是最后一个桶的话，就使用上一轮迭代右边桶的采样点
+          } else {
             rt = lastIter_t[b + 1];
             rv = lastIter_v[b + 1];
           }
         }
-        // ========找到当前桶内距离lr连线最远的点========
         double maxDistance = -1;
         long select_t = -1;
         double select_v = -1;
@@ -296,10 +266,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
         long localCurStartTime = startTime + (b) * interval;
         long localCurEndTime = startTime + (b + 1) * interval;
         if (CONFIG.isAcc_rectangle()) {
-          // TODO: 用元数据里落在桶内的FP&LP&BP&TP形成的rectangle加速
-          //   边点得到距离的紧致下限，角点得到距离的非紧致上限
-          //   先遍历一遍这些元数据，得到所有落在桶内的元数据点的最远点，更新maxDistance&select_t&select_v
-          //   然后遍历如果这个chunk的非紧致上限<=当前已知的maxDistance，那么整个chunk都不用管了
           for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
             long[] rect_t =
                 new long[] {
@@ -315,7 +281,6 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                   (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMinValue(), // BPv
                   (double) chunkSuit4Tri.chunkMetadata.getStatistics().getMaxValue() // TPv
                 };
-            // 用落在桶内的元数据点（紧致下限）更新maxDistance&select_t&select_v
             for (int i = 0; i < 4; i++) {
               if (rect_t[i] >= localCurStartTime && rect_t[i] < localCurEndTime) {
                 double distance =
@@ -327,43 +292,29 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                 }
               }
             }
-            // 用四个角点计算每个块的相对于当前固定线的非紧致上限
-            // 注意第一步是直接赋值而不是和旧的比较，因为距离是相对于线L的，每次迭代每个分桶下的L不同
             chunkSuit4Tri.distance_loose_upper_bound =
-                IOMonitor2.calculateDistance(lt, lv, rect_t[0], rect_v[2], rt, rv); // FPt,BPv,左下角
+                IOMonitor2.calculateDistance(lt, lv, rect_t[0], rect_v[2], rt, rv); // FPt,BPv
             chunkSuit4Tri.distance_loose_upper_bound =
                 Math.max(
                     chunkSuit4Tri.distance_loose_upper_bound,
-                    IOMonitor2.calculateDistance(
-                        lt, lv, rect_t[0], rect_v[3], rt, rv)); // FPt,TPv,左上角
+                    IOMonitor2.calculateDistance(lt, lv, rect_t[0], rect_v[3], rt, rv)); // FPt,TPv
             chunkSuit4Tri.distance_loose_upper_bound =
                 Math.max(
                     chunkSuit4Tri.distance_loose_upper_bound,
-                    IOMonitor2.calculateDistance(
-                        lt, lv, rect_t[1], rect_v[2], rt, rv)); // LPt,BPv,右下角
+                    IOMonitor2.calculateDistance(lt, lv, rect_t[1], rect_v[2], rt, rv)); // LPt,BPv
             chunkSuit4Tri.distance_loose_upper_bound =
                 Math.max(
                     chunkSuit4Tri.distance_loose_upper_bound,
-                    IOMonitor2.calculateDistance(
-                        lt, lv, rect_t[1], rect_v[3], rt, rv)); // LPt,TPv,右上角
+                    IOMonitor2.calculateDistance(lt, lv, rect_t[1], rect_v[3], rt, rv)); // LPt,TPv
           }
         }
-        // 遍历所有与当前桶overlap的chunks
         for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
           TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
           if (dataType != TSDataType.DOUBLE) {
             throw new UnSupportedDataTypeException(String.valueOf(dataType));
           }
-          // TODO: (continue)用元数据里落在桶内的FP&LP&BP&TP形成的rectangle加速
-          //   边点得到距离的紧致下限，角点得到距离的非紧致上限
-          //   如果这个chunk的非紧致上限<=当前已知的maxDistance，那么整个chunk都不用管了
           if (CONFIG.isAcc_rectangle()) {
-            //   （当一个chunk的非紧致上限=紧致下限的时候，意味着有角点和边点重合，
-            //   如果这个上限是maxDistance，在“用元数据点/紧致下限更新maxDistance&select_t&select_v”
-            //   步骤中已经赋值了这个边点，所以这里跳过没关系）
             if (chunkSuit4Tri.distance_loose_upper_bound <= maxDistance) {
-              //                            System.out.println("skip" + b + "," +
-              //               chunkSuit4Tri.chunkMetadata.getStartTime());
               continue;
             }
           }
@@ -379,47 +330,8 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
             //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
           }
           PageReader pageReader = chunkSuit4Tri.pageReader;
-          // TODO: 用凸包bitmap加速
-          //   如果块被分桶边界切开，那还是逐点遍历
-          //   否则块完整落在桶内时，用凸包规则快速找到这个块中沿着lr连线法向量最高和最低的点，最后和全局当前最远结果点比较
-          //   也可以改成先不管是不是完整落在桶里，先找到最高低点，然后如果这两个点没有当前已知最远点远那就可以排除了，
-          //   否则如果最远但是不在当前桶里那还是要遍历，否则最远且在桶里就可以更新当前已知最远点。
-          // //目前先这样只管完全落在桶里的
-          //          if (CONFIG.isAcc_convex()
-          //              && chunkSuit4Tri.chunkMetadata.getStartTime() >= localCurStartTime
-          //              && chunkSuit4Tri.chunkMetadata.getEndTime() < localCurEndTime
-          //              && chunkSuit4Tri.chunkMetadata.getStatistics().getCount() >= 3 // 不考虑少于三个点
-          //          ) {
-          //            BitSet bitSet =
-          // chunkSuit4Tri.chunkMetadata.getStatistics().getQuickHullBitSet();
-          //            List<QuickHullPoint> foundPoints =
-          //                convexHullAcc(
-          //                    lt,
-          //                    lv,
-          //                    rt,
-          //                    rv,
-          //                    pageReader,
-          //                    bitSet,
-          //                    chunkSuit4Tri.chunkMetadata.getStatistics().getCount()); //
-          // 有可能不止两个点，当一边是平行线两端点
-          //            //            System.out.println(foundPoints);
-          //            for (QuickHullPoint point : foundPoints) {
-          //              IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-          //              double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v,
-          // rt, rv);
-          //              if (distance > maxDistance) {
-          //                // 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
-          //                //     从而acc_convex不会生效？！
-          //                maxDistance = distance;
-          //                select_t = point.t;
-          //                select_v = point.v;
-          //              }
-          //            }
-          //            continue; // note this
-          //          }
           if (CONFIG.isAcc_convex()
-              && chunkSuit4Tri.chunkMetadata.getStatistics().getCount() >= 3 // 不考虑少于三个点
-          ) {
+              && chunkSuit4Tri.chunkMetadata.getStatistics().getCount() >= 3) {
             BitSet bitSet = chunkSuit4Tri.chunkMetadata.getStatistics().getQuickHullBitSet();
             List<QuickHullPoint> foundPoints =
                 convexHullAcc(
@@ -429,35 +341,28 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
                     rv,
                     pageReader,
                     bitSet,
-                    chunkSuit4Tri.chunkMetadata.getStatistics().getCount()); // 有可能不止两个点，当一边是平行线两端点
-            //            System.out.println(foundPoints);
+                    chunkSuit4Tri.chunkMetadata.getStatistics().getCount());
             double ch_maxDistance = -1;
             long ch_select_t = -1;
             double ch_select_v = -1;
-            // 找到foundPoints里的最远点
             for (QuickHullPoint point : foundPoints) {
               IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
               double distance = IOMonitor2.calculateDistance(lt, lv, point.t, point.v, rt, rv);
               if (distance > ch_maxDistance) {
-                // 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
-                //     从而acc_convex不会生效？！
                 ch_maxDistance = distance;
                 ch_select_t = point.t;
                 ch_select_v = point.v;
               }
             }
-            // 和当前找到的最远距离比较
             if (ch_maxDistance <= maxDistance) {
-              continue; // 这个块里一定没有比当前找到的最远点更远的点，不管块凸包最远点在不在当前桶里都不用管了
+              continue;
             }
-            // 否则ch_maxDistance>maxDistance，还要判断落在当前桶内才行
             if (ch_select_t >= localCurStartTime && ch_select_t < localCurEndTime) {
               maxDistance = ch_maxDistance;
               select_t = ch_select_t;
               select_v = ch_select_v;
               continue; // note this
             }
-            // 否则ch_maxDistance>maxDistance但是这个块的凸包最远点不在当前桶里，于是继续下面的遍历点操作
           }
           int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
           int j;
@@ -473,61 +378,42 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
               double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
               double distance = IOMonitor2.calculateDistance(lt, lv, timestamp, v, rt, rv);
               if (distance > maxDistance) {
-                // 是不是因为开启了acc_rect之后，导致这里要遍历的chunk块里没有点的距离可以达到maxDistance
-                //     从而acc_convex不会生效？！
                 maxDistance = distance;
                 select_t = timestamp;
                 select_v = v;
               }
             }
           }
-        } // 遍历与当前桶有overlap的chunks结束
-        //        // 记录结果 // TODO debug
-        //        series.append(select_v).append("[").append(select_t).append("]").append(",");
+        }
 
-        // 更新currentNeedRecalc,注意在记录本轮迭代本桶选点之前判断
-        if (CONFIG.isAcc_iterRepeat() && select_t != lastIter_t[b]) { // 本次迭代选点结果和上一轮不一样
-          allFalseFlag = false;
-          if (b == 0) { // 第一个桶
-            currentNeedRecalc[b + 1] = true; // 作为右边桶的左边固定点变了，所以下一轮右边桶要重新采点
-          } else if (b == N1 - 1) { // 最后一个桶
-            currentNeedRecalc[b - 1] = true; // 作为左边桶的右边固定点变了，所以下一轮左边桶要重新采点
+        if (CONFIG.isAcc_iterRepeat()) {
+          if (select_t != lastIter_t[b]) {
+            allSameFlag = false;
+            lastSame[b] = false;
+            currentLeftSame = false;
           } else {
-            currentNeedRecalc[b - 1] = true; // 作为左边桶的右边固定点变了，所以下一轮左边桶要重新采点
-            currentNeedRecalc[b + 1] = true; // 作为右边桶的左边固定点变了，所以下一轮右边桶要重新采点
+            lastSame[b] = true;
+            currentLeftSame = true;
           }
         }
 
-        // 更新lt,lv
-        // 下一个桶自然地以select_t, select_v作为左桶固定点
         lt = select_t;
         lv = select_v;
-        // 记录本轮迭代本桶选点
         lastIter_t[b] = select_t;
         lastIter_v[b] = select_v;
-      } // 遍历分桶结束
+      }
 
-      //      // 全局尾点 // TODO debug
-      //      series.append(pnv).append("[").append(pnt).append("]").append(",");
-      //      System.out.println(series);
-
-      if (CONFIG.isAcc_iterRepeat() && allFalseFlag) {
-        num++; // +1表示是完成的迭代次数
+      if (CONFIG.isAcc_iterRepeat() && allSameFlag) {
+        num++;
         break;
       }
-      // 否则currentNeedRecalc里至少有一个true，因此继续迭代
-      needRecalc = currentNeedRecalc;
-      //      System.out.println(Arrays.toString(needRecalc)); // TODO debug
-
     } // end Iterations
-    //    System.out.println("number of iterations=" + num); // TODO debug
 
-    // 全局首点
     series_final.append(p1v).append("[").append(p1t).append("]").append(",");
     for (int i = 0; i < lastIter_t.length; i++) {
       series_final.append(lastIter_v[i]).append("[").append(lastIter_t[i]).append("]").append(",");
     }
-    // 全局尾点
+
     series_final.append(pnv).append("[").append(pnt).append("]").append(",");
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series_final.toString(), 0));
@@ -535,19 +421,12 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     return results;
   }
 
-  // 在convex hull加速下找到沿着lr连线法向量方向最高和最低的pageReader的buffer中的两个位置
-  // 不考虑少于三个点的情况
   public List<QuickHullPoint> convexHullAcc(
       double lt, double lv, double rt, double rv, PageReader pageReader, BitSet bitSet, int count) {
-    // 连接左右固定点的线的法向量(A,B)
     double A = lv - rv;
     double B = rt - lt;
 
     BitSet reverseBitSet = IOMonitor2.reverse(bitSet);
-
-    //    for (int i = bitSet.nextSetBit(0); i != -1; i = bitSet.nextSetBit(i + 1)) {
-    //      indexes.add(i);
-    //    }
 
     long fpt = pageReader.timeBuffer.getLong(0);
     double fpv = pageReader.valueBuffer.getDouble(pageReader.timeBufferLength);
@@ -606,8 +485,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     boolean findLowest = false;
     List<QuickHullPoint> foundPoints = new ArrayList<>();
 
-    while (bitSetIdx != -1 || reverseBitSetIdx != -1) { // TODO 判断如果只有两个点，会不会一直循环出不来
-      // 如果两个都是-1说明两边都找完所有的点了
+    while (bitSetIdx != -1 || reverseBitSetIdx != -1) {
       // from left to right
       IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
       bitSetIdx = bitSet.nextSetBit(bitSetIdx + 1);
@@ -622,10 +500,10 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           int sign = IOMonitor2.checkSumSigns(A, B, LU);
           if (sign > 0) {
             findLowest = true;
-            foundPoints.add(LU.get(LU.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(LU.get(LU.size() - 2));
           } else if (sign < 0) {
             findHighest = true;
-            foundPoints.add(LU.get(LU.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(LU.get(LU.size() - 2));
           }
         }
         if (check <= 0) { // p below or on the line connecting FP&LP
@@ -633,10 +511,10 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           int sign = IOMonitor2.checkSumSigns(A, B, LL);
           if (sign > 0) {
             findLowest = true;
-            foundPoints.add(LL.get(LL.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(LL.get(LL.size() - 2));
           } else if (sign < 0) {
             findHighest = true;
-            foundPoints.add(LL.get(LL.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(LL.get(LL.size() - 2));
           }
         }
         if (findLowest && findHighest) {
@@ -660,10 +538,10 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           int sign = IOMonitor2.checkSumSigns(A, B, RU);
           if (sign > 0) {
             findLowest = true;
-            foundPoints.add(RU.get(RU.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(RU.get(RU.size() - 2));
           } else if (sign < 0) {
             findHighest = true;
-            foundPoints.add(RU.get(RU.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(RU.get(RU.size() - 2));
           }
         }
         if (check <= 0) { // p below or on the line connecting FP&LP
@@ -671,10 +549,10 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
           int sign = IOMonitor2.checkSumSigns(A, B, RL);
           if (sign > 0) {
             findLowest = true;
-            foundPoints.add(RL.get(RL.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(RL.get(RL.size() - 2));
           } else if (sign < 0) {
             findHighest = true;
-            foundPoints.add(RL.get(RL.size() - 2)); // 注意是倒数第二个点，不是最后一个
+            foundPoints.add(RL.get(RL.size() - 2));
           }
         }
         if (findLowest && findHighest) {

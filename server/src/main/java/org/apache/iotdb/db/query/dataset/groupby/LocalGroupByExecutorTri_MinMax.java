@@ -73,7 +73,7 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
 
   private Filter timeFilter;
 
-  private final int N1; // 分桶数
+  private final int N1;
 
   public LocalGroupByExecutorTri_MinMax(
       PartialPath path,
@@ -111,9 +111,8 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
     long startTime = groupByFilter.getStartTime();
     long endTime = groupByFilter.getEndTime();
     long interval = groupByFilter.getInterval();
-    N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // 分桶数
+    N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval);
 
-    // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
       // : this might be bad to load all chunk metadata at first
       futureChunkList.addAll(seriesReader.getAllChunkMetadatas4Tri());
@@ -273,9 +272,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException {
-    // 这里用calcResult一次返回所有buckets结果（可以把MinValueAggrResult的value设为string类型，
-    // 那就把所有buckets结果作为一个string返回。这样的话返回的[t]是没有意义的，只取valueString）
-    // 而不是像MinMax那样在nextWithoutConstraintTri_MinMax()里调用calcResult每次计算一个bucket
     StringBuilder series = new StringBuilder();
 
     // clear result cache
@@ -283,7 +279,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
       result.reset();
     }
 
-    // 全局首点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
     series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
 
     // Assume no empty buckets
@@ -294,7 +289,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
       getCurrentChunkListFromFutureChunkList(localCurStartTime, localCurEndTime);
 
       if (currentChunkList.size() == 0) {
-        //        System.out.println("MinMax empty currentChunkList"); // TODO debug
         series
             .append("null")
             .append("[")
@@ -312,7 +306,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
       calculateMinMax(currentChunkList, localCurStartTime, localCurEndTime, series);
     }
 
-    // 全局尾点
     series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
 
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
@@ -395,15 +388,8 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
             }
           }
         }
-        //        // clear for heap space
-        //        if (i >= count) {
-        //          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-        //          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
-        //          chunkSuit4Tri.pageReader = null;
-        //        }
       }
     }
-    // 记录结果
     if (topTime >= 0) {
       series
           .append(minValue)
@@ -434,10 +420,6 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
 
   public boolean canUseStatistics(ChunkSuit4Tri chunkSuit4Tri, long curStartTime, long curEndTime) {
     return false;
-    //    long TP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp();
-    //    long BP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp();
-    //    return TP_t >= curStartTime && TP_t < curEndTime && BP_t >= curStartTime && BP_t <
-    // curEndTime;
   }
 
   @Override

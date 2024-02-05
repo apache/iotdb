@@ -42,8 +42,6 @@ import static org.junit.Assert.fail;
 public class MyTest_MinMaxLTTB {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0) FROM root.vehicle.d0 group by ([100,2100),250ms)
-   * enableTri="MinMaxLTTB"
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -116,13 +114,11 @@ public class MyTest_MinMaxLTTB {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          // 注意从1开始编号，所以第一列是无意义时间戳
           String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
       }
-      //      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

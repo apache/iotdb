@@ -43,11 +43,6 @@ import static org.junit.Assert.fail;
 public class MyTest_ILTS {
 
   /*
-   * Sql format: SELECT min_value(s0) FROM root.vehicle.d0 group by ([2,102),20ms)
-   * not real min_value here, actually controlled by enableTri="ILTS"
-   * 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-   * 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
-   *
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -78,7 +73,6 @@ public class MyTest_ILTS {
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("ILTS");
-    //    config.setNumIterations(4);
     config.setAcc_avg(true);
     config.setAcc_rectangle(true);
     config.setAcc_convex(false);
@@ -353,64 +347,4 @@ public class MyTest_ILTS {
       e.printStackTrace();
     }
   }
-
-  //  @Test
-  //  public void test3() {
-  //    prepareData3();
-  //    config.setNumIterations(1); // result equals LTTB
-  //    String res = "5.0[1],10.0[2],2.0[40],15.0[60],18.0[70],1.0[90],7.0[102],";
-  //    try (Connection connection =
-  //        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-  //        Statement statement = connection.createStatement()) {
-  //      boolean hasResultSet =
-  //          statement.execute(
-  //              "SELECT min_value(s0)"
-  //                  // TODO not real min_value here, actually controlled by enableTri
-  //                  + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
-  //                  + " FROM root.vehicle.d0 group by ([1,100),50ms)");
-  //      // (102-2)/(7-2)=20ms
-  //      // note keep no empty buckets
-  //
-  //      Assert.assertTrue(hasResultSet);
-  //      try (ResultSet resultSet = statement.getResultSet()) {
-  //        int i = 0;
-  //        while (resultSet.next()) {
-  //          String ans = resultSet.getString(2);
-  //          System.out.println(ans);
-  ////          Assert.assertEquals(res, ans);
-  //        }
-  //      }
-  //    } catch (Exception e) {
-  //      e.printStackTrace();
-  //      fail(e.getMessage());
-  //    }
-  //  }
-  //
-  //  private static void prepareData3() {
-  //    try (Connection connection =
-  //        DriverManager.getConnection(
-  //            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-  //        Statement statement = connection.createStatement()) {
-  //
-  //      for (String sql : creationSqls) {
-  //        statement.execute(sql);
-  //      }
-  //
-  //      config.setP1t(0);
-  //      config.setP1v(0);
-  //      config.setPnt(100);
-  //      config.setPnv(100);
-  //
-  //      for (int i = 0; i < 100; i++) {
-  //        // linear
-  //        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i + 1, i + 1.0));
-  //        if ((i + 1) % 4 == 0) {
-  //          statement.execute("FLUSH");
-  //        }
-  //      }
-  //      statement.execute("FLUSH");
-  //    } catch (Exception e) {
-  //      e.printStackTrace();
-  //    }
-  //  }
 }

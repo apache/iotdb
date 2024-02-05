@@ -43,11 +43,6 @@ import static org.junit.Assert.fail;
 public class MyTest_M4 {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),
-   * last_value(s0) FROM root.vehicle.d0 group by ([0,100),25ms)
-   * enableTri="M4"
-   * 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-   * 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -73,23 +68,15 @@ public class MyTest_M4 {
   @Before
   public void setUp() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
-    //    originalCompactionStrategy = config.getCompactionStrategy();
     config.setTimestampPrecision("ms");
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("M4");
-    // 对于M4来说全局首尾点只是输出不会影响到其它桶的采点
     config.setP1t(0);
     config.setP1v(0);
     config.setPnt(200);
     config.setPnv(200);
 
-    // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
-    // 因为它直接用chunk元数据去构造pageReader，
-    // 但是如果走的是传统聚合类型->seriesAggregateReader->seriesReader->hasNextOverlappedPage里
-    // cachedBatchData = BatchDataFactory.createBatchData(dataType, orderUtils.getAscending(), true)
-    // 这个路径就错了，把聚合类型赋给batchData了。所以这个LocalGroupByExecutor bug得在有overlap数据的时候才能复现
-    // （那刚好我本文数据都不会有Overlap，可以用LocalGroupByExecutor来得到正确结果）
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
     TSFileDescriptor.getInstance().getConfig().setUseStatistics(false);
@@ -101,7 +88,6 @@ public class MyTest_M4 {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    //    config.setCompactionStrategy(originalCompactionStrategy);
   }
 
   @Test
@@ -116,21 +102,16 @@ public class MyTest_M4 {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
-                  // do not change sequence
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)");
-      // 注意需要第一项是min_value因为以后会用到record.addField(series,
-      // TSDataType.MIN_MAX_INT64)把所有序列组装成string放在第一行第二列里
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          // 注意从1开始编号，所以第一列是无意义时间戳
           String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
       }
-      //      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

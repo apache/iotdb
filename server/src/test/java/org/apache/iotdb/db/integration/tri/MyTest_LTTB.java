@@ -42,10 +42,6 @@ import static org.junit.Assert.fail;
 public class MyTest_LTTB {
 
   /*
-   * Sql format: SELECT min_value(s0) FROM root.vehicle.d0 group by ([2,106),26ms)
-   * not real min_value here, actually controlled by enableTri="LTTB"
-   * 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-   * 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -106,7 +102,6 @@ public class MyTest_LTTB {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0)"
-                  // TODO not real min_value here, actually controlled by enableTri
                   + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([2,106),26ms)");
 
@@ -170,7 +165,6 @@ public class MyTest_LTTB {
       boolean hasResultSet =
           statement.execute(
               "SELECT min_value(s0)"
-                  // TODO not real min_value here, actually controlled by enableTri
                   + ",max_value(s0),min_time(s0), max_time(s0), first_value(s0), last_value(s0)"
                   + " FROM root.vehicle.d0 group by ([100,2100),250ms)");
       // (tn-t2)/(nout-2)=(2100-100)/(10-2)=2000/8=250

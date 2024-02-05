@@ -42,8 +42,6 @@ import static org.junit.Assert.fail;
 public class MyTest_MinMax {
 
   /*
-   * Sql format: SELECT min_value(s0), max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength).
-   * enableTri="MinMax"
    * Requirements:
    * (1) Don't change the sequence of the above two aggregates
    * (2) Assume each chunk has only one page.
@@ -69,23 +67,15 @@ public class MyTest_MinMax {
   @Before
   public void setUp() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
-    //    originalCompactionStrategy = config.getCompactionStrategy();
     config.setTimestampPrecision("ms");
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     config.setEnableTri("MinMax");
-    // 对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点
     config.setP1t(0);
     config.setP1v(0);
     config.setPnt(200);
     config.setPnv(200);
 
-    // 但是如果走的是unpackOneChunkMetaData(firstChunkMetadata)就没问题，
-    // 因为它直接用chunk元数据去构造pageReader，
-    // 但是如果走的是传统聚合类型->seriesAggregateReader->seriesReader->hasNextOverlappedPage里
-    // cachedBatchData = BatchDataFactory.createBatchData(dataType, orderUtils.getAscending(), true)
-    // 这个路径就错了，把聚合类型赋给batchData了。所以这个LocalGroupByExecutor bug得在有overlap数据的时候才能复现
-    // （那刚好我本文数据都不会有Overlap，可以用LocalGroupByExecutor来得到正确结果）
     config.setEnableCPV(false);
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
     TSFileDescriptor.getInstance().getConfig().setUseStatistics(false);
@@ -97,7 +87,6 @@ public class MyTest_MinMax {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    //    config.setCompactionStrategy(originalCompactionStrategy);
   }
 
   @Test
@@ -118,13 +107,11 @@ public class MyTest_MinMax {
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          // 注意从1开始编号，所以第一列是无意义时间戳
           String ans = resultSet.getString(2);
           System.out.println(ans);
           Assert.assertEquals(res, ans);
         }
       }
-      //      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -230,7 +230,6 @@ public abstract class Statistics<T> {
       quickHullLearned = true;
       quickHullPoints = null;
     }
-    //    System.out.println("debug:::::" + quickHullBitSet);
 
     // write bitset
     int byteLen = 0;
@@ -239,7 +238,6 @@ public abstract class Statistics<T> {
     oos.writeObject(quickHullBitSet);
     oos.flush();
     byte[] bytes = baos.toByteArray();
-    // 参考serializeBloomFilter
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, outputStream);
     outputStream.write(bytes);
     byteLen += bytes.length;
@@ -329,7 +327,6 @@ public abstract class Statistics<T> {
       //      this.stepRegress = stats.stepRegress;
       //      this.valueIndex = stats.valueIndex;
 
-      // 注意这里要把points也一并赋值，因为当chunk里只有一个page的时候只serialize chunk的metadata
       this.quickHullPoints = stats.quickHullPoints;
       this.quickHullBitSet = stats.quickHullBitSet;
       this.quickHullIdx = stats.quickHullIdx;

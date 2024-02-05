@@ -102,7 +102,6 @@ public class LocalGroupByExecutorTri_MinMaxPreselection implements GroupByExecut
             fileFilter,
             ascending);
 
-    // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
       // : this might be bad to load all chunk metadata at first
       futureChunkList.addAll(seriesReader.getAllChunkMetadatas4Tri());
@@ -267,18 +266,13 @@ public class LocalGroupByExecutorTri_MinMaxPreselection implements GroupByExecut
       result.reset();
     }
 
-    //    long start = System.nanoTime();
     getCurrentChunkListFromFutureChunkList(curStartTime, curEndTime);
-    //    IOMonitor2.addMeasure(Operation.M4_LSM_MERGE_M4_TIME_SPAN, System.nanoTime() - start);
 
     if (currentChunkList.size() == 0) {
-      //      System.out.println("MinMax empty currentChunkList"); // TODO debug
       return results;
     }
 
-    //    start = System.nanoTime();
     calculateMinMax(currentChunkList, curStartTime, curEndTime);
-    //    IOMonitor2.addMeasure(Operation.M4_LSM_FP, System.nanoTime() - start);
 
     return results;
   }
@@ -351,8 +345,6 @@ public class LocalGroupByExecutorTri_MinMaxPreselection implements GroupByExecut
         }
         // clear for heap space
         if (i >= count) {
-          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
           chunkSuit4Tri.pageReader = null;
         }
         // 4. update MinMax by traversing points fallen within this bucket
@@ -370,10 +362,6 @@ public class LocalGroupByExecutorTri_MinMaxPreselection implements GroupByExecut
 
   public boolean canUseStatistics(ChunkSuit4Tri chunkSuit4Tri, long curStartTime, long curEndTime) {
     return false;
-    //    long TP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getTopTimestamp();
-    //    long BP_t = chunkSuit4Tri.chunkMetadata.getStatistics().getBottomTimestamp();
-    //    return TP_t >= curStartTime && TP_t < curEndTime && BP_t >= curStartTime && BP_t <
-    // curEndTime;
   }
 
   @Override

@@ -163,11 +163,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       List<AggregateResult> aggregations =
           executor.calcResult(startTime, startTime + interval, startTime, endTime, interval);
       MinMaxInfo minMaxInfo = (MinMaxInfo) aggregations.get(0).getResult();
-      series.append(minMaxInfo.val); // MinValueAggrResult的[t]也无意义，因为只需要val
+      series.append(minMaxInfo.val);
 
-      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
     } catch (QueryProcessException e) {
@@ -210,13 +207,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       for (long localCurStartTime = startTime;
           localCurStartTime + interval <= endTime;
-          // 注意有等号！因为左闭右开
           // + interval to make the last bucket complete
           // e.g, T=11,nout=3,interval=floor(11/3)=3,
           // [0,3),[3,6),[6,9), no need incomplete [9,11)
           // then the number of buckets must be Math.floor((endTime-startTime)/interval)
           localCurStartTime += interval) {
-        //        System.out.println(localCurStartTime);
         // not change real curStartTime&curEndTime
         // attention the returned aggregations need deep copy if using directly
         List<AggregateResult> aggregations =
@@ -243,22 +238,17 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
 
       // Second step: apply LTTB on the MinMax preselection result
-      //      System.out.println(times);
-      //      System.out.println(values);
       int N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // MinMax桶数
-      int N2 = N1 / (rps / divide); // LTTB桶数
-      // 全局首点
+      int N2 = N1 / (rps / divide);
       series.append(p1v).append("[").append(p1t).append("]").append(",");
       long lt = p1t; // left fixed t
       double lv = p1v; // left fixed v
-      // 找第一个不为空的LTTB当前桶
       int currentBucket = 0;
       for (; currentBucket < N2; currentBucket++) {
         boolean emptyBucket = true;
         for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
-          // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
           if (times.get(j) != null) {
-            emptyBucket = false; // 只要有一个MinMax预选点不是null，这个LTTB桶就不是空桶
+            emptyBucket = false;
             break;
           }
         }
@@ -266,29 +256,25 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           break;
         }
       }
-      // 现在找到了不为空的LTTB当前桶，下面找第一个不为空的LTTB右边桶
       for (int nextBucket = currentBucket + 1; nextBucket < N2; nextBucket++) {
         boolean emptyBucket = true;
         for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
-          // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
           if (times.get(j) != null) {
-            emptyBucket = false; // 只要有一个MinMax预选点不是null，这个LTTB桶就不是空桶
+            emptyBucket = false;
             break;
           }
         }
         if (emptyBucket) {
-          continue; // 继续往右边找非空桶
+          continue;
         }
 
-        // 现在计算右边非空LTTB桶的平均点
         double rt = 0;
         double rv = 0;
         int cnt = 0;
         for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
-          // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
           if (times.get(j) != null) {
             rt += times.get(j);
-            rv += (double) values.get(j); // TODO
+            rv += (double) values.get(j);
             cnt++;
           }
         }
@@ -298,18 +284,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         rt = rt / cnt;
         rv = rv / cnt;
 
-        // 现在找到当前非空桶里距离lr垂直距离最远的点
         double maxArea = -1;
         long select_t = -1;
         double select_v = -1;
         for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
-          // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
           if (times.get(j) != null) {
             long t = times.get(j);
             double v = values.get(j);
             double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
-            //            System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area,
-            // lt);
             if (area > maxArea) {
               maxArea = area;
               select_t = t;
@@ -320,27 +302,21 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         if (select_t < 0) {
           throw new IOException("something is wrong");
         }
-        // 记录结果
         series.append(select_v).append("[").append(select_t).append("]").append(",");
 
-        // 现在更新当前桶和左边固定点，并且把结果点加到series里
         currentBucket = nextBucket;
         lt = select_t;
         lv = select_v;
       }
 
-      // ==========下面处理最后一个桶===============
-      // 现在找到当前非空桶里距离lr垂直距离最远的点
       double maxArea = -1;
       long select_t = -1;
       double select_v = -1;
       for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
-        // 一个LTTB桶里有rps个MinMax预选点（包含重复和null）
         if (times.get(j) != null) {
           long t = times.get(j);
           double v = values.get(j);
           double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
-          //          System.out.printf("curr=%d,t=%d,area=%f,lt=%d%n", currentBucket, t, area, lt);
           if (area > maxArea) {
             maxArea = area;
             select_t = t;
@@ -353,12 +329,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       series.append(select_v).append("[").append(select_t).append("]").append(",");
 
-      // 全局尾点
       series.append(pnv).append("[").append(pnt).append("]").append(",");
 
-      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
     } catch (QueryProcessException e) {
@@ -373,215 +345,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     return record;
   }
-
-  //  public RowRecord nextWithoutConstraintTri_M4() throws IOException {
-  //    RowRecord record;
-  //    try {
-  //      GroupByExecutor executor = null;
-  //      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-  //        executor = pathToExecutorEntry.getValue(); // assume only one series here
-  //        break;
-  //      }
-  //
-  //      // concat results into a string
-  //      record = new RowRecord(0);
-  //      StringBuilder series = new StringBuilder();
-  //      // 全局首点(对于M4来说全局首尾点只是输出不会影响到其它桶的采点)
-  //
-  // series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
-  //
-  //      for (long localCurStartTime = startTime;
-  //          localCurStartTime + interval <= endTime;
-  //          // 注意有等号！因为左闭右开
-  //          // + interval to make the last bucket complete
-  //          // e.g, T=11,nout=3,interval=floor(11/3)=3,
-  //          // [0,3),[3,6),[6,9), no need incomplete [9,11)
-  //          // then the number of buckets must be Math.floor((endTime-startTime)/interval)
-  //          localCurStartTime += interval) { // not change real curStartTime&curEndTime
-  //        // attention the returned aggregations need deep copy if using directly
-  //        List<AggregateResult> aggregations =
-  //            executor.calcResult(
-  //                localCurStartTime,
-  //                localCurStartTime + interval,
-  //                startTime,
-  //                endTime,
-  //                interval); // attention
-  //
-  //        // min_value(s0), max_value(s0),min_time(s0), max_time(s0), first_value(s0),
-  // last_value(s0)
-  //        // minValue[bottomTime]
-  //        series.append(aggregations.get(0).getResult()).append(",");
-  //        // maxValue[topTime]
-  //        series.append(aggregations.get(1).getResult()).append(",");
-  //        // firstValue[firstTime]
-  //        series
-  //            .append(aggregations.get(4).getResult())
-  //            .append("[")
-  //            .append(aggregations.get(2).getResult())
-  //            .append("]")
-  //            .append(",");
-  //        // lastValue[lastTime]
-  //        series
-  //            .append(aggregations.get(5).getResult())
-  //            .append("[")
-  //            .append(aggregations.get(3).getResult())
-  //            .append("]")
-  //            .append(",");
-  //      }
-  //
-  //      // 全局尾点(对于M4来说全局首尾点只是输出不会影响到其它桶的采点)
-  //
-  // series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
-  //
-  //      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-  //      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-  //      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
-  //      record.addField(series, TSDataType.MIN_MAX_INT64);
-  //
-  //    } catch (QueryProcessException e) {
-  //      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-  //      throw new IOException(e.getMessage(), e);
-  //    }
-  //
-  //    // in the end, make the next hasNextWithoutConstraint() false
-  //    // as we already fetch all here
-  //    curStartTime = endTime;
-  //    hasCachedTimeInterval = false;
-  //
-  //    return record;
-  //  }
-
-  //  public RowRecord nextWithoutConstraintTri_MinMax() throws IOException {
-  //    RowRecord record;
-  //    try {
-  //      GroupByExecutor executor = null;
-  //      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-  //        executor = pathToExecutorEntry.getValue(); // assume only one series here
-  //        break;
-  //      }
-  //
-  //      // concat results into a string
-  //      record = new RowRecord(0);
-  //      StringBuilder series = new StringBuilder();
-  //
-  //      // all bucket results as string in value of MinValueAggrResult
-  //      List<AggregateResult> aggregations =
-  //          executor.calcResult(startTime, startTime + interval, startTime, endTime, interval);
-  //      MinMaxInfo minMaxInfo = (MinMaxInfo) aggregations.get(0).getResult();
-  //      series.append(minMaxInfo.val); // MinValueAggrResult的[t]也无意义，因为只需要val
-  //
-  //      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-  //      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-  //      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
-  //      record.addField(series, TSDataType.MIN_MAX_INT64);
-  //
-  //    } catch (QueryProcessException e) {
-  //      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-  //      throw new IOException(e.getMessage(), e);
-  //    }
-  //
-  //    // in the end, make the next hasNextWithoutConstraint() false
-  //    // as we already fetch all here
-  //    curStartTime = endTime;
-  //    hasCachedTimeInterval = false;
-  //
-  //    return record;
-  //  }
-
-  //  public RowRecord nextWithoutConstraintTri_M4() throws IOException {
-  //    RowRecord record;
-  //    try {
-  //      GroupByExecutor executor = null;
-  //      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-  //        executor = pathToExecutorEntry.getValue(); // assume only one series here
-  //        break;
-  //      }
-  //
-  //      // concat results into a string
-  //      record = new RowRecord(0);
-  //      StringBuilder series = new StringBuilder();
-  //
-  //      // all bucket results as string in value of MinValueAggrResult
-  //      List<AggregateResult> aggregations =
-  //          executor.calcResult(startTime, startTime + interval, startTime, endTime, interval);
-  //      MinMaxInfo minMaxInfo = (MinMaxInfo) aggregations.get(0).getResult();
-  //      series.append(minMaxInfo.val); // MinValueAggrResult的[t]也无意义，因为只需要val
-  //
-  //      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-  //      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-  //      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
-  //      record.addField(series, TSDataType.MIN_MAX_INT64);
-  //
-  //    } catch (QueryProcessException e) {
-  //      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-  //      throw new IOException(e.getMessage(), e);
-  //    }
-  //
-  //    // in the end, make the next hasNextWithoutConstraint() false
-  //    // as we already fetch all here
-  //    curStartTime = endTime;
-  //    hasCachedTimeInterval = false;
-  //
-  //    return record;
-  //  }
-
-  //  public RowRecord nextWithoutConstraintTri_MinMax() throws IOException {
-  //    RowRecord record;
-  //    try {
-  //      GroupByExecutor executor = null;
-  //      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-  //        executor = pathToExecutorEntry.getValue(); // assume only one series here
-  //        break;
-  //      }
-  //
-  //      // concat results into a string
-  //      record = new RowRecord(0);
-  //      StringBuilder series = new StringBuilder();
-  //      // 全局首点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
-  //
-  // series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
-  //
-  //      for (long localCurStartTime = startTime;
-  //          localCurStartTime + interval <= endTime;
-  //        // 注意有等号！因为左闭右开
-  //        // + interval to make the last bucket complete
-  //        // e.g, T=11,nout=3,interval=floor(11/3)=3,
-  //        // [0,3),[3,6),[6,9), no need incomplete [9,11)
-  //        // then the number of buckets must be Math.floor((endTime-startTime)/interval)
-  //          localCurStartTime += interval) { // not change real curStartTime&curEndTime
-  //        // attention the returned aggregations need deep copy if using directly
-  //        List<AggregateResult> aggregations =
-  //            executor.calcResult(
-  //                localCurStartTime,
-  //                localCurStartTime + interval,
-  //                startTime,
-  //                endTime,
-  //                interval); // attention
-  //        series.append(aggregations.get(0).getResult()).append(","); // BPv[BPt]
-  //        series.append(aggregations.get(1).getResult()).append(","); // TPv[TPt]
-  //      }
-  //
-  //      // 全局尾点(对于MinMax来说全局首尾点只是输出不会影响到其它桶的采点)
-  //
-  // series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");
-  //
-  //      // MIN_MAX_INT64 this type for field.setBinaryV(new Binary(value.toString()))
-  //      // 注意sql第一项一定要是min_value因为以后会用到record.addField(series, TSDataType.MIN_MAX_INT64)
-  //      // 把所有序列组装成string放在第一行第二列里，否则field类型和TSDataType.MIN_MAX_INT64对不上的会有问题。
-  //      record.addField(series, TSDataType.MIN_MAX_INT64);
-  //
-  //    } catch (QueryProcessException e) {
-  //      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-  //      throw new IOException(e.getMessage(), e);
-  //    }
-  //
-  //    // in the end, make the next hasNextWithoutConstraint() false
-  //    // as we already fetch all here
-  //    curStartTime = endTime;
-  //    hasCachedTimeInterval = false;
-  //
-  //    return record;
-  //  }
 
   public RowRecord nextWithoutConstraint_raw() throws IOException {
     if (!hasCachedTimeInterval) {
@@ -601,10 +364,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     try {
       for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
         GroupByExecutor executor = pathToExecutorEntry.getValue();
-        //        long start = System.nanoTime();
         List<AggregateResult> aggregations =
             executor.calcResult(curStartTime, curEndTime, startTime, endTime, interval);
-        //        IOMonitor.incTotalTime(System.nanoTime() - start);
         for (int i = 0; i < aggregations.size(); i++) {
           int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
           fields[resultIndex] = aggregations.get(i);
@@ -675,49 +436,5 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
-
-    //    // deprecated below, note that time&value index are also deprecated in Statistics
-    //    else if (CONFIG.isEnableCPV()) {
-    //      if (TSFileDescriptor.getInstance().getConfig().isEnableMinMaxLSM()) { // MinMax-LSM
-    //        IOMonitor2.dataSetType =
-    //
-    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_EnableMinMaxLSM;
-    //        return new LocalGroupByExecutor4MinMax(
-    //            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    //      } else { // M4-LSM
-    //        if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-    //            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-    //          IOMonitor2.dataSetType =
-    //              DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex;
-    //        } else if (!TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-    //            && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-    //          IOMonitor2.dataSetType =
-    //
-    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex;
-    //        } else if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
-    //            && !TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-    //          IOMonitor2.dataSetType =
-    //
-    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex;
-    //        } else {
-    //          IOMonitor2.dataSetType =
-    //              DataSetType
-    //                  .GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex;
-    //        }
-    //        return new LocalGroupByExecutor4CPV(
-    //            path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    //      }
-    //    } else { // enableCPV=false
-    //      if (TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
-    //        IOMonitor2.dataSetType =
-    //            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics;
-    //      } else {
-    //        IOMonitor2.dataSetType =
-    //
-    // DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics;
-    //      }
-    //      return new LocalGroupByExecutor(
-    //          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    //    }
   }
 }

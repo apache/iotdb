@@ -73,7 +73,7 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
   private long lt = p1t;
   private double lv = p1v;
 
-  private final int N1; // 分桶数
+  private final int N1;
 
   private Filter timeFilter;
 
@@ -109,7 +109,6 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
             fileFilter,
             ascending);
 
-    // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
       // : this might be bad to load all chunk metadata at first
       List<ChunkSuit4Tri> futureChunkList =
@@ -150,9 +149,6 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException {
-    // 这里用calcResult一次返回所有buckets结果（可以把MinValueAggrResult的value设为string类型，
-    // 那就把所有buckets结果作为一个string返回。这样的话返回的[t]是没有意义的，只取valueString）
-    // 而不是像MinMax那样在nextWithoutConstraintTri_MinMax()里调用calcResult每次计算一个bucket
     StringBuilder series = new StringBuilder();
 
     // clear result cache
@@ -160,20 +156,16 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
       result.reset();
     }
 
-    // 全局首点
     series.append(p1v).append("[").append(p1t).append("]").append(",");
 
     // Assume no empty buckets
     for (int b = 0; b < N1; b++) {
       double rt = 0; // must initialize as zero, because may be used as sum for average
       double rv = 0; // must initialize as zero, because may be used as sum for average
-      // 计算右边桶的固定点
-      if (b == N1 - 1) { // 最后一个桶
-        // 全局尾点
+      if (b == N1 - 1) {
         rt = pnt;
         rv = pnv;
       } else {
-        // 计算右边桶的平均点
         List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b + 1);
         if (chunkSuit4TriList == null) {
           throw new IOException("Empty bucket!");
@@ -181,7 +173,6 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
         long rightStartTime = startTime + (b + 1) * interval;
         long rightEndTime = startTime + (b + 2) * interval;
         int cnt = 0;
-        // 遍历所有与右边桶overlap的chunks
         for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
           TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
           if (dataType != TSDataType.DOUBLE) {
@@ -198,7 +189,7 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
             //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
             //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
           }
-          // 2. 计算平均点
+          // 2. calculate avg
           PageReader pageReader = chunkSuit4Tri.pageReader;
           for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
             IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
@@ -223,14 +214,12 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
         rv = rv / cnt;
       }
 
-      // 找到当前桶内距离lr连线最远的点
       double maxArea = -1;
       long select_t = -1;
       double select_v = -1;
       List<ChunkSuit4Tri> chunkSuit4TriList = splitChunkList.get(b);
       long localCurStartTime = startTime + (b) * interval;
       long localCurEndTime = startTime + (b + 1) * interval;
-      // 遍历所有与当前桶overlap的chunks
       for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
         TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
         if (dataType != TSDataType.DOUBLE) {
@@ -267,23 +256,13 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
             }
           }
         }
-        //        // clear for heap space
-        //        if (j >= count) {
-        //          // 代表这个chunk已经读完了，后面的bucket不会再用到，所以现在就可以清空内存的page
-        //          // 而不是等到下一个bucket的时候再清空，因为有可能currentChunkList里chunks太多，page点同时存在太多，heap space不够
-        //          chunkSuit4Tri.pageReader = null;
-        //        }
       }
-      // 记录结果
       series.append(select_v).append("[").append(select_t).append("]").append(",");
 
-      // 更新lt,lv
-      // 下一个桶自然地以select_t, select_v作为左桶固定点
       lt = select_t;
       lv = select_v;
     }
 
-    // 全局尾点
     series.append(pnv).append("[").append(pnt).append("]").append(",");
 
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
