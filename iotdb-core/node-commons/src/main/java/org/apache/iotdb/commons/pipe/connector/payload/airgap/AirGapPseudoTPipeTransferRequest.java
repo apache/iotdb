@@ -17,21 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.protocol;
+package org.apache.iotdb.commons.pipe.connector.payload.airgap;
 
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-public abstract class IoTDBMetaConnector extends IoTDBSyncSslConnector {
-  @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    throw new UnsupportedOperationException(
-        "IoTDBMetaConnector can't transfer TabletInsertionEvent.");
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    throw new UnsupportedOperationException(
-        "IoTDBMetaConnector can't transfer TsFileInsertionEvent.");
-  }
-}
+public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}

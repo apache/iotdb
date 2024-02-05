@@ -21,10 +21,10 @@ package org.apache.iotdb.db.pipe.receiver.airgap;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;

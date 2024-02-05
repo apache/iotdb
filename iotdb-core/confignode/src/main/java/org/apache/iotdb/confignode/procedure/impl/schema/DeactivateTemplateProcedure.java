@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -38,12 +40,14 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -76,6 +80,9 @@ public class DeactivateTemplateProcedure
   private PathPatternTree timeSeriesPatternTree; // transient
   private ByteBuffer timeSeriesPatternTreeBytes; // transient
   private Map<String, List<Integer>> dataNodeRequest; // transient
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
 
   public DeactivateTemplateProcedure(boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -118,6 +125,7 @@ public class DeactivateTemplateProcedure
         case DEACTIVATE_TEMPLATE:
           LOGGER.info("Deactivate template of {}", requestMessage);
           deactivateTemplate(env);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -244,6 +252,26 @@ public class DeactivateTemplateProcedure
                 new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
+  }
+
+  private void collectPayload4Pipe(ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(new PipeDeactivateTemplatePlan(templateSetInfo))
+                      : new PipeDeactivateTemplatePlan(templateSetInfo));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
+    }
   }
 
   @Override

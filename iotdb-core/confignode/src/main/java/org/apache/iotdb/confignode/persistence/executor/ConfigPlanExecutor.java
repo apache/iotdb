@@ -460,6 +460,11 @@ public class ConfigPlanExecutor {
         return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       case PipeEnriched:
         return executeNonQueryPlan(((PipeEnrichedPlan) physicalPlan).getInnerPlan());
+      case PipeDeleteTimeSeries:
+      case PipeDeleteLogicalView:
+      case PipeDeactivateTemplate:
+        // Pipe payload, will not execute
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

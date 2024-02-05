@@ -17,8 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.airgap;
+package org.apache.iotdb.commons.pipe.connector.payload.airgap;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+public class AirGapOneByteResponse {
 
-public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}
+  public static final byte[] OK = new byte[] {0};
+  public static final byte[] FAIL = new byte[] {(byte) 0xFF};
+
+  private AirGapOneByteResponse() {
+    // Utility class
+  }
+}
