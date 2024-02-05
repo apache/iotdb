@@ -20,8 +20,11 @@
 -->
 
 # M4-LSM 
-- The codes for two deployments, M4 and M4-LSM, are available in this repository.
-    - M4: M4 is implemented in [server/src/main/java/org/apache/iotdb/db/query/udf/builtin/UDTFM4MAC.java](server/src/main/java/org/apache/iotdb/db/query/udf/builtin/UDTFM4MAC.java).
-    - M4-LSM: The candidate generation and verification framework is implemented in [server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutor4CPV.java](server/src/main/java/org/apache/iotdb/db/query/dataset/groupby/LocalGroupByExecutor4CPV.java). The time index with step regression is implemented in [tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/StepRegress.java](tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/StepRegress.java). The point pruning with value regression is implemented in [tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/ValueIndex.java](tsfile/src/main/java/org/apache/iotdb/tsfile/file/metadata/statistics/ValueIndex.java). 
-    - Some integration tests for correctness are in [server/src/test/java/org/apache/iotdb/db/integration/m4/MyTest1.java](server/src/test/java/org/apache/iotdb/db/integration/m4/MyTest1.java).
+- The codes for ILTS and baselines used in comparative experiments are available in this repository.
+    - ILTS is implemented in [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_ILTS.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_ILTS.java).
+    - LTTB is implemented in [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_LTTB.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_LTTB.java).
+    - MinMax is implemented in [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_MinMax.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_MinMax.java).
+    - M4 is implemented in [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_M4.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_M4.java).
+    - MinMaxLTTB is implemented in [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_MinMaxPreselection.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\LocalGroupByExecutorTri_MinMaxPreselection.java) and [server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\GroupByWithoutValueFilterDataSet.java](server\src\main\java\org\apache\iotdb\db\query\dataset\groupby\GroupByWithoutValueFilterDataSet.java).
+    - Some integration tests for correctness are in [server/src/test/java/org/apache/iotdb/db/integration/tri/MyTest_ILTS.java](server/src/test/java/org/apache/iotdb/db/integration/tri/MyTest_ILTS.java).
 - For the README of [Apache IoTDB](https://iotdb.apache.org/) itself, please see [README_IOTDB.md](README_IOTDB.md). To build this repository, run `mvn clean package -DskipTests -pl -distribution`.
