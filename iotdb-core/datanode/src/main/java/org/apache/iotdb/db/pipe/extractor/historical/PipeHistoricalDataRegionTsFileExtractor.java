@@ -201,41 +201,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     historicalDataExtractionTimeLowerBound =
         isHistoricalExtractorEnabled
             ? Long.MIN_VALUE
-            // We define the realtime data as the data generated after the creation time
-            // of the pipe from user's perspective. But we still need to use
-            // PipeHistoricalDataRegionExtractor to extract the realtime data generated between the
-            // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionExtractor, and should be extracted by
-            // PipeHistoricalDataRegionExtractor from implementation perspective.
-            : environment.getCreationTime();
-
-    // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
-    // realtime only mode -> (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE)
-    //
-    // Ensure that all data in the data region is flushed to disk before extracting data.
-    // This ensures the generation time of all newly generated TsFiles (realtime data) after the
-    // invocation of flushDataRegionAllTsFiles() is later than the creationTime of the pipe
-    // (historicalDataExtractionTimeLowerBound).
-    //
-    // Note that: the generation time of the TsFile is the time when the TsFile is created, not
-    // the time when the data is flushed to the TsFile.
-    //
-    // Then we can use the generation time of the TsFile to determine whether the data in the
-    // TsFile should be extracted by comparing the generation time of the TsFile with the
-    // historicalDataExtractionTimeLowerBound when starting the pipe in realtime only mode.
-    //
-    // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
-    // between the creation time of the pipe the time when the pipe starts will be lost.
-    if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-        final long lastFlushedByPipeTime =
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-          flushDataRegionAllTsFiles();
-          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
-        }
-      }
-    }
+            // Do not extract data if historical extraction is disabled
+            : Long.MAX_VALUE;
 
     sloppyTimeRange =
         Arrays.stream(
@@ -261,21 +228,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         sloppyTimeRange);
   }
 
-  private void flushDataRegionAllTsFiles() {
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) {
-      return;
-    }
-
-    dataRegion.writeLock("Pipe: create historical TsFile extractor");
-    try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
-    } finally {
-      dataRegion.writeUnlock();
-    }
-  }
-
   @Override
   public synchronized void start() {
     final DataRegion dataRegion =
@@ -288,26 +240,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
-      LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
-      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-        final long lastFlushedByPipeTime =
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-          dataRegion.syncCloseAllWorkingTsFileProcessors();
-          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
-          LOGGER.info(
-              "Pipe {}@{}: finish to flush data region, took {} ms",
-              pipeName,
-              dataRegionId,
-              System.currentTimeMillis() - startHistoricalExtractionTime);
-        } else {
-          LOGGER.info(
-              "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
-              pipeName,
-              dataRegionId,
-              System.currentTimeMillis() - lastFlushedByPipeTime);
-        }
-      }
+      // No need to flush data region here.
+      // If a tsFile exists but is not sealed here, the "hybrid" and "log" realtime extractor
+      // will send tsFile instead of tablets in this epoch, and the data won't be lost.
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
