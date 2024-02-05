@@ -142,6 +142,10 @@ public interface BaseEnv {
    */
   int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
 
+  default IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    throw new UnsupportedOperationException();
+  }
+
   /** Start an existed ConfigNode. */
   void startConfigNode(int index);
 

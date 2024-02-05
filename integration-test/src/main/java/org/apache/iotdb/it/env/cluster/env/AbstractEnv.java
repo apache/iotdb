@@ -76,8 +76,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
-  protected int testWorkingRetryCount = 30;
-
+  protected int retryCount = 30;
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   /**
@@ -132,11 +131,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
-    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+    initEnvironment(configNodesNum, dataNodesNum, retryCount);
   }
 
-  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
-    this.testWorkingRetryCount = testWorkingRetryCount;
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int retryCount) {
+    this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -289,7 +288,7 @@ public abstract class AbstractEnv implements BaseEnv {
     TShowClusterResp showClusterResp;
     Exception lastException = null;
     boolean flag;
-    for (int i = 0; i < testWorkingRetryCount; i++) {
+    for (int i = 0; i < retryCount; i++) {
       try (SyncConfigNodeIServiceClient client =
           (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         flag = true;
@@ -332,7 +331,7 @@ public abstract class AbstractEnv implements BaseEnv {
           lastException.getMessage(),
           lastException);
     }
-    logger.info("checkNodeHeartbeat failed after {} retries", testWorkingRetryCount);
+    logger.info("checkNodeHeartbeat failed after {} retries", retryCount);
     return false;
   }
 
@@ -533,7 +532,7 @@ public abstract class AbstractEnv implements BaseEnv {
       throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
-    for (int i = 0; i < testWorkingRetryCount; i++) {
+    for (int i = 0; i < retryCount; i++) {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
         try {
           lastErrorNode = configNodeWrapper;
@@ -574,10 +573,28 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    Exception lastException = null;
+    ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
+    for (int i = 0; i < 30; i++) {
+      try {
+        return clientManager.borrowClient(
+            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+      } catch (Exception e) {
+        lastException = e;
+      }
+      // Sleep 1s before next retry
+      TimeUnit.SECONDS.sleep(1);
+    }
+    throw new IOException(
+        "Failed to get connection to this ConfigNode. Last error: " + lastException);
+  }
+
+  @Override
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
-    for (int retry = 0; retry < testWorkingRetryCount; retry++) {
+    for (int retry = 0; retry < retryCount; retry++) {
       for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
         ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
         lastErrorNode = configNodeWrapper;
@@ -781,7 +798,7 @@ public abstract class AbstractEnv implements BaseEnv {
   public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus)
       throws IllegalStateException {
     Throwable lastException = null;
-    for (int i = 0; i < testWorkingRetryCount; i++) {
+    for (int i = 0; i < retryCount; i++) {
       try (SyncConfigNodeIServiceClient client =
           (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
         List<String> errorMessages = new ArrayList<>(nodes.size());

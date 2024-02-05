@@ -150,9 +150,7 @@ public class IoTDBClusterRestartIT {
         dataPartitionTableResp.getDataPartitionTable());
 
     // Shutdown all DataNodes
-    for (int i = 0; i < testDataNodeNum; i++) {
-      EnvFactory.getEnv().shutdownDataNode(i);
-    }
+    EnvFactory.getEnv().shutdownAllDataNodes();
     TimeUnit.SECONDS.sleep(1);
 
     List<DataNodeWrapper> dataNodeWrapperList = EnvFactory.getEnv().getDataNodeWrapperList();
@@ -217,20 +215,14 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartWithoutSeedConfigNode() {
     // shutdown all ConfigNodes and DataNodes
-    for (int i = testConfigNodeNum - 1; i >= 0; i--) {
-      EnvFactory.getEnv().shutdownConfigNode(i);
-    }
-    for (int i = testDataNodeNum - 1; i >= 0; i--) {
-      EnvFactory.getEnv().shutdownDataNode(i);
-    }
+    EnvFactory.getEnv().shutdownAllConfigNodes();
+    EnvFactory.getEnv().shutdownAllDataNodes();
     logger.info("Shutdown all ConfigNodes and DataNodes");
     // restart without seed ConfigNode, the cluster should still work
     for (int i = 1; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().startConfigNode(i);
     }
-    for (int i = 0; i < testDataNodeNum; i++) {
-      EnvFactory.getEnv().startDataNode(i);
-    }
+    EnvFactory.getEnv().startAllDataNodes();
     logger.info("Restarted");
     Assert.assertTrue(
         ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusOneUnknownOtherRunning());
