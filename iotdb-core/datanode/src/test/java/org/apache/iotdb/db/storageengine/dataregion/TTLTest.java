@@ -104,6 +104,7 @@ public class TTLTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.abortCompaction();
     EnvironmentUtils.cleanEnv();
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
     DataNodeTTLCache.getInstance().clearAllTTL();
@@ -225,7 +226,7 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    DataNodeTTLCache.getInstance().setTTL(sg1, 0);
+    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
@@ -411,7 +412,7 @@ public class TTLTest {
     assertEquals(4, dataRegion.getSequenceFileList().size());
     assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    DataNodeTTLCache.getInstance().setTTL(sg1, 0);
+    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);

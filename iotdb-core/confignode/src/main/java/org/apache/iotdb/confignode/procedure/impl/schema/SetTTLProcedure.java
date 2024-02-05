@@ -138,4 +138,15 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       LOGGER.error("IO error when deserialize setTTL plan.", e);
     }
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    return this.plan.equals(((SetTTLProcedure) o).plan);
+  }
 }

@@ -102,21 +102,26 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
-    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
-    partialDeletedFiles.addAll(seqResources);
-    partialDeletedFiles.addAll(unseqResources);
-
     SettleCompactionTask task =
         new SettleCompactionTask(
             0,
             tsFileManager,
             Collections.emptyList(),
-            partialDeletedFiles,
+            seqResources,
             true,
             new FastCompactionPerformer(false),
             0);
-    task.getEstimatedMemoryCost();
+    SettleCompactionTask task2 =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.emptyList(),
+            unseqResources,
+            false,
+            new FastCompactionPerformer(false),
+            1);
     Assert.assertTrue(task.start());
+    Assert.assertTrue(task2.start());
 
     for (TsFileResource tsFileResource : seqResources) {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());

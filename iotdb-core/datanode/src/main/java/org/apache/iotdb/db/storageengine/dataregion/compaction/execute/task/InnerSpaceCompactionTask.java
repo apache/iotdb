@@ -208,6 +208,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     boolean isSuccess = true;
 
     try {
+      prepare();
       try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
         // Here is tmpTargetFile, which is xxx.target
         compactionLogger.logSourceFiles(selectedTsFileResourceList);
@@ -218,7 +219,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId,
             selectedTsFileResourceList);
-        prepare();
         compact(compactionLogger);
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
@@ -241,7 +241,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } finally {
       releaseAllLocks();
       try {
-        Files.deleteIfExists(logFile.toPath());
+        if (logFile != null) {
+          Files.deleteIfExists(logFile.toPath());
+        }
       } catch (IOException e) {
         printLogWhenException(LOGGER, e);
       }

@@ -44,7 +44,7 @@ public class TTLCache {
    *     return false.
    */
   public void setTTL(String[] nodes, long ttl) {
-    if (nodes.length < 2) {
+    if (nodes.length < 2 || ttl <= 0) {
       return;
     }
     CacheNode parent = ttlCacheTree;
@@ -202,7 +202,7 @@ public class TTLCache {
     while (size > 0) {
       String path = ReadWriteIOUtils.readString(bufferedInputStream);
       long ttl = ReadWriteIOUtils.readLong(bufferedInputStream);
-      setTTL(Objects.requireNonNull(path).split(String.valueOf(IoTDBConstant.PATH_SEPARATOR)), ttl);
+      setTTL(Objects.requireNonNull(path).split("\\" + IoTDBConstant.PATH_SEPARATOR), ttl);
       size--;
     }
   }

@@ -82,7 +82,7 @@ public class TTLInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          "Failed to take snapshot of TTLInfo, because snapshot file [{}] is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -100,9 +100,9 @@ public class TTLInfo implements SnapshotProcessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          "Failed to load snapshot of TTLInfo, snapshot file [{}] does not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -114,5 +114,18 @@ public class TTLInfo implements SnapshotProcessor {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TTLInfo other = (TTLInfo) o;
+    return this.getTTLCount() == other.getTTLCount()
+        && this.showAllTTL().getPathTTLMap().equals(other.showAllTTL().getPathTTLMap());
   }
 }

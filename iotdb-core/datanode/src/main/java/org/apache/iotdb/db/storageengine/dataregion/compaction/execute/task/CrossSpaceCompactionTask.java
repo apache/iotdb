@@ -124,48 +124,44 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public boolean doCompaction() {
     recoverMemoryStatus = true;
     boolean isSuccess = true;
+    if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
+
+    if (selectedSequenceFiles.isEmpty() || selectedUnsequenceFiles.isEmpty()) {
+      LOGGER.info(
+          "{}-{} [Compaction] Cross space compaction file list is empty, end it",
+          storageGroupName,
+          dataRegionId);
+      return true;
+    }
+
+    for (TsFileResource resource : selectedSequenceFiles) {
+      selectedSeqFileSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      selectedUnseqFileSize += resource.getTsFileSize();
+    }
+    LOGGER.info(
+        "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
+            + "and {} unsequence files. "
+            + "Sequence files : {}, unsequence files : {} . "
+            + "Sequence files size is {} MB, "
+            + "unsequence file size is {} MB, "
+            + "total size is {} MB",
+        storageGroupName,
+        dataRegionId,
+        selectedSequenceFiles.size(),
+        selectedUnsequenceFiles.size(),
+        selectedSequenceFiles,
+        selectedUnsequenceFiles,
+        selectedSeqFileSize / 1024 / 1024,
+        selectedUnseqFileSize / 1024 / 1024,
+        (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
     try {
-      if (!tsFileManager.isAllowCompaction()) {
-        return true;
-      }
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
           TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSequenceFiles);
-
-      if (targetTsfileResourceList.isEmpty()
-          || selectedSequenceFiles.isEmpty()
-          || selectedUnsequenceFiles.isEmpty()) {
-        LOGGER.info(
-            "{}-{} [Compaction] Cross space compaction file list is empty, end it",
-            storageGroupName,
-            dataRegionId);
-        return true;
-      }
-
-      for (TsFileResource resource : selectedSequenceFiles) {
-        selectedSeqFileSize += resource.getTsFileSize();
-      }
-
-      for (TsFileResource resource : selectedUnsequenceFiles) {
-        selectedUnseqFileSize += resource.getTsFileSize();
-      }
-
-      LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
-              + "and {} unsequence files. "
-              + "Sequence files : {}, unsequence files : {} . "
-              + "Sequence files size is {} MB, "
-              + "unsequence file size is {} MB, "
-              + "total size is {} MB",
-          storageGroupName,
-          dataRegionId,
-          selectedSequenceFiles.size(),
-          selectedUnsequenceFiles.size(),
-          selectedSequenceFiles,
-          selectedUnsequenceFiles,
-          selectedSeqFileSize / 1024 / 1024,
-          selectedUnseqFileSize / 1024 / 1024,
-          (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
 
       logFile =
           new File(
@@ -260,7 +256,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     } finally {
       releaseAllLocks();
       try {
-        Files.deleteIfExists(logFile.toPath());
+        if (logFile != null) {
+          Files.deleteIfExists(logFile.toPath());
+        }
       } catch (IOException e) {
         printLogWhenException(LOGGER, e);
       }
