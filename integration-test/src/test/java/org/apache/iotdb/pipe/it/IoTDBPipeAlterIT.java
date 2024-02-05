@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.pipe.it;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,8 +40,10 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.fail;
@@ -289,5 +295,75 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
         "select * from root.** where time > 10000",
         "Time,root.db.d1.at1,",
         expectedResSet);
+  }
+
+  @Test
+  public void testEquivalentAlterPipeSink() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    Map<String, String> ip = new HashMap<>();
+    ip.put("ip", receiverDataNode.getIp());
+    ip.put("host", String.valueOf(receiverDataNode.getPort()));
+
+    Map<String, String> connectorIp = new HashMap<>();
+    connectorIp.put("connector.ip", receiverDataNode.getIp());
+    connectorIp.put("connector.host", String.valueOf(receiverDataNode.getPort()));
+
+    Map<String, String> sinkIp = new HashMap<>();
+    sinkIp.put("sink.ip", receiverDataNode.getIp());
+    sinkIp.put("sink.host", String.valueOf(receiverDataNode.getPort()));
+
+    Map<String, String> nodeUrls = new HashMap<>();
+    nodeUrls.put("node-urls", receiverDataNode.getIpAndPortString());
+
+    Map<String, String> connectorNodeUrls = new HashMap<>();
+    connectorNodeUrls.put("connector.node-urls", receiverDataNode.getIpAndPortString());
+
+    Map<String, String> sinkNodeUrls = new HashMap<>();
+    sinkNodeUrls.put("sink.node-urls", receiverDataNode.getIpAndPortString());
+
+    List<Map<String, String>> mapList =
+        Arrays.asList(ip, connectorIp, sinkIp, nodeUrls, connectorNodeUrls, sinkNodeUrls);
+
+    for (Map<String, String> thisMap : mapList) {
+      for (Map<String, String> thatMap : mapList) {
+        testEquivalentAlterPipeSinkTemplate(thisMap, thatMap);
+      }
+    }
+  }
+
+  private void testEquivalentAlterPipeSinkTemplate(
+      Map<String, String> connectorAttributes, Map<String, String> updatedConnectorAttributes)
+      throws Exception {
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+
+      // create pipe
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("a2b", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // alter pipe
+      status =
+          client.alterPipe(
+              new TAlterPipeReq("a2b", new HashMap<>(), updatedConnectorAttributes, false, false));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // show pipe
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(1, showPipeResult.size());
+      Assert.assertEquals(
+          updatedConnectorAttributes.toString(), showPipeResult.get(0).pipeConnector);
+
+      // drop pipe
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("a2b").getCode());
+    }
   }
 }
