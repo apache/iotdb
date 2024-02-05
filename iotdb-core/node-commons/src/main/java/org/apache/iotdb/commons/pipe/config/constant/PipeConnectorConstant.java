@@ -33,6 +33,8 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String SINK_IOTDB_IP_KEY = "sink.ip";
+  public static final String CONNECTOR_IOTDB_HOST_KEY = "connector.host";
+  public static final String SINK_IOTDB_HOST_KEY = "sink.host";
   public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
   public static final String SINK_IOTDB_PORT_KEY = "sink.port";
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";

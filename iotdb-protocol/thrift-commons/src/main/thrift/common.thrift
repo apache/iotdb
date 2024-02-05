@@ -197,5 +197,6 @@ enum TAggregationType {
   STDDEV_SAMP,
   VARIANCE,
   VAR_POP,
-  VAR_SAMP
+  VAR_SAMP,
+  MAX_BY,
 }

@@ -189,7 +189,7 @@ public abstract class AlignedTVList extends TVList {
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
-          if (memoryBinaryChunkSize[i] >= targetChunkSize) {
+          if (memoryBinaryChunkSize[i] >= TARGET_CHUNK_SIZE) {
             reachMaxChunkSizeFlag = true;
           }
           break;
@@ -767,7 +767,7 @@ public abstract class AlignedTVList extends TVList {
             memoryBinaryChunkSize[i] +=
                 arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
           }
-          if (memoryBinaryChunkSize[i] > targetChunkSize) {
+          if (memoryBinaryChunkSize[i] > TARGET_CHUNK_SIZE) {
             reachMaxChunkSizeFlag = true;
           }
           break;

@@ -87,9 +87,6 @@ public class EnvironmentUtils {
 
   private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
   private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
-
-  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
-
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static boolean examinePorts =
@@ -170,7 +167,6 @@ public class EnvironmentUtils {
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);
     config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
-    config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
   private static boolean examinePorts() {

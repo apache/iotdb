@@ -97,7 +97,8 @@ public class GroupByLevelNodeSerdeTest {
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath("root.sg.*.s1")))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath("root.sg.*.s1"))))),
             groupByTimeParameter,
             Ordering.ASC);
 

@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotPieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferSnapshotSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferSnapshotPieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -52,22 +57,77 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 public class PipeDataNodeThriftRequestTest {
 
   private static final String TIME_PRECISION = "ms";
+  private static final String CLUSTER_ID = "abcde";
 
   @Test
-  public void testPipeValidateHandshakeReq() throws IOException {
-    PipeTransferHandshakeReq req = PipeTransferHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
-    PipeTransferHandshakeReq deserializeReq = PipeTransferHandshakeReq.fromTPipeTransferReq(req);
+  public void testPipeValidateHandshakeV1Req() throws IOException {
+    PipeTransferHandshakeV1Req req = PipeTransferHandshakeV1Req.toTPipeTransferReq(TIME_PRECISION);
+    PipeTransferHandshakeV1Req deserializeReq =
+        PipeTransferHandshakeV1Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
+  }
+
+  @Test
+  public void testPipeValidateHandshakeV2Req() throws Exception {
+    HashMap<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, CLUSTER_ID);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put("Nullable", null);
+
+    PipeTransferHandshakeV2Req req = PipeTransferHandshakeV2Req.toTPipeTransferReq(params);
+    PipeTransferHandshakeV2Req deserializeReq =
+        PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID),
+        deserializeReq.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID));
+    Assert.assertEquals(
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION),
+        deserializeReq.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION));
+    Assert.assertEquals(
+        req.getParams().get("Nullable"), deserializeReq.getParams().get("Nullable"));
+  }
+
+  @Test
+  public void testPipeValidateHandshakeV2Req4AirGap() throws IOException {
+    // Construct byteBuffer.
+    HashMap<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, CLUSTER_ID);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put("Nullable", null);
+    ByteBuffer byteBuffer =
+        ByteBuffer.wrap(PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params));
+
+    // Construct request.
+    byte version = ReadWriteIOUtils.readByte(byteBuffer);
+    short type = ReadWriteIOUtils.readShort(byteBuffer);
+    ByteBuffer body = byteBuffer.slice();
+    final AirGapPseudoTPipeTransferRequest req =
+        (AirGapPseudoTPipeTransferRequest)
+            new AirGapPseudoTPipeTransferRequest().setVersion(version).setType(type).setBody(body);
+    final PipeTransferHandshakeV2Req deserializeReq =
+        PipeTransferHandshakeV2Req.fromTPipeTransferReq(req);
+
+    // Assert.
+    Assert.assertEquals(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(PipeRequestType.HANDSHAKE_V2.getType(), deserializeReq.getType());
+    Assert.assertEquals(params, deserializeReq.getParams());
   }
 
   @Test

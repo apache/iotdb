@@ -687,7 +687,7 @@ struct TShowPipeInfo {
   7: required string exceptionMessage
 }
 
-struct TGetAllPipeInfoResp{
+struct TGetAllPipeInfoResp {
   1: required common.TSStatus status
   2: required list<binary> allPipeInfo
 }
@@ -697,6 +697,12 @@ struct TCreatePipeReq {
     2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
+}
+
+struct TAlterPipeReq {
+    1: required string pipeName
+    2: optional map<string, string> processorAttributes
+    3: optional map<string, string> connectorAttributes
 }
 
 // Deprecated, restored for compatibility
@@ -1321,6 +1327,9 @@ service IConfigNodeRPCService {
 
   /** Create Pipe */
   common.TSStatus createPipe(TCreatePipeReq req)
+
+  /** Alter Pipe */
+  common.TSStatus alterPipe(TAlterPipeReq req)
 
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)

@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -410,6 +411,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropPipeV2:
           plan = new DropPipePlanV2();
+          break;
+        case AlterPipeV2:
+          plan = new AlterPipePlanV2();
           break;
         case ShowPipeV2:
           plan = new ShowPipePlanV2();

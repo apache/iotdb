@@ -59,7 +59,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
  * LoadCommand}. This class turn the content of a piece of loading TsFile into a new TsFile. When
- * DataNode finish transfer pieces, this class will flush all TsFile and laod them into IoTDB, or
+ * DataNode finish transfer pieces, this class will flush all TsFile and load them into IoTDB, or
  * delete all.
  */
 public class LoadTsFileManager {

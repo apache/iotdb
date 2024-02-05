@@ -202,6 +202,7 @@ public class IoTDBDynamicTableFactory
             || sqlLower.contains("last_value(")
             || sqlLower.contains("max_time(")
             || sqlLower.contains("min_time(")
+            || sqlLower.contains("max_by(")
             || sqlLower.contains("stddev(")
             || sqlLower.contains("stddev_pop(")
             || sqlLower.contains("stddev_samp(")

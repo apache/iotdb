@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.ColossalRecordException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -558,12 +557,11 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
   }
 
   @Override
-  public int updateRecord(String key, ByteBuffer uBuffer)
-      throws SegmentOverflowException, RecordDuplicatedException {
+  public int updateRecord(String key, ByteBuffer uBuffer) throws MetadataException {
 
     int idx = binarySearchOnKeys(key);
     if (idx < 0) {
-      return -1;
+      throw new MetadataException(String.format("Record[key:%s] Not Existed.", key));
     }
 
     this.buffer.clear();
@@ -580,8 +578,8 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
       // allocate new space for record, update offset array, freeAddr
       if (SchemaFileConfig.SEG_HEADER_SIZE + pairLength + newLen + 4 + key.getBytes().length
           > freeAddr) {
-        // not enough space
-        throw new SegmentOverflowException(idx);
+        // no enough consecutive spare space
+        return -1;
       }
 
       freeAddr = (short) (freeAddr - newLen - 4 - key.getBytes().length);

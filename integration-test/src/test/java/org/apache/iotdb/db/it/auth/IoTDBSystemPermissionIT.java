@@ -237,8 +237,6 @@ public class IoTDBSystemPermissionIT {
     assertNonQueryTestFail(
         "flush", "803: Only the admin user can perform this operation", "test", "test123");
     assertNonQueryTestFail(
-        "merge", "803: Only the admin user can perform this operation", "test", "test123");
-    assertNonQueryTestFail(
         "clear cache", "803: Only the admin user can perform this operation", "test", "test123");
     assertNonQueryTestFail(
         "set system to readonly",
