@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -41,16 +40,11 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
@@ -80,12 +74,6 @@ public class WALNodeRecoverTask implements Runnable {
   @Override
   public void run() {
     logger.info("Start recovering WAL node in the directory {}", logDirectory);
-
-    // recover version id and search index
-    long[] indexInfo = recoverLastFile();
-    long lastVersionId = indexInfo[0];
-    long lastSearchIndex = indexInfo[1];
-
     try {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
@@ -122,6 +110,10 @@ public class WALNodeRecoverTask implements Runnable {
             logger.error("error when delete checkpoint file. {}", checkpointFile, e);
           }
         }
+        // recover version id and search index
+        long[] indexInfo = recoverLastFile();
+        long lastVersionId = indexInfo[0];
+        long lastSearchIndex = indexInfo[1];
         // register wal node
         WALManager.getInstance()
             .registerWALNode(
@@ -148,7 +140,7 @@ public class WALNodeRecoverTask implements Runnable {
     File lastWALFile = walFiles[walFiles.length - 1];
     long lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
-    WALMetaData metaData = new WALMetaData(lastSearchIndex, new ArrayList<>(), new HashSet<>());
+    WALMetaData metaData = new WALMetaData(lastSearchIndex, new ArrayList<>());
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile, true)) {
       while (walReader.hasNext()) {
@@ -163,7 +155,7 @@ public class WALNodeRecoverTask implements Runnable {
             fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
           }
         }
-        metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());
+        metaData.add(walEntry.serializedSize(), searchIndex);
       }
     } catch (Exception e) {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
@@ -243,27 +235,20 @@ public class WALNodeRecoverTask implements Runnable {
     // read .wal files and redo logs
     for (int i = 0; i < walFiles.length; ++i) {
       File walFile = walFiles[i];
-      try (WALByteBufReader reader = new WALByteBufReader(walFile)) {
-        if (Collections.disjoint(memTableId2Info.keySet(), reader.getMetaData().getMemTablesId())) {
-          continue;
-        }
-        while (reader.hasNext()) {
-          ByteBuffer buffer = reader.next();
-          // see WALInfoEntry#serialize, entry type
-          buffer.position(Byte.BYTES);
-          long memTableId = buffer.getLong();
-          if (!memTableId2Info.containsKey(memTableId)) {
+      // last wal file may corrupt
+      try (WALReader walReader = new WALReader(walFile, i == walFiles.length - 1)) {
+        while (walReader.hasNext()) {
+          WALEntry walEntry = walReader.next();
+          if (!memTableId2Info.containsKey(walEntry.getMemTableId())) {
             continue;
           }
-          buffer.clear();
-          WALEntry walEntry =
-              WALEntry.deserialize(new DataInputStream(new ByteArrayInputStream(buffer.array())));
+
           UnsealedTsFileRecoverPerformer recoverPerformer =
               memTableId2RecoverPerformer.get(walEntry.getMemTableId());
           if (recoverPerformer != null) {
             recoverPerformer.redoLog(walEntry);
           } else {
-            logger.debug(
+            logger.warn(
                 "Fail to find TsFile recover performer for wal entry in TsFile {}", walFile);
           }
         }

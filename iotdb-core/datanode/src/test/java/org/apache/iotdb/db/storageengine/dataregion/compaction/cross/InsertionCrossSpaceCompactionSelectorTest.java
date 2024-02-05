@@ -58,13 +58,13 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(true);
     super.setUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
     super.tearDown();
   }
 

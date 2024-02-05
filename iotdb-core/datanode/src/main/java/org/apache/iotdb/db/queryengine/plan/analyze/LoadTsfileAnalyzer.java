@@ -177,13 +177,16 @@ public class LoadTsfileAnalyzer {
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (IllegalArgumentException e) {
+        schemaAutoCreatorAndVerifier.close();
         LOGGER.warn(
             "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
+        schemaAutoCreatorAndVerifier.close();
         return createFailAnalysisForAuthException(e);
       } catch (Exception e) {
+        schemaAutoCreatorAndVerifier.close();
         LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
@@ -195,6 +198,8 @@ public class LoadTsfileAnalyzer {
       schemaAutoCreatorAndVerifier.flush();
     } catch (AuthException e) {
       return createFailAnalysisForAuthException(e);
+    } finally {
+      schemaAutoCreatorAndVerifier.close();
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
@@ -203,10 +208,6 @@ public class LoadTsfileAnalyzer {
     final Analysis analysis = new Analysis();
     analysis.setStatement(loadTsFileStatement);
     return analysis;
-  }
-
-  public void close() {
-    schemaAutoCreatorAndVerifier.close();
   }
 
   private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {

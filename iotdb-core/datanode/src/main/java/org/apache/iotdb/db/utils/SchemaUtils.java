@@ -34,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
-
 public class SchemaUtils {
 
   private SchemaUtils() {}
@@ -138,9 +136,8 @@ public class SchemaUtils {
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
-        return null;
       default:
-        return TSDataType.TEXT;
+        return null;
     }
   }
 
@@ -187,28 +184,28 @@ public class SchemaUtils {
     }
   }
 
-  public static List<String> splitPartialAggregation(TAggregationType aggregationType) {
+  public static List<TAggregationType> splitPartialAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case FIRST_VALUE:
-        return Collections.singletonList(SqlConstant.MIN_TIME);
+        return Collections.singletonList(TAggregationType.MIN_TIME);
       case LAST_VALUE:
-        return Collections.singletonList(SqlConstant.MAX_TIME);
+        return Collections.singletonList(TAggregationType.MAX_TIME);
       case STDDEV:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV));
+        return Collections.singletonList(TAggregationType.STDDEV);
       case STDDEV_POP:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV_POP));
+        return Collections.singletonList(TAggregationType.STDDEV_POP);
       case STDDEV_SAMP:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.STDDEV_SAMP));
+        return Collections.singletonList(TAggregationType.STDDEV_SAMP);
       case VARIANCE:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.VARIANCE));
+        return Collections.singletonList(TAggregationType.VARIANCE);
       case VAR_POP:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_POP));
+        return Collections.singletonList(TAggregationType.VAR_POP);
       case VAR_SAMP:
-        return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
+        return Collections.singletonList(TAggregationType.VAR_SAMP);
       case AVG:
-        return Arrays.asList(SqlConstant.COUNT, SqlConstant.SUM);
+        return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
       case TIME_DURATION:
-        return Arrays.asList(SqlConstant.MAX_TIME, SqlConstant.MIN_TIME);
+        return Arrays.asList(TAggregationType.MAX_TIME, TAggregationType.MIN_TIME);
       case SUM:
       case MIN_VALUE:
       case MAX_VALUE:

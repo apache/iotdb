@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -59,7 +58,6 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
@@ -100,11 +98,8 @@ import java.util.stream.IntStream;
  * href="https://apache-iotdb.feishu.cn/docx/doxcnyBYWzek8ksSEU6obZMpYLe">...</a>;
  */
 public class LoadTsFileScheduler implements IScheduler {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
+  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
   private static final long SINGLE_SCHEDULER_MAX_MEMORY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
@@ -144,72 +139,69 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void start() {
-    try {
-      stateMachine.transitionToRunning();
-      int tsFileNodeListSize = tsFileNodeList.size();
-      boolean isLoadSuccess = true;
+    stateMachine.transitionToRunning();
+    int tsFileNodeListSize = tsFileNodeList.size();
+    boolean isLoadSuccess = true;
 
-      for (int i = 0; i < tsFileNodeListSize; ++i) {
-        LoadSingleTsFileNode node = tsFileNodeList.get(i);
-        boolean isLoadSingleTsFileSuccess = true;
-        try {
-          if (node.isTsFileEmpty()) {
-            LOGGER.info(
-                "Load skip TsFile {}, because it has no data.",
-                node.getTsFileResource().getTsFilePath());
+    for (int i = 0; i < tsFileNodeListSize; ++i) {
+      LoadSingleTsFileNode node = tsFileNodeList.get(i);
+      boolean isLoadSingleTsFileSuccess = true;
+      try {
+        if (node.isTsFileEmpty()) {
+          LOGGER.info(
+              "Load skip TsFile {}, because it has no data.",
+              node.getTsFileResource().getTsFilePath());
 
-          } else if (!node.needDecodeTsFile(
-              slotList ->
-                  partitionFetcher.queryDataPartition(
-                      slotList,
-                      queryContext.getSession().getUserName()))) { // do not decode, load locally
-            isLoadSingleTsFileSuccess = loadLocally(node);
-            node.clean();
+        } else if (!node.needDecodeTsFile(
+            slotList ->
+                partitionFetcher.queryDataPartition(
+                    slotList,
+                    queryContext.getSession().getUserName()))) { // do not decode, load locally
+          isLoadSingleTsFileSuccess = loadLocally(node);
+          node.clean();
 
-          } else { // need decode, load locally or remotely, use two phases method
-            String uuid = UUID.randomUUID().toString();
-            dispatcher.setUuid(uuid);
-            allReplicaSets.clear();
+        } else { // need decode, load locally or remotely, use two phases method
+          String uuid = UUID.randomUUID().toString();
+          dispatcher.setUuid(uuid);
+          allReplicaSets.clear();
 
-            boolean isFirstPhaseSuccess = firstPhase(node);
-            boolean isSecondPhaseSuccess =
-                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+          boolean isFirstPhaseSuccess = firstPhase(node);
+          boolean isSecondPhaseSuccess =
+              secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
 
-            node.clean();
-            if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
-              isLoadSingleTsFileSuccess = false;
-            }
+          node.clean();
+          if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
+            isLoadSingleTsFileSuccess = false;
           }
-          if (isLoadSingleTsFileSuccess) {
-            LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
-                i + 1,
-                tsFileNodeListSize);
-          } else {
-            isLoadSuccess = false;
-            LOGGER.warn(
-                "Can not Load TsFile {}, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
-                i + 1,
-                tsFileNodeListSize);
-          }
-        } catch (Exception e) {
-          isLoadSuccess = false;
-          stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "LoadTsFileScheduler loads TsFile {} error",
-              node.getTsFileResource().getTsFilePath(),
-              e);
         }
+        if (isLoadSingleTsFileSuccess) {
+          LOGGER.info(
+              "Load TsFile {} Successfully, load process [{}/{}]",
+              node.getTsFileResource().getTsFilePath(),
+              i + 1,
+              tsFileNodeListSize);
+        } else {
+          isLoadSuccess = false;
+          LOGGER.warn(
+              "Can not Load TsFile {}, load process [{}/{}]",
+              node.getTsFileResource().getTsFilePath(),
+              i + 1,
+              tsFileNodeListSize);
+        }
+      } catch (Exception e) {
+        isLoadSuccess = false;
+        stateMachine.transitionToFailed(e);
+        LOGGER.warn(
+            String.format(
+                "LoadTsFileScheduler loads TsFile %s error",
+                node.getTsFileResource().getTsFilePath()),
+            e);
       }
-      if (isLoadSuccess) {
-        stateMachine.transitionToFinished();
-      }
-
-    } finally {
-      LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
+    if (isLoadSuccess) {
+      stateMachine.transitionToFinished();
+    }
+    LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
@@ -259,7 +251,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result =
           dispatchResultFuture.get(
-              CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
+              LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND, TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         // TODO: retry.
         LOGGER.warn(
@@ -398,27 +390,17 @@ public class LoadTsFileScheduler implements IScheduler {
                 (DataRegionId)
                     ConsensusGroupId.Factory.createFromTConsensusGroupId(
                         node.getLocalRegionReplicaSet().getRegionId()));
-
-    dataRegion
-        .getNonSystemDatabaseName()
-        .ifPresent(
-            databaseName -> {
-              // Report load tsFile points to IoTDB flush metrics
-              MemTableFlushTask.recordFlushPointsMetricInternal(
-                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
-
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId());
-            });
+    MetricService.getInstance()
+        .count(
+            node.getWritePointCount(),
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            Metric.POINTS_IN.toString(),
+            Tag.DATABASE.toString(),
+            dataRegion.getDatabaseName(),
+            Tag.REGION.toString(),
+            dataRegion.getDataRegionId());
     return true;
   }
 

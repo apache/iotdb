@@ -398,7 +398,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
-      // Test forced-log mode, in open releases this might be "file"
+      // Test forced-log mode, in TimechoDB this might be "file"
       extractorAttributes.put("source.realtime.mode", "forced-log");
 
       TSStatus status =
@@ -418,27 +418,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(s1) from root.db.d1",
+          "select count(*) from root.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
 
-      // Test metadata
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "create timeseries root.db.d1.s2 with datatype=BOOLEAN,encoding=PLAIN",
-              "create database root.test1"))) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("2,"));
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("2,"));
-
       // Test file mode
-      extractorAttributes.put("source.inclusion", "data");
       extractorAttributes.replace("source.realtime.mode", "file");
 
       status =
@@ -459,7 +443,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(s1) from root.db.d1",
+          "select count(*) from root.**",
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
     }

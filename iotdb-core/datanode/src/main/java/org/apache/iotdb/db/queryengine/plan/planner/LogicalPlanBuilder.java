@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -697,27 +698,29 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<String> partialAggregationsNames =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     String inputExpressionStr =
         aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
-    for (String partialAggregationName : partialAggregationsNames) {
-      TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
+    for (TAggregationType aggregation : splitAggregations) {
+      String functionName = aggregation.toString().toLowerCase();
+      TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
       typeProvider.setType(
-          String.format("%s(%s)", partialAggregationName, inputExpressionStr),
+          String.format("%s(%s)", functionName, inputExpressionStr),
           aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
     }
   }
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<String> partialAggregationsNames =
+    List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (String partialAggregationName : partialAggregationsNames) {
+    for (TAggregationType aggregationType : splitAggregations) {
+      String functionName = aggregationType.toString().toLowerCase();
       typeProvider.setType(
-          String.format("%s(%s)", partialAggregationName, path.getFullPath()),
-          SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+          String.format("%s(%s)", functionName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, functionName));
     }
   }
 
@@ -771,7 +774,7 @@ public class LogicalPlanBuilder {
               orderByParameter,
               outputColumnNames);
 
-      // if value filter exists, need add a LimitNode as the child node of TopKNode
+      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
       long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
 
       // only order by based on time, use TopKNode + SingleDeviceViewNode
@@ -796,7 +799,7 @@ public class LogicalPlanBuilder {
       analysis.setUseTopKNode();
       this.root = topKNode;
     } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
-      // use MergeSortNode + SingleDeviceViewNode
+      // otherwise use MergeSortNode + SingleDeviceViewNode
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
@@ -855,7 +858,7 @@ public class LogicalPlanBuilder {
   private boolean canUseMergeSortNode(QueryStatement queryStatement, int deviceSize) {
     // 1. `order by based on time` + `no order by expression`.
     // 2. deviceSize is larger than 1.
-    // when satisfy all above cases use MergeSortNode + SingleDeviceViewNode.
+    // when satisfy all above cases use MergeSortNode.
     return queryStatement.isOrderByBasedOnTime()
         && !queryStatement.hasOrderByExpression()
         && deviceSize > 1;

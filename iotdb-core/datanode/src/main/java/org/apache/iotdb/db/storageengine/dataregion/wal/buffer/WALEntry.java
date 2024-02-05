@@ -39,7 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * {@link WALEntry} is the basic element of .wal file, including type, memTable id, and specific
+ * WALEntry is the basic element of .wal file, including type, memTable id, and specific
  * value(physical plan or memTable snapshot).
  */
 public abstract class WALEntry implements SerializedSize {

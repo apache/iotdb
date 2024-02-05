@@ -98,14 +98,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final long createdTime = System.currentTimeMillis();
 
-  /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
-  private long updateTime = createdTime;
-  /**
-   * check whether this memTable has been updated since last timed flush check, update updateTime
-   * when changed
-   */
-  private long lastTotalPointsNum = totalPointsNum;
-
   private String database;
   private String dataRegionId;
 
@@ -595,16 +587,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCreatedTime() {
     return createdTime;
-  }
-
-  /** Check whether updated since last get method */
-  @Override
-  public long getUpdateTime() {
-    if (lastTotalPointsNum != totalPointsNum) {
-      lastTotalPointsNum = totalPointsNum;
-      updateTime = System.currentTimeMillis();
-    }
-    return updateTime;
   }
 
   @Override

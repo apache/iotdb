@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
@@ -55,20 +55,20 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   public void tryListenToNode(PlanNode node) {
     if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
-      PipeWritePlanNodeEvent event;
+      PipeWriteSchemaPlanEvent event;
       switch (node.getType()) {
         case PIPE_ENRICHED_WRITE_SCHEMA:
           event =
-              new PipeWritePlanNodeEvent(
+              new PipeWriteSchemaPlanEvent(
                   ((PipeEnrichedWriteSchemaNode) node).getWriteSchemaNode(), true);
           break;
         case PIPE_ENRICHED_CONFIG_SCHEMA:
           event =
-              new PipeWritePlanNodeEvent(
+              new PipeWriteSchemaPlanEvent(
                   ((PipeEnrichedConfigSchemaNode) node).getConfigSchemaNode(), true);
           break;
         default:
-          event = new PipeWritePlanNodeEvent(node, false);
+          event = new PipeWriteSchemaPlanEvent(node, false);
       }
       if (super.tryListenToElement(event)) {
         event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());

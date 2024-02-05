@@ -56,7 +56,6 @@ public abstract class BasicRoleManager implements IRoleManager {
     this.roleMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
-    this.accessor.reset();
   }
 
   @Override

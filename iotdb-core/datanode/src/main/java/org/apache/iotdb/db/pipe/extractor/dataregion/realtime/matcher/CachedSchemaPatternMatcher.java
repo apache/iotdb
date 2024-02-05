@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -36,7 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
@@ -104,13 +102,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       // HeartbeatEvent will be assigned to all extractors
       if (event.getEvent() instanceof PipeHeartbeatEvent) {
         return extractors;
-      }
-
-      // Deletion event will be assigned to extractors listened to it
-      if (event.getEvent() instanceof PipeWritePlanNodeEvent) {
-        return extractors.stream()
-            .filter(PipeRealtimeDataRegionExtractor::isExtractDeletion)
-            .collect(Collectors.toSet());
       }
 
       for (final Map.Entry<String, String[]> entry : event.getSchemaInfo().entrySet()) {
@@ -194,10 +185,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
-      // Return if the extractor only extract deletion
-      if (!extractor.isExtractData()) {
-        continue;
-      }
       String pattern = extractor.getPattern();
       if (
       // for example, pattern is root.a.b and device is root.a.b.c

@@ -123,7 +123,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         unseqFileToInsert.getTsFileSize() / 1024 / 1024);
     boolean isSuccess = true;
     if (!tsFileManager.isAllowCompaction()
-        || !IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
+        || !IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       return true;
     }
     try {
@@ -179,14 +179,14 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           String.format("%.2f", costTime));
     } catch (Exception e) {
       isSuccess = false;
-      handleException(LOGGER, e);
+      printLogWhenException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        handleException(LOGGER, e);
+        printLogWhenException(LOGGER, e);
       }
       targetFile.setStatus(TsFileResourceStatus.NORMAL);
     }
@@ -224,9 +224,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
     }
-    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
-    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
   }
 
   private boolean recoverTaskInfoFromLogFile() throws IOException {
@@ -272,7 +270,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        handleException(LOGGER, e);
+        printLogWhenException(LOGGER, e);
       }
     }
   }
@@ -326,11 +324,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     return false;
-  }
-
-  @Override
-  public boolean isDiskSpaceCheckPassed() {
-    return true;
   }
 
   @Override

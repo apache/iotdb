@@ -21,22 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 public enum CompactionTaskPriorityType {
   /** default compaction task type */
-  NORMAL(10),
+  NORMAL,
 
   /**
    * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
    * 2. the TsFile has .mods file and the disk availability rate is lower than the
    * disk_space_warning_threshold.
    */
-  MOD_SETTLE(20),
-  REPAIR_DATA(30);
-  private final int value;
-
-  CompactionTaskPriorityType(int value) {
-    this.value = value;
-  }
-
-  public int getValue() {
-    return value;
-  }
+  MOD_SETTLE
 }

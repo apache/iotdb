@@ -34,7 +34,6 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -307,9 +306,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
-    retryConnector.transfer(event);
 
-    if (!(event instanceof PipeHeartbeatEvent) && !(event instanceof PipeWritePlanNodeEvent)) {
+    if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
@@ -388,9 +386,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Add failure {@link Event} to retry queue.
+   * Add failure event to retry queue.
    *
-   * @param event {@link Event} to retry
+   * @param event event to retry
    */
   public synchronized void addFailureEventToRetryQueue(Event event) {
     retryEventQueue.offer(event);
@@ -402,7 +400,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   /**
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued {@link Event}s in the output pipe connector.
+   * its queued events in the output pipe connector.
    */
   public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
     retryEventQueue.removeIf(

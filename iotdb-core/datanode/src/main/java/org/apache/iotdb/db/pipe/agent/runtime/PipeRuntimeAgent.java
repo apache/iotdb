@@ -73,11 +73,6 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
-
-    registerPeriodicalJob(
-        "PipeTaskAgent#restartAllStuckPipes",
-        PipeAgent.task()::restartAllStuckPipes,
-        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
     pipePeriodicalJobExecutor.start();
 
     isShutdown.set(false);

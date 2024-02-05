@@ -54,6 +54,7 @@ public class DataNodeClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                       .build()),
               new ClientPoolProperty.Builder<ConfigNodeClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
@@ -82,6 +83,7 @@ public class DataNodeClientPoolFactory {
                               : 1)
                       .build()),
               new ClientPoolProperty.Builder<ConfigNodeClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());

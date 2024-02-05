@@ -26,8 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -153,26 +151,6 @@ public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSSta
           .setMessage(context.getMessage());
     }
     return super.visitDropSchemaTemplate(dropSchemaTemplatePlan, context);
-  }
-
-  @Override
-  public TSStatus visitPipeDeleteTimeSeries(
-      PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, TSStatus context) {
-    if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return super.visitPipeDeleteTimeSeries(pipeDeleteTimeSeriesPlan, context);
-  }
-
-  @Override
-  public TSStatus visitPipeDeactivateTemplate(
-      PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, TSStatus context) {
-    if (context.getCode() == TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return super.visitPipeDeactivateTemplate(pipeDeactivateTemplatePlan, context);
   }
 
   @Override

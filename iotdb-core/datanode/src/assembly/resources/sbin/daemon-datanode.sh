@@ -61,18 +61,22 @@ EOF
 echo "Daemon service of IoTDB DataNode has been successfully registered."
 
 systemctl daemon-reload
-echo
-echo "Do you want to execute 'systemctl start iotdb-datanode'? y/n (default y)"
+
+echo "Do you want to start IoTDB DataNode ? y/n (default n)"
+echo "or you can use 'systemctl start iotdb-datanode' to start it later."
 read -r START_SERVICE
-if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
+echo - - - - - - - - - -
+if [[ "$START_SERVICE" =~ ^[Yy]$ ]]; then
     "${IOTDB_SBIN_HOME}"/sbin/stop-datanode.sh >/dev/null 2>&1 &
     systemctl start iotdb-datanode
-    echo "Executed successfully."
 fi
-echo
-echo "Do you want to execute 'systemctl enable iotdb-datanode' to start at boot? y/n (default y)"
+
+echo "Do you want to start IoTDB DataNode when system startup ? y/n (default n)"
+echo "or you can use 'systemctl enable iotdb-datanode' to enable it later."
 read -r ADD_STARTUP
-if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-   systemctl enable iotdb-datanode >/dev/null 2>&1
-   echo "Executed successfully."
+echo - - - - - - - - - -
+if [[ "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
+   systemctl enable iotdb-datanode
+else
+   systemctl disable iotdb-datanode
 fi

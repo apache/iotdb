@@ -23,9 +23,6 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -51,12 +48,6 @@ public abstract class PhysicalPlanVisitor<R, C> {
         return visitDropSchemaTemplate((DropSchemaTemplatePlan) plan, context);
       case PipeUnsetTemplate:
         return visitPipeUnsetSchemaTemplate((PipeUnsetSchemaTemplatePlan) plan, context);
-      case PipeDeleteTimeSeries:
-        return visitPipeDeleteTimeSeries((PipeDeleteTimeSeriesPlan) plan, context);
-      case PipeDeleteLogicalView:
-        return visitPipeDeleteLogicalView((PipeDeleteLogicalViewPlan) plan, context);
-      case PipeDeactivateTemplate:
-        return visitPipeDeactivateTemplate((PipeDeactivateTemplatePlan) plan, context);
       case CreateRole:
         return visitCreateRole((AuthorPlan) plan, context);
       case DropRole:
@@ -121,20 +112,6 @@ public abstract class PhysicalPlanVisitor<R, C> {
 
   public R visitDropSchemaTemplate(DropSchemaTemplatePlan dropSchemaTemplatePlan, C context) {
     return visitPlan(dropSchemaTemplatePlan, context);
-  }
-
-  public R visitPipeDeleteTimeSeries(PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, C context) {
-    return visitPlan(pipeDeleteTimeSeriesPlan, context);
-  }
-
-  public R visitPipeDeleteLogicalView(
-      PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, C context) {
-    return visitPlan(pipeDeleteLogicalViewPlan, context);
-  }
-
-  public R visitPipeDeactivateTemplate(
-      PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, C context) {
-    return visitPlan(pipeDeactivateTemplatePlan, context);
   }
 
   public R visitCreateUser(AuthorPlan createUserPlan, C context) {

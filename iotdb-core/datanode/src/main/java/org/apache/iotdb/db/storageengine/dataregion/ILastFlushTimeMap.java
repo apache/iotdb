@@ -25,8 +25,8 @@ import java.util.Map;
 public interface ILastFlushTimeMap {
 
   // region update
-  /** Update partitionLatestFlushedTime. */
-  void updateOneDeviceFlushedTime(long timePartitionId, String deviceId, long time);
+  /** Update partitionLatestFlushedTimeForEachDevice. */
+  void updateOneDeviceFlushedTime(long timePartitionId, String path, long time);
 
   void updateMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
 
@@ -35,7 +35,9 @@ public interface ILastFlushTimeMap {
 
   void updateMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap);
 
-  /** Update both partitionLatestFlushedTime and globalLatestFlushedTimeForEachDevice. */
+  /**
+   * Update both partitionLatestFlushedTimeForEachDevice and globalLatestFlushedTimeForEachDevice.
+   */
   void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
   // endregion
 
@@ -45,7 +47,7 @@ public interface ILastFlushTimeMap {
   // endregion
 
   // region read
-  long getFlushedTime(long timePartitionId, String deviceId);
+  long getFlushedTime(long timePartitionId, String path);
 
   long getGlobalFlushedTime(String path);
   // endregion
@@ -56,7 +58,7 @@ public interface ILastFlushTimeMap {
   void clearGlobalFlushedTime();
   // endregion
 
-  void degradeLastFlushTime(long partitionId);
+  void removePartition(long partitionId);
 
   long getMemSize(long partitionId);
 }

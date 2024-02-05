@@ -41,7 +41,6 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -102,11 +101,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -1693,58 +1688,5 @@ public class ConfigPhysicalPlanSerDeTest {
     PipeEnrichedPlan plan1 =
         (PipeEnrichedPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan, plan1);
-  }
-
-  @Test
-  public void pipeUnsetSchemaTemplatePlanTest() throws IOException {
-    PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan =
-        new PipeUnsetSchemaTemplatePlan("template0", "root.sg");
-    PipeUnsetSchemaTemplatePlan deserializedPlan =
-        (PipeUnsetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(pipeUnsetSchemaTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeUnsetSchemaTemplatePlan, deserializedPlan);
-  }
-
-  @Test
-  public void pipeDeleteTimeSeriesPlanTest() throws IOException, IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
-    patternTree.constructTree();
-
-    PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan =
-        new PipeDeleteTimeSeriesPlan(patternTree.serialize());
-    PipeDeleteTimeSeriesPlan deserializedPlan =
-        (PipeDeleteTimeSeriesPlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeleteTimeSeriesPlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeleteTimeSeriesPlan, deserializedPlan);
-  }
-
-  @Test
-  public void pipeDeleteLogicalViewPlanTest() throws IOException, IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
-    patternTree.constructTree();
-
-    PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan =
-        new PipeDeleteLogicalViewPlan(patternTree.serialize());
-    PipeDeleteLogicalViewPlan deserializedPlan =
-        (PipeDeleteLogicalViewPlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeleteLogicalViewPlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeleteLogicalViewPlan, deserializedPlan);
-  }
-
-  @Test
-  public void pipeDeactivateTemplatePlanTest() throws IllegalPathException, IOException {
-    Map<PartialPath, List<Template>> templateSetInfo = new HashMap<>();
-    templateSetInfo.put(
-        new PartialPath("root.**.s1"),
-        Collections.singletonList(newSchemaTemplate("template_name")));
-
-    PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan =
-        new PipeDeactivateTemplatePlan(templateSetInfo);
-    PipeDeactivateTemplatePlan deserializedPlan =
-        (PipeDeactivateTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeactivateTemplatePlan, deserializedPlan);
   }
 }

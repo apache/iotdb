@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -89,16 +90,6 @@ public class TsFileManager {
     }
   }
 
-  public List<TsFileResource> getTsFileListSnapshot(long timePartition, boolean sequence) {
-    readLock();
-    try {
-      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      return new ArrayList<>(chosenMap.getOrDefault(timePartition, new TsFileResourceList()));
-    } finally {
-      readUnlock();
-    }
-  }
-
   public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
@@ -133,6 +124,41 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+  }
+
+  public long recoverFlushTimeFromTsFileResource(long partitionId, String devicePath) {
+    long lastFlushTime = Long.MIN_VALUE;
+    writeLock("recoverFlushTimeFromTsFileResource");
+    try {
+      List<TsFileResource> seqTsFileResourceList =
+          sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
+      for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
+        TsFileResource seqResource = seqTsFileResourceList.get(i);
+        if (!seqResource.isClosed()) {
+          continue;
+        }
+        if (seqResource.getTimeIndexType() == ITimeIndex.DEVICE_TIME_INDEX_TYPE) {
+          Set<String> deviceSet = seqResource.getDevices();
+          if (deviceSet.contains(devicePath)) {
+            lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
+            break;
+          }
+        } else {
+          lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
+        }
+      }
+      List<TsFileResource> unseqTsFileResourceList =
+          unsequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
+      for (TsFileResource resource : unseqTsFileResourceList) {
+        if (resource.definitelyNotContains(devicePath)) {
+          continue;
+        }
+        lastFlushTime = Math.max(lastFlushTime, resource.getEndTime(devicePath));
+      }
+    } finally {
+      writeUnlock();
+    }
+    return lastFlushTime;
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {
@@ -229,7 +255,8 @@ public class TsFileManager {
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources,
-      long timePartition)
+      long timePartition,
+      boolean isTargetSequence)
       throws IOException {
     writeLock("replace");
     try {
@@ -243,20 +270,24 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      for (TsFileResource resource : targetFileResources) {
-        if (!resource.isDeleted()) {
-          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-          if (resource.isSeq()) {
-            sequenceFiles
-                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
-                .keepOrderInsert(resource);
-          } else {
-            unsequenceFiles
-                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
-                .keepOrderInsert(resource);
+      if (isTargetSequence) {
+        // seq inner space compaction or cross space compaction
+        for (TsFileResource resource : targetFileResources) {
+          if (!resource.isDeleted()) {
+            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+            sequenceFiles.get(timePartition).keepOrderInsert(resource);
+          }
+        }
+      } else {
+        // unseq inner space compaction
+        for (TsFileResource resource : targetFileResources) {
+          if (!resource.isDeleted()) {
+            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+            unsequenceFiles.get(timePartition).keepOrderInsert(resource);
           }
         }
       }
+
     } finally {
       writeUnlock();
     }

@@ -55,7 +55,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -273,7 +272,7 @@ public class TsFileProcessor {
     WALFlushListener walFlushListener;
     try {
       walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
-      if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
+      if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
@@ -351,8 +350,6 @@ public class TsFileProcessor {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
-      WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
@@ -1575,11 +1572,6 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableCreatedTime() {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
-  }
-
-  /** Return Long.MAX_VALUE if workMemTable is null */
-  public long getWorkMemTableUpdateTime() {
-    return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
   }
 
   public long getLastWorkMemtableFlushTime() {
