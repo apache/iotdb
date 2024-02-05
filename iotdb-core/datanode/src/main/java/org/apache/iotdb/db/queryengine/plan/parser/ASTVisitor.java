@@ -3637,6 +3637,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           Objects.nonNull(ctx.alterProcessorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setProcessorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
     if (ctx.alterConnectorAttributesClause() != null) {
       alterPipeStatement.setConnectorAttributes(
@@ -3646,6 +3647,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setConnectorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllConnectorAttributes(false);
     }
     return alterPipeStatement;
   }

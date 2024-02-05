@@ -26,8 +26,6 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -297,29 +295,10 @@ public class PipeParameters {
             .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
     thatMap.forEach(
         (key, entry) -> {
-          for (String replacedKey : getReplacedKeys(key)) {
-            this.attributes.remove(thisMap.getOrDefault(replacedKey, entry).getKey());
-          }
+          this.attributes.remove(thisMap.getOrDefault(key, entry).getKey());
           this.attributes.put(entry.getKey(), entry.getValue());
         });
     return this;
-  }
-
-  /**
-   * This method retrieves the keys that need to be replaced during the key update process in
-   * `addOrReplaceEquivalentAttributes`.
-   *
-   * @param key the key that need to be updated
-   * @return associated keys that need to be replaced
-   */
-  private List<String> getReplacedKeys(String key) {
-    if ("ip".equals(key)) {
-      return Arrays.asList(key, "node-urls", "host");
-    }
-    if ("node-urls".equals(key)) {
-      return Arrays.asList(key, "ip", "host");
-    }
-    return Collections.singletonList(key);
   }
 
   private static class KeyReducer {

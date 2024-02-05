@@ -163,16 +163,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
     throw new PipeException(exceptionMessage);
   }
 
-  public void checkBeforeAlterPipe(TAlterPipeReq alterPipeRequest) throws PipeException {
+  public void checkAndUpdateRequestBeforeAlterPipe(TAlterPipeReq alterPipeRequest)
+      throws PipeException {
     acquireReadLock();
     try {
-      checkBeforeAlterPipeInternal(alterPipeRequest);
+      checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest) throws PipeException {
+  private void checkAndUpdateRequestBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest)
+      throws PipeException {
     if (!isPipeExisted(alterPipeRequest.getPipeName())) {
       final String exceptionMessage =
           String.format(
@@ -193,9 +195,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
             new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
     // fill or update attributes
     if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
-      alterPipeRequest.setProcessorAttributes(
-          copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
-    } else if (!alterPipeRequest.isReplaceAllProcessorAttributes) {
+      if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
+        alterPipeRequest.setProcessorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
+      }
+    } else if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       alterPipeRequest.setProcessorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getProcessorParameters()
@@ -204,9 +208,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
               .getAttribute());
     }
     if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
-      alterPipeRequest.setConnectorAttributes(
-          copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
-    } else if (!alterPipeRequest.isReplaceAllConnectorAttributes) {
+      if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
+        alterPipeRequest.setConnectorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+      }
+    } else if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       alterPipeRequest.setConnectorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getConnectorParameters()
