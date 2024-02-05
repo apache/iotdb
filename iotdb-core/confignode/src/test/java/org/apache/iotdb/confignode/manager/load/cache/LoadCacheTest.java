@@ -32,7 +32,7 @@ public class LoadCacheTest {
   public void periodicUpdateTest() {
     RegionRouteCache regionRouteCache =
         new RegionRouteCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     Pair<Long, Integer> leaderSample = new Pair<>(currentTime, 1);
     regionRouteCache.cacheLeaderSample(leaderSample);
     Assert.assertTrue(regionRouteCache.periodicUpdate());

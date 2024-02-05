@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -82,7 +84,10 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
@@ -104,7 +109,10 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(event);
+        outputPipeConnector.transfer(
+            event instanceof UserDefinedEnrichedEvent
+                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                : event);
       }
 
       releaseLastEvent(true);
@@ -153,6 +161,131 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
   }
 
   @Override
+  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+    isSubmitted = false;
+
+    super.onSuccess(hasAtLeastOneEventProcessed);
+  }
+
+  @Override
+  public synchronized void onFailure(@NotNull Throwable throwable) {
+    isSubmitted = false;
+
+    if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
+      releaseLastEvent(false);
+      return;
+    }
+
+    if (throwable instanceof PipeConnectionException) {
+      // Retry to connect to the target system if the connection is broken
+      // We should reconstruct the client before re-submit the subtask
+      if (onPipeConnectionException(throwable)) {
+        // return if the pipe task should be stopped
+        return;
+      }
+    }
+
+    // Handle exceptions if any available clients exist
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
+    super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+  }
+
+  /** @return true if the pipe task should be stopped, false otherwise */
+  private boolean onPipeConnectionException(Throwable throwable) {
+    LOGGER.warn(
+        "PipeConnectionException occurred, {} retries to handshake with the target system.",
+        outputPipeConnector.getClass().getName(),
+        throwable);
+
+    int retry = 0;
+    while (retry < MAX_RETRY_TIMES) {
+      try {
+        outputPipeConnector.handshake();
+        LOGGER.info(
+            "{} handshakes with the target system successfully.",
+            outputPipeConnector.getClass().getName());
+        break;
+      } catch (Exception e) {
+        retry++;
+        LOGGER.warn(
+            "{} failed to handshake with the target system for {} times, "
+                + "will retry at most {} times.",
+            outputPipeConnector.getClass().getName(),
+            retry,
+            MAX_RETRY_TIMES,
+            e);
+        try {
+          Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+        } catch (InterruptedException interruptedException) {
+          LOGGER.info(
+              "Interrupted while sleeping, will retry to handshake with the target system.",
+              interruptedException);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+
+    // Stop current pipe task directly if failed to reconnect to
+    // the target system after MAX_RETRY_TIMES times
+    if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
+      ((EnrichedEvent) lastEvent)
+          .reportException(
+              new PipeRuntimeConnectorCriticalException(
+                  throwable.getMessage()
+                      + ", root cause: "
+                      + ErrorHandlingUtils.getRootCause(throwable).getMessage()));
+      LOGGER.warn(
+          "{} failed to handshake with the target system after {} times, "
+              + "stopping current subtask {} (creation time: {}, simple class: {}). "
+              + "Status shown when query the pipe will be 'STOPPED'. "
+              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          outputPipeConnector.getClass().getName(),
+          MAX_RETRY_TIMES,
+          taskID,
+          creationTime,
+          this.getClass().getSimpleName(),
+          throwable);
+
+      // Although the pipe task will be stopped, we still don't release the last event here
+      // Because we need to keep it for the next retry. If user wants to restart the task,
+      // the last event will be processed again. The last event will be released when the task
+      // is dropped or the process is running normally.
+
+      // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      return true;
+    }
+
+    // For non enriched event, forever retry.
+    // For enriched event, retry if connection is set up successfully.
+    return false;
+  }
+
+  /**
+   * Submit a subTask to the executor to keep it running. Note that the function will be called when
+   * connector starts or the subTask finishes the last round, Thus the "isRunning" sign is added to
+   * avoid concurrent problem of the two, ensuring two or more submitting threads generates only one
+   * winner.
+   */
+  @Override
+  public synchronized void submitSelf() {
+    if (shouldStopSubmittingSelf.get() || isSubmitted) {
+      return;
+    }
+
+    callbackDecoratingLock.markAsDecorating();
+    try {
+      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+      isSubmitted = true;
+    } finally {
+      callbackDecoratingLock.markAsDecorated();
+    }
+  }
+
+  @Override
   public void close() {
     PipeConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
@@ -198,19 +331,19 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
     return connectorIndex;
   }
 
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return inputPendingQueue.getTsFileInsertionEventCount();
   }
 
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return inputPendingQueue.getTabletInsertionEventCount();
   }
 
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 
-  public Integer getAsyncConnectorRetryEventQueueSize() {
+  public int getAsyncConnectorRetryEventQueueSize() {
     return outputPipeConnector instanceof IoTDBThriftAsyncConnector
         ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;

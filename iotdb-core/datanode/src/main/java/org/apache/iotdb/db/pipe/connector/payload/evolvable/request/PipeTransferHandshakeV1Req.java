@@ -28,11 +28,23 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+<<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/payload/thrift/request/PipeTransferHandshakeReq.java
 public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   private transient String timestampPrecision;
 
   public final String getTimestampPrecision() {
+========
+public class PipeTransferHandshakeV1Req extends TPipeTransferReq {
+
+  private transient String timestampPrecision;
+
+  private PipeTransferHandshakeV1Req() {
+    // Empty constructor
+  }
+
+  public String getTimestampPrecision() {
+>>>>>>>> upstream/master:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/payload/evolvable/request/PipeTransferHandshakeV1Req.java
     return timestampPrecision;
   }
 
@@ -40,12 +52,23 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
+<<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/payload/thrift/request/PipeTransferHandshakeReq.java
   protected final PipeTransferHandshakeReq convertToTPipeTransferReq(String timestampPrecision)
       throws IOException {
     this.timestampPrecision = timestampPrecision;
 
     this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
+========
+  public static PipeTransferHandshakeV1Req toTPipeTransferReq(String timestampPrecision)
+      throws IOException {
+    final PipeTransferHandshakeV1Req handshakeReq = new PipeTransferHandshakeV1Req();
+
+    handshakeReq.timestampPrecision = timestampPrecision;
+
+    handshakeReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    handshakeReq.type = PipeRequestType.HANDSHAKE_V1.getType();
+>>>>>>>> upstream/master:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/payload/evolvable/request/PipeTransferHandshakeV1Req.java
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
@@ -55,9 +78,14 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
     return this;
   }
 
+<<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/payload/thrift/request/PipeTransferHandshakeReq.java
   protected final PipeTransferHandshakeReq translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
     timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
+========
+  public static PipeTransferHandshakeV1Req fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferHandshakeV1Req handshakeReq = new PipeTransferHandshakeV1Req();
+>>>>>>>> upstream/master:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/payload/evolvable/request/PipeTransferHandshakeV1Req.java
 
     version = transferReq.version;
     type = transferReq.type;
@@ -73,7 +101,11 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+<<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/payload/thrift/request/PipeTransferHandshakeReq.java
       ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
+========
+      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE_V1.getType(), outputStream);
+>>>>>>>> upstream/master:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/payload/evolvable/request/PipeTransferHandshakeV1Req.java
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
@@ -89,7 +121,7 @@ public abstract class PipeTransferHandshakeReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferHandshakeReq that = (PipeTransferHandshakeReq) obj;
+    PipeTransferHandshakeV1Req that = (PipeTransferHandshakeV1Req) obj;
     return timestampPrecision.equals(that.timestampPrecision)
         && version == that.version
         && type == that.type

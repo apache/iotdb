@@ -107,9 +107,6 @@ public class TsFileProcessor {
   /** IoTDB config. */
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** whether it's enable mem control. */
-  private final boolean enableMemControl = config.isEnableMemControl();
-
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo;
   /** tsfile processor info for mem control. */
@@ -252,22 +249,21 @@ public class TsFileProcessor {
     }
 
     long[] memIncrements = null;
-    if (enableMemControl) {
-      long startTime = System.nanoTime();
-      if (insertRowNode.isAligned()) {
-        memIncrements =
-            checkAlignedMemCostAndAddToTspInfo(
-                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
-                insertRowNode.getDataTypes(), insertRowNode.getValues());
-      } else {
-        memIncrements =
-            checkMemCostAndAddToTspInfo(
-                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
-                insertRowNode.getDataTypes(), insertRowNode.getValues());
-      }
-      // recordScheduleMemoryBlockCost
-      costsForMetrics[1] += System.nanoTime() - startTime;
+
+    long memControlStartTime = System.nanoTime();
+    if (insertRowNode.isAligned()) {
+      memIncrements =
+          checkAlignedMemCostAndAddToTspInfo(
+              insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
+              insertRowNode.getDataTypes(), insertRowNode.getValues());
+    } else {
+      memIncrements =
+          checkMemCostAndAddToTspInfo(
+              insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
+              insertRowNode.getDataTypes(), insertRowNode.getValues());
     }
+    // recordScheduleMemoryBlockCost
+    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
 
     long startTime = System.nanoTime();
     WALFlushListener walFlushListener;
@@ -277,9 +273,7 @@ public class TsFileProcessor {
         throw walFlushListener.getCause();
       }
     } catch (Exception e) {
-      if (enableMemControl) {
-        rollbackMemoryInfo(memIncrements);
-      }
+      rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(
           String.format(
               "%s: %s write WAL failed",
@@ -324,7 +318,7 @@ public class TsFileProcessor {
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
-  private void createNewWorkingMemTable() throws WriteProcessException {
+  private void createNewWorkingMemTable() {
     workMemTable =
         MemTableManager.getInstance()
             .getAvailableMemTable(
@@ -351,33 +345,33 @@ public class TsFileProcessor {
       long startTime = System.nanoTime();
       createNewWorkingMemTable();
       PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(System.nanoTime() - startTime);
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
     }
 
     long[] memIncrements = null;
     try {
-      if (enableMemControl) {
-        long startTime = System.nanoTime();
-        if (insertTabletNode.isAligned()) {
-          memIncrements =
-              checkAlignedMemCostAndAddToTsp(
-                  insertTabletNode.getDevicePath().getFullPath(),
-                  insertTabletNode.getMeasurements(),
-                  insertTabletNode.getDataTypes(),
-                  insertTabletNode.getColumns(),
-                  start,
-                  end);
-        } else {
-          memIncrements =
-              checkMemCostAndAddToTspInfo(
-                  insertTabletNode.getDevicePath().getFullPath(),
-                  insertTabletNode.getMeasurements(),
-                  insertTabletNode.getDataTypes(),
-                  insertTabletNode.getColumns(),
-                  start,
-                  end);
-        }
-        PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
+      long startTime = System.nanoTime();
+      if (insertTabletNode.isAligned()) {
+        memIncrements =
+            checkAlignedMemCostAndAddToTsp(
+                insertTabletNode.getDevicePath().getFullPath(),
+                insertTabletNode.getMeasurements(),
+                insertTabletNode.getDataTypes(),
+                insertTabletNode.getColumns(),
+                start,
+                end);
+      } else {
+        memIncrements =
+            checkMemCostAndAddToTspInfo(
+                insertTabletNode.getDevicePath().getFullPath(),
+                insertTabletNode.getMeasurements(),
+                insertTabletNode.getDataTypes(),
+                insertTabletNode.getColumns(),
+                start,
+                end);
       }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(System.nanoTime() - startTime);
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
@@ -396,9 +390,7 @@ public class TsFileProcessor {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
-      if (enableMemControl) {
-        rollbackMemoryInfo(memIncrements);
-      }
+      rollbackMemoryInfo(memIncrements);
       throw new WriteProcessException(e);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(System.nanoTime() - startTime);
@@ -799,13 +791,6 @@ public class TsFileProcessor {
     if (workMemTable.shouldFlush()) {
       return true;
     }
-    if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
-      logger.info(
-          "The memtable size {} of tsfile {} reaches the threshold",
-          workMemTable.memSize(),
-          tsFileResource.getTsFile().getAbsolutePath());
-      return true;
-    }
     if (workMemTable.reachTotalPointNumThreshold()) {
       logger.info(
           "The avg series points num {} of tsfile {} reaches the threshold",
@@ -816,10 +801,6 @@ public class TsFileProcessor {
       return true;
     }
     return false;
-  }
-
-  private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {
@@ -1046,9 +1027,7 @@ public class TsFileProcessor {
     lastWorkMemtableFlushTime = System.currentTimeMillis();
     updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, lastWorkMemtableFlushTime);
 
-    if (enableMemControl) {
-      SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
-    }
+    SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -1095,21 +1074,19 @@ public class TsFileProcessor {
       }
       memTable.release();
       MemTableManager.getInstance().decreaseMemtableNumber();
-      if (enableMemControl) {
-        // reset the mem cost in StorageGroupProcessorInfo
-        dataRegionInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "[mem control] {}: {} flush finished, try to reset system memcost, "
-                  + "flushing memtable list size: {}",
-              storageGroupName,
-              tsFileResource.getTsFile().getName(),
-              flushingMemTables.size());
-        }
-        // report to System
-        SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
-        SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
+      // reset the mem cost in StorageGroupProcessorInfo
+      dataRegionInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[mem control] {}: {} flush finished, try to reset system memcost, "
+                + "flushing memtable list size: {}",
+            storageGroupName,
+            tsFileResource.getTsFile().getName(),
+            flushingMemTables.size());
       }
+      // report to System
+      SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
+      SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: {} flush finished, remove a memtable from flushing list, "
@@ -1380,10 +1357,8 @@ public class TsFileProcessor {
       closeFileListener.onClosed(this);
     }
 
-    if (enableMemControl) {
-      tsFileProcessorInfo.clear();
-      dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
-    }
+    tsFileProcessorInfo.clear();
+    dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
 
     writer = null;
   }
@@ -1399,10 +1374,8 @@ public class TsFileProcessor {
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
     }
-    if (enableMemControl) {
-      tsFileProcessorInfo.clear();
-      dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
-    }
+    tsFileProcessorInfo.clear();
+    dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
     logger.info(
         "Storage group {} close and remove empty file {}",
         storageGroupName,
@@ -1422,16 +1395,6 @@ public class TsFileProcessor {
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
     this.managedByFlushManager = managedByFlushManager;
-  }
-
-  /** sync method */
-  public boolean isMemtableNotNull() {
-    flushQueryLock.writeLock().lock();
-    try {
-      return workMemTable != null;
-    } finally {
-      flushQueryLock.writeLock().unlock();
-    }
   }
 
   /** close this tsfile */
@@ -1558,10 +1521,6 @@ public class TsFileProcessor {
     }
   }
 
-  public TsFileProcessorInfo getTsFileProcessorInfo() {
-    return tsFileProcessorInfo;
-  }
-
   public void setTsFileProcessorInfo(TsFileProcessorInfo tsFileProcessorInfo) {
     this.tsFileProcessorInfo = tsFileProcessorInfo;
   }
@@ -1575,8 +1534,9 @@ public class TsFileProcessor {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
   }
 
-  public long getLastWorkMemtableFlushTime() {
-    return lastWorkMemtableFlushTime;
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableUpdateTime() {
+    return workMemTable != null ? workMemTable.getUpdateTime() : Long.MAX_VALUE;
   }
 
   public boolean isSequence() {
@@ -1585,10 +1545,6 @@ public class TsFileProcessor {
 
   public void setWorkMemTableShouldFlush() {
     workMemTable.setShouldFlush();
-  }
-
-  public void addFlushListener(FlushListener listener) {
-    flushListeners.add(listener);
   }
 
   public void addCloseFileListener(CloseFileListener listener) {

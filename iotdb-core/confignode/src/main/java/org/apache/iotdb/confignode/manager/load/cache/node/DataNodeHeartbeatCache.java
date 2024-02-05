@@ -56,7 +56,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     // TODO: Optimize judge logic
     if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
       status = NodeStatus.Removing;
-    } else if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
+    } else if (System.nanoTime() - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {
       status = lastSample.getStatus();

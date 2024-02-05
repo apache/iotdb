@@ -24,8 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PipeRequestType {
-  CONFIGNODE_HANDSHAKE((short) 0),
-  DATANODE_HANDSHAKE((short) 1),
+  HANDSHAKE_V1((short) 1),
 
   TRANSFER_TABLET_INSERT_NODE((short) 2),
   TRANSFER_TABLET_RAW((short) 3),
@@ -45,6 +44,8 @@ public enum PipeRequestType {
 
   TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 12),
   TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 13),
+
+  HANDSHAKE_V2((short) 12),
   ;
 
   private final short type;

@@ -50,9 +50,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * This procedure manages 4 kinds of PIPE operations: {@link PipeTaskOperation#CREATE_PIPE}, {@link
- * PipeTaskOperation#START_PIPE}, {@link PipeTaskOperation#STOP_PIPE} and {@link
- * PipeTaskOperation#DROP_PIPE}.
+ * This procedure manages 2 kinds of PIPE operations:
+ *
+ * <ul>
+ *   <li>PIPE user task operations:
+ *       <ul>
+ *         <li>{@link PipeTaskOperation#CREATE_PIPE}
+ *         <li>{@link PipeTaskOperation#START_PIPE}
+ *         <li>{@link PipeTaskOperation#STOP_PIPE}
+ *         <li>{@link PipeTaskOperation#DROP_PIPE}
+ *         <li>{@link PipeTaskOperation#ALTER_PIPE}
+ *       </ul>
+ *   <li>PIPE runtime task operations:
+ *       <ul>
+ *         <li>{@link PipeTaskOperation#HANDLE_LEADER_CHANGE}
+ *         <li>{@link PipeTaskOperation#SYNC_PIPE_META}
+ *         <li>{@link PipeTaskOperation#HANDLE_PIPE_META_CHANGE}
+ *       </ul>
+ * </ul>
  *
  * <p>This class extends {@link AbstractNodeProcedure} to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.

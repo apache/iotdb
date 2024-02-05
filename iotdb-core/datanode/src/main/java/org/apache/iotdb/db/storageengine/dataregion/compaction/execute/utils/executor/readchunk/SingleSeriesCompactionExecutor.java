@@ -275,7 +275,9 @@ public class SingleSeriesCompactionExecutor {
         }
       }
     }
-    pointCountInChunkWriter += chunk.getChunkStatistic().getCount();
+    long count = chunk.getChunkStatistic().getCount();
+    pointCountInChunkWriter += count;
+    summary.increaseRewritePointNum(count);
   }
 
   private void writeCachedChunkIntoChunkWriter() throws IOException {

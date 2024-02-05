@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBFlushQueryMergeIT {
+public class IoTDBFlushQueryIT {
 
   private static String[] sqls =
       new String[] {
@@ -96,7 +96,6 @@ public class IoTDBFlushQueryMergeIT {
           cnt++;
         }
       }
-      statement.execute("merge");
     } catch (Exception e) {
       fail(e.getMessage());
     }

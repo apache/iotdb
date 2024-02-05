@@ -32,11 +32,6 @@ public class PrimitiveMemTable extends AbstractMemTable {
     super(database, dataRegionId);
   }
 
-  public PrimitiveMemTable(String database, String dataRegionId, boolean enableMemControl) {
-    super(database, dataRegionId);
-    this.disableMemControl = !enableMemControl;
-  }
-
   public PrimitiveMemTable(
       String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     super(database, dataRegionId, memTableMap);

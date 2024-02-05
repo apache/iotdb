@@ -25,6 +25,14 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -53,6 +61,8 @@ import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -89,6 +99,124 @@ public class IoTDBAirGapConnector extends IoTDBAirGapDataNodeConnector {
             "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
             givenNodeUrls,
             new TEndPoint(ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())));
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+
+    if (isTabletBatchModeEnabled) {
+      LOGGER.warn(
+          "Batch mode is enabled by the given parameters. "
+              + "IoTDBAirGapConnector does not support batch mode. "
+              + "Disable batch mode.");
+    }
+
+    for (int i = 0; i < nodeUrls.size(); i++) {
+      isSocketAlive.add(false);
+      sockets.add(null);
+    }
+
+    handshakeTimeoutMs =
+        parameters.getIntOrDefault(
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY, SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY),
+            CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
+    LOGGER.info(
+        "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
+
+    eLanguageEnable =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY, SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY),
+            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
+    LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
+  }
+
+  @Override
+  public void handshake() throws Exception {
+    for (int i = 0; i < sockets.size(); i++) {
+      if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+        continue;
+      }
+
+      final String ip = nodeUrls.get(i).getIp();
+      final int port = nodeUrls.get(i).getPort();
+
+      // close the socket if necessary
+      if (sockets.get(i) != null) {
+        try {
+          sockets.set(i, null).close();
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
+              ip,
+              port,
+              e.getMessage());
+        }
+      }
+
+      final Socket socket = new Socket();
+
+      try {
+        socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
+        socket.setKeepAlive(true);
+        socket.setSoTimeout(handshakeTimeoutMs);
+        sockets.set(i, socket);
+        LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
+            ip,
+            port,
+            e.getMessage());
+        continue;
+      }
+
+      final HashMap<String, String> params = new HashMap<>();
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          PipeAgent.runtime().getClusterIdIfPossible());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))
+          && !send(
+              socket,
+              PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+        throw new PipeConnectionException(
+            "Handshake error with target server ip: " + ip + ", port: " + port);
+      } else {
+        isSocketAlive.set(i, true);
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
+      }
+    }
+
+    for (int i = 0; i < sockets.size(); i++) {
+      if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+        return;
+      }
+    }
+    throw new PipeConnectionException(
+        String.format("All target servers %s are not available.", nodeUrls));
+  }
+
+  @Override
+  public void heartbeat() {
+    try {
+      handshake();
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
+          e.getMessage(),
+          e);
+    }
   }
 
   @Override

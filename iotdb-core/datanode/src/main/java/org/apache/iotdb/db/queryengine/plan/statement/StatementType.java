@@ -145,6 +145,7 @@ public enum StatementType {
   DROP_PIPESINK,
 
   CREATE_PIPE,
+  ALTER_PIPE,
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,
@@ -175,4 +176,5 @@ public enum StatementType {
   ALTER_LOGICAL_VIEW,
 
   PIPE_ENRICHED,
+  REPAIR_DATA
 }

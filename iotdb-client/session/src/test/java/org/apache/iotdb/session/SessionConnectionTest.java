@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -169,7 +170,9 @@ public class SessionConnectionTest {
         new SessionConnection(
             session,
             ZoneId.systemDefault(),
-            () -> Collections.singletonList(new TEndPoint("local", 12)));
+            () -> Collections.singletonList(new TEndPoint("local", 12)),
+            SessionConfig.MAX_RETRY_COUNT,
+            SessionConfig.RETRY_INTERVAL_IN_MS);
   }
 
   @Test(expected = IoTDBConnectionException.class)
@@ -187,7 +190,9 @@ public class SessionConnectionTest {
             session,
             new TEndPoint("localhost", 1234),
             ZoneId.systemDefault(),
-            () -> Collections.singletonList(new TEndPoint("local", 12)));
+            () -> Collections.singletonList(new TEndPoint("local", 12)),
+            SessionConfig.MAX_RETRY_COUNT,
+            SessionConfig.RETRY_INTERVAL_IN_MS);
   }
 
   @Test

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
@@ -33,7 +35,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
 import org.jline.reader.EndOfFileException;
-import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
 
 import java.io.IOException;
@@ -41,15 +42,13 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 
 /** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class Cli extends AbstractCli {
   private static CommandLine commandLine;
-  private static LineReader lineReader;
-
-  private static Properties info = new Properties();
+  // TODO: Make non-static
+  private static final Properties info = new Properties();
 
   /**
    * IoTDB Client main function.
@@ -58,6 +57,11 @@ public class Cli extends AbstractCli {
    * @throws ClassNotFoundException ClassNotFoundException
    */
   public static void main(String[] args) throws ClassNotFoundException, IOException {
+    runCli(new CliContext(System.in, System.out, System.err, ExitType.SYSTEM_EXIT), args);
+  }
+
+  public static void runCli(CliContext ctx, String[] args)
+      throws ClassNotFoundException, IOException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -65,39 +69,40 @@ public class Cli extends AbstractCli {
     commandLine = null;
 
     if (args == null || args.length == 0) {
-      println(
-          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
-              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
-      println("For more information, please check the following hint.");
+      ctx.getPrinter()
+          .println(
+              "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
+                  + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
+      ctx.getPrinter().println("For more information, please check the following hint.");
       hf.printHelp(SCRIPT_HINT, options, true);
-      System.exit(CODE_ERROR);
+      ctx.exit(CODE_ERROR);
     }
     init();
     String[] newArgs = removePasswordArgs(args);
     String[] newArgs2 = processExecuteArgs(newArgs);
-    boolean continues = parseCommandLine(options, newArgs2, hf);
+    boolean continues = parseCommandLine(ctx, options, newArgs2, hf);
     if (!continues) {
-      System.exit(CODE_ERROR);
+      ctx.exit(CODE_ERROR);
     }
 
     try {
-      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+      host = checkRequiredArg(ctx, HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(ctx, PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(ctx, USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
     } catch (ArgsErrorException e) {
-      println(IOTDB_ERROR_PREFIX + "Input params error because" + e.getMessage());
-      System.exit(CODE_ERROR);
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Input params error because" + e.getMessage());
+      ctx.exit(CODE_ERROR);
     } catch (Exception e) {
-      println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
-      System.exit(CODE_ERROR);
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
+      ctx.exit(CODE_ERROR);
     }
 
-    lineReader = JlineUtils.getLineReader(username, host, port);
-    serve();
+    ctx.setLineReader(JlineUtils.getLineReader(ctx, username, host, port));
+    serve(ctx);
   }
 
   private static void constructProperties() {
-    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
+    if (Boolean.parseBoolean(useSsl)) {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
@@ -106,7 +111,8 @@ public class Cli extends AbstractCli {
     info.setProperty("password", password);
   }
 
-  private static boolean parseCommandLine(Options options, String[] newArgs, HelpFormatter hf) {
+  private static boolean parseCommandLine(
+      CliContext ctx, Options options, String[] newArgs, HelpFormatter hf) {
     try {
       CommandLineParser parser = new DefaultParser();
       commandLine = parser.parse(options, newArgs);
@@ -124,22 +130,24 @@ public class Cli extends AbstractCli {
         setQueryTimeout(commandLine.getOptionValue(TIMEOUT_ARGS));
       }
     } catch (ParseException e) {
-      println(
-          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
-              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
-      println("For more information, please check the following hint.");
+      ctx.getPrinter()
+          .println(
+              "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
+                  + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
+      ctx.getPrinter().println("For more information, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
       return false;
     } catch (NumberFormatException e) {
-      println(
-          IOTDB_ERROR_PREFIX
-              + ": error format of max print row count, it should be an integer number");
+      ctx.getPrinter()
+          .println(
+              IOTDB_ERROR_PREFIX
+                  + ": error format of max print row count, it should be an integer number");
       return false;
     }
     return true;
   }
 
-  private static void serve() {
+  private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
       trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
@@ -147,19 +155,19 @@ public class Cli extends AbstractCli {
       password = commandLine.getOptionValue(PW_ARGS);
       constructProperties();
       if (hasExecuteSQL && password != null) {
-        executeSql();
+        executeSql(ctx);
       }
       if (password == null) {
-        password = lineReader.readLine("please input your password:", '\0');
+        password = ctx.getLineReader().readLine("please input your password:", '\0');
       }
-      receiveCommands(lineReader);
+      receiveCommands(ctx);
     } catch (Exception e) {
-      println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
-      System.exit(CODE_ERROR);
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
+      ctx.exit(CODE_ERROR);
     }
   }
 
-  private static void executeSql() throws TException {
+  private static void executeSql(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
@@ -167,15 +175,15 @@ public class Cli extends AbstractCli {
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      processCommand(execute, connection);
-      System.exit(lastProcessStatus);
+      processCommand(ctx, execute, connection);
+      ctx.exit(lastProcessStatus);
     } catch (SQLException e) {
-      println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
-      System.exit(CODE_ERROR);
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
+      ctx.exit(CODE_ERROR);
     }
   }
 
-  private static void receiveCommands(LineReader reader) throws TException {
+  private static void receiveCommands(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
@@ -184,46 +192,46 @@ public class Cli extends AbstractCli {
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
 
-      echoStarting();
-      displayLogo(properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
-      println(String.format("Successfully login at %s:%s", host, port));
+      echoStarting(ctx);
+      displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
+      ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
-        boolean readLine = readerReadLine(reader, connection);
+        boolean readLine = readerReadLine(ctx, connection);
         if (readLine) {
           break;
         }
       }
     } catch (SQLException e) {
-      println(
-          String.format(
-              "%s: %s Host is %s, port is %s.", IOTDB_ERROR_PREFIX, e.getMessage(), host, port));
-      System.exit(CODE_ERROR);
+      ctx.getErr()
+          .printf(
+              "%s: %s Host is %s, port is %s.%n", IOTDB_ERROR_PREFIX, e.getMessage(), host, port);
+      ctx.exit(CODE_ERROR);
     }
   }
 
-  private static boolean readerReadLine(LineReader reader, IoTDBConnection connection) {
+  private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
-      s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-      boolean continues = processCommand(s, connection);
+      s = ctx.getLineReader().readLine(IOTDB_CLI_PREFIX + "> ", null);
+      boolean continues = processCommand(ctx, s, connection);
       if (!continues) {
         return true;
       }
     } catch (UserInterruptException e) {
       // Exit on signal INT requires confirmation.
-      readLine(reader);
+      readLine(ctx);
     } catch (EndOfFileException e) {
       // Exit on EOF (usually by pressing CTRL+D).
-      System.exit(CODE_OK);
+      ctx.exit(CODE_OK);
     }
     return false;
   }
 
-  private static void readLine(LineReader reader) {
+  private static void readLine(CliContext ctx) {
     try {
-      reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
+      ctx.getLineReader().readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
     } catch (UserInterruptException | EndOfFileException e2) {
-      System.exit(CODE_OK);
+      ctx.exit(CODE_OK);
     }
   }
 }

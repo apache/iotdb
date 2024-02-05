@@ -20,7 +20,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 
 import java.nio.ByteBuffer;
 import java.util.Queue;
@@ -45,10 +44,10 @@ public interface ISegment<T, R> {
    *
    * @param key name of the record, not the alias
    * @param buffer content of the updated record
-   * @return index of keyAddressList, -1 for not found, exception for space run out
-   * @throws SegmentOverflowException if segment runs out of memory
+   * @return -1 for space not enough
+   * @throws for key not found
    */
-  int updateRecord(String key, T buffer) throws SegmentOverflowException, RecordDuplicatedException;
+  int updateRecord(String key, T buffer) throws MetadataException;
 
   int removeRecord(String key);
 

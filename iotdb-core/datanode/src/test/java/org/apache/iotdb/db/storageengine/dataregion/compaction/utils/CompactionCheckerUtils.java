@@ -117,9 +117,11 @@ public class CompactionCheckerUtils {
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
           List<Modification> seriesModifications = new LinkedList<>();
 
-          for (Modification modification : tsFileResource.getModFile().getModifications()) {
-            if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
-              seriesModifications.add(modification);
+          if (!"".equals(path.getMeasurement())) {
+            for (Modification modification : tsFileResource.getModFile().getModifications()) {
+              if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+                seriesModifications.add(modification);
+              }
             }
           }
           modifyChunkMetaData(chunkMetadataList, seriesModifications);

@@ -17,50 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.tools.it;
+package org.apache.iotdb.tool.integration;
 
-import org.apache.iotdb.cli.it.AbstractScript;
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.cli.AbstractScript;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+/*! The only way this test can pass, is if any of the tests in the previous build have left an instance of IoTDB running */
+@Ignore("This test has been moved to the Integration-Test module")
 public class ImportCsvTestIT extends AbstractScript {
 
-  private static String ip;
+  @Before
+  public void setUp() {}
 
-  private static String port;
+  @After
+  public void tearDown() {}
 
-  private static String toolsPath;
-
-  private static String libPath;
-
-  @BeforeClass
-  public static void setUp() {
-    EnvFactory.getEnv().initClusterEnvironment();
-    ip = EnvFactory.getEnv().getIP();
-    port = EnvFactory.getEnv().getPort();
-    toolsPath = EnvFactory.getEnv().getToolsPath();
-    libPath = EnvFactory.getEnv().getLibPath();
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  // TODO: add real tests
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
@@ -74,17 +52,22 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "````````````````````````````````````````````````",
+      "Starting IoTDB Client Import Script",
+      "````````````````````````````````````````````````",
+      "Encounter an error when connecting to server, because Fail to reconnect to server. "
+          + "Please check server status.127.0.0.1:6668"
     };
+    String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "import-csv.bat",
+            dir + File.separator + "tools" + File.separator + "import-csv.bat",
             "-h",
-            ip,
+            "127.0.0.1",
             "-p",
-            port,
+            "6668",
             "-u",
             "root",
             "-pw",
@@ -94,30 +77,33 @@ public class ImportCsvTestIT extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
-    builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "------------------------------------------",
+      "Starting IoTDB Client Import Script",
+      "------------------------------------------",
+      "Encounter an error when connecting to server, because Fail to reconnect to server. "
+          + "Please check server status.127.0.0.1:6668"
     };
+    String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "import-csv.sh",
+            dir + File.separator + "tools" + File.separator + "import-csv.sh",
             "-h",
-            ip,
+            "127.0.0.1",
             "-p",
-            port,
+            "6668",
             "-u",
             "root",
             "-pw",
             "root",
             "-f",
             "./");
-    builder.environment().put("CLASSPATH", libPath);
-    testOutput(builder, output, 0);
+    testOutput(builder, output, 1);
   }
 }

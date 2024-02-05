@@ -118,7 +118,7 @@ public class PipeInfoTest {
     Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
-    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
+    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(1, pipeTaskMeta);

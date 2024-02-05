@@ -33,6 +33,15 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -111,6 +120,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
           case DATANODE_HANDSHAKE:
             return handleTransferHandshake(
                 PipeTransferDataNodeHandshakeReq.fromTPipeTransferReq(req));
+          case HANDSHAKE_V1:
+            return handleTransferHandshakeV1(PipeTransferHandshakeV1Req.fromTPipeTransferReq(req));
+          case HANDSHAKE_V2:
+            return handleTransferHandshakeV2(PipeTransferHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
             return handleTransferTabletInsertNode(
                 PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
@@ -163,7 +176,139 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
     }
   }
 
-  private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
+  private TPipeTransferResp handleTransferHandshakeV1(PipeTransferHandshakeV1Req req) {
+    if (!CommonDescriptor.getInstance()
+        .getConfig()
+        .getTimestampPrecision()
+        .equals(req.getTimestampPrecision())) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "IoTDB receiver's timestamp precision %s, "
+                      + "connector's timestamp precision %s. Validation fails.",
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+                  req.getTimestampPrecision()));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+
+    // clear the original receiver file dir if exists
+    if (receiverFileDirWithIdSuffix.get() != null) {
+      if (receiverFileDirWithIdSuffix.get().exists()) {
+        try {
+          Files.delete(receiverFileDirWithIdSuffix.get().toPath());
+          LOGGER.info(
+              "Original receiver file dir {} was deleted.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Failed to delete original receiver file dir {}, because {}.",
+              receiverFileDirWithIdSuffix.get().getPath(),
+              e.getMessage());
+        }
+      } else {
+        LOGGER.info(
+            "Original receiver file dir {} is not existed. No need to delete.",
+            receiverFileDirWithIdSuffix.get().getPath());
+      }
+      receiverFileDirWithIdSuffix.set(null);
+    } else {
+      LOGGER.info("Current receiver file dir is null. No need to delete.");
+    }
+
+    // get next receiver file base dir by folder manager
+    if (Objects.isNull(folderManager)) {
+      LOGGER.error(
+          "Failed to init pipe receiver file folder manager because all disks of folders are full.");
+      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+    }
+    String receiverFileBaseDir;
+    try {
+      receiverFileBaseDir = folderManager.getNextFolder();
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Fail to create pipe receiver file folder because all disks of folders are full.", e);
+      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+    }
+
+    // create a new receiver file dir
+    final File newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
+    if (!newReceiverDir.exists()) {
+      if (newReceiverDir.mkdirs()) {
+        LOGGER.info("Receiver file dir {} was created.", newReceiverDir.getPath());
+      } else {
+        LOGGER.error("Failed to create receiver file dir {}.", newReceiverDir.getPath());
+      }
+    }
+    receiverFileDirWithIdSuffix.set(newReceiverDir);
+
+    LOGGER.info(
+        "Handshake successfully, receiver id = {}, receiver file dir = {}.",
+        receiverId.get(),
+        newReceiverDir.getPath());
+    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
+      throws IOException {
+    // Reject to handshake if the receiver can not take clusterId from config node.
+    final String clusterIdFromConfigNode = PipeAgent.runtime().getClusterIdIfPossible();
+    if (clusterIdFromConfigNode == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Receiver can not get clusterId from config node.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain sender's clusterId.
+    final String clusterIdFromHandshakeRequest =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID);
+    if (clusterIdFromHandshakeRequest == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR, "Handshake request does not contain clusterId.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the receiver and sender are from the same cluster.
+    if (Objects.equals(clusterIdFromConfigNode, clusterIdFromHandshakeRequest)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "Receiver and sender are from the same cluster %s.",
+                  clusterIdFromHandshakeRequest));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain timestampPrecision.
+    final String timestampPrecision =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    if (timestampPrecision == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Handshake request does not contain timestampPrecision.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Handle the handshake request as a v1 request.
+    return handleTransferHandshakeV1(
+        PipeTransferHandshakeV1Req.toTPipeTransferReq(timestampPrecision));
+  }
+
+  private TPipeTransferResp handleTransferTabletInsertNode(
+      PipeTransferTabletInsertNodeReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
     InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()

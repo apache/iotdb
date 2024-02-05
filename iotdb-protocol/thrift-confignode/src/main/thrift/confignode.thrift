@@ -624,6 +624,7 @@ struct TRegionInfo {
   8: optional string status
   9: optional string roleType
   10: optional i64 createTime
+  11: optional string internalAddress
 }
 
 struct TShowRegionResp {
@@ -701,6 +702,12 @@ struct TCreatePipeReq {
     2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
+}
+
+struct TAlterPipeReq {
+    1: required string pipeName
+    2: optional map<string, string> processorAttributes
+    3: optional map<string, string> connectorAttributes
 }
 
 // Deprecated, restored for compatibility
@@ -1224,6 +1231,9 @@ service IConfigNodeRPCService {
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
   common.TSStatus clearCache()
 
+  /** Check and repair unsorted tsfile by compaction */
+  common.TSStatus repairData()
+
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()
 
@@ -1339,6 +1349,9 @@ service IConfigNodeRPCService {
 
   /** Create Pipe */
   common.TSStatus createPipe(TCreatePipeReq req)
+
+  /** Alter Pipe */
+  common.TSStatus alterPipe(TAlterPipeReq req)
 
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
