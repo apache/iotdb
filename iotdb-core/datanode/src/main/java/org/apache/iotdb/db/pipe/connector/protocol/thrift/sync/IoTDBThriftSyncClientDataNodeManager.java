@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
@@ -51,5 +52,10 @@ public class IoTDBThriftSyncClientDataNodeManager extends IoTDBThriftSyncLeaderC
   protected PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
       throws IOException {
     return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
+  }
+
+  @Override
+  protected String getClusterId() {
+    return PipeAgent.runtime().getClusterIdIfPossible();
   }
 }

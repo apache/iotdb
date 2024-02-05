@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -245,7 +244,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
   protected TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
     // Reject to handshake if the receiver can not take clusterId from config node.
-    final String clusterIdFromConfigNode = PipeAgent.runtime().getClusterIdIfPossible();
+    final String clusterIdFromConfigNode = getClusterId();
     if (clusterIdFromConfigNode == null) {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -299,6 +298,8 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
           }
         }.convertToTPipeTransferReq(timestampPrecision));
   }
+
+  protected abstract String getClusterId();
 
   protected final TPipeTransferResp handleTransferFilePiece(
       PipeTransferFilePieceReq req, boolean isRequestThroughAirGap) throws IOException {

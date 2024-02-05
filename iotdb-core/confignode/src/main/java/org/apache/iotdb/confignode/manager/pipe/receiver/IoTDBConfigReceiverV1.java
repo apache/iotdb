@@ -226,6 +226,11 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   }
 
   @Override
+  protected String getClusterId() {
+    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
   }

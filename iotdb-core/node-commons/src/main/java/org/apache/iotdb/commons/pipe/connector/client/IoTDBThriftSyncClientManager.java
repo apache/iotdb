@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -144,9 +143,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-      params.put(
-          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
-          PipeAgent.runtime().getClusterIdIfPossible());
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV2Req(params));
@@ -192,6 +189,8 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
 
   protected abstract PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
       throws IOException;
+
+  protected abstract String getClusterId();
 
   public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
     final int clientSize = endPointList.size();
