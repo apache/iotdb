@@ -21,15 +21,9 @@ package org.apache.iotdb.udf.api.customizer.config;
 
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.time.ZoneId;
-
 public class UDAFConfigurations extends UDFConfigurations {
 
-  protected final ZoneId zoneId;
-
-  public UDAFConfigurations(ZoneId zoneId) {
-    this.zoneId = zoneId;
-  }
+  public UDAFConfigurations() {}
 
   public UDAFConfigurations setOutputDataType(Type outputDataType) {
     this.outputDataType = outputDataType;

@@ -31,7 +31,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -75,8 +74,8 @@ public class UDAFInformationInferrer {
             attributes);
     udaf.validate(new UDFParameterValidator(parameters));
 
-    // use ZoneId.systemDefault() because UDF's data type is ZoneId independent
-    UDAFConfigurations configurations = new UDAFConfigurations(ZoneId.systemDefault());
+    // currently UDAF configuration does not need Zone ID
+    UDAFConfigurations configurations = new UDAFConfigurations();
     udaf.beforeStart(parameters, configurations);
     udaf.beforeDestroy();
     return configurations;

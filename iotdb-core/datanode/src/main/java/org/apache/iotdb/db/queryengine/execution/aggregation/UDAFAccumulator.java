@@ -38,7 +38,6 @@ import org.apache.iotdb.udf.api.utils.ResultValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +62,7 @@ public class UDAFAccumulator implements Accumulator {
       Map<String, String> attributes,
       boolean isInputRaw) {
     this.functionName = functionName;
-    this.configurations = new UDAFConfigurations(ZoneId.systemDefault());
+    this.configurations = new UDAFConfigurations();
 
     List<String> childExpressionStrings =
         childrenExpressions.stream()
