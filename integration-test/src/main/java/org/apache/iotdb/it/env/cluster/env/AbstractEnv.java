@@ -443,17 +443,29 @@ public abstract class AbstractEnv implements BaseEnv {
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, Constant.Version version, String username, String password)
       throws SQLException {
-    String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
-    Connection writeConnection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-            System.getProperty("User", username),
-            System.getProperty("Password", password));
-    return new NodeConnection(
-        endpoint,
-        NodeConnection.NodeRole.DATA_NODE,
-        NodeConnection.ConnectionRole.WRITE,
-        writeConnection);
+    for (int i = 0; i < retryCount; i++) {
+      try {
+        String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+        Connection writeConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+                System.getProperty("User", username),
+                System.getProperty("Password", password));
+        return new NodeConnection(
+            endpoint,
+            NodeConnection.NodeRole.DATA_NODE,
+            NodeConnection.ConnectionRole.WRITE,
+            writeConnection);
+      } catch (Exception e) {
+        retryCount++;
+        try {
+          TimeUnit.SECONDS.sleep(1L);
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    throw new SQLException("Failed to get write connection");
   }
 
   protected List<NodeConnection> getReadConnections(
@@ -466,16 +478,30 @@ public abstract class AbstractEnv implements BaseEnv {
       endpoints.add(endpoint);
       readConnRequestDelegate.addRequest(
           () -> {
-            Connection readConnection =
-                DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-                    System.getProperty("User", username),
-                    System.getProperty("Password", password));
-            return new NodeConnection(
-                endpoint,
-                NodeConnection.NodeRole.DATA_NODE,
-                NodeConnection.ConnectionRole.READ,
-                readConnection);
+            for (int i = 0; i < retryCount; i++) {
+              try {
+                Connection readConnection =
+                    DriverManager.getConnection(
+                        Config.IOTDB_URL_PREFIX
+                            + endpoint
+                            + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+                        System.getProperty("User", username),
+                        System.getProperty("Password", password));
+                return new NodeConnection(
+                    endpoint,
+                    NodeConnection.NodeRole.DATA_NODE,
+                    NodeConnection.ConnectionRole.READ,
+                    readConnection);
+              } catch (Exception e) {
+                retryCount++;
+                try {
+                  TimeUnit.SECONDS.sleep(1L);
+                } catch (InterruptedException ex) {
+                  Thread.currentThread().interrupt();
+                }
+              }
+            }
+            return null;
           });
     }
     return readConnRequestDelegate.requestAll();

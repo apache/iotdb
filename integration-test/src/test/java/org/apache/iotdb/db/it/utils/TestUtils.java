@@ -631,7 +631,7 @@ public class TestUtils {
     }
   }
 
-  public static boolean restartCluster(BaseEnv env){
+  public static boolean restartCluster(BaseEnv env) {
     env.shutdownAllDataNodes();
     env.shutdownAllConfigNodes();
     env.startAllConfigNodes();
