@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
@@ -49,7 +49,7 @@ public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
 
   @Override
   protected byte[] getHandShakeBytes() throws IOException {
-    return PipeTransferConfigNodeHandshakeReq.toTPipeTransferBytes(
+    return PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 

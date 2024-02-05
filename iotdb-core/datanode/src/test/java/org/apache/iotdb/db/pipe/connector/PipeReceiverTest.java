@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 <<<<<<< HEAD
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1V1Req;
 =======
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 >>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
@@ -44,7 +44,7 @@ public class PipeReceiverTest {
     try {
       receiver.receive(
 <<<<<<< HEAD
-          PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
+          PipeTransferDataNodeHandshakeV1V1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
 =======
           PipeTransferHandshakeV1Req.toTPipeTransferReq(

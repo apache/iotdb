@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 <<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/client/IoTDBThriftAsyncClientManager.java
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1V1Req;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 =======
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -133,14 +133,8 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
     final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
     final AtomicReference<TPipeTransferResp> resp = new AtomicReference<>();
     final AtomicReference<Exception> exception = new AtomicReference<>();
-<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/client/IoTDBThriftAsyncClientManager.java
 
-    client.pipeTransfer(
-        PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
-=======
     final AsyncMethodCallback<TPipeTransferResp> callback =
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/async/IoTDBThriftAsyncClientManager.java
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(TPipeTransferResp response) {
@@ -210,7 +204,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
       exception.set(null);
 
       client.pipeTransfer(
-          PipeTransferHandshakeV1Req.toTPipeTransferReq(
+          PipeTransferDataNodeHandshakeV1V1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
           callback);
       waitHandshakeFinished(isHandshakeFinished);

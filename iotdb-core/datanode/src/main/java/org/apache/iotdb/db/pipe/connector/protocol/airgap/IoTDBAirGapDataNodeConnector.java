@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1V1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -32,7 +32,7 @@ import java.net.Socket;
 public abstract class IoTDBAirGapDataNodeConnector extends IoTDBAirGapCommonConnector {
   @Override
   protected byte[] getHandShakeBytes() throws IOException {
-    return PipeTransferDataNodeHandshakeReq.toTPipeTransferBytes(
+    return PipeTransferDataNodeHandshakeV1V1Req.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 

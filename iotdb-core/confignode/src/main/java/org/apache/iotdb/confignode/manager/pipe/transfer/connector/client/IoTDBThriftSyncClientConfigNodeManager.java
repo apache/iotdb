@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClien
 
   @Override
   protected TPipeTransferReq buildHandShakeReq() throws IOException {
-    return PipeTransferConfigNodeHandshakeReq.toTPipeTransferReq(
+    return PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferReq(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 }

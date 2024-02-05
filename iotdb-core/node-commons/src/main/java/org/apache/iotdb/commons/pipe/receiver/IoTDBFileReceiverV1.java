@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -163,7 +163,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
 
   /////////////////////////////// Handler ///////////////////////////////
 
-  protected TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
+  protected TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeV1Req req) {
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()

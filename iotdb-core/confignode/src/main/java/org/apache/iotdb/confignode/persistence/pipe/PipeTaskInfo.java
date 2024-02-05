@@ -321,7 +321,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName)
           && PipeStatus.STOPPED.equals(getPipeStatus(pipeName))
-          && !isStoppedByRuntimeException(pipeName);
+          && !shouldBeRunning(pipeName);
     } finally {
       releaseReadLock();
     }

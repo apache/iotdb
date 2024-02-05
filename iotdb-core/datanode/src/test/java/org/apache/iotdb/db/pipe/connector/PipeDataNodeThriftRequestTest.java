@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1V1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -60,10 +60,10 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferDataNodeHandshakeReq() throws IOException {
-    PipeTransferDataNodeHandshakeReq req =
-        PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(TIME_PRECISION);
-    PipeTransferDataNodeHandshakeReq deserializeReq =
-        PipeTransferDataNodeHandshakeReq.fromTPipeTransferReq(req);
+    PipeTransferDataNodeHandshakeV1V1Req req =
+        PipeTransferDataNodeHandshakeV1V1Req.toTPipeTransferReq(TIME_PRECISION);
+    PipeTransferDataNodeHandshakeV1V1Req deserializeReq =
+        PipeTransferDataNodeHandshakeV1V1Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
