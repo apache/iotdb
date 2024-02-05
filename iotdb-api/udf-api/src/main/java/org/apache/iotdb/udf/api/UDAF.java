@@ -36,9 +36,8 @@ public interface UDAF extends UDF {
    * values
    *
    * @param state state to be updated
-   * @param columns input columns from IoTDB TsBlock,
-   *                column[0] is always the time column,
-   *                the remaining columns are their parameter value columns
+   * @param columns input columns from IoTDB TsBlock, column[0] is always the time column, the
+   *     remaining columns are their parameter value columns
    * @param bitMap define some filtered position in columns
    */
   void addInput(State state, Column[] columns, BitMap bitMap);
