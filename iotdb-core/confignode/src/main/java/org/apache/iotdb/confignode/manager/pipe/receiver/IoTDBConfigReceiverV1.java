@@ -20,9 +20,10 @@
 package org.apache.iotdb.confignode.manager.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -30,23 +31,28 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -81,9 +87,12 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case CONFIGNODE_HANDSHAKE:
-            return handleTransferHandshake(
-                PipeTransferConfigNodeHandshakeReq.fromTPipeTransferReq(req));
+          case CONFIGNODE_HANDSHAKE_V1:
+            return handleTransferHandshakeV1(
+                PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
+          case CONFIGNODE_HANDSHAKE_V2:
+            return handleTransferHandshakeV2(
+                PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_PLAN:
             return handleTransferConfigPlan(PipeTransferConfigPlanReq.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
@@ -169,6 +178,21 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
                     ((PipeUnsetSchemaTemplatePlan) plan).getName(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getPath())
                 .setIsGeneratedByPipe(true));
+      case PipeDeleteTimeSeries:
+        return configManager.deleteTimeSeries(
+            new TDeleteTimeSeriesReq(
+                    getPseudoQueryId(), ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                .setIsGeneratedByPipe(true));
+      case PipeDeleteLogicalView:
+        return configManager.deleteLogicalView(
+            new TDeleteLogicalViewReq(
+                    getPseudoQueryId(), ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                .setIsGeneratedByPipe(true));
+      case PipeDeactivateTemplate:
+        return configManager
+            .getProcedureManager()
+            .deactivateTemplate(
+                getPseudoQueryId(), ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(), true);
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -199,6 +223,11 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   // Used to construct pipe related procedures
   private String getPseudoQueryId() {
     return "pipe" + System.currentTimeMillis() + queryIndex.getAndIncrement();
+  }
+
+  @Override
+  protected String getClusterId() {
+    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
   }
 
   @Override

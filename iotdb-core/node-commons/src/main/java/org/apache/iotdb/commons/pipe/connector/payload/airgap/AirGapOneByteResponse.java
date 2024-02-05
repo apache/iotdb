@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.common;
+package org.apache.iotdb.commons.pipe.connector.payload.airgap;
 
-public class PipeTransferHandshakeConstant {
+public class AirGapOneByteResponse {
 
-  public static final String HANDSHAKE_KEY_TIME_PRECISION = "timestampPrecision";
-  public static final String HANDSHAKE_KEY_CLUSTER_ID = "clusterID";
+  public static final byte[] OK = new byte[] {0};
+  public static final byte[] FAIL = new byte[] {(byte) 0xFF};
 
-  private PipeTransferHandshakeConstant() {
+  private AirGapOneByteResponse() {
     // Utility class
   }
 }

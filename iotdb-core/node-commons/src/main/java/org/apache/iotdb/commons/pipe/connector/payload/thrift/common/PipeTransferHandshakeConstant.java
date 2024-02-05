@@ -17,8 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.airgap;
+package org.apache.iotdb.commons.pipe.connector.payload.thrift.common;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+public class PipeTransferHandshakeConstant {
 
-public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}
+  public static final String HANDSHAKE_KEY_TIME_PRECISION = "timestampPrecision";
+  public static final String HANDSHAKE_KEY_CLUSTER_ID = "clusterID";
+
+  private PipeTransferHandshakeConstant() {
+    // Utility class
+  }
+}

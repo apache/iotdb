@@ -24,16 +24,11 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/client/IoTDBThriftAsyncClientManager.java
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-=======
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/async/IoTDBThriftAsyncClientManager.java
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -133,14 +128,8 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
     final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
     final AtomicReference<TPipeTransferResp> resp = new AtomicReference<>();
     final AtomicReference<Exception> exception = new AtomicReference<>();
-<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/client/IoTDBThriftAsyncClientManager.java
 
-    client.pipeTransfer(
-        PipeTransferDataNodeHandshakeReq.toTPipeTransferReq(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
-=======
     final AsyncMethodCallback<TPipeTransferResp> callback =
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/async/IoTDBThriftAsyncClientManager.java
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(TPipeTransferResp response) {
@@ -193,7 +182,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    client.pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params), callback);
+    client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
     waitHandshakeFinished(isHandshakeFinished);
 
     // Retry to handshake by PipeTransferHandshakeV1Req.
@@ -210,7 +199,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
       exception.set(null);
 
       client.pipeTransfer(
-          PipeTransferHandshakeV1Req.toTPipeTransferReq(
+          PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
           callback);
       waitHandshakeFinished(isHandshakeFinished);

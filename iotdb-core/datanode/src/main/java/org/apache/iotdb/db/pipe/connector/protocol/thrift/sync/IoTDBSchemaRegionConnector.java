@@ -17,23 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift.schema;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.commons.pipe.connector.payload.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBMetaConnector;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaPlanReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncClientDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWriteSchemaPlanEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,61 +43,33 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.List;
 
-public class IoTDBSchemaRegionConnector extends IoTDBMetaConnector {
+public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionConnector.class);
 
   @Override
-  protected IoTDBThriftSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
-    return new IoTDBThriftSyncClientDataNodeManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBSchemaRegionConnector can't transfer TabletInsertionEvent.");
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    throw new UnsupportedOperationException(
+        "IoTDBSchemaRegionConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
   public void transfer(Event event) throws Exception {
-    if (event instanceof PipeWriteSchemaPlanEvent) {
-      doTransfer((PipeWriteSchemaPlanEvent) event);
+    if (event instanceof PipeWritePlanNodeEvent) {
+      doTransfer((PipeWritePlanNodeEvent) event);
     } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
       doTransfer((PipeSchemaRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
     }
-  }
-
-  private void doTransfer(PipeWriteSchemaPlanEvent pipeWriteSchemaPlanEvent) throws PipeException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
-    final TPipeTransferResp resp;
-
-    try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferSchemaPlanReq.toTPipeTransferReq(
-                      pipeWriteSchemaPlanEvent.getPlanNode()));
-    } catch (Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer pipe write schema plan event, because %s.",
-              e.getMessage()),
-          e);
-    }
-    final TSStatus status = resp.getStatus();
-    exceptionHandler.handleExceptionStatus(
-        status,
-        String.format(
-            "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",
-            pipeWriteSchemaPlanEvent, status),
-        pipeWriteSchemaPlanEvent.getPlanNode().toString());
   }
 
   private void doTransfer(PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)

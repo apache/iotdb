@@ -81,7 +81,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private boolean noExtractData = true;
+  private boolean noExtract = true;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -92,10 +92,9 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
     if (dataRegionListenPair.getLeft().equals(false)
         && dataRegionListenPair.getRight().equals(false)) {
-      // TODO: judge deletion listening logic
       return;
     }
-    noExtractData = false;
+    noExtract = false;
 
     // Check whether the pattern is legal
     validatePattern(
@@ -259,7 +258,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    if (noExtractData) {
+    if (noExtract) {
       return;
     }
     super.customize(parameters, configuration);
@@ -273,7 +272,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    if (noExtractData) {
+    if (noExtract) {
       return;
     }
     super.start();
@@ -324,7 +323,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
       LOGGER.warn(
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
-          dataRegionId,
+          regionId,
           historicalExtractor,
           realtimeExtractor,
           e);
@@ -339,7 +338,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public Event supply() throws Exception {
-    if (noExtractData) {
+    if (noExtract) {
       return null;
     }
     Event event =
@@ -360,7 +359,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
-    if (noExtractData) {
+    if (noExtract) {
       return;
     }
     historicalExtractor.close();

@@ -19,37 +19,37 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 
-public class PipeTransferDataNodeHandshakeReq extends PipeTransferHandshakeReq {
+public class PipeTransferDataNodeHandshakeV1Req extends PipeTransferHandshakeV1Req {
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.DATANODE_HANDSHAKE;
+    return PipeRequestType.DATANODE_HANDSHAKE_V1;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferDataNodeHandshakeReq toTPipeTransferReq(String timestampPrecision)
+  public static PipeTransferDataNodeHandshakeV1Req toTPipeTransferReq(String timestampPrecision)
       throws IOException {
-    return (PipeTransferDataNodeHandshakeReq)
-        new PipeTransferDataNodeHandshakeReq().convertToTPipeTransferReq(timestampPrecision);
+    return (PipeTransferDataNodeHandshakeV1Req)
+        new PipeTransferDataNodeHandshakeV1Req().convertToTPipeTransferReq(timestampPrecision);
   }
 
-  public static PipeTransferDataNodeHandshakeReq fromTPipeTransferReq(
+  public static PipeTransferDataNodeHandshakeV1Req fromTPipeTransferReq(
       TPipeTransferReq transferReq) {
-    return (PipeTransferDataNodeHandshakeReq)
-        new PipeTransferDataNodeHandshakeReq().translateFromTPipeTransferReq(transferReq);
+    return (PipeTransferDataNodeHandshakeV1Req)
+        new PipeTransferDataNodeHandshakeV1Req().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
-    return new PipeTransferDataNodeHandshakeReq()
+    return new PipeTransferDataNodeHandshakeV1Req()
         .convertToTransferHandshakeBytes(timestampPrecision);
   }
 
@@ -57,7 +57,7 @@ public class PipeTransferDataNodeHandshakeReq extends PipeTransferHandshakeReq {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeTransferDataNodeHandshakeReq && super.equals(obj);
+    return obj instanceof PipeTransferDataNodeHandshakeV1Req && super.equals(obj);
   }
 
   @Override

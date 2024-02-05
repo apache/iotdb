@@ -25,14 +25,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/tools/it/ImportCsvTestIT.java
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-=======
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-client/cli/src/test/java/org/apache/iotdb/tool/integration/ImportCsvTestIT.java
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -40,13 +34,8 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.IOException;
 
-<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/tools/it/ImportCsvTestIT.java
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-=======
-/*! The only way this test can pass, is if any of the tests in the previous build have left an instance of IoTDB running */
-@Ignore("This test has been moved to the Integration-Test module")
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-client/cli/src/test/java/org/apache/iotdb/tool/integration/ImportCsvTestIT.java
 public class ImportCsvTestIT extends AbstractScript {
 
   private static String ip;
@@ -57,7 +46,7 @@ public class ImportCsvTestIT extends AbstractScript {
 
   private static String libPath;
 
-  @BeforeClass
+  @Before
   public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     ip = EnvFactory.getEnv().getIP();
@@ -66,7 +55,7 @@ public class ImportCsvTestIT extends AbstractScript {
     libPath = EnvFactory.getEnv().getLibPath();
   }
 
-  @AfterClass
+  @After
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }

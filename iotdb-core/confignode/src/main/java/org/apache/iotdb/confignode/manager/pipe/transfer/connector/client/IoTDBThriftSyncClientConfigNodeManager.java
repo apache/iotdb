@@ -22,11 +22,14 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClientManager {
 
@@ -36,8 +39,19 @@ public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClien
   }
 
   @Override
-  protected TPipeTransferReq buildHandShakeReq() throws IOException {
-    return PipeTransferConfigNodeHandshakeReq.toTPipeTransferReq(
+  protected PipeTransferConfigNodeHandshakeV1Req buildHandshakeV1Req() throws IOException {
+    return PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferReq(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  protected PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
+      throws IOException {
+    return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(params);
+  }
+
+  @Override
+  protected String getClusterId() {
+    return ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId();
   }
 }

@@ -19,44 +19,45 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.util.Map;
 
-public class PipeTransferConfigNodeHandshakeReq extends PipeTransferHandshakeReq {
+public class PipeTransferConfigNodeHandshakeV2Req extends PipeTransferHandshakeV2Req {
+
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.CONFIGNODE_HANDSHAKE;
+    return PipeRequestType.CONFIGNODE_HANDSHAKE_V2;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferConfigNodeHandshakeReq toTPipeTransferReq(String timestampPrecision)
+  public static PipeTransferConfigNodeHandshakeV2Req toTPipeTransferReq(Map<String, String> params)
       throws IOException {
-    return (PipeTransferConfigNodeHandshakeReq)
-        new PipeTransferConfigNodeHandshakeReq().convertToTPipeTransferReq(timestampPrecision);
+    return (PipeTransferConfigNodeHandshakeV2Req)
+        new PipeTransferConfigNodeHandshakeV2Req().convertToTPipeTransferReq(params);
   }
 
-  public static PipeTransferConfigNodeHandshakeReq fromTPipeTransferReq(
+  public static PipeTransferConfigNodeHandshakeV2Req fromTPipeTransferReq(
       TPipeTransferReq transferReq) {
-    return (PipeTransferConfigNodeHandshakeReq)
-        new PipeTransferConfigNodeHandshakeReq().translateFromTPipeTransferReq(transferReq);
+    return (PipeTransferConfigNodeHandshakeV2Req)
+        new PipeTransferConfigNodeHandshakeV2Req().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
-    return new PipeTransferConfigNodeHandshakeReq()
-        .convertToTransferHandshakeBytes(timestampPrecision);
+  public static byte[] toTPipeTransferBytes(Map<String, String> params) throws IOException {
+    return new PipeTransferConfigNodeHandshakeV2Req().convertToTransferHandshakeBytes(params);
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeTransferConfigNodeHandshakeReq && super.equals(obj);
+    return obj instanceof PipeTransferConfigNodeHandshakeV2Req && super.equals(obj);
   }
 
   @Override

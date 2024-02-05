@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -40,7 +40,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
+public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testBasicPipeAlter() throws Exception {

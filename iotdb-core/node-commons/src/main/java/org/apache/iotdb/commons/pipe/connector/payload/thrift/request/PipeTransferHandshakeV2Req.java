@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
+package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.apache.thrift.TException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,26 +30,21 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
-
+public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
   private transient Map<String, String> params;
-
-  private PipeTransferHandshakeV2Req() {
-    // Empty constructor
-  }
 
   public Map<String, String> getParams() {
     return params;
   }
 
+  protected abstract PipeRequestType getPlanType();
+
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferHandshakeV2Req toTPipeTransferReq(Map<String, String> params)
-      throws TException, IOException {
-    final PipeTransferHandshakeV2Req handshakeReq = new PipeTransferHandshakeV2Req();
-
-    handshakeReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    handshakeReq.type = PipeRequestType.HANDSHAKE_V2.getType();
+  protected final PipeTransferHandshakeV2Req convertToTPipeTransferReq(Map<String, String> params)
+      throws IOException {
+    this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(params.size(), outputStream);
@@ -61,18 +52,15 @@ public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
-      handshakeReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
-    handshakeReq.params = params;
-
-    return handshakeReq;
+    this.params = params;
+    return this;
   }
 
-  public static PipeTransferHandshakeV2Req fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferHandshakeV2Req handshakeReq = new PipeTransferHandshakeV2Req();
-
+  protected final PipeTransferHandshakeV2Req translateFromTPipeTransferReq(
+      TPipeTransferReq transferReq) {
     Map<String, String> params = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
@@ -80,22 +68,23 @@ public class PipeTransferHandshakeV2Req extends TPipeTransferReq {
       final String value = ReadWriteIOUtils.readString(transferReq.body);
       params.put(key, value);
     }
-    handshakeReq.params = params;
+    this.params = params;
 
-    handshakeReq.version = transferReq.version;
-    handshakeReq.type = transferReq.type;
-    handshakeReq.body = transferReq.body;
+    version = transferReq.version;
+    type = transferReq.type;
+    body = transferReq.body;
 
-    return handshakeReq;
+    return this;
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTransferHandshakeBytes(HashMap<String, String> params) throws IOException {
+  public final byte[] convertToTransferHandshakeBytes(Map<String, String> params)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE_V2.getType(), outputStream);
+      ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
       ReadWriteIOUtils.write(params.size(), outputStream);
       for (final Map.Entry<String, String> entry : params.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);

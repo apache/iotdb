@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.request;
+package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
 public enum IoTDBConnectorRequestVersion {
   VERSION_1((byte) 1),

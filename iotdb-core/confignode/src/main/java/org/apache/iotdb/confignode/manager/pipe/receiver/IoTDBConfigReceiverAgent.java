@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.receiver;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
 public class IoTDBConfigReceiverAgent extends IoTDBReceiverAgent {

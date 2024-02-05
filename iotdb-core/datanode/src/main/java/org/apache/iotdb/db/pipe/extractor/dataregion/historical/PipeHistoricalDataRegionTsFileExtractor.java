@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -49,6 +51,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
@@ -92,6 +95,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+
+  private boolean needExtractData;
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -171,8 +176,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration) {
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+      throws IllegalPathException {
+    needExtractData = PipeDataRegionFilter.getDataRegionListenPair(parameters).getLeft();
+    // Do nothing if only extract deletion
+    if (!needExtractData) {
+      return;
+    }
+
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
@@ -191,9 +202,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             EXTRACTOR_PATTERN_DEFAULT_VALUE);
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
-    if (dataRegion != null) {
+    if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (databaseName != null
+      if (Objects.nonNull(databaseName)
           && pattern.length() <= databaseName.length()
           && databaseName.startsWith(pattern)) {
         isDbNameCoveredByPattern = true;
@@ -254,9 +265,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             .contains("time");
 
     LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
-        pipeName,
-        dataRegionId,
+        "historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
         DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
         historicalDataExtractionStartTime,
         DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
@@ -267,7 +276,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private void flushDataRegionAllTsFiles() {
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) {
+    if (Objects.isNull(dataRegion)) {
       return;
     }
 
@@ -281,9 +290,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
+    if (!needExtractData) {
+      return;
+    }
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) {
+    if (Objects.isNull(dataRegion)) {
       pendingQueue = new ArrayDeque<>();
       return;
     }
@@ -291,42 +303,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
-      LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
       synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
         final long lastFlushedByPipeTime =
             DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
         if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
           dataRegion.syncCloseAllWorkingTsFileProcessors();
           DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
-          LOGGER.info(
-              "Pipe {}@{}: finish to flush data region, took {} ms",
-              pipeName,
-              dataRegionId,
-              System.currentTimeMillis() - startHistoricalExtractionTime);
-        } else {
-          LOGGER.info(
-              "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
-              pipeName,
-              dataRegionId,
-              System.currentTimeMillis() - lastFlushedByPipeTime);
         }
       }
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
-        final int originalSequenceTsFileCount = tsFileManager.size(true);
-        final int originalUnsequenceTsFileCount = tsFileManager.size(false);
         final List<TsFileResource> resourceList =
-            new ArrayList<>(originalSequenceTsFileCount + originalUnsequenceTsFileCount);
-        LOGGER.info(
-            "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-                + "original unsequence file count {}, start progress index {}",
-            pipeName,
-            dataRegionId,
-            originalSequenceTsFileCount,
-            originalUnsequenceTsFileCount,
-            startIndex);
+            new ArrayList<>(tsFileManager.size(true) + tsFileManager.size(false));
 
         final Collection<TsFileResource> sequenceTsFileResources =
             tsFileManager.getTsFileList(true).stream()
@@ -376,16 +366,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(
-            "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
-                + "extracted unsequence file count {}/{}, extracted file count {}/{}, took {} ms",
-            pipeName,
+            "Pipe: start to extract historical TsFile, data region {}, "
+                + "sequence file count {}, unsequence file count {}, historical extraction time {} ms",
             dataRegionId,
             sequenceTsFileResources.size(),
-            originalSequenceTsFileCount,
             unsequenceTsFileResources.size(),
-            originalUnsequenceTsFileCount,
-            resourceList.size(),
-            originalSequenceTsFileCount + originalUnsequenceTsFileCount,
             System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
@@ -411,12 +396,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           <= TsFileNameGenerator.getTsFileName(resource.getTsFile().getName()).getTime();
     } catch (IOException e) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to get the generation time of TsFile {}, extract it anyway"
-              + " (historical data extraction time lower bound: {})",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath(),
-          historicalDataExtractionTimeLowerBound,
+          String.format(
+              "failed to get the generation time of TsFile %s, extract it anyway",
+              resource.getTsFilePath()),
           e);
       // If failed to get the generation time of the TsFile, we will extract the data in the TsFile
       // anyway.
@@ -426,7 +408,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
-    if (pendingQueue == null) {
+    if (!needExtractData || Objects.isNull(pendingQueue)) {
       return null;
     }
     TsFileResource resource = pendingQueue.poll();
@@ -457,9 +439,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
     } catch (IOException e) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-          pipeName,
-          dataRegionId,
+          "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
           resource.getTsFilePath());
     }
 
@@ -467,26 +447,24 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   public synchronized boolean hasConsumedAll() {
-    return pendingQueue != null && pendingQueue.isEmpty();
+    return !needExtractData || (Objects.nonNull(pendingQueue) && pendingQueue.isEmpty());
   }
 
   @Override
   public int getPendingQueueSize() {
-    return pendingQueue != null ? pendingQueue.size() : 0;
+    return Objects.nonNull(pendingQueue) ? pendingQueue.size() : 0;
   }
 
   @Override
   public synchronized void close() {
-    if (pendingQueue != null) {
+    if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
             try {
               PipeResourceManager.tsfile().unpinTsFileResource(resource);
             } catch (IOException e) {
               LOGGER.warn(
-                  "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
-                  pipeName,
-                  dataRegionId,
+                  "Pipe: failed to unpin TsFileResource after dropping pipe, original path: {}",
                   resource.getTsFilePath());
             }
           });

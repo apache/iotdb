@@ -64,8 +64,8 @@ public class PipeUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.name = ReadWriteIOUtils.readString(buffer);
-    this.path = ReadWriteIOUtils.readString(buffer);
+    name = ReadWriteIOUtils.readString(buffer);
+    path = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -83,5 +83,10 @@ public class PipeUnsetSchemaTemplatePlan extends ConfigPhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(name, path);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeUnsetSchemaTemplatePlan{" + "name='" + name + "'path='" + path + "'}";
   }
 }
