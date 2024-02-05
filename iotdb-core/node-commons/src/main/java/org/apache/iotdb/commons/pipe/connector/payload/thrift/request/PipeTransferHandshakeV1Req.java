@@ -40,7 +40,7 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  protected final PipeTransferHandshakeV1Req convertToTPipeTransferReq(String timestampPrecision)
+  public final PipeTransferHandshakeV1Req convertToTPipeTransferReq(String timestampPrecision)
       throws IOException {
     this.timestampPrecision = timestampPrecision;
 

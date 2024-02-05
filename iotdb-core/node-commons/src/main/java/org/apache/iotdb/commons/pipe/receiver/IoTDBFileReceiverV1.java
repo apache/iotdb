@@ -21,11 +21,15 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -236,6 +240,64 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
         receiverId.get(),
         newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  protected TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
+      throws IOException {
+    // Reject to handshake if the receiver can not take clusterId from config node.
+    final String clusterIdFromConfigNode = PipeAgent.runtime().getClusterIdIfPossible();
+    if (clusterIdFromConfigNode == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Receiver can not get clusterId from config node.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain sender's clusterId.
+    final String clusterIdFromHandshakeRequest =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID);
+    if (clusterIdFromHandshakeRequest == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR, "Handshake request does not contain clusterId.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the receiver and sender are from the same cluster.
+    if (Objects.equals(clusterIdFromConfigNode, clusterIdFromHandshakeRequest)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "Receiver and sender are from the same cluster %s.",
+                  clusterIdFromHandshakeRequest));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain timestampPrecision.
+    final String timestampPrecision =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    if (timestampPrecision == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              "Handshake request does not contain timestampPrecision.");
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    }
+
+    // Handle the handshake request as a v1 request.
+    return handleTransferHandshakeV1(
+        new PipeTransferHandshakeV1Req() {
+          @Override
+          protected PipeRequestType getPlanType() {
+            return null;
+          }
+        }.convertToTPipeTransferReq(timestampPrecision));
   }
 
   protected final TPipeTransferResp handleTransferFilePiece(

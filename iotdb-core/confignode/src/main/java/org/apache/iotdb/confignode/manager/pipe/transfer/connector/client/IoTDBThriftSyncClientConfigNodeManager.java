@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
 
 import java.io.IOException;
 import java.util.List;
@@ -45,6 +46,6 @@ public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClien
   @Override
   protected PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
       throws IOException {
-    return null;
+    return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferReq(params);
   }
 }

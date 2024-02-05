@@ -42,11 +42,11 @@ public enum PipeRequestType {
   TRANSFER_SCHEMA_SNAPSHOT_SEAL((short) 10),
 
   TRANSFER_CONFIG_PLAN((short) 11),
+  DATANODE_HANDSHAKE_V2((short) 12),
+  CONFIGNODE_HANDSHAKE_V2((short) 13),
 
-  TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 12),
-  TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 13),
-
-  DATANODE_HANDSHAKE_V2((short) 14),
+  TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 14),
+  TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 15),
   ;
 
   private final short type;

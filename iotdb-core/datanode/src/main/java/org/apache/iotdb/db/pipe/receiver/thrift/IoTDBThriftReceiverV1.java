@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -111,6 +112,9 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
           case DATANODE_HANDSHAKE_V1:
             return handleTransferHandshakeV1(
                 PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
+          case DATANODE_HANDSHAKE_V2:
+            return handleTransferHandshakeV2(
+                PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
             return handleTransferTabletInsertNode(
                 PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
@@ -139,6 +143,7 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
             // Config Requests will first be received by the DataNode receiver,
             // then transferred to configNode receiver to execute.
           case CONFIGNODE_HANDSHAKE_V1:
+          case CONFIGNODE_HANDSHAKE_V2:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
