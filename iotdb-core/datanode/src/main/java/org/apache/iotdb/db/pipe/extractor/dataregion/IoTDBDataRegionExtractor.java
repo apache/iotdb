@@ -323,7 +323,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
       LOGGER.warn(
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
-          dataRegionId,
+          regionId,
           historicalExtractor,
           realtimeExtractor,
           e);

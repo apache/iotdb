@@ -290,11 +290,13 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
     }
 
     // Handle the handshake request as a v1 request.
+    // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
+    // it may not require the actual type of the v1 request.
     return handleTransferHandshakeV1(
         new PipeTransferHandshakeV1Req() {
           @Override
           protected PipeRequestType getPlanType() {
-            return null;
+            return PipeRequestType.DATANODE_HANDSHAKE_V1;
           }
         }.convertToTPipeTransferReq(timestampPrecision));
   }

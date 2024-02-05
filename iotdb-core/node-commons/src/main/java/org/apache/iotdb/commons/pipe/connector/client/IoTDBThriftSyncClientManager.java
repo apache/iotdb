@@ -91,7 +91,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
-  private void reconstructClient(TEndPoint endPoint) {
+  protected void reconstructClient(TEndPoint endPoint) {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
