@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -195,6 +196,7 @@ import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -227,6 +229,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -1661,17 +1664,46 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
+    // Get pipe static meta
+    final String pipeName = alterPipeStatement.getPipeName();
+    final PipeStaticMeta pipeStaticMeta = PipeAgent.task().getPipeStaticMeta(pipeName);
+    if (Objects.isNull(pipeStaticMeta)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to alter pipe %s, the pipe does not exist", pipeName),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     // Validate before alteration
     try {
-      if (!alterPipeStatement.getProcessorAttributes().isEmpty()
-          && alterPipeStatement.isReplaceAllProcessorAttributes()) {
-        PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
+          PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+        } else { // modify mode
+          PipeAgent.plugin()
+              .validateProcessor(
+                  pipeStaticMeta
+                      .getProcessorParameters()
+                      .addOrReplaceEquivalentAttributes(
+                          new PipeParameters(alterPipeStatement.getProcessorAttributes()))
+                      .getAttribute());
+        }
       }
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()
-          && alterPipeStatement.isReplaceAllConnectorAttributes()) {
-        PipeAgent.plugin()
-            .validateConnector(
-                alterPipeStatement.getPipeName(), alterPipeStatement.getConnectorAttributes());
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
+        if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+          PipeAgent.plugin()
+              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+        } else { // modify mode
+          PipeAgent.plugin()
+              .validateConnector(
+                  pipeName,
+                  pipeStaticMeta
+                      .getConnectorParameters()
+                      .addOrReplaceEquivalentAttributes(
+                          new PipeParameters(alterPipeStatement.getConnectorAttributes()))
+                      .getAttribute());
+        }
       }
     } catch (Exception e) {
       LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
@@ -1684,17 +1716,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TAlterPipeReq req =
           new TAlterPipeReq(
-              alterPipeStatement.getPipeName(),
+              pipeName,
               alterPipeStatement.getProcessorAttributes(),
               alterPipeStatement.getConnectorAttributes(),
               alterPipeStatement.isReplaceAllProcessorAttributes(),
               alterPipeStatement.isReplaceAllConnectorAttributes());
       TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to alter pipe {} in config node, status is {}.",
-            alterPipeStatement.getPipeName(),
-            tsStatus);
+        LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

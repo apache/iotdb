@@ -26,6 +26,8 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,10 +51,7 @@ public class PipeParameters {
   private final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
-    // Reduce keys using {@link KeyReducer} before storing.
-    this.attributes =
-        attributes.entrySet().stream()
-            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue));
+    this.attributes = attributes;
   }
 
   public Map<String, String> getAttribute() {
@@ -283,15 +282,44 @@ public class PipeParameters {
   }
 
   /**
-   * This method adds (non-existed) or replaces (existed) attributes in this PipeParameters with
-   * those from another PipeParameters.
+   * This method adds (non-existed) or replaces (existed) equivalent attributes in this
+   * PipeParameters with those from another PipeParameters.
    *
    * @param that provide the key that needs to be updated along with the value
    * @return this pipe parameters
    */
-  public PipeParameters addOrReplaceAttributes(PipeParameters that) {
-    that.attributes.forEach((k, v) -> this.attributes.put(KeyReducer.reduce(k), v));
+  public PipeParameters addOrReplaceEquivalentAttributes(PipeParameters that) {
+    Map<String, Entry<String, String>> thisMap =
+        this.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    Map<String, Entry<String, String>> thatMap =
+        that.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    thatMap.forEach(
+        (key, entry) -> {
+          for (String replacedKey : getReplacedKeys(key)) {
+            this.attributes.remove(thisMap.getOrDefault(replacedKey, entry).getKey());
+          }
+          this.attributes.put(entry.getKey(), entry.getValue());
+        });
     return this;
+  }
+
+  /**
+   * This method retrieves the keys that need to be replaced during the key update process in
+   * `addOrReplaceEquivalentAttributes`.
+   *
+   * @param key the key that need to be updated
+   * @return associated keys that need to be replaced
+   */
+  private List<String> getReplacedKeys(String key) {
+    if ("ip".equals(key)) {
+      return Arrays.asList(key, "node-urls", "host");
+    }
+    if ("node-urls".equals(key)) {
+      return Arrays.asList(key, "ip", "host");
+    }
+    return Collections.singletonList(key);
   }
 
   private static class KeyReducer {
@@ -321,6 +349,7 @@ public class PipeParameters {
   }
 
   public static class ValueHider {
+
     private static final Set<String> KEYS = new HashSet<>();
 
     private static final String PLACEHOLDER = "******";

@@ -199,7 +199,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       alterPipeRequest.setProcessorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getProcessorParameters()
-              .addOrReplaceAttributes(new PipeParameters(alterPipeRequest.getProcessorAttributes()))
+              .addOrReplaceEquivalentAttributes(
+                  new PipeParameters(alterPipeRequest.getProcessorAttributes()))
               .getAttribute());
     }
     if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
@@ -209,7 +210,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
       alterPipeRequest.setConnectorAttributes(
           copiedPipeStaticMetaFromCoordinator
               .getConnectorParameters()
-              .addOrReplaceAttributes(new PipeParameters(alterPipeRequest.getConnectorAttributes()))
+              .addOrReplaceEquivalentAttributes(
+                  new PipeParameters(alterPipeRequest.getConnectorAttributes()))
               .getAttribute());
     }
   }
