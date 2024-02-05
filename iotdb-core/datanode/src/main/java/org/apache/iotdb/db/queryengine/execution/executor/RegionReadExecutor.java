@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -92,7 +91,7 @@ public class RegionReadExecutor {
         resp.setMessage(info.getMessage());
       }
       return resp;
-    } catch (ConsensusException e) {
+    } catch (Throwable e) {
       LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
       resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
       Throwable t = e.getCause();
