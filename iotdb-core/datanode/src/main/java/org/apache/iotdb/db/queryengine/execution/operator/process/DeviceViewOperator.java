@@ -84,6 +84,9 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   private Operator getCurDeviceOperator() {
+    if (deviceIndex >= deviceOperators.size()) {
+      System.out.printf("aaa");
+    }
     return deviceOperators.get(deviceIndex);
   }
 

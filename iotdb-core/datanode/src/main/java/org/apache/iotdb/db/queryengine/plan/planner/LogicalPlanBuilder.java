@@ -806,14 +806,14 @@ public class LogicalPlanBuilder {
             valueFilterLimit);
       } else {
         // has order by expression, use TopKNode + DeviceViewNode
+
         topKNode.addChild(
             addDeviceViewNode(
                 orderByParameter,
                 outputColumnNames,
                 deviceToMeasurementIndexesMap,
                 deviceNameToSourceNodesMap,
-                valueFilterLimit,
-                queryStatement.isAggregationQuery()));
+                valueFilterLimit));
       }
 
       analysis.setUseTopKNode();
@@ -832,14 +832,23 @@ public class LogicalPlanBuilder {
       this.root = mergeSortNode;
     } else {
       // order by based on device, use DeviceViewNode
-      this.root =
-          addDeviceViewNode(
-              orderByParameter,
-              outputColumnNames,
-              deviceToMeasurementIndexesMap,
-              deviceNameToSourceNodesMap,
-              -1,
-              queryStatement.isAggregationQuery());
+      if (queryStatement.isAggregationQuery()) {
+        this.root =
+            addAggMergeSortNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap,
+                -1);
+      } else {
+        this.root =
+            addDeviceViewNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap,
+                -1);
+      }
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
@@ -914,29 +923,18 @@ public class LogicalPlanBuilder {
     }
   }
 
-  private DeviceViewNode addDeviceViewNode(
+  private MultiChildProcessNode addDeviceViewNode(
       OrderByParameter orderByParameter,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
-      long valueFilterLimit,
-      boolean isAggregation) {
-    DeviceViewNode deviceViewNode;
-    if (isAggregation) {
-      deviceViewNode =
-          new AggMergeSortNode(
-              context.getQueryId().genPlanNodeId(),
-              orderByParameter,
-              outputColumnNames,
-              deviceToMeasurementIndexesMap);
-    } else {
-      deviceViewNode =
-          new DeviceViewNode(
-              context.getQueryId().genPlanNodeId(),
-              orderByParameter,
-              outputColumnNames,
-              deviceToMeasurementIndexesMap);
-    }
+      long valueFilterLimit) {
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            context.getQueryId().genPlanNodeId(),
+            orderByParameter,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap);
 
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
@@ -950,6 +948,33 @@ public class LogicalPlanBuilder {
       }
     }
     return deviceViewNode;
+  }
+
+  private MultiChildProcessNode addAggMergeSortNode(
+      OrderByParameter orderByParameter,
+      List<String> outputColumnNames,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      long valueFilterLimit) {
+    AggMergeSortNode aggMergeSortNode =
+        new AggMergeSortNode(
+            context.getQueryId().genPlanNodeId(),
+            orderByParameter,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap);
+
+    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      PlanNode subPlan = entry.getValue();
+      if (valueFilterLimit > 0) {
+        LimitNode limitNode =
+            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
+        aggMergeSortNode.addChildDeviceNode(deviceName, limitNode);
+      } else {
+        aggMergeSortNode.addChildDeviceNode(deviceName, subPlan);
+      }
+    }
+    return aggMergeSortNode;
   }
 
   public LogicalPlanBuilder planGroupByLevel(

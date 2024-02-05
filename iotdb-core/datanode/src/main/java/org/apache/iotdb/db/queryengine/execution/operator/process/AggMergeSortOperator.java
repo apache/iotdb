@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -42,8 +41,8 @@ import java.util.List;
  * it to the form we need, adding the device column and allocating value column to its expected
  * location, then get the next device operator until no next device.
  *
- * <p>The deviceOperators can be timeJoinOperator or seriesScanOperator that have not transformed
- * the result form.
+ * <p>The deviceOperators can be aggregationSeriesScanOperator, imeJoinOperator or
+ * seriesScanOperator that have not transformed the result form.
  *
  * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
  * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
@@ -119,6 +118,10 @@ public class AggMergeSortOperator implements ProcessOperator {
       return null;
     }
 
+    boolean deviceView =
+        getCurDeviceOperator() instanceof DeviceViewOperator
+            || getCurDeviceOperator() instanceof ExchangeOperator;
+
     TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
@@ -128,11 +131,11 @@ public class AggMergeSortOperator implements ProcessOperator {
     // fill existing columns
     Column[] newValueColumns = new Column[dataTypes.size()];
     for (int i = 0; i < indexes.size(); i++) {
-      newValueColumns[indexes.get(i)] = tsBlock.getColumn(i);
+      newValueColumns[indexes.get(i)] = tsBlock.getColumn(deviceView ? i + 1 : i);
     }
     // construct device column
     ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeBinary(new Binary(getCurDeviceName(), TSFileConfig.STRING_CHARSET));
+    deviceColumnBuilder.writeBinary(tsBlock.getColumn(0).getBinary(0));
     newValueColumns[0] =
         new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
     // construct other null columns
@@ -146,7 +149,7 @@ public class AggMergeSortOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return deviceIndex < devices.size();
+    return deviceIndex < deviceOperators.size();
   }
 
   @Override

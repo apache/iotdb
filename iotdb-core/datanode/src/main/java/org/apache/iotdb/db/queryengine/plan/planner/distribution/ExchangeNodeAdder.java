@@ -516,8 +516,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     Map<TRegionReplicaSet, DeviceViewNode> regionTopKNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
-      regionTopKNodeMap
-          .computeIfAbsent(
+      DeviceViewNode deviceViewNode =
+          regionTopKNodeMap.computeIfAbsent(
               region,
               k -> {
                 DeviceViewNode childDeviceViewNode =
@@ -525,13 +525,17 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                         context.queryContext.getQueryId().genPlanNodeId(),
                         aggMergeSortNode.getMergeOrderParameter(),
                         aggMergeSortNode.getOutputColumnNames(),
-                        aggMergeSortNode.getDeviceToMeasurementIndexesMap());
+                        new HashMap<>());
                 context.putNodeDistribution(
                     childDeviceViewNode.getPlanNodeId(),
                     new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
                 return childDeviceViewNode;
-              })
-          .addChild(child);
+              });
+      String device = ((SeriesAggregationScanNode) child).getSeriesPath().getDevice();
+      deviceViewNode
+          .getDeviceToMeasurementIndexesMap()
+          .put(device, aggMergeSortNode.getDeviceToMeasurementIndexesMap().get(device));
+      deviceViewNode.addChildDeviceNode(device, child);
     }
 
     for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionTopKNodeMap.entrySet()) {
