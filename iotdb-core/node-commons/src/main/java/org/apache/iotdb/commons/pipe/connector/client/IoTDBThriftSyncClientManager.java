@@ -22,19 +22,27 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/client/IoTDBThriftSyncClientManager.java
+=======
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftClientManager;
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/sync/IoTDBThriftSyncClientManager.java
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,7 +97,11 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
             "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
   }
 
+<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/client/IoTDBThriftSyncClientManager.java
   protected void reconstructClient(TEndPoint endPoint) throws IOException {
+=======
+  private void reconstructClient(TEndPoint endPoint) {
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/sync/IoTDBThriftSyncClientManager.java
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
@@ -105,6 +117,12 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
       }
     }
 
+    initClientAndStatus(clientAndStatus, endPoint);
+    sendHandshakeReq(clientAndStatus, endPoint);
+  }
+
+  private void initClientAndStatus(
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
           new IoTDBThriftSyncConnectorClient(
@@ -118,7 +136,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
               useSSL,
               trustStorePath,
               trustStorePwd));
-    } catch (TTransportException e) {
+    } catch (Exception e) {
       throw new PipeConnectionException(
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,
@@ -126,9 +144,45 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
               endPoint.getPort()),
           e);
     }
+  }
 
+  public void sendHandshakeReq(
+      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
+<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/connector/client/IoTDBThriftSyncClientManager.java
       final TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandShakeReq());
+=======
+      final HashMap<String, String> params = new HashMap<>();
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          PipeAgent.runtime().getClusterIdIfPossible());
+
+      // Try to handshake by PipeTransferHandshakeV2Req.
+      TPipeTransferResp resp =
+          clientAndStatus
+              .getLeft()
+              .pipeTransfer(PipeTransferHandshakeV2Req.toTPipeTransferReq(params));
+      // Receiver may be an old version, so we need to retry to handshake by
+      // PipeTransferHandshakeV1Req.
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
+        LOGGER.info(
+            "Handshake error with target server ip: {}, port: {}, because: {}. "
+                + "Retry to handshake by PipeTransferHandshakeV1Req.",
+            endPoint.getIp(),
+            endPoint.getPort(),
+            resp.getStatus());
+        resp =
+            clientAndStatus
+                .getLeft()
+                .pipeTransfer(
+                    PipeTransferHandshakeV1Req.toTPipeTransferReq(
+                        CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+      }
+
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/connector/protocol/thrift/sync/IoTDBThriftSyncClientManager.java
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",
@@ -145,7 +199,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
             endPoint.getIp(),
             endPoint.getPort());
       }
-    } catch (TException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
           endPoint.getIp(),

@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -106,13 +105,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     try {
       realtimeDataExtractionStartTime =
           parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
-              ? DateTimeUtils.convertDatetimeStrToLong(
-                  parameters.getStringByKeys(SOURCE_START_TIME_KEY), ZoneId.systemDefault())
+              ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY))
               : Long.MIN_VALUE;
       realtimeDataExtractionEndTime =
           parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
-              ? DateTimeUtils.convertDatetimeStrToLong(
-                  parameters.getStringByKeys(SOURCE_END_TIME_KEY), ZoneId.systemDefault())
+              ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY))
               : Long.MAX_VALUE;
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(

@@ -1243,6 +1243,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       ICachedMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());
       try {
+        plan.setAligned(template.isDirectAligned());
         mtree.activateTemplate(plan.getActivatePath(), template);
         writeToMLog(plan);
       } finally {

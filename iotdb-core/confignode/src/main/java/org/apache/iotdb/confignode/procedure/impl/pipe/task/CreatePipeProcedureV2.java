@@ -82,7 +82,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeManager
         .getPipePluginCoordinator()
         .getPipePluginInfo()
-        .checkBeforeCreatePipe(createPipeRequest);
+        .checkPipePluginExistence(
+            createPipeRequest.getExtractorAttributes(),
+            createPipeRequest.getProcessorAttributes(),
+            createPipeRequest.getConnectorAttributes());
     pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
 
     return false;
@@ -290,14 +293,38 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
+<<<<<<< HEAD
     return getProcId() == that.getProcId()
         && getCurrentState().equals(that.getCurrentState())
         && getCycles() == that.getCycles()
         && createPipeRequest.equals(that.createPipeRequest);
+=======
+    return this.createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName())
+        && this.createPipeRequest
+            .getExtractorAttributes()
+            .toString()
+            .equals(that.createPipeRequest.getExtractorAttributes().toString())
+        && this.createPipeRequest
+            .getProcessorAttributes()
+            .toString()
+            .equals(that.createPipeRequest.getProcessorAttributes().toString())
+        && this.createPipeRequest
+            .getConnectorAttributes()
+            .toString()
+            .equals(that.createPipeRequest.getConnectorAttributes().toString());
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
   }
 
   @Override
   public int hashCode() {
+<<<<<<< HEAD
     return Objects.hash(getProcId(), getCurrentState(), getCycles(), createPipeRequest);
+=======
+    return Objects.hash(
+        createPipeRequest.getPipeName(),
+        createPipeRequest.getExtractorAttributes(),
+        createPipeRequest.getProcessorAttributes(),
+        createPipeRequest.getConnectorAttributes());
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
   }
 }

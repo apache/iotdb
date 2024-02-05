@@ -218,7 +218,7 @@ public class CompactionTestFileWriter implements Closeable {
         for (long time = toGeneratePageTimeRange.getMin();
             time <= toGeneratePageTimeRange.getMax();
             time++) {
-          alignedChunkWriter.write(time);
+          alignedChunkWriter.getTimeChunkWriter().getPageWriter().write(time);
           for (int i = 0; i < measurementNames.size(); i++) {
             alignedChunkWriter
                 .getValueChunkWriterByIndex(i)
@@ -252,7 +252,7 @@ public class CompactionTestFileWriter implements Closeable {
         for (long time = toGeneratePageTimeRange.getMin();
             time <= toGeneratePageTimeRange.getMax();
             time++) {
-          alignedChunkWriter.write(time);
+          alignedChunkWriter.getTimeChunkWriter().getPageWriter().write(time);
           for (int i = 0; i < measurementNames.size(); i++) {
             alignedChunkWriter
                 .getValueChunkWriterByIndex(i)
@@ -284,7 +284,7 @@ public class CompactionTestFileWriter implements Closeable {
           currentDeviceStartTime = Math.min(pointsTimeRange.getMin(), currentDeviceStartTime);
           currentDeviceEndTime = Math.max(pointsTimeRange.getMax(), currentDeviceEndTime);
           for (long time = pointsTimeRange.getMin(); time <= pointsTimeRange.getMax(); time++) {
-            alignedChunkWriter.write(time);
+            alignedChunkWriter.getTimeChunkWriter().getPageWriter().write(time);
             for (int i = 0; i < measurementNames.size(); i++) {
               alignedChunkWriter
                   .getValueChunkWriterByIndex(i)
@@ -318,7 +318,7 @@ public class CompactionTestFileWriter implements Closeable {
           currentDeviceStartTime = Math.min(pointsTimeRange.getMin(), currentDeviceStartTime);
           currentDeviceEndTime = Math.max(pointsTimeRange.getMax(), currentDeviceEndTime);
           for (long time = pointsTimeRange.getMin(); time <= pointsTimeRange.getMax(); time++) {
-            alignedChunkWriter.write(time);
+            alignedChunkWriter.getTimeChunkWriter().getPageWriter().write(time);
             for (int i = 0; i < measurementNames.size(); i++) {
               alignedChunkWriter
                   .getValueChunkWriterByIndex(i)

@@ -220,6 +220,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "LZMA2",
       "LATEST",
       "LIKE",
+      "MAX_BY",
       "METADATA",
       "MERGE",
       "MOVE",

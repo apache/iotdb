@@ -24,8 +24,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PipeRequestType {
+<<<<<<< HEAD
   CONFIGNODE_HANDSHAKE((short) 0),
   DATANODE_HANDSHAKE((short) 1),
+=======
+  HANDSHAKE_V1((short) 1),
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
 
   TRANSFER_TABLET_INSERT_NODE((short) 2),
   TRANSFER_TABLET_RAW((short) 3),
@@ -38,6 +42,7 @@ public enum PipeRequestType {
 
   TRANSFER_SCHEMA_PLAN((short) 8),
 
+<<<<<<< HEAD
   TRANSFER_SCHEMA_SNAPSHOT_PIECE((short) 9),
   TRANSFER_SCHEMA_SNAPSHOT_SEAL((short) 10),
 
@@ -45,6 +50,12 @@ public enum PipeRequestType {
 
   TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 12),
   TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 13),
+=======
+  TRANSFER_SNAPSHOT_PIECE((short) 10),
+  TRANSFER_SNAPSHOT_SEAL((short) 11),
+
+  HANDSHAKE_V2((short) 12),
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
   ;
 
   private final short type;

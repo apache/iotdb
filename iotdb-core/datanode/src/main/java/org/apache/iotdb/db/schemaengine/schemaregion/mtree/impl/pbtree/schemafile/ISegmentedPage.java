@@ -29,13 +29,12 @@ import java.util.Queue;
 
 /** Interface for a {@link SchemaPage} manages one or more {@link WrappedSegment}. */
 public interface ISegmentedPage extends ISchemaPage {
-
   /**
    * Insert a content directly into specified segment. If not enough spare within the segment,
-   * reallocate inside the page, or throw exception for new page then.
+   * reallocate inside the page, return negative if not spare enough yet.
    *
-   * @return return 0 if write succeed
-   * @throws SchemaPageOverflowException no spare space inside page
+   * @return 0 for success, positive for page spare increment, negative for space run out
+   * @throws MetadataException no spare
    */
   long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
@@ -49,8 +48,10 @@ public interface ISegmentedPage extends ISchemaPage {
    *
    * <p>If segment not enough, it will reallocate in this page first, and throw {@link
    * SchemaPageOverflowException} if no more spare space to reallocate.
+   *
+   * @return same as that of {{@link #write}}
    */
-  void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
+  long update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
 
   Queue<ICachedMNode> getChildren(short segId) throws MetadataException;
 

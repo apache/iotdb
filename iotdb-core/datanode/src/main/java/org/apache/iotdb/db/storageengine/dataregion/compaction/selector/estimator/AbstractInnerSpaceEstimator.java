@@ -31,12 +31,21 @@ import java.util.List;
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
 
   public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
-    if (!config.isEnableCompactionMemControl()) {
-      return 0;
+    if (!CompactionEstimateUtils.addReadLock(resources)) {
+      return -1L;
     }
-    CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
-    long cost = calculatingMetadataMemoryCost(taskInfo);
-    cost += calculatingDataMemoryCost(taskInfo);
+    long cost;
+    try {
+      if (!isAllSourceFileExist(resources)) {
+        return -1L;
+      }
+
+      CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
+      cost = calculatingMetadataMemoryCost(taskInfo);
+      cost += calculatingDataMemoryCost(taskInfo);
+    } finally {
+      CompactionEstimateUtils.releaseReadLock(resources);
+    }
     return cost;
   }
 }

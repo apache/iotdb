@@ -20,18 +20,34 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class AccumulatorFactory {
 
   public static Accumulator createAccumulator(
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending) {
+    return isMultiInputAggregation(aggregationType)
+        ? createAccumulatorWithMultiInput(aggregationType, inputDataTypes)
+        : createSingleInputAccumulator(
+            aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
+  }
+
+  private static Accumulator createSingleInputAccumulator(
       TAggregationType aggregationType,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
@@ -106,6 +122,27 @@ public class AccumulatorFactory {
     }
   }
 
+  public static Accumulator createAccumulatorWithMultiInput(
+      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
+    switch (aggregationType) {
+      case MAX_BY:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
+  public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
+    switch (aggregationType) {
+      case MAX_BY:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  @TestOnly
   public static List<Accumulator> createAccumulators(
       List<TAggregationType> aggregationTypes,
       TSDataType tsDataType,
@@ -116,7 +153,11 @@ public class AccumulatorFactory {
     for (TAggregationType aggregationType : aggregationTypes) {
       accumulators.add(
           createAccumulator(
-              aggregationType, tsDataType, inputExpressions, inputAttributes, ascending));
+              aggregationType,
+              Collections.singletonList(tsDataType),
+              inputExpressions,
+              inputAttributes,
+              ascending));
     }
     return accumulators;
   }

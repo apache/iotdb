@@ -150,12 +150,14 @@ public class OperatorMemoryTest {
               scanOptionsBuilder.build());
 
       assertEquals(
-          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L,
           seriesScanOperator.calculateMaxPeekMemory());
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxReturnSize());
-      assertEquals(0, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+      assertEquals(
+          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 2L,
+          seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -194,12 +196,13 @@ public class OperatorMemoryTest {
               Ordering.ASC,
               SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath),
               false,
-              null);
+              null,
+              -1);
 
       long maxPeekMemory =
           Math.max(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
       long maxReturnMemory =
           Math.min(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
@@ -1001,7 +1004,8 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      long cachedRawDataSize =
+          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1033,7 +1037,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1076,7 +1080,7 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1116,7 +1120,7 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1154,7 +1158,7 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1197,7 +1201,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1252,7 +1256,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1325,7 +1329,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1405,7 +1409,7 @@ public class OperatorMemoryTest {
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),

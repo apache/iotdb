@@ -23,8 +23,12 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
+<<<<<<< HEAD
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+=======
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+>>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -100,7 +104,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
     if (
@@ -128,7 +135,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           ((PipeHeartbeatEvent) event).onProcessed();
           PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
-          pipeProcessor.process(event, outputEventCollector);
+          pipeProcessor.process(
+              event instanceof UserDefinedEnrichedEvent
+                  ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                  : event,
+              outputEventCollector);
         }
       }
 
