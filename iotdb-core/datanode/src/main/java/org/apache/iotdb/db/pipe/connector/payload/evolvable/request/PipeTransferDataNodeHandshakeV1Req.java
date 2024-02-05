@@ -25,31 +25,31 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 
-public class PipeTransferDataNodeHandshakeV1V1Req extends PipeTransferHandshakeV1Req {
+public class PipeTransferDataNodeHandshakeV1Req extends PipeTransferHandshakeV1Req {
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.DATANODE_HANDSHAKE;
+    return PipeRequestType.DATANODE_HANDSHAKE_V1;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferDataNodeHandshakeV1V1Req toTPipeTransferReq(String timestampPrecision)
+  public static PipeTransferDataNodeHandshakeV1Req toTPipeTransferReq(String timestampPrecision)
       throws IOException {
-    return (PipeTransferDataNodeHandshakeV1V1Req)
-        new PipeTransferDataNodeHandshakeV1V1Req().convertToTPipeTransferReq(timestampPrecision);
+    return (PipeTransferDataNodeHandshakeV1Req)
+        new PipeTransferDataNodeHandshakeV1Req().convertToTPipeTransferReq(timestampPrecision);
   }
 
-  public static PipeTransferDataNodeHandshakeV1V1Req fromTPipeTransferReq(
+  public static PipeTransferDataNodeHandshakeV1Req fromTPipeTransferReq(
       TPipeTransferReq transferReq) {
-    return (PipeTransferDataNodeHandshakeV1V1Req)
-        new PipeTransferDataNodeHandshakeV1V1Req().translateFromTPipeTransferReq(transferReq);
+    return (PipeTransferDataNodeHandshakeV1Req)
+        new PipeTransferDataNodeHandshakeV1Req().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(String timestampPrecision) throws IOException {
-    return new PipeTransferDataNodeHandshakeV1V1Req()
+    return new PipeTransferDataNodeHandshakeV1Req()
         .convertToTransferHandshakeBytes(timestampPrecision);
   }
 
@@ -57,7 +57,7 @@ public class PipeTransferDataNodeHandshakeV1V1Req extends PipeTransferHandshakeV
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeTransferDataNodeHandshakeV1V1Req && super.equals(obj);
+    return obj instanceof PipeTransferDataNodeHandshakeV1Req && super.equals(obj);
   }
 
   @Override

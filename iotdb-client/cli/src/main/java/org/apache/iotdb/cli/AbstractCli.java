@@ -776,14 +776,6 @@ public abstract class AbstractCli {
     }
   }
 
-<<<<<<< HEAD
-  private static void outputTracingInfo(List<List<String>> lists, List<Integer> maxSizeList) {
-    println();
-    println("Tracing Activities:");
-    printBlockLine(maxSizeList);
-    printRow(lists, 0, maxSizeList);
-    printBlockLine(maxSizeList);
-=======
   private static void outputTracingInfo(
       CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
     ctx.getPrinter().println();
@@ -791,7 +783,6 @@ public abstract class AbstractCli {
     ctx.getPrinter().printBlockLine(maxSizeList);
     ctx.getPrinter().printRow(lists, 0, maxSizeList);
     ctx.getPrinter().printBlockLine(maxSizeList);
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
     for (int i = 1; i < lists.get(0).size(); i++) {
       ctx.getPrinter().printRow(lists, i, maxSizeList);
     }
@@ -816,13 +807,8 @@ public abstract class AbstractCli {
     }
     String[] cmds = s.trim().split(";");
     for (String cmd : cmds) {
-<<<<<<< HEAD
-      if (cmd != null && !cmd.trim().isEmpty()) {
-        OperationResult result = handleInputCmd(cmd, connection);
-=======
       if (cmd != null && !"".equals(cmd.trim())) {
         OperationResult result = handleInputCmd(ctx, cmd, connection);
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
         switch (result) {
           case STOP_OPER:
             return false;
