@@ -64,8 +64,6 @@ public class AggregationDescriptor {
 
   protected String parametersString;
 
-  private List<String> builtinAggregationNames;
-
   public AggregationDescriptor(
       String aggregationFuncName,
       AggregationStep step,

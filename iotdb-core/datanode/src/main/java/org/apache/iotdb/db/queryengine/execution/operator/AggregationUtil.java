@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -59,9 +60,6 @@ public class AggregationUtil {
   private static final int INVALID_END_TIME = -1;
 
   private static final String PARTIAL_SUFFIX = "_partial";
-
-  private static final List<String> builtinAggregationNames =
-      Stream.of(TAggregationType.values()).map(TAggregationType::name).collect(Collectors.toList());
 
   private AggregationUtil() {
     // Forbidding instantiation
@@ -268,6 +266,6 @@ public class AggregationUtil {
   }
 
   public static boolean isBuiltinAggregationName(String functionName) {
-    return builtinAggregationNames.contains(functionName);
+    return BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName);
   }
 }
