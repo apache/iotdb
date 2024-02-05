@@ -65,13 +65,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
 
-<<<<<<< HEAD
-    // Here we still execute stop for auto-stopped pipe to avoid it becoming running again
-    return pipeTaskInfo.get().isPipeStopped(pipeName)
-        && !pipeTaskInfo.get().shouldBeRunning(pipeName);
-=======
     return pipeTaskInfo.get().isPipeStoppedByUser(pipeName);
->>>>>>> 6943524b000217bf6d4678b51097f93cfedad8f3
   }
 
   @Override
