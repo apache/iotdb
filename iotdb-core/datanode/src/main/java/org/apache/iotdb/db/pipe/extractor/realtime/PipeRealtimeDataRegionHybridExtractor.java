@@ -141,12 +141,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 case USING_TABLET:
                   if (event.getTsFileEpoch().getMinTime()
                       > ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime()) {
-                    // There may be lost tablet events due to cancelled flush at historical
-                    // extractor
+                    // There may be lost insertion events if their tsFiles
+                    // remain unsealed when the historical extractor extracts them, and this
+                    // condition is equivalent to the epoch's minTime > tsFile's minTime
+                    // because the tsFile is always written sequentially ranged by time
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
-                    // If the file start time is larger than or equal to epoch's minTime,
-                    // it implies that the file does not contain information out of extracted
+                    // If the file start time is larger than or equal to its epoch's minTime,
+                    // it implies that the file does not contain information other than extracted
                     // tablets, simply ignore
                     return TsFileEpoch.State.USING_TABLET;
                   }
@@ -274,7 +276,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   @Override
-  public Event supply() {
+  public Event doSupply() {
     isStartedToSupply = true;
 
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
