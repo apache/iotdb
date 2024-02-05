@@ -234,7 +234,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualIT {
     // alter pipe (modify empty)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify processor ()");
+      statement.execute("alter pipe a2b modify sink ()");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
