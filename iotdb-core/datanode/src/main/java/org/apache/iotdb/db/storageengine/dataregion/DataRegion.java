@@ -2596,7 +2596,7 @@ public class DataRegion implements IDataRegionForQuery {
       // update last cache
       resetLastCacheWhenLoadingTsFile();
 
-      // help last flush map degrade
+      // update last flush time & help last flush time map degrade
       if (config.isEnableSeparateData()) {
         final DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionId));
         final long timePartitionId = newTsFileResource.getTimePartition();
