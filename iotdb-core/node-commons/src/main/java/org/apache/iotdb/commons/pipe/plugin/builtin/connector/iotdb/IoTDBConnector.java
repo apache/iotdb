@@ -61,7 +61,7 @@ public abstract class IoTDBConnector implements PipeConnector {
       "Exception occurred while parsing node urls from target servers: {}";
 
   private static final String PARSE_URL_ERROR_MESSAGE =
-      "Error occurred while parsing node urls from target servers, please check the specified 'ip':'port' or 'node-urls'";
+      "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -69,29 +69,24 @@ public abstract class IoTDBConnector implements PipeConnector {
     validator.validate(
         args ->
             (boolean) args[0]
-                || (boolean) args[1]
-                || (((boolean) args[2]
-                        || (boolean) args[3]
-                        || (boolean) args[4]
-                        || (boolean) args[5])
-                    && ((boolean) args[6] || (boolean) args[7])),
+                || (((boolean) args[1] || (boolean) args[2]) && (boolean) args[3])
+                || (boolean) args[4]
+                || (((boolean) args[5] || (boolean) args[6]) && (boolean) args[7]),
         String.format(
-            "One of %s/%s, %s/%s/%s/%s:%s/%s must be specified",
-            SINK_IOTDB_NODE_URLS_KEY,
+            "One of %s, %s:%s, %s, %s:%s must be specified",
             CONNECTOR_IOTDB_NODE_URLS_KEY,
-            SINK_IOTDB_IP_KEY,
-            SINK_IOTDB_HOST_KEY,
-            CONNECTOR_IOTDB_IP_KEY,
             CONNECTOR_IOTDB_HOST_KEY,
             CONNECTOR_IOTDB_PORT_KEY,
+            SINK_IOTDB_NODE_URLS_KEY,
+            SINK_IOTDB_HOST_KEY,
             SINK_IOTDB_PORT_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(SINK_IOTDB_IP_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_HOST_KEY),
-        parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
+        parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
+        parameters.hasAttribute(SINK_IOTDB_IP_KEY),
+        parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
         parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
   }
 
@@ -114,20 +109,36 @@ public abstract class IoTDBConnector implements PipeConnector {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
 
     try {
-      if (parameters.hasAnyAttributes(
-              CONNECTOR_IOTDB_IP_KEY,
-              CONNECTOR_IOTDB_HOST_KEY,
-              SINK_IOTDB_IP_KEY,
-              SINK_IOTDB_HOST_KEY)
-          && parameters.hasAnyAttributes(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY)) {
+      if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
+          && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
         givenNodeUrls.add(
             new TEndPoint(
-                parameters.getStringByKeys(
-                    CONNECTOR_IOTDB_IP_KEY,
-                    CONNECTOR_IOTDB_HOST_KEY,
-                    SINK_IOTDB_IP_KEY,
-                    SINK_IOTDB_HOST_KEY),
-                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY)));
+                parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+      }
+
+      if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
+          && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
+        givenNodeUrls.add(
+            new TEndPoint(
+                parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+                parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
+      }
+
+      if (parameters.hasAttribute(CONNECTOR_IOTDB_HOST_KEY)
+          && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+        givenNodeUrls.add(
+            new TEndPoint(
+                parameters.getStringByKeys(CONNECTOR_IOTDB_HOST_KEY),
+                parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+      }
+
+      if (parameters.hasAttribute(SINK_IOTDB_HOST_KEY)
+          && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
+        givenNodeUrls.add(
+            new TEndPoint(
+                parameters.getStringByKeys(SINK_IOTDB_HOST_KEY),
+                parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
       }
 
       if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
@@ -154,7 +165,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private void checkNodeUrls(Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "ip cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
