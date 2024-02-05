@@ -19,45 +19,59 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.thrift.TException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
-public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
+public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
+    private transient Map<String, String> params;
 
-    private transient String timestampPrecision;
-
-    public final String getTimestampPrecision() {
-        return timestampPrecision;
+    public Map<String, String> getParams() {
+        return params;
     }
 
     protected abstract PipeRequestType getPlanType();
 
     /////////////////////////////// Thrift ///////////////////////////////
 
-    protected final PipeTransferHandshakeV1Req convertToTPipeTransferReq(String timestampPrecision)
+    protected final PipeTransferHandshakeV2Req convertToTPipeTransferReq(Map<String, String> params)
             throws IOException {
-        this.timestampPrecision = timestampPrecision;
-
         this.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
         this.type = getPlanType().getType();
         try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
              final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-            ReadWriteIOUtils.write(timestampPrecision, outputStream);
-            this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+            ReadWriteIOUtils.write(params.size(), outputStream);
+            for (final Map.Entry<String, String> entry : params.entrySet()) {
+                ReadWriteIOUtils.write(entry.getKey(), outputStream);
+                ReadWriteIOUtils.write(entry.getValue(), outputStream);
+            }
+            this.body =
+                    ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
         }
 
+        this.params = params;
         return this;
     }
 
-    protected final PipeTransferHandshakeV1Req translateFromTPipeTransferReq(
+    protected final PipeTransferHandshakeV2Req translateFromTPipeTransferReq(
             TPipeTransferReq transferReq) {
-        timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
+        Map<String, String> params = new HashMap<>();
+        final int size = ReadWriteIOUtils.readInt(transferReq.body);
+        for (int i = 0; i < size; ++i) {
+            final String key = ReadWriteIOUtils.readString(transferReq.body);
+            final String value = ReadWriteIOUtils.readString(transferReq.body);
+            params.put(key, value);
+        }
+        this.params = params;
 
         version = transferReq.version;
         type = transferReq.type;
@@ -68,13 +82,16 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
 
     /////////////////////////////// Air Gap ///////////////////////////////
 
-    protected final byte[] convertToTransferHandshakeBytes(String timestampPrecision)
-            throws IOException {
+    public final byte[] convertToTransferHandshakeBytes(Map<String, String> params) throws IOException {
         try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
              final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
             ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
             ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
-            ReadWriteIOUtils.write(timestampPrecision, outputStream);
+            ReadWriteIOUtils.write(params.size(), outputStream);
+            for (final Map.Entry<String, String> entry : params.entrySet()) {
+                ReadWriteIOUtils.write(entry.getKey(), outputStream);
+                ReadWriteIOUtils.write(entry.getValue(), outputStream);
+            }
             return byteArrayOutputStream.toByteArray();
         }
     }
@@ -89,15 +106,15 @@ public abstract class PipeTransferHandshakeV1Req extends TPipeTransferReq {
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        PipeTransferHandshakeV1Req that = (PipeTransferHandshakeV1Req) obj;
-        return timestampPrecision.equals(that.timestampPrecision)
+        PipeTransferHandshakeV2Req that = (PipeTransferHandshakeV2Req) obj;
+        return Objects.equals(params, that.params)
                 && version == that.version
                 && type == that.type
-                && body.equals(that.body);
+                && Objects.equals(body, that.body);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(timestampPrecision, version, type, body);
+        return Objects.hash(params, version, type, body);
     }
 }
