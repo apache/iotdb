@@ -2593,10 +2593,40 @@ public class DataRegion implements IDataRegionForQuery {
               false,
               newTsFileResource.getTsFile().getName());
 
-      resetLastCacheWhenLoadingTsFile(); // update last cache
-      updateLastFlushTime(newTsFileResource); // update last flush time
-      long partitionNum = newTsFileResource.getTimePartition();
-      updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
+      // update last cache
+      resetLastCacheWhenLoadingTsFile();
+
+      // update last flush time & help last flush time map degrade
+      if (config.isEnableSeparateData()) {
+        final DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionId));
+        final long timePartitionId = newTsFileResource.getTimePartition();
+        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+          TimePartitionManager.getInstance()
+              .registerTimePartitionInfo(
+                  new TimePartitionInfo(
+                      dataRegionId,
+                      timePartitionId,
+                      false,
+                      Long.MAX_VALUE,
+                      lastFlushTimeMap.getMemSize(timePartitionId)));
+        }
+        updateLastFlushTime(newTsFileResource);
+        TimePartitionManager.getInstance()
+            .updateAfterFlushing(
+                dataRegionId,
+                timePartitionId,
+                System.currentTimeMillis(),
+                lastFlushTimeMap.getMemSize(timePartitionId),
+                false);
+      }
+
+      // update partition version
+      updatePartitionFileVersion(
+          newTsFileResource.getTimePartition(), newTsFileResource.getVersion());
+
+      // help tsfile resource degrade
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(newTsFileResource);
+
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
