@@ -78,10 +78,24 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, false);
   }
 
-  public synchronized PipeMemoryBlock forceAllocate(Tablet tablet)
+  public PipeMemoryBlock forceAllocateWithRetry(Tablet tablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
+    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+      if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
+          < TABLET_MEMORY_REJECT_THRESHOLD) {
+        break;
+      }
+
+      try {
+        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+      }
+    }
+
     if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
-        > TABLET_MEMORY_REJECT_THRESHOLD) {
+        >= TABLET_MEMORY_REJECT_THRESHOLD) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
@@ -89,9 +103,11 @@ public class PipeMemoryManager {
               TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
     }
 
-    final PipeMemoryBlock block = forceAllocate(calculateTabletSizeInBytes(tablet), true);
-    usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
-    return block;
+    synchronized (this) {
+      final PipeMemoryBlock block = forceAllocate(calculateTabletSizeInBytes(tablet), true);
+      usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
+      return block;
+    }
   }
 
   private PipeMemoryBlock forceAllocate(long sizeInBytes, boolean isForTablet)
