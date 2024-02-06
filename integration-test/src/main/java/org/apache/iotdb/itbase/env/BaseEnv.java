@@ -222,6 +222,8 @@ public interface BaseEnv {
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
 
+  int getMqttPort();
+
   String getIP();
 
   String getPort();

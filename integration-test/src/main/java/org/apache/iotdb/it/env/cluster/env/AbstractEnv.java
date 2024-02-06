@@ -900,6 +900,12 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public int getMqttPort() {
+    int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
+    return dataNodeWrapperList.get(randomIndex).getMqttPort();
+  }
+
+  @Override
   public String getIP() {
     return dataNodeWrapperList.get(0).getIp();
   }
