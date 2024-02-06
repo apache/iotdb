@@ -77,7 +77,7 @@ public class AggregationDescriptor {
   }
 
   private TAggregationType getAggregationTypeByFuncName(String funcName) {
-    if (isBuiltinAggregationName(funcName.toUpperCase())) {
+    if (isBuiltinAggregationName(funcName.toLowerCase())) {
       return TAggregationType.valueOf(funcName.toUpperCase());
     } else {
       // fallback to UDAF if no enum found
