@@ -45,6 +45,7 @@ import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.runtime.*;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
+import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
@@ -265,16 +266,18 @@ public abstract class AbstractEnv implements BaseEnv {
 
   public boolean checkClusterStatusWithoutUnknown() {
     return checkClusterStatus(
-        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+            nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals))
+        && testJDBCConnection();
   }
 
   public boolean checkClusterStatusOneUnknownOtherRunning() {
     return checkClusterStatus(
-        nodeStatus -> {
-          Map<String, Integer> count = countNodeStatus(nodeStatus);
-          return count.getOrDefault("Unknown", 0) == 1
-              && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
-        });
+            nodeStatus -> {
+              Map<String, Integer> count = countNodeStatus(nodeStatus);
+              return count.getOrDefault("Unknown", 0) == 1
+                  && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+            })
+        && testJDBCConnection();
   }
   /**
    * Returns whether the all nodes' status all match the provided predicate.
@@ -443,29 +446,17 @@ public abstract class AbstractEnv implements BaseEnv {
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, Constant.Version version, String username, String password)
       throws SQLException {
-    for (int i = 0; i < retryCount; i++) {
-      try {
-        String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
-        Connection writeConnection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-                System.getProperty("User", username),
-                System.getProperty("Password", password));
-        return new NodeConnection(
-            endpoint,
-            NodeConnection.NodeRole.DATA_NODE,
-            NodeConnection.ConnectionRole.WRITE,
-            writeConnection);
-      } catch (Exception e) {
-        retryCount++;
-        try {
-          TimeUnit.SECONDS.sleep(1L);
-        } catch (InterruptedException ex) {
-          Thread.currentThread().interrupt();
-        }
-      }
-    }
-    throw new SQLException("Failed to get write connection");
+    String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+    Connection writeConnection =
+        DriverManager.getConnection(
+            Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+            System.getProperty("User", username),
+            System.getProperty("Password", password));
+    return new NodeConnection(
+        endpoint,
+        NodeConnection.NodeRole.DATA_NODE,
+        NodeConnection.ConnectionRole.WRITE,
+        writeConnection);
   }
 
   protected List<NodeConnection> getReadConnections(
@@ -478,33 +469,67 @@ public abstract class AbstractEnv implements BaseEnv {
       endpoints.add(endpoint);
       readConnRequestDelegate.addRequest(
           () -> {
+            Connection readConnection =
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),
+                    System.getProperty("User", username),
+                    System.getProperty("Password", password));
+            return new NodeConnection(
+                endpoint,
+                NodeConnection.NodeRole.DATA_NODE,
+                NodeConnection.ConnectionRole.READ,
+                readConnection);
+          });
+    }
+    return readConnRequestDelegate.requestAll();
+  }
+
+  // use this to avoid some runtimeExceptions when try to get jdbc connections.
+  // because it is hard to add retry when getting jdbc connections in
+  // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
+  // so use this function to add retry when cluster is ready.
+  protected boolean testJDBCConnection() {
+    logger.info("Testing JDBC connection...");
+    List<String> endpoints =
+        dataNodeWrapperList.stream()
+            .map(DataNodeWrapper::getIpAndPortString)
+            .collect(Collectors.toList());
+    RequestDelegate<Void> testDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
+      final String dataNodeEndpoint = dataNode.getIpAndPortString();
+      testDelegate.addRequest(
+          () -> {
+            Exception lastException = null;
             for (int i = 0; i < retryCount; i++) {
-              try {
-                Connection readConnection =
-                    DriverManager.getConnection(
-                        Config.IOTDB_URL_PREFIX
-                            + endpoint
-                            + getParam(version, NODE_NETWORK_TIMEOUT_MS),
-                        System.getProperty("User", username),
-                        System.getProperty("Password", password));
-                return new NodeConnection(
-                    endpoint,
-                    NodeConnection.NodeRole.DATA_NODE,
-                    NodeConnection.ConnectionRole.READ,
-                    readConnection);
+              try (IoTDBConnection ignored =
+                  (IoTDBConnection)
+                      DriverManager.getConnection(
+                          Config.IOTDB_URL_PREFIX
+                              + dataNodeEndpoint
+                              + getParam(null, NODE_NETWORK_TIMEOUT_MS),
+                          System.getProperty("User", "root"),
+                          System.getProperty("Password", "root"))) {
+                logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
+                return null;
               } catch (Exception e) {
-                retryCount++;
-                try {
-                  TimeUnit.SECONDS.sleep(1L);
-                } catch (InterruptedException ex) {
-                  Thread.currentThread().interrupt();
-                }
+                lastException = e;
+                TimeUnit.SECONDS.sleep(1L);
               }
+            }
+            if (lastException != null) {
+              throw lastException;
             }
             return null;
           });
     }
-    return readConnRequestDelegate.requestAll();
+    try {
+      testDelegate.requestAll();
+    } catch (Exception e) {
+      logger.error("Failed to connect to DataNode", e);
+      return false;
+    }
+    return true;
   }
 
   private String getParam(Constant.Version version, int timeout) {
