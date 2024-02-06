@@ -124,9 +124,6 @@ public class UDAFAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of UDAF should be 1");
-    if (partialResult[0].isNull(0)) {
-      return;
-    }
 
     State otherState = udaf.createState();
     Binary otherStateBinary = partialResult[0].getBinary(0);
@@ -166,9 +163,6 @@ public class UDAFAccumulator implements Accumulator {
   @Override
   public void removeIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of UDAF should be 1");
-    if (partialResult[0].isNull(0)) {
-      return;
-    }
 
     State removedState = udaf.createState();
     Binary removedStateBinary = partialResult[0].getBinary(0);
