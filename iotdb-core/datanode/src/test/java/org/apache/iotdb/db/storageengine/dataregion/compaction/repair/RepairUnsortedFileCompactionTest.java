@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -87,6 +88,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    try {
+      RepairScheduleTaskManager.getInstance().start();
+    } catch (StartupException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @After
@@ -631,7 +637,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir.toFile());
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
@@ -681,7 +688,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir.toFile());
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
@@ -743,7 +751,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
 
     Files.createFile(logFile.toPath());
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir.toFile());
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
@@ -804,7 +813,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    try (RepairLogger logger = new RepairLogger(tempDir.toFile(), false)) {
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
@@ -814,7 +823,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
 
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), true, tempDir.toFile());
     scheduler.run();
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     // check whether the repair status is marked correctly
@@ -878,7 +888,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     File logFile =
         new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
     Files.createFile(logFile.toPath());
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    try (RepairLogger logger = new RepairLogger(tempDir.toFile(), true)) {
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
@@ -894,7 +904,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
         0);
 
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), true, tempDir.toFile());
     scheduler.run();
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
     Files.deleteIfExists(logFile.toPath());

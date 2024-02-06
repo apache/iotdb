@@ -53,7 +53,7 @@ public class UnsortedDataScanTask implements Callable<Void> {
   private final List<RepairTimePartition> repairTimePartitions;
   private final RepairLogger repairLogger;
   private final RepairProgress progress;
-  private final static Lock submitRepairFileTaskLock = new ReentrantLock();
+  private static final Lock submitRepairFileTaskLock = new ReentrantLock();
 
   public UnsortedDataScanTask(
       List<RepairTimePartition> repairTimePartitions,
@@ -105,13 +105,14 @@ public class UnsortedDataScanTask implements Callable<Void> {
       sourceFile.readLock();
       try {
         if (sourceFile.getStatus() != TsFileResourceStatus.NORMAL) {
+          latch.countDown();
           continue;
         }
         if (TsFileResourceUtils.validateTsFileDataCorrectness(sourceFile)) {
+          latch.countDown();
           continue;
         }
       } finally {
-        latch.countDown();
         sourceFile.readUnlock();
       }
       LOGGER.info(

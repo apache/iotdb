@@ -55,7 +55,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
                 + File.separator
                 + System.currentTimeMillis()
                 + RepairLogger.repairLogSuffix);
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
       logger.recordRepairedTimePartition(mockRepairTimePartition);
     }
     RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
@@ -94,7 +94,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
                 + File.separator
                 + System.currentTimeMillis()
                 + RepairLogger.repairLogSuffix);
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
       logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
       logger.recordCannotRepairFiles(mockRepairTimePartition);
     }

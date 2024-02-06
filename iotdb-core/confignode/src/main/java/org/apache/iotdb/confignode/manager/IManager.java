@@ -447,7 +447,9 @@ public interface IManager {
   TSStatus clearCache();
 
   /** Check and repair unsorted tsfile by compaction. */
-  TSStatus repairData();
+  TSStatus startRepairData();
+
+  TSStatus stopRepairData();
 
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();

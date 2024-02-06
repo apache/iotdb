@@ -1320,7 +1320,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus repairData() throws TException {
+  public TSStatus startRepairData() throws TException {
     if (!storageEngine.isAllSgReady()) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
     }
@@ -1340,6 +1340,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (StorageEngineException e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    try {
+      storageEngine.stopRepairData();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

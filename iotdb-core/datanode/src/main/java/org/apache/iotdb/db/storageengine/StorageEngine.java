@@ -57,6 +57,7 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
@@ -576,8 +577,19 @@ public class StorageEngine implements IService {
     }
     LOGGER.info("start repair data");
     List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
-    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
+    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, false));
     return true;
+  }
+
+  public void stopRepairData() throws StorageEngineException {
+    if (!UnsortedFileRepairTaskScheduler.hasRunningRepairTask()) {
+      return;
+    }
+    RepairScheduleTaskManager.getInstance().abortRepairTask();
+    try {
+      UnsortedFileRepairTaskScheduler.markRepairTaskStopped();
+    } catch (IOException ignored) {
+    }
   }
 
   /** recover the progress of unfinished repair schedule task */
@@ -598,7 +610,7 @@ public class StorageEngine implements IService {
             .collect(Collectors.toList());
     if (!fileList.isEmpty()) {
       UnsortedFileRepairTaskScheduler.markRepairTaskStart();
-      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, fileList.get(0)));
+      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, true));
     }
   }
 

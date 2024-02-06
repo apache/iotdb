@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +40,7 @@ public class RepairScheduleTaskManager implements IService {
   private ExecutorService repairScheduleTaskThreadPool;
   private static Logger logger = LoggerFactory.getLogger(RepairScheduleTaskManager.class);
   private static final RepairScheduleTaskManager INSTANCE = new RepairScheduleTaskManager();
+  private Set<Future<Void>> repairTasks = new HashSet<>();
 
   @Override
   public synchronized void start() throws StartupException {
@@ -48,7 +51,7 @@ public class RepairScheduleTaskManager implements IService {
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     if (repairScheduleTaskThreadPool == null) {
       return;
     }
@@ -58,7 +61,7 @@ public class RepairScheduleTaskManager implements IService {
   }
 
   @Override
-  public void waitAndStop(long milliseconds) {
+  public synchronized void waitAndStop(long milliseconds) {
     try {
       repairScheduleTaskThreadPool.shutdownNow();
       repairScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
@@ -67,6 +70,22 @@ public class RepairScheduleTaskManager implements IService {
       Thread.currentThread().interrupt();
     }
     waitForThreadPoolTerminated();
+  }
+
+  public synchronized void abortRepairTask() {
+    for (Future<Void> repairTask : repairTasks) {
+      repairTask.cancel(true);
+    }
+    for (Future<Void> repairTask : repairTasks) {
+      if (repairTask.isDone()) {
+        continue;
+      }
+      try {
+        repairTask.get();
+      } catch (Exception ignored) {
+      }
+    }
+    repairTasks.clear();
   }
 
   @Override
@@ -78,17 +97,19 @@ public class RepairScheduleTaskManager implements IService {
     return maxScanTaskNum;
   }
 
-  public Future<Void> submitScanTask(UnsortedDataScanTask scanTask) {
-    return repairScheduleTaskThreadPool.submit(scanTask);
+  public synchronized Future<Void> submitScanTask(UnsortedDataScanTask scanTask) {
+    Future<Void> future = repairScheduleTaskThreadPool.submit(scanTask);
+    repairTasks.add(future);
+    return future;
   }
 
-  private void initThreadPool() {
+  private synchronized void initThreadPool() {
     this.repairScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(
             ThreadName.REPAIR_DATA.getName(), maxScanTaskNum);
   }
 
-  private void waitForThreadPoolTerminated() {
+  private synchronized void waitForThreadPoolTerminated() {
     long startTime = System.currentTimeMillis();
     int timeMillis = 0;
     while (!repairScheduleTaskThreadPool.isTerminated()) {
@@ -103,7 +124,6 @@ public class RepairScheduleTaskManager implements IService {
         logger.info("RepairScheduleTaskManager has wait for {} seconds to stop", time / 1000);
       }
     }
-    repairScheduleTaskThreadPool = null;
     logger.info("RepairScheduleTaskManager stopped");
   }
 
