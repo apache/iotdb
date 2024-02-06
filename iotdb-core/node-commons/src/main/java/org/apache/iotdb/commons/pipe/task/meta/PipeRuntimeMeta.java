@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -76,7 +77,7 @@ public class PipeRuntimeMeta {
    * recovered from log with previous versions, and this is guaranteed to be seen as if they exist
    * but do not spark schema transmission.
    */
-  private final Map<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap;
+  private final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap;
 
   /**
    * Stores the newest exceptions encountered group by dataNodes.
@@ -89,7 +90,7 @@ public class PipeRuntimeMeta {
    * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
    * pipes sharing the same connector, and will stop the pipe likewise.
    */
-  private final Map<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
+  private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
@@ -100,7 +101,7 @@ public class PipeRuntimeMeta {
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
   }
 
-  public PipeRuntimeMeta(Map<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
+  public PipeRuntimeMeta(ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
     this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
   }
 
@@ -108,11 +109,11 @@ public class PipeRuntimeMeta {
     return status;
   }
 
-  public Map<Integer, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
+  public ConcurrentMap<Integer, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
     return consensusGroupId2TaskMetaMap;
   }
 
-  public Map<Integer, PipeRuntimeException> getNodeId2PipeRuntimeExceptionMap() {
+  public ConcurrentMap<Integer, PipeRuntimeException> getNodeId2PipeRuntimeExceptionMap() {
     return nodeId2PipeRuntimeExceptionMap;
   }
 

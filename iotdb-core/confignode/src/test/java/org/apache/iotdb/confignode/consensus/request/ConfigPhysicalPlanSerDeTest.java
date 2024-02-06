@@ -175,6 +175,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
@@ -1120,7 +1122,7 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
@@ -1145,7 +1147,7 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("batch.enable", "false");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
@@ -1256,7 +1258,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new HashMap<String, String>() {});
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap<Integer, PipeTaskMeta>() {
+            new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
                 put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
                 put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));

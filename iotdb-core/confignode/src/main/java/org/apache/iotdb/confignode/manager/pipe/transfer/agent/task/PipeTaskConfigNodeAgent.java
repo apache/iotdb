@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
@@ -32,9 +33,13 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskConfigNodeAgent.class);
 
   @Override
   protected boolean isShutdown() {
@@ -44,6 +49,45 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
   @Override
   protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
     return new PipeConfigNodeTaskBuilder(pipeMetaFromConfigNode).build();
+  }
+
+  @Override
+  protected void stopPipe(String pipeName, long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (!checkBeforeStopPipe(pipeMeta, pipeName, creationTime)) {
+      LOGGER.info(
+          "Stop Pipe: Pipe {} has already been dropped or has not been created. Skip stopping.",
+          pipeName);
+      return;
+    }
+
+    // Get pipe tasks
+    final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
+
+    // Set pipe meta status to STOPPED
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
   }
 
   @Override

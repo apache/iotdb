@@ -561,31 +561,7 @@ public abstract class PipeTaskAgent {
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
 
-  protected void stopPipe(String pipeName, long creationTime) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (!checkBeforeStopPipe(pipeMeta, pipeName, creationTime)) {
-      LOGGER.info(
-          "Stop Pipe: Pipe {} has already been dropped or has not been created. Skip stopping.",
-          pipeName);
-      return;
-    }
-
-    // 1. Drop the pipe task
-    final long startTime = System.currentTimeMillis();
-    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
-
-    // 2. Set pipe meta status to STOPPED
-    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-
-    // 3. create a new pipe with the same pipeMeta
-    createPipe(pipeMeta);
-
-    LOGGER.info(
-        "Stop all pipe tasks on Pipe {} successfully within {} ms",
-        pipeName,
-        System.currentTimeMillis() - startTime);
-  }
+  protected abstract void stopPipe(String pipeName, long creationTime);
 
   ////////////////////////// Checker //////////////////////////
 
