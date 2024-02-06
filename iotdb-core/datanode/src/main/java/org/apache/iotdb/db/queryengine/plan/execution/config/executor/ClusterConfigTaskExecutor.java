@@ -1661,15 +1661,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Validate before alteration
+    // Validate before alteration - only validate replace mode
+    final String pipeName = alterPipeStatement.getPipeName();
     try {
-      if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
+      if (!alterPipeStatement.getProcessorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllProcessorAttributes()) {
         PipeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
       }
-      if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
-        PipeAgent.plugin()
-            .validateConnector(
-                alterPipeStatement.getPipeName(), alterPipeStatement.getConnectorAttributes());
+      if (!alterPipeStatement.getConnectorAttributes().isEmpty()
+          && alterPipeStatement.isReplaceAllConnectorAttributes()) {
+        PipeAgent.plugin().validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
       }
     } catch (Exception e) {
       LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
@@ -1681,16 +1682,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TAlterPipeReq req =
-          new TAlterPipeReq()
-              .setPipeName(alterPipeStatement.getPipeName())
-              .setProcessorAttributes(alterPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(alterPipeStatement.getConnectorAttributes());
+          new TAlterPipeReq(
+              pipeName,
+              alterPipeStatement.getProcessorAttributes(),
+              alterPipeStatement.getConnectorAttributes(),
+              alterPipeStatement.isReplaceAllProcessorAttributes(),
+              alterPipeStatement.isReplaceAllConnectorAttributes());
       TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to alter pipe {} in config node, status is {}.",
-            alterPipeStatement.getPipeName(),
-            tsStatus);
+        LOGGER.warn("Failed to alter pipe {} in config node, status is {}.", pipeName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
