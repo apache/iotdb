@@ -84,8 +84,8 @@ public class PipeRuntimeMeta {
    *
    * <p>The exceptions are all instances of:
    *
-   * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing pipeMeta, and will
-   * result in the halt of pipe execution.
+   * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing {@link PipeMeta},
+   * and will result in the halt of pipe execution.
    *
    * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
    * pipes sharing the same connector, and will stop the pipe likewise.
