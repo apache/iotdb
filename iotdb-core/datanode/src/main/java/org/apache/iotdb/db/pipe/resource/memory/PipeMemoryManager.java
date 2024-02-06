@@ -77,6 +77,22 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, false);
   }
 
+  public synchronized PipeMemoryBlock forceAllocate(Tablet tablet)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
+        > TABLET_MEMORY_REJECT_THRESHOLD) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
+                  + "total memory size %d bytes, used memory for tablet size %d bytes,",
+              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
+    }
+
+    final PipeMemoryBlock block = forceAllocate(calculateTabletSizeInBytes(tablet), true);
+    usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
+    return block;
+  }
+
   private PipeMemoryBlock forceAllocate(long sizeInBytes, boolean isForTablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
@@ -107,22 +123,6 @@ public class PipeMemoryManager {
             TOTAL_MEMORY_SIZE_IN_BYTES,
             usedMemorySizeInBytes,
             sizeInBytes));
-  }
-
-  public synchronized PipeMemoryBlock forceAllocateForTablet(Tablet tablet)
-      throws PipeRuntimeOutOfMemoryCriticalException {
-    if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
-        > TABLET_MEMORY_REJECT_THRESHOLD) {
-      throw new PipeRuntimeOutOfMemoryCriticalException(
-          String.format(
-              "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
-                  + "total memory size %d bytes, used memory for tablet size %d bytes,",
-              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
-    }
-
-    final PipeMemoryBlock block = forceAllocate(calculateTabletSizeInBytes(tablet), true);
-    usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
-    return block;
   }
 
   /**
