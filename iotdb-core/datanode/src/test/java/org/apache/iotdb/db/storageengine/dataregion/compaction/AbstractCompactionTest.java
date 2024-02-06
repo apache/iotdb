@@ -245,7 +245,7 @@ public class AbstractCompactionTest {
       int deviceNum,
       int measurementNum,
       int pointNum,
-      int startTime,
+      long startTime,
       int startValue,
       int timeInterval,
       int valueInterval,

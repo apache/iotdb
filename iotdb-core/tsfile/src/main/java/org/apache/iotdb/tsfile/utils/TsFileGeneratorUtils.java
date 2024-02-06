@@ -29,7 +29,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -61,7 +65,31 @@ public class TsFileGeneratorUtils {
       // construct TsRecord
       TSRecord tsRecord = new TSRecord(time, deviceId);
       for (IMeasurementSchema schema : schemas) {
-        DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue);
+        DataPoint dPoint;
+        switch (schema.getType()) {
+          case INT64:
+            dPoint = new LongDataPoint(schema.getMeasurementId(), startValue);
+            break;
+          case INT32:
+            dPoint = new IntDataPoint(schema.getMeasurementId(), (int) startValue);
+            break;
+          case DOUBLE:
+            dPoint = new DoubleDataPoint(schema.getMeasurementId(), (double) startValue);
+            break;
+          case FLOAT:
+            dPoint = new FloatDataPoint(schema.getMeasurementId(), (float) startValue);
+            break;
+          case BOOLEAN:
+            dPoint = new BooleanDataPoint(schema.getMeasurementId(), true);
+            break;
+          case TEXT:
+          default:
+            dPoint =
+                new StringDataPoint(
+                    schema.getMeasurementId(),
+                    new Binary(String.valueOf(startValue), TSFileConfig.STRING_CHARSET));
+            break;
+        }
         tsRecord.addTuple(dPoint);
       }
       // write
@@ -196,7 +224,7 @@ public class TsFileGeneratorUtils {
       int deviceNum,
       int measurementNum,
       int pointNum,
-      int startTime,
+      long startTime,
       int startValue,
       int chunkGroupSize,
       int pageSize)
@@ -214,7 +242,7 @@ public class TsFileGeneratorUtils {
       List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < measurementNum; i++) {
         alignedMeasurementSchemas.add(
-            new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+            new MeasurementSchema("s" + i, getDataType(i), TSEncoding.PLAIN));
       }
       for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
         tsFileWriter.registerAlignedTimeseries(
@@ -241,7 +269,7 @@ public class TsFileGeneratorUtils {
       int deviceNum,
       int measurementNum,
       int pointNum,
-      int startTime,
+      long startTime,
       int startValue,
       int chunkGroupSize,
       int pageSize)
@@ -258,7 +286,7 @@ public class TsFileGeneratorUtils {
       // register nonAlign timeseries
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       for (int i = 0; i < measurementNum; i++) {
-        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        measurementSchemas.add(new MeasurementSchema("s" + i, getDataType(i), TSEncoding.PLAIN));
       }
       for (int i = 0; i < deviceNum; i++) {
         tsFileWriter.registerTimeseries(
@@ -387,6 +415,25 @@ public class TsFileGeneratorUtils {
         }
       }
       return file;
+    }
+  }
+
+  public static TSDataType getDataType(int num) {
+    switch (num % 6) {
+      case 0:
+        return TSDataType.BOOLEAN;
+      case 1:
+        return TSDataType.INT32;
+      case 2:
+        return TSDataType.INT64;
+      case 3:
+        return TSDataType.FLOAT;
+      case 4:
+        return TSDataType.DOUBLE;
+      case 5:
+        return TSDataType.TEXT;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + num % 6);
     }
   }
 

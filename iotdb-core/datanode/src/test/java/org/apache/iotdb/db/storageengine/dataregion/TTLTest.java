@@ -401,8 +401,7 @@ public class TTLTest {
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException,
-          InterruptedException {
+      throws WriteProcessException, IllegalPathException, InterruptedException {
     boolean isEnableCrossCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
