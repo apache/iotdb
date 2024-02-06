@@ -116,6 +116,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return outputEventCollector.tryCollectBufferedEvents();
     }
 
+    outputEventCollector.resetCollectInvocationCount();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
@@ -137,8 +138,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
               outputEventCollector);
         }
       }
-
-      releaseLastEvent(true);
+      releaseLastEvent(!isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
