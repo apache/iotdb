@@ -21,14 +21,9 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
-import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -42,9 +37,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeDataNodeSubtask {
@@ -62,9 +55,6 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   private final String pipeName;
   private final int dataRegionId;
 
-  // A queue for events parsed by pattern or time
-  private final EnrichedDeque<Event> parsedEventQueue;
-
   public PipeProcessorSubtask(
       String taskID,
       long creationTime,
@@ -79,7 +69,6 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
-    this.parsedEventQueue = new EnrichedDeque<>(new LinkedList<>());
     PipeProcessorMetrics.getInstance().register(this);
   }
 
@@ -109,16 +98,10 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event;
-    if (lastEvent != null) {
-      event = lastEvent;
-    } else if (!parsedEventQueue.isEmpty()) {
-      event = parsedEventQueue.poll();
-    } else {
-      Event originalEvent = UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
-      parseEventByPatternAndTime(originalEvent);
-      event = parsedEventQueue.poll(); // If null is polled, will skip this round of process.
-    }
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
@@ -185,15 +168,6 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     try {
       isClosed.set(true);
 
-      // clear the events in queue first
-      parsedEventQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event).clearReferenceCount(PipeProcessorSubtask.class.getName());
-            }
-          });
-      parsedEventQueue.clear();
-
       // pipeProcessor closes before outputEventCollector, then no more events will be
       // added into outputEventCollector. only after that, outputEventCollector can be closed.
       pipeProcessor.close();
@@ -224,85 +198,6 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
   @Override
   public int hashCode() {
     return taskID.hashCode();
-  }
-
-  //////////////////////////// Parsing events ////////////////////////////
-
-  /** Parse an event by pattern and time, then add parsed events into {@code parsedEventQueue} */
-  private void parseEventByPatternAndTime(Event sourceEvent) throws Exception {
-    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-      parseEventByPatternAndTime((PipeTsFileInsertionEvent) sourceEvent);
-    } else if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      parseEventByPatternAndTime((PipeInsertNodeTabletInsertionEvent) sourceEvent);
-    } else if (sourceEvent instanceof PipeRawTabletInsertionEvent) {
-      parseEventByPatternAndTime((PipeRawTabletInsertionEvent) sourceEvent);
-    } else {
-      parsedEventQueue.offer(sourceEvent);
-    }
-  }
-
-  private void parseEventByPatternAndTime(PipeTsFileInsertionEvent sourceEvent) throws Exception {
-    if (!sourceEvent.waitForTsFileClose()) {
-      LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
-          sourceEvent.getTsFile());
-      return;
-    }
-
-    if (sourceEvent.shouldParsePatternOrTime()) {
-      AtomicBoolean atLeast1EventGenerated = new AtomicBoolean(false);
-      try {
-        sourceEvent
-            .toTabletInsertionEvents()
-            .forEach(
-                e -> {
-                  atLeast1EventGenerated.set(true);
-                  if (e instanceof EnrichedEvent) {
-                    ((EnrichedEvent) e)
-                        .increaseReferenceCount(PipeProcessorSubtask.class.getName());
-                  }
-                  parsedEventQueue.offer(e);
-                });
-      } finally {
-        sourceEvent.close();
-        // If no event is generated after parsing, report progress here.
-        // Otherwise, progress will be reported by generated events.
-        sourceEvent.decreaseReferenceCount(
-            PipeProcessorSubtask.class.getName(), !atLeast1EventGenerated.get());
-      }
-    } else {
-      // If no need to parse, just put it into the queue.
-      parsedEventQueue.offer(sourceEvent);
-    }
-  }
-
-  private void parseEventByPatternAndTime(PipeInsertNodeTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParsePatternOrTime()) {
-      TabletInsertionEvent e = sourceEvent.parseEventWithPatternOrTime();
-      if (e instanceof EnrichedEvent) {
-        ((EnrichedEvent) e).increaseReferenceCount(PipeProcessorSubtask.class.getName());
-      }
-      parsedEventQueue.offer(e);
-      // Parsed events will report progress, so do not report here.
-      sourceEvent.decreaseReferenceCount(PipeProcessorSubtask.class.getName(), false);
-    } else {
-      parsedEventQueue.offer(sourceEvent);
-    }
-  }
-
-  private void parseEventByPatternAndTime(PipeRawTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParsePatternOrTime()) {
-      TabletInsertionEvent e = sourceEvent.parseEventWithPatternOrTime();
-      if (e instanceof EnrichedEvent) {
-        ((EnrichedEvent) e).increaseReferenceCount(PipeProcessorSubtask.class.getName());
-      }
-      parsedEventQueue.offer(e);
-      // Parsed events will report progress, so do not report here.
-      sourceEvent.decreaseReferenceCount(PipeProcessorSubtask.class.getName(), false);
-    } else if (!sourceEvent.hasNoNeedParsingAndIsEmpty()) {
-      // Ignore the event if hasNoNeedParsingAndIsEmpty() is true
-      parsedEventQueue.offer(sourceEvent);
-    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
