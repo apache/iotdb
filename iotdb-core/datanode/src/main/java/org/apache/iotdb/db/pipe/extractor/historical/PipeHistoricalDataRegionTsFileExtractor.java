@@ -214,8 +214,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     historicalDataExtractionTimeLowerBound =
         isHistoricalExtractorEnabled
             ? Long.MIN_VALUE
-            // Do not extract data if historical extraction is disabled
-            : Long.MAX_VALUE;
+            // We define the realtime data as the data generated after the creation time
+            // of the pipe from user's perspective. But we still need to use
+            // PipeHistoricalDataRegionExtractor to extract the realtime data generated between the
+            // creation time of the pipe and the time when the pipe starts, because those data
+            // can not be listened by PipeRealtimeDataRegionExtractor, and should be extracted by
+            // PipeHistoricalDataRegionExtractor from implementation perspective.
+            : environment.getCreationTime();
 
     sloppyTimeRange =
         Arrays.stream(
