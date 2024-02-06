@@ -87,7 +87,7 @@ public class PipeMemoryManager {
       }
 
       try {
-        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
