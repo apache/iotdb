@@ -30,7 +30,7 @@ public class PipeLogManager {
     logClass2LogStatusMap.put(logClass, new PipeLogStatus(maxAverageScale, maxLogInterval));
   }
 
-  public boolean schedule(Class<?> clazz, int scale) {
-    return logClass2LogStatusMap.get(clazz).schedule(scale);
+  public boolean schedule(Class<?> logClass, int scale) {
+    return logClass2LogStatusMap.get(logClass).schedule(scale);
   }
 }
