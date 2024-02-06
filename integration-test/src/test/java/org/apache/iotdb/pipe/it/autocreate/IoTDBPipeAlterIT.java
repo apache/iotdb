@@ -322,7 +322,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");
     expectedResSet.add("3000,5.0,");
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
     // alter pipe (modify 'down-sampling.interval-seconds')
@@ -346,7 +346,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     expectedResSet.clear();
     expectedResSet.add("11000,1.0,");
     expectedResSet.add("13000,5.0,");
-    TestUtils.assertDataOnEnv(
+    TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select * from root.** where time > 10000",
         "Time,root.db.d1.at1,",
