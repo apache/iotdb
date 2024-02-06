@@ -368,7 +368,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             polledEvent);
       }
       if (polledEvent != null) {
-        LOGGER.info("Polled event {} from retry queue.", polledEvent);
+        LOGGER.debug("Polled event {} from retry queue.", polledEvent);
       }
     }
   }
@@ -392,7 +392,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public synchronized void addFailureEventToRetryQueue(Event event) {
     retryEventQueue.offer(event);
 
-    LOGGER.info("Added event {} to retry queue.", event);
+    LOGGER.debug("Added event {} to retry queue.", event);
   }
 
   //////////////////////////// Operations for close ////////////////////////////
