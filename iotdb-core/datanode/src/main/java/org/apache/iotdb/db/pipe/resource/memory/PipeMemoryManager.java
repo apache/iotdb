@@ -59,7 +59,8 @@ public class PipeMemoryManager {
 
   // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
   // threshold, allocations of memory block for tablets will be rejected.
-  private static final double TABLET_MEMORY_REJECT_THRESHOLD = 0.5;
+  private static final double TABLET_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   private long usedMemorySizeInBytesOfTablets;
 
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
