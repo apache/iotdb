@@ -32,8 +32,14 @@ public abstract class IoTDBThriftClientManager {
   protected final boolean useLeaderCache;
   protected static final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
+  protected int receiverHandshakeVersion = 2;
+
   protected IoTDBThriftClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
+  }
+
+  public int getReceiverHandshakeVersion() {
+    return receiverHandshakeVersion;
   }
 }

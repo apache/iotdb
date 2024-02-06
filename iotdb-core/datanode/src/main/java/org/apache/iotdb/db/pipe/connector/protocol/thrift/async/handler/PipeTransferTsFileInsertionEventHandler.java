@@ -74,7 +74,8 @@ public class PipeTransferTsFileInsertionEventHandler
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
-    currentFile = Objects.nonNull(modFile) ? modFile : tsFile;
+    currentFile =
+        Objects.nonNull(modFile) && connector.getReceiverHandshakeVersion() >= 2 ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];

@@ -395,6 +395,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     LOGGER.info("Added event {} to retry queue.", event);
   }
 
+  public int getReceiverHandshakeVersion() {
+    return clientManager.getReceiverHandshakeVersion();
+  }
+
   //////////////////////////// Operations for close ////////////////////////////
 
   /**

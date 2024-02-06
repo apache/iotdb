@@ -167,6 +167,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
             endPoint.getIp(),
             endPoint.getPort(),
             resp.getStatus());
+        receiverHandshakeVersion = 1;
         resp =
             clientAndStatus
                 .getLeft()

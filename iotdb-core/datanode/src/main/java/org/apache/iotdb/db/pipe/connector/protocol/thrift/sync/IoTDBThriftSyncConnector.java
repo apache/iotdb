@@ -401,7 +401,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer mod file if exists
-    if (Objects.nonNull(pipeTsFileInsertionEvent.getModFile())) {
+    if (Objects.nonNull(pipeTsFileInsertionEvent.getModFile())
+        && clientManager.getReceiverHandshakeVersion() >= 2) {
       transferFilePieces(pipeTsFileInsertionEvent.getModFile(), clientAndStatus);
     }
 
