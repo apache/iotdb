@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
@@ -28,6 +30,10 @@ import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class PipeDataNodeTaskBuilder {
 
@@ -37,6 +43,8 @@ public abstract class PipeDataNodeTaskBuilder {
 
   protected final PipeProcessorSubtaskExecutor processorExecutor;
   protected final PipeConnectorSubtaskExecutor connectorExecutor;
+
+  protected final Map<String, String> systemParameters;
 
   protected PipeDataNodeTaskBuilder(
       PipeStaticMeta pipeStaticMeta,
@@ -49,6 +57,7 @@ public abstract class PipeDataNodeTaskBuilder {
     this.pipeTaskMeta = pipeTaskMeta;
     this.processorExecutor = processorExecutor;
     this.connectorExecutor = connectorExecutor;
+    systemParameters = generateSystemParameters();
   }
 
   public PipeDataNodeTask build() {
@@ -59,7 +68,7 @@ public abstract class PipeDataNodeTaskBuilder {
         new PipeTaskExtractorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            pipeStaticMeta.getExtractorParameters(),
+            blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters()),
             regionId,
             pipeTaskMeta);
 
@@ -67,7 +76,7 @@ public abstract class PipeDataNodeTaskBuilder {
         new PipeTaskConnectorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            pipeStaticMeta.getConnectorParameters(),
+            blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
             regionId,
             connectorExecutor);
 
@@ -76,7 +85,7 @@ public abstract class PipeDataNodeTaskBuilder {
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            pipeStaticMeta.getProcessorParameters(),
+            blendUserAndSystemParameters(pipeStaticMeta.getProcessorParameters()),
             regionId,
             extractorStage.getEventSupplier(),
             connectorStage.getPipeConnectorPendingQueue(),
@@ -84,5 +93,21 @@ public abstract class PipeDataNodeTaskBuilder {
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
+  }
+
+  private Map<String, String> generateSystemParameters() {
+    final Map<String, String> systemParameters = new HashMap<>();
+    if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)) {
+      systemParameters.put(SystemConstant.RESTART_KEY, Boolean.TRUE.toString());
+    }
+    return systemParameters;
+  }
+
+  private PipeParameters blendUserAndSystemParameters(PipeParameters userParameters) {
+    // Deep copy the user parameters to avoid modification of the original parameters.
+    // If the original parameters are modified, progress index report will be affected.
+    final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
+    blendedParameters.putAll(systemParameters);
+    return new PipeParameters(blendedParameters);
   }
 }

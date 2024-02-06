@@ -17,20 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.commons.pipe.config.constant;
 
-/** RaftServer is unable to serve linearizable read requests. */
-public class RatisReadUnavailableException extends ConsensusException {
+public class SystemConstant {
 
-  private static final String RATIS_READ_UNAVAILABLE =
-      "Raft Server cannot serve read requests now (leader is unknown or under recovery). "
-          + "Please try read later: ";
+  public static final String RESTART_KEY = "__system.restart";
+  public static final boolean RESTART_DEFAULT_VALUE = false;
 
-  public RatisReadUnavailableException(Throwable cause) {
-    super(RATIS_READ_UNAVAILABLE, cause);
-  }
-
-  public RatisReadUnavailableException(String cause) {
-    super(cause);
+  private SystemConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

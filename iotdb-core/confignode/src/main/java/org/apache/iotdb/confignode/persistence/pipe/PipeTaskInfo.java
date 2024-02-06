@@ -54,6 +54,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -162,16 +163,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
     throw new PipeException(exceptionMessage);
   }
 
-  public void checkBeforeAlterPipe(TAlterPipeReq alterPipeRequest) throws PipeException {
+  public void checkAndUpdateRequestBeforeAlterPipe(TAlterPipeReq alterPipeRequest)
+      throws PipeException {
     acquireReadLock();
     try {
-      checkBeforeAlterPipeInternal(alterPipeRequest);
+      checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest) throws PipeException {
+  private void checkAndUpdateRequestBeforeAlterPipeInternal(TAlterPipeReq alterPipeRequest)
+      throws PipeException {
     if (!isPipeExisted(alterPipeRequest.getPipeName())) {
       final String exceptionMessage =
           String.format(
@@ -180,30 +183,46 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
-    PipeMeta pipeMetaFromCoordinator = getPipeMetaByPipeName(alterPipeRequest.getPipeName());
-    PipeStaticMeta pipeStaticMetaFromCoordinator = pipeMetaFromCoordinator.getStaticMeta();
-    // fill empty attributes and check useless alter from the perspective of CN
-    boolean needToAlter = false;
-    if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
-      alterPipeRequest.setProcessorAttributes(
-          pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
-    } else if (!(new PipeParameters(alterPipeRequest.getProcessorAttributes()))
-        .isEquivalent(pipeStaticMetaFromCoordinator.getProcessorParameters())) {
-      needToAlter = true;
+    PipeStaticMeta pipeStaticMetaFromCoordinator =
+        getPipeMetaByPipeName(alterPipeRequest.getPipeName()).getStaticMeta();
+    // deep copy current pipe static meta
+    PipeStaticMeta copiedPipeStaticMetaFromCoordinator =
+        new PipeStaticMeta(
+            pipeStaticMetaFromCoordinator.getPipeName(),
+            pipeStaticMetaFromCoordinator.getCreationTime(),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
+
+    // 1. In modify mode, based on the passed attributes:
+    //   1.1. if they are empty, the original attributes are filled directly.
+    //   1.2. Otherwise, corresponding updates on original attributes are performed.
+    // 2. In replace mode, do nothing here.
+    if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
+      if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
+        alterPipeRequest.setProcessorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
+      } else {
+        alterPipeRequest.setProcessorAttributes(
+            copiedPipeStaticMetaFromCoordinator
+                .getProcessorParameters()
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeRequest.getProcessorAttributes()))
+                .getAttribute());
+      }
     }
-    if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
-      alterPipeRequest.setConnectorAttributes(
-          pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
-    } else if (!(new PipeParameters(alterPipeRequest.getConnectorAttributes())
-        .isEquivalent(pipeStaticMetaFromCoordinator.getConnectorParameters()))) {
-      needToAlter = true;
-    }
-    if (!needToAlter) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter pipe %s, nothing to alter", alterPipeRequest.getPipeName());
-      LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
+    if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
+      if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
+        alterPipeRequest.setConnectorAttributes(
+            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
+      } else {
+        alterPipeRequest.setConnectorAttributes(
+            copiedPipeStaticMetaFromCoordinator
+                .getConnectorParameters()
+                .addOrReplaceEquivalentAttributes(
+                    new PipeParameters(alterPipeRequest.getConnectorAttributes()))
+                .getAttribute());
+      }
     }
   }
 

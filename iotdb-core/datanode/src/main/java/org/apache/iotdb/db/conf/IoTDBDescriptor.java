@@ -720,12 +720,6 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    // the size of device path cache
-    conf.setDevicePathCacheSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "device_path_cache_size", String.valueOf(conf.getDevicePathCacheSize()))));
-
     // the default fill interval in LinearFill and PreviousFill
     conf.setDefaultFillInterval(
         Integer.parseInt(
@@ -1751,57 +1745,61 @@ public class IoTDBDescriptor {
 
   private void initStorageEngineAllocate(Properties properties) {
     long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
-
-    int proportionSum = 10;
-    int writeProportion = 8;
-    int compactionProportion = 2;
-    int writeProportionSum = 20;
-    int memTableProportion = 19;
-    int timePartitionInfo = 1;
-
-    String storageMemoryAllocatePortion =
+    String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
-    if (storageMemoryAllocatePortion != null) {
-      String[] proportions = storageMemoryAllocatePortion.split(":");
-      int loadedProportionSum = 0;
-      for (String proportion : proportions) {
-        loadedProportionSum += Integer.parseInt(proportion.trim());
+    if (valueOfStorageEngineMemoryProportion != null) {
+      String[] storageProportionArray = valueOfStorageEngineMemoryProportion.split(":");
+      int storageEngineMemoryProportion = 0;
+      for (String proportion : storageProportionArray) {
+        int proportionValue = Integer.parseInt(proportion.trim());
+        if (proportionValue <= 0) {
+          LOGGER.warn(
+              "The value of storage_engine_memory_proportion is illegal, use default value 8:2 .");
+          return;
+        }
+        storageEngineMemoryProportion += proportionValue;
       }
+      conf.setCompactionProportion(
+          (double) Integer.parseInt(storageProportionArray[1].trim())
+              / (double) storageEngineMemoryProportion);
 
-      if (loadedProportionSum != 0) {
-        proportionSum = loadedProportionSum;
-        writeProportion = Integer.parseInt(proportions[0].trim());
-        compactionProportion = Integer.parseInt(proportions[1].trim());
+      String valueOfWriteMemoryProportion = properties.getProperty("write_memory_proportion");
+      if (valueOfWriteMemoryProportion != null) {
+        String[] writeProportionArray = valueOfWriteMemoryProportion.split(":");
+        int writeMemoryProportion = 0;
+        for (String proportion : writeProportionArray) {
+          int proportionValue = Integer.parseInt(proportion.trim());
+          writeMemoryProportion += proportionValue;
+          if (proportionValue <= 0) {
+            LOGGER.warn(
+                "The value of write_memory_proportion is illegal, use default value 18:1:1 .");
+            return;
+          }
+        }
+
+        double writeAllProportionOfStorageEngineMemory =
+            (double) Integer.parseInt(storageProportionArray[0].trim())
+                / storageEngineMemoryProportion;
+        double memTableProportion =
+            (double) Integer.parseInt(writeProportionArray[0].trim()) / writeMemoryProportion;
+        double timePartitionInfoProportion =
+            (double) Integer.parseInt(writeProportionArray[1].trim()) / writeMemoryProportion;
+        double devicePathCacheProportion =
+            (double) Integer.parseInt(writeProportionArray[2].trim()) / writeMemoryProportion;
+        // writeProportionForMemtable = 8/10 * 18/20 = 0.72 default
+        conf.setWriteProportionForMemtable(
+            writeAllProportionOfStorageEngineMemory * memTableProportion);
+
+        // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
+        conf.setAllocateMemoryForTimePartitionInfo(
+            (long)
+                ((writeAllProportionOfStorageEngineMemory * timePartitionInfoProportion)
+                    * storageMemoryTotal));
+
+        // device path cache default memory is value is 8/10 * 1/20 = 0.04 for StorageEngine
+        conf.setDevicePathCacheProportion(
+            writeAllProportionOfStorageEngineMemory * devicePathCacheProportion);
       }
-      conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
-    }
-
-    String allocationRatioForWrite = properties.getProperty("write_memory_proportion");
-    if (allocationRatioForWrite != null) {
-      String[] proportions = allocationRatioForWrite.split(":");
-      int loadedProportionSum = 0;
-      for (String proportion : proportions) {
-        loadedProportionSum += Integer.parseInt(proportion.trim());
-      }
-
-      if (loadedProportionSum != 0) {
-        writeProportionSum = loadedProportionSum;
-        memTableProportion = Integer.parseInt(proportions[0].trim());
-        timePartitionInfo = Integer.parseInt(proportions[1].trim());
-      }
-      // memtableProportionForWrite = 19/20 default
-      double memtableProportionForWrite =
-          ((double) memTableProportion / (double) writeProportionSum);
-
-      // timePartitionInfoForWrite = 1/20 default
-      double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
-      // proportionForWrite = 8/10 default
-      double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
-      // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
-      conf.setWriteProportionForMemtable(proportionForWrite * memtableProportionForWrite);
-      // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
-      conf.setAllocateMemoryForTimePartitionInfo(
-          (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
     }
   }
 

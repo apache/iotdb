@@ -143,6 +143,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
@@ -258,7 +259,7 @@ public class DataRegion implements IDataRegionForQuery {
    * different IoTDB instance will have identical data, providing convenience for data comparison
    * across different instances. partition number -> max version number
    */
-  private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+  private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
   /** whether it's ready from recovery. */
@@ -594,7 +595,7 @@ public class DataRegion implements IDataRegionForQuery {
     Map<String, Long> endTimeMap = new HashMap<>();
     for (String deviceId : resource.getDevices()) {
       long endTime = resource.getEndTime(deviceId);
-      endTimeMap.put(deviceId.intern(), endTime);
+      endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
       lastFlushTimeMap.updateMultiDeviceFlushedTime(timePartitionId, endTimeMap);
@@ -630,10 +631,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
-    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
-    if (fileVersion > oldVersion) {
-      partitionMaxFileVersions.put(partitionNum, fileVersion);
-    }
+    partitionMaxFileVersions.compute(
+        partitionNum,
+        (key, oldVersion) ->
+            (oldVersion == null || fileVersion > oldVersion) ? fileVersion : oldVersion);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1386,9 +1387,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     String filePath =
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
@@ -1431,8 +1432,9 @@ public class DataRegion implements IDataRegionForQuery {
    * @return file name
    */
   private String getNewTsFileName(long timePartitionId) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
@@ -2591,10 +2593,40 @@ public class DataRegion implements IDataRegionForQuery {
               false,
               newTsFileResource.getTsFile().getName());
 
-      resetLastCacheWhenLoadingTsFile(); // update last cache
-      updateLastFlushTime(newTsFileResource); // update last flush time
-      long partitionNum = newTsFileResource.getTimePartition();
-      updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
+      // update last cache
+      resetLastCacheWhenLoadingTsFile();
+
+      // update last flush time & help last flush time map degrade
+      if (config.isEnableSeparateData()) {
+        final DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionId));
+        final long timePartitionId = newTsFileResource.getTimePartition();
+        if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+          TimePartitionManager.getInstance()
+              .registerTimePartitionInfo(
+                  new TimePartitionInfo(
+                      dataRegionId,
+                      timePartitionId,
+                      false,
+                      Long.MAX_VALUE,
+                      lastFlushTimeMap.getMemSize(timePartitionId)));
+        }
+        updateLastFlushTime(newTsFileResource);
+        TimePartitionManager.getInstance()
+            .updateAfterFlushing(
+                dataRegionId,
+                timePartitionId,
+                System.currentTimeMillis(),
+                lastFlushTimeMap.getMemSize(timePartitionId),
+                false);
+      }
+
+      // update partition version
+      updatePartitionFileVersion(
+          newTsFileResource.getTimePartition(), newTsFileResource.getVersion());
+
+      // help tsfile resource degrade
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(newTsFileResource);
+
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
@@ -2706,8 +2738,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
-    partitionMaxFileVersions.put(timePartitionId, version);
+    long version =
+        partitionMaxFileVersions.compute(
+            timePartitionId, (key, oldVersion) -> (oldVersion == null ? 1 : oldVersion + 1));
     tsFileResource.setVersion(version);
     return version;
   }

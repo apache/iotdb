@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Weigher;
 
 /** This cache is for reducing duplicated DeviceId PartialPath initialization in write process. */
 public class DataNodeDevicePathCache {
@@ -35,7 +36,15 @@ public class DataNodeDevicePathCache {
   private final Cache<String, PartialPath> devicePathCache;
 
   private DataNodeDevicePathCache() {
-    devicePathCache = Caffeine.newBuilder().maximumSize(config.getDevicePathCacheSize()).build();
+    devicePathCache =
+        Caffeine.newBuilder()
+            .maximumWeight(
+                (long)
+                    (config.getAllocateMemoryForStorageEngine()
+                        * config.getDevicePathCacheProportion()))
+            .weigher(
+                (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
+            .build();
   }
 
   public static DataNodeDevicePathCache getInstance() {
@@ -60,6 +69,14 @@ public class DataNodeDevicePathCache {
           });
     } catch (IllegalArgumentException e) {
       throw new IllegalPathException(deviceId);
+    }
+  }
+
+  public String getDeviceId(String deviceId) {
+    try {
+      return getPartialPath(deviceId).getFullPath();
+    } catch (IllegalPathException e) {
+      return deviceId;
     }
   }
 

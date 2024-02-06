@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,8 @@ import java.util.TreeMap;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
+  private static final org.slf4j.Logger logger =
+      org.slf4j.LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
   private IoTDBConnection connection;
   private IClientRPCService.Iface client;
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
@@ -2219,37 +2222,38 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW TIMESERIES";
-    if (catalog != null && catalog.length() > 0) {
+    if (StringUtils.isNotEmpty(catalog)) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
       }
       sql = sql + " " + catalog;
-    } else if (schemaPattern != null && schemaPattern.length() > 0) {
+    } else if (StringUtils.isNotEmpty(schemaPattern)) {
       if (schemaPattern.contains("%")) {
         schemaPattern = schemaPattern.replace("%", "*");
       }
       sql = sql + " " + schemaPattern;
     }
-    if (((catalog != null && catalog.length() > 0)
-            || schemaPattern != null && schemaPattern.length() > 0)
-        && tableNamePattern != null
-        && tableNamePattern.length() > 0) {
+    if ((StringUtils.isNotEmpty(catalog) || StringUtils.isNotEmpty(schemaPattern))
+        && StringUtils.isNotEmpty(tableNamePattern)) {
       if (tableNamePattern.contains("%")) {
         tableNamePattern = tableNamePattern.replace("%", "*");
       }
       sql = sql + "." + tableNamePattern;
     }
 
-    if (((catalog != null && catalog.length() > 0)
-            || schemaPattern != null && schemaPattern.length() > 0)
-        && tableNamePattern != null
-        && tableNamePattern.length() > 0
-        && columnNamePattern != null
-        && columnNamePattern.length() > 0) {
+    if ((StringUtils.isNotEmpty(catalog) || StringUtils.isNotEmpty(schemaPattern))
+        && StringUtils.isNotEmpty(tableNamePattern)
+        && StringUtils.isNotEmpty(columnNamePattern)) {
       if (columnNamePattern.contains("%")) {
         columnNamePattern = columnNamePattern.replace("%", "*");
       }
       sql = sql + "." + columnNamePattern;
+    }
+
+    if (StringUtils.isEmpty(catalog)
+        && StringUtils.isEmpty(schemaPattern)
+        && StringUtils.isNotEmpty(tableNamePattern)) {
+      sql = sql + " " + tableNamePattern + ".*";
     }
     ResultSet rs;
     try {
@@ -2490,7 +2494,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW devices";
+    String sql = "SHOW DEVICES";
     String database = "";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
@@ -2564,7 +2568,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         if (i < 2) {
           valueInRow.add("");
         } else if (i == 2) {
-          valueInRow.add(res.substring(database.length() + 1));
+          int beginIndex = database.length() + 1;
+          if (StringUtils.isEmpty(database)) {
+            beginIndex = 0;
+          }
+          valueInRow.add(res.substring(beginIndex));
         } else if (i == 3) {
           valueInRow.add("TABLE");
         } else {
