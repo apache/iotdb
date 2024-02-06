@@ -186,7 +186,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
     // Retry to handshake by PipeTransferHandshakeV1Req.
     if (resp.get() != null
-        && resp.get().getStatus().getCode() == TSStatusCode.PIPE_VERSION_ERROR.getStatusCode()) {
+        && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
       LOGGER.info(
           "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
               + "retry to handshake by PipeTransferHandshakeV1Req.",
