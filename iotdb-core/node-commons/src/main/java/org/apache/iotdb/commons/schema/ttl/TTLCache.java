@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.commons.schema.ttl;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -39,9 +57,6 @@ public class TTLCache {
    * Put ttl into cache tree.
    *
    * @param nodes should be prefix path or specific device path without wildcard
-   * @return has added new node with ttl or not. Returns true only if the original node does not
-   *     exist or the node's ttl is NULL_TTL. If the original node exists and ttl is not NULL_TTL,
-   *     return false.
    */
   public void setTTL(String[] nodes, long ttl) {
     if (nodes.length < 2 || ttl <= 0) {
@@ -118,7 +133,8 @@ public class TTLCache {
   }
 
   /**
-   * Get ttl from cache tree.
+   * Get ttl from cache tree. Return the TTL of the node closest to the path leaf node that has a
+   * TTL which is not NULL_TTL.
    *
    * @param nodes should be prefix path or specific device path without wildcard
    */
@@ -152,6 +168,10 @@ public class TTLCache {
     return pathTTLMap;
   }
 
+  /**
+   * Return the ttl of path leaf node. If the path leaf node does not exist, it means that the TTL
+   * is not set, and return NULL_TTL.
+   */
   public long getNodeTTL(String[] nodes) {
     CacheNode node = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {

@@ -913,7 +913,6 @@ public class ProcedureManager {
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
-      // TODO: check if correct or not
       return procedureStatus.get(0);
     }
   }

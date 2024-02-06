@@ -60,6 +60,7 @@ public class SystemInfo {
   private final AtomicLong seqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong unseqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong crossSpaceCompactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong settleCompactionMemoryCost = new AtomicLong(0L);
 
   private final AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
@@ -253,6 +254,8 @@ public class SystemInfo {
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
         break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(memoryCost);
       default:
     }
     return true;
@@ -273,6 +276,9 @@ public class SystemInfo {
         break;
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
+        break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(-compactionMemoryCost);
         break;
       default:
         break;
@@ -332,6 +338,10 @@ public class SystemInfo {
 
   public AtomicLong getCrossSpaceCompactionMemoryCost() {
     return crossSpaceCompactionMemoryCost;
+  }
+
+  public AtomicLong getSettleCompactionMemoryCost() {
+    return settleCompactionMemoryCost;
   }
 
   @TestOnly

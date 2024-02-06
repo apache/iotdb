@@ -66,11 +66,16 @@ public class CompactionScheduleSummary {
     return submitUnseqInnerSpaceCompactionTaskNum;
   }
 
+  public int getSubmitSettleCompactionTaskNum() {
+    return submitSettleCompactionTaskNum;
+  }
+
   public boolean hasSubmitTask() {
     return submitCrossSpaceCompactionTaskNum
             + submitInsertionCrossSpaceCompactionTaskNum
             + submitSeqInnerSpaceCompactionTaskNum
             + submitUnseqInnerSpaceCompactionTaskNum
+            + submitSettleCompactionTaskNum
         > 0;
   }
 }
