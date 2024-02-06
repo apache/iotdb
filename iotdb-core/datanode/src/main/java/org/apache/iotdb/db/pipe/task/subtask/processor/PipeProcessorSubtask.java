@@ -168,8 +168,8 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     try {
       isClosed.set(true);
 
-      // pipeProcessor closes before outputEventCollector, then no more events will be
-      // added into outputEventCollector. only after that, outputEventCollector can be closed.
+      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
+      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
     } catch (Exception e) {
       LOGGER.info(
