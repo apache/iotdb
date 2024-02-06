@@ -485,7 +485,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   // use this to avoid some runtimeExceptions when try to get jdbc connections.
-  // because it is hard to add retry when getting jdbc connections in
+  // because it is hard to add retry and handle exception when getting jdbc connections in
   // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
   // so use this function to add retry when cluster is ready.
   protected boolean testJDBCConnection() {
