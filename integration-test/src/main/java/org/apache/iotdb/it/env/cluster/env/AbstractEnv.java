@@ -280,7 +280,7 @@ public abstract class AbstractEnv implements BaseEnv {
         && testJDBCConnection();
   }
   /**
-   * Returns whether the all nodes' status all match the provided predicate.
+   * Returns whether the all nodes' status all match the provided predicate. check nodes with RPC
    *
    * @param statusCheck the predicate to test the status of nodes
    * @return {@code true} if all nodes' status of the cluster match the provided predicate,

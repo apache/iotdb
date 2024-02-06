@@ -215,8 +215,12 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartWithoutSeedConfigNode() {
     // shutdown all ConfigNodes and DataNodes
-    EnvFactory.getEnv().shutdownAllConfigNodes();
-    EnvFactory.getEnv().shutdownAllDataNodes();
+    for (int i = testConfigNodeNum - 1; i >= 0; i--) {
+      EnvFactory.getEnv().shutdownConfigNode(i);
+    }
+    for (int i = testDataNodeNum - 1; i >= 0; i--) {
+      EnvFactory.getEnv().shutdownDataNode(i);
+    }
     logger.info("Shutdown all ConfigNodes and DataNodes");
     // restart without seed ConfigNode, the cluster should still work
     for (int i = 1; i < testConfigNodeNum; i++) {
