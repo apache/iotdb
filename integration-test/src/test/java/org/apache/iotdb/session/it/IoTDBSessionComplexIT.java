@@ -451,8 +451,6 @@ public class IoTDBSessionComplexIT {
 
       session.executeNonQueryStatement("FLUSH");
       session.executeNonQueryStatement("FLUSH root.sg1");
-      session.executeNonQueryStatement("MERGE");
-      session.executeNonQueryStatement("FULL MERGE");
 
       List<String> deviceIds = new ArrayList<>();
       queryForBatch(Collections.singletonList("root.sg1.d1"), 400);

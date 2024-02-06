@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -99,18 +98,22 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     ISegment<ByteBuffer, ICachedMNode> tarSeg = getSegment(segIdx);
 
     if (tarSeg.insertRecord(key, buffer) < 0) {
+      short spare = spareSize;
       // relocate inside page, if not enough space for new size segment, throw exception
       tarSeg =
           relocateSegment(
               tarSeg, segIdx, SchemaFile.reEstimateSegSize(tarSeg.size() + buffer.capacity()));
-    } else {
-      return 0L;
-    }
+      if (tarSeg == null) {
+        return -1;
+      }
 
-    if (tarSeg.insertRecord(key, buffer) < 0) {
-      throw new MetadataException("failed to insert buffer into new segment");
-    }
+      // relocated but still not enough
+      if (tarSeg.insertRecord(key, buffer) < 0) {
+        throw new MetadataException("failed to insert buffer into relocated segment");
+      }
 
+      return spare >= spareSize ? 0L : spareSize - spare;
+    }
     return 0L;
   }
 
@@ -125,24 +128,25 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
-  public void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
+  public long update(short segIdx, String key, ByteBuffer buffer) throws MetadataException {
     ISegment<ByteBuffer, ICachedMNode> seg = getSegment(segIdx);
-    try {
-      if (seg.updateRecord(key, buffer) < 0) {
-        throw new MetadataException("Record to update not found.");
-      }
-    } catch (SegmentOverflowException e) {
-      // relocate large enough to include buffer, throw up if page overflow
+
+    if (seg.updateRecord(key, buffer) < 0) {
+      short spare = spareSize;
       seg =
           relocateSegment(
               seg, segIdx, SchemaFile.reEstimateSegSize(seg.size() + buffer.capacity()));
 
-      // retry and throw if failed again
-      if (seg.updateRecord(key, buffer) < 0) {
-        throw new MetadataException(
-            String.format("Unknown reason for key [%s] not found in page [%d].", key, pageIndex));
+      if (seg == null) {
+        return -1;
       }
+
+      if (seg.updateRecord(key, buffer) < 0) {
+        throw new MetadataException("failed to update buffer upon relocated segment");
+      }
+      return spare >= spareSize ? 0 : spareSize - spare;
     }
+    return 0L;
   }
 
   @Override
@@ -401,13 +405,12 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
    * @param seg original segment instance
    * @param segIdx original segment index
    * @param newSize target segment size
-   * @return reallocated segment instance
-   * @throws SchemaPageOverflowException if this page has no enough space
+   * @return reallocated segment instance, null if no enough spare space
    */
   private ISegment<ByteBuffer, ICachedMNode> relocateSegment(
       ISegment<?, ?> seg, short segIdx, short newSize) throws MetadataException {
     if (seg.size() == SchemaFileConfig.SEG_MAX_SIZ || getSpareSize() + seg.size() < newSize) {
-      throw new SchemaPageOverflowException(pageIndex);
+      return null;
     }
 
     // try to allocate space directly from spareOffset or rearrange and extend in place

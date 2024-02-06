@@ -377,6 +377,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public double getDouble(int columnIndex) throws SQLException {
     try {
+      if (ioTDBRpcDataSet.columnTypeList.get(columnIndex - 1).equals("FLOAT")) {
+        return ioTDBRpcDataSet.getFloat(columnIndex);
+      }
       return getDouble(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
@@ -386,6 +389,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     try {
+      if (ioTDBRpcDataSet
+          .columnTypeList
+          .get(ioTDBRpcDataSet.columnNameList.indexOf(columnName))
+          .equals("FLOAT")) {
+        return ioTDBRpcDataSet.getFloat(columnName);
+      }
       return ioTDBRpcDataSet.getDouble(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());

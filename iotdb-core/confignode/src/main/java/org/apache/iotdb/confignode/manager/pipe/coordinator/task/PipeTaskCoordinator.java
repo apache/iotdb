@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlan
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -103,6 +104,15 @@ public class PipeTaskCoordinator {
     final TSStatus status = configManager.getProcedureManager().createPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+    }
+    return status;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */
+  public TSStatus alterPipe(TAlterPipeReq req) {
+    final TSStatus status = configManager.getProcedureManager().alterPipe(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
     }
     return status;
   }

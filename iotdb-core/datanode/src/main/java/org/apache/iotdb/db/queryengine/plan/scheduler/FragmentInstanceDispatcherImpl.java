@@ -301,8 +301,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
             logger.warn(sendFragmentInstanceResp.message);
-            if (sendFragmentInstanceResp.message.contains(
-                RatisReadUnavailableException.RATIS_READ_UNAVAILABLE)) {
+            if (sendFragmentInstanceResp.isSetNeedRetry()
+                && sendFragmentInstanceResp.isNeedRetry()) {
               throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
             } else {
               throw new FragmentInstanceDispatchException(
