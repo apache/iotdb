@@ -563,19 +563,19 @@ connectorAttributeClause
 
 alterPipe
     : ALTER PIPE pipeName=identifier
-        modifyProcessorAttributesClause?
-        modifyConnectorAttributesClause?
+        alterProcessorAttributesClause?
+        alterConnectorAttributesClause?
     ;
 
-modifyProcessorAttributesClause
-    : MODIFY PROCESSOR
+alterProcessorAttributesClause
+    : (MODIFY | REPLACE) PROCESSOR
         LR_BRACKET
         (processorAttributeClause COMMA)* processorAttributeClause?
         RR_BRACKET
     ;
 
-modifyConnectorAttributesClause
-    : MODIFY (CONNECTOR | SINK)
+alterConnectorAttributesClause
+    : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
