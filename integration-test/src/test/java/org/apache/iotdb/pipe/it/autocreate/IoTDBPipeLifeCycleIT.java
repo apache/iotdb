@@ -213,8 +213,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select s1 from root.db.d1",
           "Time,root.db.d1.s1,",
-          new HashSet<>(Arrays.asList("2,2.0,", "3,3.0,")),
-          10);
+          new HashSet<>(Arrays.asList("2,2.0,", "3,3.0,")));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
       TestUtils.assertDataEventuallyOnEnv(
