@@ -109,7 +109,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -140,7 +140,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   false),
@@ -175,7 +175,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -212,7 +212,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -253,7 +253,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   false),
@@ -287,7 +287,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -321,7 +321,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -354,7 +354,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -392,7 +392,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -431,7 +431,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -471,7 +471,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
           new Aggregator(
               AccumulatorFactory.createAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),

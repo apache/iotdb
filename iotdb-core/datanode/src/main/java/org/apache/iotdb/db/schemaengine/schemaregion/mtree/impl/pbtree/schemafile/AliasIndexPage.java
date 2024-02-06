@@ -124,8 +124,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   @Override
-  public int updateRecord(String key, String buffer)
-      throws SegmentOverflowException, RecordDuplicatedException {
+  public int updateRecord(String key, String buffer) throws MetadataException {
     return -1;
   }
 

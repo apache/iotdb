@@ -178,6 +178,38 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testRepairUnsortedDataInOnePageWithMultiNonAlignedSeries() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      for (int i = 0; i < 1000; i++) {
+        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+            "s" + i,
+            new TimeRange[][][] {
+              new TimeRange[][] {
+                new TimeRange[] {
+                  new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)
+                }
+              }
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileDataCorrectness(resource));
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
+    task.start();
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileDataCorrectness(
+            tsFileManager.getTsFileList(false).get(0)));
+  }
+
+  @Test
   public void testRepairUnsortedDataInOnePageWithUnseqFile() throws IOException {
     TsFileResource resource = createEmptyFileAndResource(false);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {

@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProc
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.AlterPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
@@ -129,6 +130,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE_V2:
         procedure = new DropPipeProcedureV2();
         break;
+      case ALTER_PIPE_PROCEDURE_V2:
+        procedure = new AlterPipeProcedureV2();
+        break;
       case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
         procedure = new PipeHandleLeaderChangeProcedure();
         break;
@@ -216,6 +220,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.STOP_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof DropPipeProcedureV2) {
       return ProcedureType.DROP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof AlterPipeProcedureV2) {
+      return ProcedureType.ALTER_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof PipeHandleLeaderChangeProcedure) {
       return ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE;
     } else if (procedure instanceof PipeMetaSyncProcedure) {

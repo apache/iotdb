@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
@@ -162,6 +163,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement);
 
   SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement);
+
+  SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement);
 
   SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement);
 

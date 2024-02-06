@@ -24,6 +24,7 @@ public enum PipeTaskOperation {
   START_PIPE("startPipe"),
   STOP_PIPE("stopPipe"),
   DROP_PIPE("dropPipe"),
+  ALTER_PIPE("alterPipe"),
   HANDLE_LEADER_CHANGE("handleLeaderChange"),
   SYNC_PIPE_META("syncPipeMeta"),
   HANDLE_PIPE_META_CHANGE("handlePipeMetaChange");

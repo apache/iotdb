@@ -59,28 +59,9 @@ public class TimePartitionManagerTest {
   }
 
   @Test
-  public void testRegisterPartitionInfo() {
-    TimePartitionInfo timePartitionInfo1 =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0, true);
-    timePartitionManager.registerTimePartitionInfo(timePartitionInfo1);
-
-    assertEquals(
-        timePartitionInfo1, timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L));
-
-    TimePartitionInfo timePartitionInfo2 =
-        new TimePartitionInfo(new DataRegionId(1), 1L, true, Long.MAX_VALUE, 0, true);
-    timePartitionManager.registerTimePartitionInfo(timePartitionInfo2);
-
-    Assert.assertFalse(
-        timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L).isLatestPartition);
-    Assert.assertTrue(
-        timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 1L).isLatestPartition);
-  }
-
-  @Test
   public void testUpdate() {
     TimePartitionInfo timePartitionInfo =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0, true);
+        new TimePartitionInfo(new DataRegionId(1), 0L, true, Long.MAX_VALUE, 0);
     timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
 
     timePartitionManager.updateAfterFlushing(new DataRegionId(1), 0L, 100L, 100L, false);
@@ -88,7 +69,6 @@ public class TimePartitionManagerTest {
     TimePartitionInfo timePartitionInfo1 =
         timePartitionManager.getTimePartitionInfo(new DataRegionId(1), 0L);
 
-    assertTrue(timePartitionInfo1.isLatestPartition);
     assertEquals(timePartitionInfo1.lastSystemFlushTime, 100L);
     assertEquals(timePartitionInfo1.memSize, 100);
     assertFalse(timePartitionInfo1.isActive);
@@ -103,7 +83,7 @@ public class TimePartitionManagerTest {
   public void testMemoryControl() {
     for (int i = 0; i < 5; i++) {
       TimePartitionInfo timePartitionInfo =
-          new TimePartitionInfo(new DataRegionId(i), 0L, true, Long.MAX_VALUE, 0, true);
+          new TimePartitionInfo(new DataRegionId(i), 0L, true, Long.MAX_VALUE, 0);
       timePartitionManager.registerTimePartitionInfo(timePartitionInfo);
     }
     timePartitionManager.updateAfterFlushing(new DataRegionId(0), 0L, 100L, 20L, false);
@@ -112,7 +92,7 @@ public class TimePartitionManagerTest {
     timePartitionManager.updateAfterFlushing(new DataRegionId(3), 0L, 103L, 20L, false);
     timePartitionManager.updateAfterFlushing(new DataRegionId(4), 0L, 104L, 20L, true);
     timePartitionManager.registerTimePartitionInfo(
-        new TimePartitionInfo(new DataRegionId(0), 1L, true, Long.MAX_VALUE, 0, true));
+        new TimePartitionInfo(new DataRegionId(0), 1L, true, Long.MAX_VALUE, 0));
 
     timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 105L, 20L, true);
 
@@ -130,18 +110,15 @@ public class TimePartitionManagerTest {
   @Test
   public void testCompareTimePartitionInfo() {
     TimePartitionInfo timePartitionInfo =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, 100, 0, true);
+        new TimePartitionInfo(new DataRegionId(1), 0L, true, 100, 0);
     TimePartitionInfo timePartitionInfo1 =
-        new TimePartitionInfo(new DataRegionId(1), 0L, false, 100, 0, true);
+        new TimePartitionInfo(new DataRegionId(1), 0L, false, 100, 0);
     Assert.assertEquals(1, timePartitionInfo.comparePriority(timePartitionInfo1));
     TimePartitionInfo timePartitionInfo2 =
-        new TimePartitionInfo(new DataRegionId(1), 1L, true, 100, 0, true);
+        new TimePartitionInfo(new DataRegionId(1), 1L, true, 100, 0);
     Assert.assertEquals(-1, timePartitionInfo.comparePriority(timePartitionInfo2));
     TimePartitionInfo timePartitionInfo3 =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, 100, 0, false);
-    Assert.assertEquals(1, timePartitionInfo.comparePriority(timePartitionInfo3));
-    TimePartitionInfo timePartitionInfo4 =
-        new TimePartitionInfo(new DataRegionId(1), 0L, true, 101, 0, true);
-    Assert.assertEquals(-1, timePartitionInfo.comparePriority(timePartitionInfo4));
+        new TimePartitionInfo(new DataRegionId(1), 0L, true, 101, 0);
+    Assert.assertEquals(-1, timePartitionInfo.comparePriority(timePartitionInfo3));
   }
 }

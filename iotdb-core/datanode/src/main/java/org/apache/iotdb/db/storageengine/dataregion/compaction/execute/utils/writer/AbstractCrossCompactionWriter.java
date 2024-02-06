@@ -74,12 +74,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
-    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
           new CompactionTsFileWriter(
               targetResources.get(i).getTsFile(),
-              enableMemoryControl,
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION));
       isEmptyFile[i] = true;
@@ -94,8 +92,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      chunkGroupHeaderSize = targetFileWriters.get(i).startChunkGroup(deviceId);
+    for (CompactionTsFileWriter targetFileWriter : targetFileWriters) {
+      chunkGroupHeaderSize = targetFileWriter.startChunkGroup(deviceId);
     }
   }
 
@@ -166,8 +164,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      CompactionTsFileWriter fileIoWriter = targetFileWriters.get(i);
+    for (CompactionTsFileWriter fileIoWriter : targetFileWriters) {
       fileIoWriter.checkMetadataSizeAndMayFlush();
     }
   }

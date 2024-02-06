@@ -50,118 +50,135 @@ public class SchemaRegionConsensusImpl {
     return SchemaRegionConsensusImplHolder.INSTANCE;
   }
 
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    SchemaRegionConsensusImplHolder.reinitializeStatics();
+  }
+
   private static class SchemaRegionConsensusImplHolder {
 
-    private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
-    private static final IConsensus INSTANCE =
-        ConsensusFactory.getConsensusImpl(
-                CONF.getSchemaRegionConsensusProtocolClass(),
-                ConsensusConfig.newBuilder()
-                    .setThisNodeId(CONF.getDataNodeId())
-                    .setThisNode(
-                        new TEndPoint(
-                            CONF.getInternalAddress(), CONF.getSchemaRegionConsensusPort()))
-                    .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
-                    .setRatisConfig(
-                        RatisConfig.newBuilder()
-                            .setSnapshot(
-                                RatisConfig.Snapshot.newBuilder()
-                                    .setAutoTriggerThreshold(
-                                        CONF.getSchemaRatisConsensusSnapshotTriggerThreshold())
-                                    .build())
-                            .setLog(
-                                RatisConfig.Log.newBuilder()
-                                    .setUnsafeFlushEnabled(
-                                        CONF.isSchemaRatisConsensusLogUnsafeFlushEnable())
-                                    .setForceSyncNum(CONF.getSchemaRatisConsensusLogForceSyncNum())
-                                    .setSegmentSizeMax(
-                                        SizeInBytes.valueOf(
-                                            CONF.getSchemaRatisConsensusLogSegmentSizeMax()))
-                                    .setPreserveNumsWhenPurge(
-                                        CONF.getSchemaRatisConsensusPreserveWhenPurge())
-                                    .build())
-                            .setGrpc(
-                                RatisConfig.Grpc.newBuilder()
-                                    .setFlowControlWindow(
-                                        SizeInBytes.valueOf(
-                                            CONF.getSchemaRatisConsensusGrpcFlowControlWindow()))
-                                    .setLeaderOutstandingAppendsMax(
-                                        CONF
-                                            .getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax())
-                                    .build())
-                            .setRpc(
-                                RatisConfig.Rpc.newBuilder()
-                                    .setTimeoutMin(
-                                        TimeDuration.valueOf(
-                                            CONF
-                                                .getSchemaRatisConsensusLeaderElectionTimeoutMinMs(),
-                                            TimeUnit.MILLISECONDS))
-                                    .setTimeoutMax(
-                                        TimeDuration.valueOf(
-                                            CONF
-                                                .getSchemaRatisConsensusLeaderElectionTimeoutMaxMs(),
-                                            TimeUnit.MILLISECONDS))
-                                    .setRequestTimeout(
-                                        TimeDuration.valueOf(
-                                            CONF.getSchemaRatisConsensusRequestTimeoutMs(),
-                                            TimeUnit.MILLISECONDS))
-                                    .setSlownessTimeout(
-                                        TimeDuration.valueOf(
-                                            CONF.getSchemaRatisConsensusRequestTimeoutMs() * 6,
-                                            TimeUnit.MILLISECONDS))
-                                    .setFirstElectionTimeoutMin(
-                                        TimeDuration.valueOf(
-                                            CONF.getRatisFirstElectionTimeoutMinMs(),
-                                            TimeUnit.MILLISECONDS))
-                                    .setFirstElectionTimeoutMax(
-                                        TimeDuration.valueOf(
-                                            CONF.getRatisFirstElectionTimeoutMaxMs(),
-                                            TimeUnit.MILLISECONDS))
-                                    .build())
-                            .setClient(
-                                RatisConfig.Client.newBuilder()
-                                    .setClientRequestTimeoutMillis(
-                                        CONF.getDataRatisConsensusRequestTimeoutMs())
-                                    .setClientMaxRetryAttempt(
-                                        CONF.getDataRatisConsensusMaxRetryAttempts())
-                                    .setClientRetryInitialSleepTimeMs(
-                                        CONF.getDataRatisConsensusInitialSleepTimeMs())
-                                    .setClientRetryMaxSleepTimeMs(
-                                        CONF.getDataRatisConsensusMaxSleepTimeMs())
-                                    .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
-                                    .build())
-                            .setImpl(
-                                RatisConfig.Impl.newBuilder()
-                                    .setRaftLogSizeMaxThreshold(CONF.getSchemaRatisLogMax())
-                                    .setForceSnapshotInterval(
-                                        CONF.getSchemaRatisPeriodicSnapshotInterval())
-                                    .setRetryTimesMax(10)
-                                    .setRetryWaitMillis(CONF.getConnectionTimeoutInMS() / 10)
-                                    .build())
-                            .setLeaderLogAppender(
-                                RatisConfig.LeaderLogAppender.newBuilder()
-                                    .setBufferByteLimit(
-                                        CONF.getSchemaRatisConsensusLogAppenderBufferSizeMax())
-                                    .build())
-                            .setRead(
-                                RatisConfig.Read.newBuilder()
-                                    .setReadOption(RatisConfig.Read.Option.LINEARIZABLE)
-                                    // use thrift connection timeout to unify read timeout
-                                    .setReadTimeout(
-                                        TimeDuration.valueOf(
-                                            CONF.getConnectionTimeoutInMS(), TimeUnit.MILLISECONDS))
-                                    .build())
-                            .build())
-                    .setStorageDir(CONF.getSchemaRegionConsensusDir())
-                    .build(),
-                gid ->
-                    new SchemaRegionStateMachine(
-                        SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            CONF.getSchemaRegionConsensusProtocolClass())));
+    private static IoTDBConfig CONF;
+    private static IConsensus INSTANCE;
+
+    // Make sure both statics are initialized.
+    static {
+      reinitializeStatics();
+    }
+
+    private static void reinitializeStatics() {
+      CONF = IoTDBDescriptor.getInstance().getConfig();
+      INSTANCE =
+          ConsensusFactory.getConsensusImpl(
+                  CONF.getSchemaRegionConsensusProtocolClass(),
+                  ConsensusConfig.newBuilder()
+                      .setThisNodeId(CONF.getDataNodeId())
+                      .setThisNode(
+                          new TEndPoint(
+                              CONF.getInternalAddress(), CONF.getSchemaRegionConsensusPort()))
+                      .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
+                      .setRatisConfig(
+                          RatisConfig.newBuilder()
+                              .setSnapshot(
+                                  RatisConfig.Snapshot.newBuilder()
+                                      .setAutoTriggerThreshold(
+                                          CONF.getSchemaRatisConsensusSnapshotTriggerThreshold())
+                                      .build())
+                              .setLog(
+                                  RatisConfig.Log.newBuilder()
+                                      .setUnsafeFlushEnabled(
+                                          CONF.isSchemaRatisConsensusLogUnsafeFlushEnable())
+                                      .setForceSyncNum(
+                                          CONF.getSchemaRatisConsensusLogForceSyncNum())
+                                      .setSegmentSizeMax(
+                                          SizeInBytes.valueOf(
+                                              CONF.getSchemaRatisConsensusLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          CONF.getSchemaRatisConsensusPreserveWhenPurge())
+                                      .build())
+                              .setGrpc(
+                                  RatisConfig.Grpc.newBuilder()
+                                      .setFlowControlWindow(
+                                          SizeInBytes.valueOf(
+                                              CONF.getSchemaRatisConsensusGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          CONF
+                                              .getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax())
+                                      .build())
+                              .setRpc(
+                                  RatisConfig.Rpc.newBuilder()
+                                      .setTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              CONF
+                                                  .getSchemaRatisConsensusLeaderElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              CONF
+                                                  .getSchemaRatisConsensusLeaderElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setRequestTimeout(
+                                          TimeDuration.valueOf(
+                                              CONF.getSchemaRatisConsensusRequestTimeoutMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setSlownessTimeout(
+                                          TimeDuration.valueOf(
+                                              CONF.getSchemaRatisConsensusRequestTimeoutMs() * 6,
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMin(
+                                          TimeDuration.valueOf(
+                                              CONF.getRatisFirstElectionTimeoutMinMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .setFirstElectionTimeoutMax(
+                                          TimeDuration.valueOf(
+                                              CONF.getRatisFirstElectionTimeoutMaxMs(),
+                                              TimeUnit.MILLISECONDS))
+                                      .build())
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
+                                      .setClientRequestTimeoutMillis(
+                                          CONF.getDataRatisConsensusRequestTimeoutMs())
+                                      .setClientMaxRetryAttempt(
+                                          CONF.getDataRatisConsensusMaxRetryAttempts())
+                                      .setClientRetryInitialSleepTimeMs(
+                                          CONF.getDataRatisConsensusInitialSleepTimeMs())
+                                      .setClientRetryMaxSleepTimeMs(
+                                          CONF.getDataRatisConsensusMaxSleepTimeMs())
+                                      .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
+                                      .setRaftLogSizeMaxThreshold(CONF.getSchemaRatisLogMax())
+                                      .setForceSnapshotInterval(
+                                          CONF.getSchemaRatisPeriodicSnapshotInterval())
+                                      .setRetryTimesMax(10)
+                                      .setRetryWaitMillis(CONF.getConnectionTimeoutInMS() / 10)
+                                      .build())
+                              .setLeaderLogAppender(
+                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                      .setBufferByteLimit(
+                                          CONF.getSchemaRatisConsensusLogAppenderBufferSizeMax())
+                                      .build())
+                              .setRead(
+                                  RatisConfig.Read.newBuilder()
+                                      .setReadOption(RatisConfig.Read.Option.LINEARIZABLE)
+                                      // use thrift connection timeout to unify read timeout
+                                      .setReadTimeout(
+                                          TimeDuration.valueOf(
+                                              CONF.getConnectionTimeoutInMS(),
+                                              TimeUnit.MILLISECONDS))
+                                      .build())
+                              .build())
+                      .setStorageDir(CONF.getSchemaRegionConsensusDir())
+                      .build(),
+                  gid ->
+                      new SchemaRegionStateMachine(
+                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              CONF.getSchemaRegionConsensusProtocolClass())));
+    }
   }
 }
