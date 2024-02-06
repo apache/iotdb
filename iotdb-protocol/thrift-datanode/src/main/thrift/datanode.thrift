@@ -116,6 +116,7 @@ struct TSendFragmentInstanceReq {
 struct TSendFragmentInstanceResp {
   1: required bool accepted
   2: optional string message
+  3: optional bool needRetry
 }
 
 struct TSendSinglePlanNodeReq {

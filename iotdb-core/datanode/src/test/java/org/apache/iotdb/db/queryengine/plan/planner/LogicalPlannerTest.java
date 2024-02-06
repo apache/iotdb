@@ -751,7 +751,7 @@ public class LogicalPlannerTest {
           tagValuesToAggregationDescriptors.get(Collections.singletonList("value1"));
       Assert.assertEquals(1, descriptors.size());
       CrossSeriesAggregationDescriptor descriptor = descriptors.get(0);
-      Assert.assertEquals("s1", descriptor.getOutputExpression().toString());
+      Assert.assertEquals("s1", descriptor.getOutputExpressions().get(0).toString());
       Assert.assertEquals(TAggregationType.MAX_VALUE, descriptor.getAggregationType());
       Assert.assertEquals(AggregationStep.FINAL, descriptor.getStep());
       Assert.assertEquals(3, descriptor.getInputExpressions().size());

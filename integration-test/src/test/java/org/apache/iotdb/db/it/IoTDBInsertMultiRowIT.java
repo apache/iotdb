@@ -180,7 +180,6 @@ public class IoTDBInsertMultiRowIT {
       st1.execute("flush");
       st1.execute("insert into root.sg1.d1(time,s1) values(604799990,1), (604800001,1)");
       st1.execute("flush");
-      st1.execute("merge");
       ResultSet rs1 = st1.executeQuery("select s1 from root.sg1.d1");
       assertTrue(rs1.next());
       assertEquals(604799990, rs1.getLong("Time"));

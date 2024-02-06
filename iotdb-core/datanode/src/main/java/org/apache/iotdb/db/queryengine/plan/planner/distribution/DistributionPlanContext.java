@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.List;
 import java.util.Map;
 
 public class DistributionPlanContext {
@@ -37,7 +38,7 @@ public class DistributionPlanContext {
   protected boolean queryMultiRegion;
 
   // used by group by level
-  private Map<String, Expression> columnNameToExpression;
+  private Map<String, List<Expression>> columnNameToExpression;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
@@ -73,11 +74,11 @@ public class DistributionPlanContext {
     this.queryMultiRegion = queryMultiRegion;
   }
 
-  public Map<String, Expression> getColumnNameToExpression() {
+  public Map<String, List<Expression>> getColumnNameToExpression() {
     return columnNameToExpression;
   }
 
-  public void setColumnNameToExpression(Map<String, Expression> columnNameToExpression) {
+  public void setColumnNameToExpression(Map<String, List<Expression>> columnNameToExpression) {
     this.columnNameToExpression = columnNameToExpression;
   }
 

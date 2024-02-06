@@ -116,7 +116,7 @@ public class DataNode implements DataNodeMBean {
           IoTDBConstant.JMX_TYPE,
           ServiceType.DATA_NODE.getJmxName());
 
-  private static final File SYSTEM_PROPERTIES =
+  private static File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
           config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
@@ -148,7 +148,15 @@ public class DataNode implements DataNodeMBean {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
-  private static final RegisterManager registerManager = new RegisterManager();
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    SYSTEM_PROPERTIES =
+        SystemFileFactory.INSTANCE.getFile(
+            config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+    registerManager = new RegisterManager();
+  }
+
+  private static RegisterManager registerManager = new RegisterManager();
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;

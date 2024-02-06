@@ -33,6 +33,7 @@ struct TSStatus {
   2: optional string message
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
+  5: optional bool needRetry
 }
 
 enum TConsensusGroupType {
@@ -196,5 +197,6 @@ enum TAggregationType {
   STDDEV_SAMP,
   VARIANCE,
   VAR_POP,
-  VAR_SAMP
+  VAR_SAMP,
+  MAX_BY,
 }

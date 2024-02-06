@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -699,25 +701,44 @@ public class LogicalPlanBuilder {
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<String> partialAggregationsNames =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    String inputExpressionStr =
-        aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
-    for (String partialAggregationName : partialAggregationsNames) {
-      TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
-      typeProvider.setType(
-          String.format("%s(%s)", partialAggregationName, inputExpressionStr),
-          aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
+    String inputExpressionStr = getInputExpressionString(aggregationDescriptor);
+    partialAggregationsNames.forEach(
+        x -> setTypeForPartialAggregation(typeProvider, x, inputExpressionStr));
+  }
+
+  private static String getInputExpressionString(AggregationDescriptor aggregationDescriptor) {
+    // We just process first input Expression of Count_IF
+    if (TAggregationType.COUNT_IF.equals(aggregationDescriptor.getAggregationType())) {
+      return aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
+    } else {
+      return aggregationDescriptor.getParametersString();
     }
+  }
+
+  private static void setTypeForPartialAggregation(
+      TypeProvider typeProvider, String partialAggregationName, String inputExpressionStr) {
+    TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
+    typeProvider.setType(
+        String.format("%s(%s)", partialAggregationName, inputExpressionStr),
+        aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
   }
 
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<String> partialAggregationsNames =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    PartialPath path = ((TimeSeriesOperand) aggregationDescriptor.getOutputExpression()).getPath();
-    for (String partialAggregationName : partialAggregationsNames) {
-      typeProvider.setType(
-          String.format("%s(%s)", partialAggregationName, path.getFullPath()),
-          SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+    if (!AccumulatorFactory.isMultiInputAggregation(aggregationDescriptor.getAggregationType())) {
+      PartialPath path =
+          ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0)).getPath();
+      for (String partialAggregationName : partialAggregationsNames) {
+        typeProvider.setType(
+            String.format("%s(%s)", partialAggregationName, path.getFullPath()),
+            SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+      }
+    } else {
+      String inputExpressionStr = aggregationDescriptor.getOutputExpressionsAsBuilder().toString();
+      partialAggregationsNames.forEach(
+          x -> setTypeForPartialAggregation(typeProvider, x, inputExpressionStr));
     }
   }
 
@@ -771,7 +792,7 @@ public class LogicalPlanBuilder {
               orderByParameter,
               outputColumnNames);
 
-      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
+      // if value filter exists, need add a LimitNode as the child node of TopKNode
       long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
 
       // only order by based on time, use TopKNode + SingleDeviceViewNode
@@ -796,7 +817,7 @@ public class LogicalPlanBuilder {
       analysis.setUseTopKNode();
       this.root = topKNode;
     } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
-      // otherwise use MergeSortNode + SingleDeviceViewNode
+      // use MergeSortNode + SingleDeviceViewNode
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
@@ -855,7 +876,7 @@ public class LogicalPlanBuilder {
   private boolean canUseMergeSortNode(QueryStatement queryStatement, int deviceSize) {
     // 1. `order by based on time` + `no order by expression`.
     // 2. deviceSize is larger than 1.
-    // when satisfy all above cases use MergeSortNode.
+    // when satisfy all above cases use MergeSortNode + SingleDeviceViewNode.
     return queryStatement.isOrderByBasedOnTime()
         && !queryStatement.hasOrderByExpression()
         && deviceSize > 1;
@@ -1018,12 +1039,13 @@ public class LogicalPlanBuilder {
                   .collect(Collectors.toList()),
               entry.getValue().size(),
               ((FunctionExpression) entry.getKey()).getFunctionAttributes(),
-              entry.getKey().getExpressions().get(0)));
+              entry.getKey().getExpressions()));
     }
     updateTypeProvider(groupByLevelExpressions.keySet());
     updateTypeProvider(
         groupByLevelDescriptors.stream()
-            .map(CrossSeriesAggregationDescriptor::getOutputExpression)
+            .map(CrossSeriesAggregationDescriptor::getOutputExpressions)
+            .flatMap(Collection::stream)
             .collect(Collectors.toList()));
     return new GroupByLevelNode(
         context.getQueryId().genPlanNodeId(),
@@ -1061,7 +1083,7 @@ public class LogicalPlanBuilder {
                     curStep,
                     groupedTimeseriesOperands.get(expression),
                     ((FunctionExpression) expression).getFunctionAttributes(),
-                    expression.getExpressions().get(0));
+                    expression.getExpressions());
             aggregationDescriptors.add(aggregationDescriptor);
             added = true;
             break;

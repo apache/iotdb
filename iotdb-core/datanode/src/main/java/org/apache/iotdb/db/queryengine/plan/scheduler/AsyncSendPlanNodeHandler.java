@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -104,6 +104,6 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   }
 
   private boolean needRetry(TSendSinglePlanNodeResp resp) {
-    return !resp.accepted && DispatchLogHandler.needRetry(resp.status.code);
+    return !resp.accepted && resp.status != null && StatusUtils.needRetryHelper(resp.status);
   }
 }
