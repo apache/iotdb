@@ -220,7 +220,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
 
@@ -292,7 +292,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
 
@@ -317,7 +317,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     // select second time
     // add the longest expired time, all file is partial_deleted
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(1000);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(1000);
     seqTasks = settleSelector.selectSettleTask(seqResources);
     unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(2, seqTasks.size());
@@ -351,7 +351,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
     generateModsFile(4, 10, seqResources, 0, 200);
@@ -445,7 +445,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
     tsFileManager.addAll(seqResources, true);
@@ -524,7 +524,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2()
       throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(Long.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
     tsFileManager.addAll(seqResources, true);

@@ -103,6 +103,13 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
+    int ttlCountThreshold =
+        Integer.parseInt(
+            properties.getProperty(
+                "ttl_count_threshold", String.valueOf(config.getTTLCountThreshold())));
+    ttlCountThreshold = ttlCountThreshold < 0 ? Integer.MAX_VALUE : ttlCountThreshold;
+    config.setTTLCountThreshold(ttlCountThreshold);
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(

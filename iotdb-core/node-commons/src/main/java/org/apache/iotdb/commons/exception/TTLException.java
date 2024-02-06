@@ -33,6 +33,6 @@ public class TTLException extends Exception {
     super(
         String.format(
             "The number of TTL stored in the system has reached threshold %d, please increase the ttl_count parameter.",
-            CommonDescriptor.getInstance().getConfig().getTTLCount()));
+            CommonDescriptor.getInstance().getConfig().getTTLCountThreshold()));
   }
 }

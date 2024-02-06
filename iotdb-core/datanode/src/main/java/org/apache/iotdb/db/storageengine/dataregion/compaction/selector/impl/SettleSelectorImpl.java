@@ -224,7 +224,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         long outdatedTimeDiff = currentTime - deviceTimeIndex.getEndTime(device);
         hasExpiredTooLong =
             hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getLongestExpiredTime(), 3 * deviceTTL);
+                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
       }
 
       if (isDeleted) {
@@ -237,7 +237,7 @@ public class SettleSelectorImpl implements ISettleSelector {
       // the whole file is completely dirty
       return DirtyStatus.ALL_DELETED;
     }
-    hasExpiredTooLong = config.getLongestExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
+    hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
     if (hasExpiredTooLong || deletedDeviceRate >= config.getExpiredDataRate()) {
       // evaluate dirty data size in the tsfile
       DirtyStatus partialDeleted = DirtyStatus.PARTIAL_DELETED;

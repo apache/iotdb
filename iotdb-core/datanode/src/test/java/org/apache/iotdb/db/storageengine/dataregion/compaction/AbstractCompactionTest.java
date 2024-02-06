@@ -125,7 +125,7 @@ public class AbstractCompactionTest {
       IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTaskSelectionModsFileThreshold();
 
   private final long oldLongestExpiredTime =
-      IoTDBDescriptor.getInstance().getConfig().getLongestExpiredTime();
+      IoTDBDescriptor.getInstance().getConfig().getMaxExpiredTime();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -450,7 +450,7 @@ public class AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerCompactionTaskSelectionModsFileThreshold(oldModsFileSize);
-    IoTDBDescriptor.getInstance().getConfig().setLongestExpiredTime(oldLongestExpiredTime);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(oldLongestExpiredTime);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);

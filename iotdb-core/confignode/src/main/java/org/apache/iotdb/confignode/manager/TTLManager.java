@@ -46,7 +46,7 @@ public class TTLManager {
   private final TTLInfo ttlInfo;
 
   private static final int ttlCountThreshold =
-      CommonDescriptor.getInstance().getConfig().getTTLCount();
+      CommonDescriptor.getInstance().getConfig().getTTLCountThreshold();
 
   public TTLManager(IManager configManager, TTLInfo ttlInfo) {
     this.configManager = configManager;
