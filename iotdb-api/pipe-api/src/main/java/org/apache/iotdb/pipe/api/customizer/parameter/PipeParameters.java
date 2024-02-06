@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -281,30 +280,25 @@ public class PipeParameters {
   }
 
   /**
-   * This method uses {@link KeyReducer} to reduce keys and then sorts them to determine if two
-   * PipeParameters are equivalent.
+   * This method adds (non-existed) or replaces (existed) equivalent attributes in this
+   * PipeParameters with those from another PipeParameters.
+   *
+   * @param that provide the key that needs to be updated along with the value
+   * @return this pipe parameters
    */
-  public boolean isEquivalent(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    PipeParameters that = (PipeParameters) obj;
-    return Objects.equals(
+  public PipeParameters addOrReplaceEquivalentAttributes(PipeParameters that) {
+    Map<String, Entry<String, String>> thisMap =
         this.attributes.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
-                    (oldValue, newValue) -> oldValue, TreeMap::new))
-            .toString(),
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    Map<String, Entry<String, String>> thatMap =
         that.attributes.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue,
-                    (oldValue, newValue) -> oldValue, TreeMap::new))
-            .toString());
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    thatMap.forEach(
+        (key, entry) -> {
+          this.attributes.remove(thisMap.getOrDefault(key, entry).getKey());
+          this.attributes.put(entry.getKey(), entry.getValue());
+        });
+    return this;
   }
 
   private static class KeyReducer {
@@ -334,6 +328,7 @@ public class PipeParameters {
   }
 
   public static class ValueHider {
+
     private static final Set<String> KEYS = new HashSet<>();
 
     private static final String PLACEHOLDER = "******";

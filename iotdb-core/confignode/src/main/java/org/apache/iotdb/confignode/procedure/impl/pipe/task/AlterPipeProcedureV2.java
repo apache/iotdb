@@ -81,15 +81,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
+    // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
+    // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
+    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
     pipeManager
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkPipePluginExistence(
-            new HashMap<>(),
+            new HashMap<>(), // no need to check pipe source plugin
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
-    pipeTaskInfo.get().checkBeforeAlterPipe(alterPipeRequest);
 
     return false;
   }
@@ -113,7 +116,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            new HashMap<>(currentPipeStaticMeta.getExtractorParameters().getAttribute()),
+            new HashMap<>(
+                currentPipeStaticMeta
+                    .getExtractorParameters()
+                    .getAttribute()), // reuse pipe source plugin
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
@@ -255,6 +261,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
+    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllProcessorAttributes, stream);
+    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllConnectorAttributes, stream);
     if (currentPipeStaticMeta != null) {
       ReadWriteIOUtils.write(true, stream);
       currentPipeStaticMeta.serialize(stream);
@@ -301,6 +309,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
+    alterPipeRequest.isReplaceAllProcessorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
+    alterPipeRequest.isReplaceAllConnectorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       currentPipeStaticMeta = PipeStaticMeta.deserialize(byteBuffer);
     }
