@@ -33,8 +33,7 @@ class PipeLogStatus {
 
   boolean schedule(int scale) {
     if (currentRounds.incrementAndGet()
-        >= (Math.max(
-            Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval), 1))) {
+        >= Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval)) {
       currentRounds.set(0);
       return true;
     }
