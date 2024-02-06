@@ -99,7 +99,7 @@ jobs:
         run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cpp-IT-${{ runner.os }}
           path: iotdb-client/client-cpp/target/build/test/Testing
