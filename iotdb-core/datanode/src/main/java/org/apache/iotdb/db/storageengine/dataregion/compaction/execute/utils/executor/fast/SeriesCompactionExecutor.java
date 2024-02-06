@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -96,15 +97,12 @@ public abstract class SeriesCompactionExecutor {
 
   protected boolean isAligned;
 
-  private long deviceTTL;
-
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       String deviceId,
       boolean isAligned,
-      long deviceTTL,
       int subTaskId,
       FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
@@ -508,16 +506,19 @@ public abstract class SeriesCompactionExecutor {
             tsFileResource,
             resource -> {
               List<Modification> list = new ArrayList<>(resource.getModFile().getModifications());
-              // add outdated mods from ttl
-              long timeLowerBound = CommonDateTimeUtils.currentTime() - deviceTTL;
-              if (!resource.definitelyNotContains(deviceId)
-                  && resource.stillLives(timeLowerBound)) {
-                list.add(
-                    new Deletion(
-                        path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
-                        Long.MAX_VALUE,
-                        Long.MIN_VALUE,
-                        timeLowerBound));
+              // add outdated device mods by ttl
+              for (String device : resource.getDevices()) {
+                long timeLowerBound =
+                    CommonDateTimeUtils.currentTime()
+                        - DataNodeTTLCache.getInstance().getTTL(device);
+                if (resource.getStartTime(device) < timeLowerBound) {
+                  list.add(
+                      new Deletion(
+                          path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                          Long.MAX_VALUE,
+                          Long.MIN_VALUE,
+                          timeLowerBound));
+                }
               }
               return list;
             });

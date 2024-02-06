@@ -116,7 +116,6 @@ public class FastCompactionPerformer
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
-        long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
@@ -124,7 +123,9 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
         sortedSourceFiles.removeIf(
-            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, deviceTTL));
+            x ->
+                x.definitelyNotContains(device)
+                    || !x.isDeviceAlive(device, DataNodeTTLCache.getInstance().getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {
@@ -136,9 +137,9 @@ public class FastCompactionPerformer
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
-          compactAlignedSeries(device, deviceTTL, deviceIterator, compactionWriter);
+          compactAlignedSeries(device, deviceIterator, compactionWriter);
         } else {
-          compactNonAlignedSeries(device, deviceTTL, deviceIterator, compactionWriter);
+          compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }
 
         compactionWriter.endChunkGroup();
@@ -161,7 +162,6 @@ public class FastCompactionPerformer
 
   private void compactAlignedSeries(
       String deviceId,
-      long deviceTTL,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
@@ -193,7 +193,6 @@ public class FastCompactionPerformer
             sortedSourceFiles,
             measurementSchemas,
             deviceId,
-            deviceTTL,
             taskSummary)
         .call();
     subTaskSummary.increase(taskSummary);
@@ -201,7 +200,6 @@ public class FastCompactionPerformer
 
   private void compactNonAlignedSeries(
       String deviceID,
-      long deviceTTL,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws IOException, InterruptedException {
@@ -243,7 +241,6 @@ public class FastCompactionPerformer
                       sortedSourceFiles,
                       measurementsForEachSubTask[i],
                       deviceID,
-                      deviceTTL,
                       taskSummary,
                       i)));
       taskSummaryList.add(taskSummary);

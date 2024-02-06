@@ -8,6 +8,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -50,28 +51,30 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     createFiles(6, 5, 10, 100, 0, 0, 0, 0, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
 
-    generateModsFile(6, 6, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
-    generateModsFile(6, 6, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    // set ttl
+    DataNodeTTLCache.getInstance().setTTL("root.**", 1);
 
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+
+    SettleSelectorImpl settleSelector =
+        new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
+    List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
+    Assert.assertEquals(1, seqTasks.size());
+    Assert.assertEquals(1, unseqTasks.size());
+    Assert.assertEquals(6, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getPartialDeletedFiles().size());
+    Assert.assertEquals(5, unseqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, unseqTasks.get(0).getPartialDeletedFiles().size());
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(seqResources);
     allDeletedFiles.addAll(unseqResources);
-
-    SettleCompactionTask task =
-        new SettleCompactionTask(
-            0,
-            tsFileManager,
-            allDeletedFiles,
-            Collections.emptyList(),
-            true,
-            new FastCompactionPerformer(false),
-            0);
-    Assert.assertTrue(task.start());
+    Assert.assertTrue(seqTasks.get(0).start());
+    Assert.assertTrue(unseqTasks.get(0).start());
 
     for (TsFileResource tsFileResource : seqResources) {
       Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());

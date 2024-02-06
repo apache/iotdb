@@ -62,8 +62,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private final String deviceId;
 
-  private final long deviceTTL;
-
   private List<String> measurements;
 
   private List<IMeasurementSchema> measurementSchemas;
@@ -78,7 +76,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<TsFileResource> sortedSourceFiles,
       List<String> measurements,
       String deviceId,
-      long deviceTTL,
       FastCompactionTaskSummary summary,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
@@ -86,7 +83,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.isAligned = false;
     this.deviceId = deviceId;
-    this.deviceTTL = deviceTTL;
     this.readerCacheMap = readerCacheMap;
     this.modificationCacheMap = modificationCacheMap;
     this.sortedSourceFiles = sortedSourceFiles;
@@ -103,14 +99,12 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       String deviceId,
-      long deviceTTL,
       FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.isAligned = true;
     this.deviceId = deviceId;
-    this.deviceTTL = deviceTTL;
     this.readerCacheMap = readerCacheMap;
     this.modificationCacheMap = modificationCacheMap;
     this.sortedSourceFiles = sortedSourceFiles;
@@ -129,7 +123,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               modificationCacheMap,
               sortedSourceFiles,
               deviceId,
-              deviceTTL,
               subTaskId,
               summary);
       for (String measurement : measurements) {
@@ -145,7 +138,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               modificationCacheMap,
               sortedSourceFiles,
               deviceId,
-              deviceTTL,
               subTaskId,
               measurementSchemas,
               summary);

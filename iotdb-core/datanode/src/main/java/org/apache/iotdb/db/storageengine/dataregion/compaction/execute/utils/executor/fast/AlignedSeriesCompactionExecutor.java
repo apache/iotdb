@@ -73,19 +73,11 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       String deviceId,
-      long deviceTTL,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary) {
     super(
-        compactionWriter,
-        readerCacheMap,
-        modificationCacheMap,
-        deviceId,
-        true,
-        deviceTTL,
-        subTaskId,
-        summary);
+        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
