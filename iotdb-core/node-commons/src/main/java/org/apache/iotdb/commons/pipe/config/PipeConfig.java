@@ -181,12 +181,20 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
 
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
+  }
+
   public int getPipeMetaReportMaxLogIntervalRounds() {
     return COMMON_CONFIG.getPipeMetaReportMaxLogIntervalRounds();
   }
 
-  public int getPipeMetaReportMaxLogNumPerRound() {
-    return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogNumPerRound();
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
   }
 
   /////////////////////////////// Memory ///////////////////////////////

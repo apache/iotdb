@@ -188,8 +188,10 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private long pipeStuckRestartIntervalSeconds = 120;
 
-  private int pipeMetaReportMaxLogIntervalRounds = 36;
   private int pipeMetaReportMaxLogNumPerRound = 10;
+  private int pipeMetaReportMaxLogIntervalRounds = 36;
+  private int pipeTsFilePinMaxLogNumPerRound = 10;
+  private int pipeTsFilePinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
@@ -779,6 +781,14 @@ public class CommonConfig {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
   }
 
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
+    this.pipeMetaReportMaxLogNumPerRound = pipeMetaReportMaxLogNumPerRound;
+  }
+
   public int getPipeMetaReportMaxLogIntervalRounds() {
     return pipeMetaReportMaxLogIntervalRounds;
   }
@@ -787,12 +797,20 @@ public class CommonConfig {
     this.pipeMetaReportMaxLogIntervalRounds = pipeMetaReportMaxLogIntervalRounds;
   }
 
-  public int getPipeMetaReportMaxLogNumPerRound() {
-    return pipeMetaReportMaxLogNumPerRound;
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return pipeTsFilePinMaxLogNumPerRound;
   }
 
-  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
-    this.pipeMetaReportMaxLogNumPerRound = pipeMetaReportMaxLogNumPerRound;
+  public void setPipeTsFilePinMaxLogNumPerRound(int pipeTsFilePinMaxLogNumPerRound) {
+    this.pipeTsFilePinMaxLogNumPerRound = pipeTsFilePinMaxLogNumPerRound;
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public void setPipeTsFilePinMaxLogIntervalRounds(int pipeTsFilePinMaxLogIntervalRounds) {
+    this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
   }
 
   public boolean getPipeMemoryManagementEnabled() {

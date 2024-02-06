@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -55,6 +56,11 @@ public class PipeTsFileResourceManager {
             "PipeTsFileResourceManager#ttlCheck()",
             this::tryTtlCheck,
             Math.max(PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
+    PipeResourceManager.log()
+        .register(
+            PipeTsFileResourceManager.class,
+            PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
+            PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds());
   }
 
   private void tryTtlCheck() {
@@ -78,6 +84,8 @@ public class PipeTsFileResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    final int scale = hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -85,10 +93,12 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          LOGGER.info(
-              "Pipe file (file name: {}) is still referenced {} times",
-              entry.getKey(),
-              entry.getValue().getReferenceCount());
+          if (PipeResourceManager.log().schedule(PipeTsFileResourceManager.class, scale)) {
+            LOGGER.info(
+                "Pipe file (file name: {}) is still referenced {} times",
+                entry.getKey(),
+                entry.getValue().getReferenceCount());
+          }
         }
       } catch (IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
