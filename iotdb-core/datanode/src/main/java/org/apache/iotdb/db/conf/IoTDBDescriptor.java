@@ -284,19 +284,27 @@ public class IoTDBDescriptor {
                 .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
                 .trim()));
 
-    conf.setRejectProportion(
+    double rejectProportion =
         Double.parseDouble(
             properties
                 .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
-                .trim()));
+                .trim());
 
-    conf.setDevicePathCacheProportion(
+    double devicePathCacheProportion =
         Double.parseDouble(
             properties
                 .getProperty(
                     "device_path_cache_proportion",
                     Double.toString(conf.getDevicePathCacheProportion()))
-                .trim()));
+                .trim());
+
+    if (rejectProportion + devicePathCacheProportion >= 1) {
+      LOGGER.warn(
+          "The sum of write_memory_proportion and device_path_cache_proportion is too large, use default values 0.8 and 0.05.");
+    } else {
+      conf.setRejectProportion(rejectProportion);
+      conf.setDevicePathCacheProportion(devicePathCacheProportion);
+    }
 
     conf.setWriteMemoryVariationReportProportion(
         Double.parseDouble(
