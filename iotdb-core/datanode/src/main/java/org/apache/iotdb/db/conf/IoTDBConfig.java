@@ -166,13 +166,13 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.72;
+  private double writeProportionForMemtable = 0.76;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** The proportion of write memory for device path cache */
-  private double devicePathCacheProportion = 0.04;
+  /** The proportion of memtable memory for device path cache */
+  private double devicePathCacheProportion = 0.05;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
