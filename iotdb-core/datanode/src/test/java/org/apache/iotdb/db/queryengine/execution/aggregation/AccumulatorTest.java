@@ -91,7 +91,7 @@ public class AccumulatorTest {
   @Test
   public void avgAccumulatorTest() {
     Accumulator avgAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.AVG,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -112,7 +112,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    avgAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    avgAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(avgAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     intermediateResult[1] = new DoubleColumnBuilder(null, 1);
@@ -144,7 +144,7 @@ public class AccumulatorTest {
   @Test
   public void countAccumulatorTest() {
     Accumulator countAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.COUNT,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -162,7 +162,7 @@ public class AccumulatorTest {
     Assert.assertEquals(0, finalResult.build().getLong(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    countAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    countAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(countAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     countAccumulator.outputIntermediate(intermediateResult);
@@ -190,7 +190,7 @@ public class AccumulatorTest {
   @Test
   public void countTimeAccumulatorTest() {
     Accumulator countTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.COUNT_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -209,7 +209,7 @@ public class AccumulatorTest {
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
     timeAndValueColumn[1] = timeAndValueColumn[0];
-    countTimeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    countTimeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(countTimeAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     countTimeAccumulator.outputIntermediate(intermediateResult);
@@ -233,7 +233,7 @@ public class AccumulatorTest {
   @Test
   public void extremeAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.EXTREME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -251,7 +251,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    extremeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    extremeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -273,7 +273,7 @@ public class AccumulatorTest {
   @Test
   public void firstValueAccumulatorTest() {
     Accumulator firstValueAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.FIRST_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -294,7 +294,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    firstValueAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    firstValueAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertTrue(firstValueAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     intermediateResult[1] = new LongColumnBuilder(null, 1);
@@ -319,7 +319,7 @@ public class AccumulatorTest {
   @Test
   public void lastValueAccumulatorTest() {
     Accumulator lastValueAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.LAST_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -340,7 +340,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    lastValueAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    lastValueAccumulator.addInput(timeAndValueColumn, null);
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     intermediateResult[1] = new LongColumnBuilder(null, 1);
     lastValueAccumulator.outputIntermediate(intermediateResult);
@@ -364,7 +364,7 @@ public class AccumulatorTest {
   @Test
   public void maxTimeAccumulatorTest() {
     Accumulator maxTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -382,7 +382,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    maxTimeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    maxTimeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(maxTimeAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     maxTimeAccumulator.outputIntermediate(intermediateResult);
@@ -404,7 +404,7 @@ public class AccumulatorTest {
   @Test
   public void minTimeAccumulatorTest() {
     Accumulator minTimeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MIN_TIME,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -422,7 +422,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    minTimeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    minTimeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertTrue(minTimeAccumulator.hasFinalResult());
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     minTimeAccumulator.outputIntermediate(intermediateResult);
@@ -444,7 +444,7 @@ public class AccumulatorTest {
   @Test
   public void maxValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -462,7 +462,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    extremeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    extremeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -484,7 +484,7 @@ public class AccumulatorTest {
   @Test
   public void minValueAccumulatorTest() {
     Accumulator extremeAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MIN_VALUE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -502,7 +502,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    extremeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    extremeAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(extremeAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     extremeAccumulator.outputIntermediate(intermediateResult);
@@ -524,7 +524,7 @@ public class AccumulatorTest {
   @Test
   public void sumAccumulatorTest() {
     Accumulator sumAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.SUM,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -542,7 +542,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    sumAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    sumAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(sumAccumulator.hasFinalResult());
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     sumAccumulator.outputIntermediate(intermediateResult);
@@ -570,7 +570,7 @@ public class AccumulatorTest {
   @Test
   public void stddevAccumulatorTest() {
     Accumulator stddevAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -596,7 +596,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    stddevAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    stddevAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(stddevAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     stddevAccumulator.outputIntermediate(intermediateResult);
@@ -624,7 +624,7 @@ public class AccumulatorTest {
   @Test
   public void stddevPopAccumulatorTest() {
     Accumulator stddevPopAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV_POP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -643,7 +643,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    stddevPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    stddevPopAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(stddevPopAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     stddevPopAccumulator.outputIntermediate(intermediateResult);
@@ -671,7 +671,7 @@ public class AccumulatorTest {
   @Test
   public void stddevSampAccumulatorTest() {
     Accumulator stddevSampAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.STDDEV_SAMP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -697,7 +697,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    stddevSampAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    stddevSampAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(stddevSampAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     stddevSampAccumulator.outputIntermediate(intermediateResult);
@@ -725,7 +725,7 @@ public class AccumulatorTest {
   @Test
   public void varianceAccumulatorTest() {
     Accumulator varianceAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VARIANCE,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -751,7 +751,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    varianceAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    varianceAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(varianceAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     varianceAccumulator.outputIntermediate(intermediateResult);
@@ -779,7 +779,7 @@ public class AccumulatorTest {
   @Test
   public void varPopAccumulatorTest() {
     Accumulator varPopAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VAR_POP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -798,7 +798,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    varPopAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    varPopAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(varPopAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     varPopAccumulator.outputIntermediate(intermediateResult);
@@ -826,7 +826,7 @@ public class AccumulatorTest {
   @Test
   public void varSampAccumulatorTest() {
     Accumulator varSampAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.VAR_SAMP,
             Collections.singletonList(TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -852,7 +852,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndValueColumn(0);
-    varSampAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    varSampAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(varSampAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     varSampAccumulator.outputIntermediate(intermediateResult);
@@ -880,7 +880,7 @@ public class AccumulatorTest {
   @Test
   public void maxByAccumulatorTest() {
     Accumulator maxByAccumulator =
-        AccumulatorFactory.createAccumulator(
+        AccumulatorFactory.createBuiltinAccumulator(
             TAggregationType.MAX_BY,
             Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE),
             Collections.emptyList(),
@@ -898,7 +898,7 @@ public class AccumulatorTest {
     Assert.assertTrue(finalResult.build().isNull(0));
 
     Column[] timeAndValueColumn = getTimeAndTwoValueColumns(1, 0);
-    maxByAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    maxByAccumulator.addInput(timeAndValueColumn, null);
     Assert.assertFalse(maxByAccumulator.hasFinalResult());
     intermediateResult[0] = new BinaryColumnBuilder(null, 1);
     maxByAccumulator.outputIntermediate(intermediateResult);

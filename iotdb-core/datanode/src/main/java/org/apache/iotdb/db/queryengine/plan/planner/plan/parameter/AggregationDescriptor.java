@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
+import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isBuiltinAggregationName;
 
 public class AggregationDescriptor {
 
@@ -69,10 +70,19 @@ public class AggregationDescriptor {
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes) {
     this.aggregationFuncName = aggregationFuncName;
-    this.aggregationType = TAggregationType.valueOf(aggregationFuncName.toUpperCase());
+    this.aggregationType = getAggregationTypeByFuncName(aggregationFuncName);
     this.step = step;
     this.inputExpressions = inputExpressions;
     this.inputAttributes = inputAttributes;
+  }
+
+  private TAggregationType getAggregationTypeByFuncName(String funcName) {
+    if (isBuiltinAggregationName(funcName.toLowerCase())) {
+      return TAggregationType.valueOf(funcName.toUpperCase());
+    } else {
+      // fallback to UDAF if no enum found
+      return TAggregationType.UDAF;
+    }
   }
 
   // Old method, please don't use it any more
@@ -173,6 +183,9 @@ public class AggregationDescriptor {
           break;
         case MAX_BY:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
+          break;
+        case UDAF:
+          outputAggregationNames.add(addPartialSuffix(aggregationFuncName));
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);

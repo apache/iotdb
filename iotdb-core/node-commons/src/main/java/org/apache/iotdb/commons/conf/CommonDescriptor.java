@@ -258,6 +258,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
+                String.valueOf(
+                    config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(

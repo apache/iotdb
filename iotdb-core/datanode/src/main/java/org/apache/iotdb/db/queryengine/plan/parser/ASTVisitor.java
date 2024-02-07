@@ -2885,7 +2885,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // type check of input expressions is put in ExpressionTypeAnalyzer
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       checkAggregationFunctionInput(functionExpression);
-    } else if (functionExpression.isBuiltInScalarFunction()) {
+    } else if (functionExpression.isBuiltInScalarFunctionExpression()) {
       checkBuiltInScalarFunctionInput(functionExpression);
     }
     return functionExpression;

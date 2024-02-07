@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -55,7 +55,7 @@ jobs:
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
           brew install openssl
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -76,9 +76,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -99,7 +99,7 @@ jobs:
         run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cpp-IT-${{ runner.os }}
           path: iotdb-client/client-cpp/target/build/test/Testing

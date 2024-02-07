@@ -140,6 +140,7 @@ public class SlidingWindowAggregatorFactory {
   }
 
   public static SlidingWindowAggregator createSlidingWindowAggregator(
+      String functionName,
       TAggregationType aggregationType,
       List<TSDataType> dataTypes,
       List<Expression> inputExpressions,
@@ -149,7 +150,13 @@ public class SlidingWindowAggregatorFactory {
       AggregationStep step) {
     Accumulator accumulator =
         AccumulatorFactory.createAccumulator(
-            aggregationType, dataTypes, inputExpressions, inputAttributes, ascending);
+            functionName,
+            aggregationType,
+            dataTypes,
+            inputExpressions,
+            inputAttributes,
+            ascending,
+            step.isInputRaw());
     switch (aggregationType) {
       case SUM:
       case AVG:
@@ -161,6 +168,7 @@ public class SlidingWindowAggregatorFactory {
       case VARIANCE:
       case VAR_POP:
       case VAR_SAMP:
+      case UDAF: // Currently UDAF belongs to SmoothQueueSlidingWindowAggregator
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(

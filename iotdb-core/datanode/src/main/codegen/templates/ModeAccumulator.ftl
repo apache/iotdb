@@ -60,8 +60,9 @@ public class ${className} implements Accumulator {
 
   </#if>
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  public void addInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
