@@ -84,8 +84,11 @@ public class PipeTsFileResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-    final int scale = hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
-
+    boolean printThisRound =
+        PipeResourceManager.log()
+            .schedule(
+                PipeTsFileResourceManager.class,
+                hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -93,7 +96,7 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          if (PipeResourceManager.log().schedule(PipeTsFileResourceManager.class, scale)) {
+          if (printThisRound) {
             LOGGER.info(
                 "Pipe file (file name: {}) is still referenced {} times",
                 entry.getKey(),

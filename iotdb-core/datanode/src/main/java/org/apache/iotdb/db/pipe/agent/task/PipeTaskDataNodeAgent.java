@@ -284,11 +284,12 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      boolean printThisRound =
+          PipeResourceManager.log()
+              .schedule(PipeTaskDataNodeAgent.class, pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        if (LOGGER.isInfoEnabled()
-            && PipeResourceManager.log()
-                .schedule(PipeTaskDataNodeAgent.class, pipeMetaKeeper.getPipeMetaCount())) {
+        if (LOGGER.isInfoEnabled() && printThisRound) {
           LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
         }
       }
@@ -318,11 +319,12 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      boolean printThisRound =
+          PipeResourceManager.log()
+              .schedule(PipeTaskDataNodeAgent.class, pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        if (LOGGER.isInfoEnabled()
-            && PipeResourceManager.log()
-                .schedule(PipeTaskDataNodeAgent.class, pipeMetaKeeper.getPipeMetaCount())) {
+        if (LOGGER.isInfoEnabled() && printThisRound) {
           LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
         }
       }
