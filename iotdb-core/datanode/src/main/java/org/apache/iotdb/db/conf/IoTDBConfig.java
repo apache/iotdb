@@ -171,7 +171,7 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
-  /** The proportion of write memory for device path cache */
+  /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
 
   /**
