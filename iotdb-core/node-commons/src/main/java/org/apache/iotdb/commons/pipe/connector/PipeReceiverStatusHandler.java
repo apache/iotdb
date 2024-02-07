@@ -28,8 +28,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeExceptionHandler {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeExceptionHandler.class);
+public class PipeReceiverStatusHandler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
   private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
   private final boolean isAllowConflictRetry;
@@ -41,7 +41,7 @@ public class PipeExceptionHandler {
   private long firstEncounterTime;
   private String lastRecordMessage = "";
 
-  public PipeExceptionHandler(
+  public PipeReceiverStatusHandler(
       boolean isAllowConflictRetry,
       long conflictRetryMaxSeconds,
       boolean conflictRecordIgnoredData,
@@ -59,7 +59,7 @@ public class PipeExceptionHandler {
   /**
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
    * exception if retry the {@link Event}. This method does not implement the retry logic and caller
-   * should retry later by invoking {@link PipeExceptionHandler#handleExceptionStatus(TSStatus,
+   * should retry later by invoking {@link PipeReceiverStatusHandler#handleExceptionStatus(TSStatus,
    * String, String)}. It is also thread-safe since it only reads from class variables.
    *
    * @throws PipeException to retry the current event
@@ -83,7 +83,7 @@ public class PipeExceptionHandler {
         // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1810:
         if (isAllowConflictRetry) {
-          LOGGER.info(
+          LOGGER.warn(
               "User conflict exception status in pipe transfer, will retry. status: {}", status);
           throw new PipeException(exceptionMessage);
         }
@@ -94,7 +94,7 @@ public class PipeExceptionHandler {
         return;
         // Other exceptions
       default:
-        LOGGER.info("Unclassified exception in pipe transfer, will retry. status: {}", status);
+        LOGGER.warn("Unclassified exception in pipe transfer, will retry. status: {}", status);
         throw new PipeException(exceptionMessage);
     }
   }
@@ -139,12 +139,12 @@ public class PipeExceptionHandler {
       case 1810:
         if (firstEncounterTime == 0 && isAllowConflictRetry) {
           firstEncounterTime = System.currentTimeMillis();
-          LOGGER.info(
+          LOGGER.warn(
               "User conflict exception status in pipe transfer, will retry for {} seconds. status: {}",
               conflictRetryMaxSeconds,
               status);
         } else if (System.currentTimeMillis() - firstEncounterTime > conflictRetryMaxSeconds) {
-          LOGGER.info("User conflict exception timeout, release the event.");
+          LOGGER.warn("User conflict exception timeout, release the event.");
           if (conflictRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
           }
@@ -164,12 +164,12 @@ public class PipeExceptionHandler {
       default:
         if (firstEncounterTime == 0) {
           firstEncounterTime = System.currentTimeMillis();
-          LOGGER.info(
+          LOGGER.warn(
               "Unclassified exception in pipe transfer, will retry for {} seconds. status: {}",
               othersRetryMaxSeconds,
               status);
         } else if (System.currentTimeMillis() - firstEncounterTime > othersRetryMaxSeconds) {
-          LOGGER.info("Unclassified exception timeout, release the event.");
+          LOGGER.warn("Unclassified exception timeout, release the event.");
           if (othersRecordIgnoredData) {
             LOGGER.warn("Ignored event: {}", recordMessage);
           }

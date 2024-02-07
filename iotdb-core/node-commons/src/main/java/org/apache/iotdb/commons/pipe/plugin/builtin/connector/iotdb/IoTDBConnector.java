@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.connector.PipeExceptionHandler;
+import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -73,7 +73,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected boolean isTabletBatchModeEnabled = true;
 
-  protected PipeExceptionHandler exceptionHandler;
+  protected PipeReceiverStatusHandler exceptionHandler;
 
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";
@@ -122,7 +122,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
 
     exceptionHandler =
-        new PipeExceptionHandler(
+        new PipeReceiverStatusHandler(
             parameters
                 .getStringOrDefault(
                     Arrays.asList(
@@ -223,7 +223,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
-  public PipeExceptionHandler getExceptionHandler() {
+  public PipeReceiverStatusHandler getExceptionHandler() {
     return exceptionHandler;
   }
 }
