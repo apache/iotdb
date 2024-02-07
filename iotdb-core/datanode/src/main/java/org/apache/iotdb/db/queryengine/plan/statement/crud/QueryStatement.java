@@ -347,13 +347,13 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean hasAggregationFunction(Expression expression) {
     if (expression instanceof FunctionExpression) {
-      return expression.isBuiltInAggregationFunctionExpression();
+      return expression.isAggregationFunctionExpression();
     } else {
       if (expression instanceof TimeSeriesOperand) {
         return false;
       }
       for (Expression subExpression : expression.getExpressions()) {
-        if (!subExpression.isBuiltInAggregationFunctionExpression()) {
+        if (!subExpression.isAggregationFunctionExpression()) {
           return false;
         }
       }
@@ -593,7 +593,7 @@ public class QueryStatement extends AuthorityInformationStatement {
           Expression expression = resultColumn.getExpression();
           if (!(expression instanceof FunctionExpression
               && expression.getExpressions().get(0) instanceof TimeSeriesOperand
-              && expression.isBuiltInAggregationFunctionExpression())) {
+              && expression.isAggregationFunctionExpression())) {
             throw new SemanticException(
                 expression + " can't be used in group by tag. It will be supported in the future.");
           }

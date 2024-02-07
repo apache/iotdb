@@ -104,6 +104,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
             : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
     // Record the last event for retry when exception occurs
     setLastEvent(event);
+
     if (
     // Though there is no event to process, there may still be some buffered events
     // in the outputEventCollector. Return true if there are still buffered events,
@@ -115,6 +116,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
       return outputEventCollector.tryCollectBufferedEvents();
     }
 
+    outputEventCollector.resetCollectInvocationCount();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
@@ -136,8 +138,7 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
               outputEventCollector);
         }
       }
-
-      releaseLastEvent(true);
+      releaseLastEvent(!isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(

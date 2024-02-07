@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -699,11 +700,23 @@ public class LogicalPlanBuilder {
 
   public static void updateTypeProviderByPartialAggregation(
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
-    List<String> partialAggregationsNames =
-        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    String inputExpressionStr = getInputExpressionString(aggregationDescriptor);
-    partialAggregationsNames.forEach(
-        x -> setTypeForPartialAggregation(typeProvider, x, inputExpressionStr));
+    if (aggregationDescriptor.getAggregationType() == TAggregationType.UDAF) {
+      // Treat UDAF differently
+      String partialAggregationNames =
+          AggregationUtil.addPartialSuffix(aggregationDescriptor.getAggregationFuncName());
+      TSDataType aggregationType = TSDataType.TEXT;
+      // Currently UDAF only supports one input series
+      String inputExpressionStr =
+          aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
+      typeProvider.setType(
+          String.format("%s(%s)", partialAggregationNames, inputExpressionStr), aggregationType);
+    } else {
+      List<String> partialAggregationsNames =
+          SchemaUtils.splitPartialBuiltinAggregation(aggregationDescriptor.getAggregationType());
+      String inputExpressionStr = getInputExpressionString(aggregationDescriptor);
+      partialAggregationsNames.forEach(
+          x -> setTypeForPartialAggregation(typeProvider, x, inputExpressionStr));
+    }
   }
 
   private static String getInputExpressionString(AggregationDescriptor aggregationDescriptor) {
@@ -717,7 +730,8 @@ public class LogicalPlanBuilder {
 
   private static void setTypeForPartialAggregation(
       TypeProvider typeProvider, String partialAggregationName, String inputExpressionStr) {
-    TSDataType aggregationType = SchemaUtils.getAggregationType(partialAggregationName);
+    TSDataType aggregationType =
+        SchemaUtils.getBuiltinAggregationTypeByFuncName(partialAggregationName);
     typeProvider.setType(
         String.format("%s(%s)", partialAggregationName, inputExpressionStr),
         aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
@@ -726,14 +740,26 @@ public class LogicalPlanBuilder {
   public static void updateTypeProviderByPartialAggregation(
       CrossSeriesAggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<String> partialAggregationsNames =
-        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+        SchemaUtils.splitPartialBuiltinAggregation(aggregationDescriptor.getAggregationType());
     if (!AccumulatorFactory.isMultiInputAggregation(aggregationDescriptor.getAggregationType())) {
-      PartialPath path =
-          ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0)).getPath();
-      for (String partialAggregationName : partialAggregationsNames) {
+      if (aggregationDescriptor.getAggregationType() == TAggregationType.UDAF) {
+        // Treat UDAF differently
+        String partialAggregationNames =
+            AggregationUtil.addPartialSuffix(aggregationDescriptor.getAggregationFuncName());
+        TSDataType aggregationType = TSDataType.TEXT;
+        // Currently UDAF only supports one input series
+        String inputExpressionStr =
+            aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
         typeProvider.setType(
-            String.format("%s(%s)", partialAggregationName, path.getFullPath()),
-            SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+            String.format("%s(%s)", partialAggregationNames, inputExpressionStr), aggregationType);
+      } else {
+        PartialPath path =
+            ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0)).getPath();
+        for (String partialAggregationName : partialAggregationsNames) {
+          typeProvider.setType(
+              String.format("%s(%s)", partialAggregationName, path.getFullPath()),
+              SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
+        }
       }
     } else {
       String inputExpressionStr = aggregationDescriptor.getOutputExpressionsAsBuilder().toString();

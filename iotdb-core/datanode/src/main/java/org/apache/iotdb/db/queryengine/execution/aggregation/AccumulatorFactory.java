@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -36,18 +35,56 @@ import static com.google.common.base.Preconditions.checkState;
 public class AccumulatorFactory {
 
   public static Accumulator createAccumulator(
+      String functionName,
+      TAggregationType aggregationType,
+      List<TSDataType> inputDataTypes,
+      List<Expression> inputExpressions,
+      Map<String, String> inputAttributes,
+      boolean ascending,
+      boolean isInputRaw) {
+    if (aggregationType == TAggregationType.UDAF) {
+      // If UDAF accumulator receives raw input, it needs to check input's attribute
+      return new UDAFAccumulator(
+          functionName, inputExpressions, inputDataTypes.get(0), inputAttributes, isInputRaw);
+    } else {
+      return createBuiltinAccumulator(
+          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+    }
+  }
+
+  public static Accumulator createBuiltinAccumulator(
       TAggregationType aggregationType,
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending) {
     return isMultiInputAggregation(aggregationType)
-        ? createAccumulatorWithMultiInput(aggregationType, inputDataTypes)
-        : createSingleInputAccumulator(
+        ? createBuiltinMultiInputAccumulator(aggregationType, inputDataTypes)
+        : createBuiltinSingleInputAccumulator(
             aggregationType, inputDataTypes.get(0), inputExpressions, inputAttributes, ascending);
   }
 
-  private static Accumulator createSingleInputAccumulator(
+  public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
+    switch (aggregationType) {
+      case MAX_BY:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  public static Accumulator createBuiltinMultiInputAccumulator(
+      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
+    switch (aggregationType) {
+      case MAX_BY:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+    }
+  }
+
+  private static Accumulator createBuiltinSingleInputAccumulator(
       TAggregationType aggregationType,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
@@ -85,7 +122,7 @@ public class AccumulatorFactory {
       case TIME_DURATION:
         return new TimeDurationAccumulator();
       case MODE:
-        return crateModeAccumulator(tsDataType);
+        return createModeAccumulator(tsDataType);
       case COUNT_TIME:
         return new CountTimeAccumulator();
       case STDDEV:
@@ -103,7 +140,7 @@ public class AccumulatorFactory {
     }
   }
 
-  private static Accumulator crateModeAccumulator(TSDataType tsDataType) {
+  private static Accumulator createModeAccumulator(TSDataType tsDataType) {
     switch (tsDataType) {
       case BOOLEAN:
         return new BooleanModeAccumulator();
@@ -122,28 +159,8 @@ public class AccumulatorFactory {
     }
   }
 
-  public static Accumulator createAccumulatorWithMultiInput(
-      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
-    switch (aggregationType) {
-      case MAX_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-        return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
-      default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
-    }
-  }
-
-  public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
-    switch (aggregationType) {
-      case MAX_BY:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   @TestOnly
-  public static List<Accumulator> createAccumulators(
+  public static List<Accumulator> createBuiltinAccumulators(
       List<TAggregationType> aggregationTypes,
       TSDataType tsDataType,
       List<Expression> inputExpressions,
@@ -152,12 +169,8 @@ public class AccumulatorFactory {
     List<Accumulator> accumulators = new ArrayList<>();
     for (TAggregationType aggregationType : aggregationTypes) {
       accumulators.add(
-          createAccumulator(
-              aggregationType,
-              Collections.singletonList(tsDataType),
-              inputExpressions,
-              inputAttributes,
-              ascending));
+          createBuiltinSingleInputAccumulator(
+              aggregationType, tsDataType, inputExpressions, inputAttributes, ascending));
     }
     return accumulators;
   }
@@ -168,7 +181,7 @@ public class AccumulatorFactory {
   }
 
   public static KeepEvaluator initKeepEvaluator(Expression keepExpression) {
-    // We have check semantic in FE,
+    // We have checked semantic in FE,
     // keep expression must be ConstantOperand or CompareBinaryExpression here
     if (keepExpression instanceof ConstantOperand) {
       return keep -> keep >= Long.parseLong(keepExpression.getExpressionString());

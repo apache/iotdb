@@ -284,11 +284,27 @@ public class IoTDBDescriptor {
                 .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
                 .trim()));
 
-    conf.setRejectProportion(
+    double rejectProportion =
         Double.parseDouble(
             properties
                 .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
-                .trim()));
+                .trim());
+
+    double devicePathCacheProportion =
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "device_path_cache_proportion",
+                    Double.toString(conf.getDevicePathCacheProportion()))
+                .trim());
+
+    if (rejectProportion + devicePathCacheProportion >= 1) {
+      LOGGER.warn(
+          "The sum of write_memory_proportion and device_path_cache_proportion is too large, use default values 0.8 and 0.05.");
+    } else {
+      conf.setRejectProportion(rejectProportion);
+      conf.setDevicePathCacheProportion(devicePathCacheProportion);
+    }
 
     conf.setWriteMemoryVariationReportProportion(
         Double.parseDouble(
@@ -1772,7 +1788,7 @@ public class IoTDBDescriptor {
           writeMemoryProportion += proportionValue;
           if (proportionValue <= 0) {
             LOGGER.warn(
-                "The value of write_memory_proportion is illegal, use default value 18:1:1 .");
+                "The value of write_memory_proportion is illegal, use default value 19:1 .");
             return;
           }
         }
@@ -1784,9 +1800,7 @@ public class IoTDBDescriptor {
             (double) Integer.parseInt(writeProportionArray[0].trim()) / writeMemoryProportion;
         double timePartitionInfoProportion =
             (double) Integer.parseInt(writeProportionArray[1].trim()) / writeMemoryProportion;
-        double devicePathCacheProportion =
-            (double) Integer.parseInt(writeProportionArray[2].trim()) / writeMemoryProportion;
-        // writeProportionForMemtable = 8/10 * 18/20 = 0.72 default
+        // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
         conf.setWriteProportionForMemtable(
             writeAllProportionOfStorageEngineMemory * memTableProportion);
 
@@ -1795,10 +1809,6 @@ public class IoTDBDescriptor {
             (long)
                 ((writeAllProportionOfStorageEngineMemory * timePartitionInfoProportion)
                     * storageMemoryTotal));
-
-        // device path cache default memory is value is 8/10 * 1/20 = 0.04 for StorageEngine
-        conf.setDevicePathCacheProportion(
-            writeAllProportionOfStorageEngineMemory * devicePathCacheProportion);
       }
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -134,12 +135,13 @@ public class AggregationUtil {
       lastIndexToProcess = i;
     }
 
+    TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
     for (Aggregator aggregator : aggregators) {
       // current agg method has been calculated
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
+      aggregator.processTsBlock(inputRegion, null);
     }
     int lastReadRowIndex = lastIndexToProcess + 1;
     if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
@@ -259,5 +261,9 @@ public class AggregationUtil {
 
   public static String addPartialSuffix(String aggregationName) {
     return aggregationName + PARTIAL_SUFFIX;
+  }
+
+  public static boolean isBuiltinAggregationName(String functionName) {
+    return BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName);
   }
 }
