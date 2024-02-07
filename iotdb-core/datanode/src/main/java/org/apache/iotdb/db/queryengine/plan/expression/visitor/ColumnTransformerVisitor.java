@@ -219,7 +219,7 @@ public class ColumnTransformerVisitor
         context.leafList.add(identity);
         context.cache.put(functionExpression, identity);
       } else {
-        if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        if (functionExpression.isAggregationFunctionExpression()) {
           IdentityColumnTransformer identity =
               new IdentityColumnTransformer(
                   TypeFactory.getType(context.getType(functionExpression)),
@@ -230,7 +230,7 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
-        } else if (functionExpression.isBuiltInScalarFunction()) {
+        } else if (functionExpression.isBuiltInScalarFunctionExpression()) {
           context.cache.put(
               functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {

@@ -42,19 +42,19 @@ public class MinValueAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+  public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, bitMap, lastIndex);
+        addIntInput(columns, bitMap);
         return;
       case INT64:
-        addLongInput(column, bitMap, lastIndex);
+        addLongInput(columns, bitMap);
         return;
       case FLOAT:
-        addFloatInput(column, bitMap, lastIndex);
+        addFloatInput(columns, bitMap);
         return;
       case DOUBLE:
-        addDoubleInput(column, bitMap, lastIndex);
+        addDoubleInput(columns, bitMap);
         return;
       case TEXT:
       case BOOLEAN:
@@ -223,8 +223,9 @@ public class MinValueAccumulator implements Accumulator {
     return minResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addIntInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -241,8 +242,9 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addLongInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
@@ -260,8 +262,9 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addFloatInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -278,8 +281,9 @@ public class MinValueAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addDoubleInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }

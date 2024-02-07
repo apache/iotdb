@@ -201,7 +201,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.UDF;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -471,7 +471,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       try (UDFClassLoader classLoader = new UDFClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a UDF
         Class<?> clazz = Class.forName(createFunctionStatement.getClassName(), true, classLoader);
-        UDTF udtf = (UDTF) clazz.getDeclaredConstructor().newInstance();
+        UDF udf = (UDF) clazz.getDeclaredConstructor().newInstance();
       } catch (ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException

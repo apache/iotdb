@@ -44,25 +44,25 @@ public class LastValueAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+  public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, bitMap, lastIndex);
+        addIntInput(columns, bitMap);
         return;
       case INT64:
-        addLongInput(column, bitMap, lastIndex);
+        addLongInput(columns, bitMap);
         return;
       case FLOAT:
-        addFloatInput(column, bitMap, lastIndex);
+        addFloatInput(columns, bitMap);
         return;
       case DOUBLE:
-        addDoubleInput(column, bitMap, lastIndex);
+        addDoubleInput(columns, bitMap);
         return;
       case TEXT:
-        addBinaryInput(column, bitMap, lastIndex);
+        addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
-        addBooleanInput(column, bitMap, lastIndex);
+        addBooleanInput(columns, bitMap);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -252,8 +252,9 @@ public class LastValueAccumulator implements Accumulator {
     return lastValue.getDataType();
   }
 
-  protected void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addIntInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -271,8 +272,9 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addLongInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -290,8 +292,9 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addFloatInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -309,8 +312,9 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addDoubleInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -328,8 +332,9 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBooleanInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBooleanInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -347,8 +352,9 @@ public class LastValueAccumulator implements Accumulator {
     }
   }
 
-  protected void addBinaryInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBinaryInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
