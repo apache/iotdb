@@ -46,17 +46,17 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
-  protected final OrderByParameter mergeOrderParameter;
+  private final OrderByParameter mergeOrderParameter;
 
   // The size devices and children should be the same.
-  protected final List<String> devices = new ArrayList<>();
+  private final List<String> devices = new ArrayList<>();
 
   // Device column and measurement columns in result output
-  protected final List<String> outputColumnNames;
+  private final List<String> outputColumnNames;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  protected final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public DeviceViewNode(
       PlanNodeId id,

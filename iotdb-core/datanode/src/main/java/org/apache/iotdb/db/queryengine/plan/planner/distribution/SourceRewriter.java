@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
@@ -234,9 +234,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public List<PlanNode> visitAggMergeSort(AggMergeSortNode node, DistributionPlanContext context) {
-    AggMergeSortNode newRoot =
-        new AggMergeSortNode(
+  public List<PlanNode> visitAggregationMergeSort(
+      AggregationMergeSortNode node, DistributionPlanContext context) {
+    AggregationMergeSortNode newRoot =
+        new AggregationMergeSortNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getMergeOrderParameter(),
             node.getOutputColumnNames(),

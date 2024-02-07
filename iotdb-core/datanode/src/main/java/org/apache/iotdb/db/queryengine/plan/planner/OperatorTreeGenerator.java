@@ -45,7 +45,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.AggMergeSortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
@@ -167,7 +167,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -825,7 +825,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitAggMergeSort(AggMergeSortNode node, LocalExecutionPlanContext context) {
+  public Operator visitAggregationMergeSort(
+      AggregationMergeSortNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -840,7 +841,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .collect(Collectors.toList());
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
-    return new AggMergeSortOperator(
+    return new AggregationMergeSortOperator(
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
   }
 

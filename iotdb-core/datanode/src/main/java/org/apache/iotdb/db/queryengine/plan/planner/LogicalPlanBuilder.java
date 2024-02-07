@@ -55,7 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -460,8 +460,8 @@ public class LogicalPlanBuilder {
         "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new LinkedHashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new LinkedHashMap<>();
     Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
 
@@ -956,8 +956,8 @@ public class LogicalPlanBuilder {
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       long valueFilterLimit) {
-    AggMergeSortNode aggMergeSortNode =
-        new AggMergeSortNode(
+    AggregationMergeSortNode aggMergeSortNode =
+        new AggregationMergeSortNode(
             context.getQueryId().genPlanNodeId(),
             orderByParameter,
             outputColumnNames,

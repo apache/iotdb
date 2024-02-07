@@ -90,8 +90,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   @Test
   public void orderByDeviceTest1() {
     // no order by
-    // sql = "select * from root.sg.d1, root.sg.d22 LIMIT 10 align by device";
-    sql = "select first_value(s1) from root.sg.d1, root.sg.d22 align by device";
+    sql = "select * from root.sg.d1, root.sg.d22 LIMIT 10 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
@@ -260,6 +259,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    */
   @Test
   public void orderByDeviceTest4() {
+    // aggregation + order by device, no value filter
+
     // aggregation + order by device, expression; with value filter
     sql =
         "select count(s1) from root.sg.d1, root.sg.d22 WHERE s2=1 having(count(s1)>1) LIMIT 5 align by device";

@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AggMergeSortNode extends MultiChildProcessNode {
+public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
@@ -51,7 +51,7 @@ public class AggMergeSortNode extends MultiChildProcessNode {
   // not 0 because device is the first column
   final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
-  public AggMergeSortNode(
+  public AggregationMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
@@ -62,7 +62,7 @@ public class AggMergeSortNode extends MultiChildProcessNode {
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
-  public AggMergeSortNode(
+  public AggregationMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumnNames,
@@ -77,12 +77,12 @@ public class AggMergeSortNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggMergeSort(this, context);
+    return visitor.visitAggregationMergeSort(this, context);
   }
 
   @Override
   public PlanNode clone() {
-    return new AggMergeSortNode(
+    return new AggregationMergeSortNode(
         getPlanNodeId(),
         mergeOrderParameter,
         outputColumnNames,
@@ -106,7 +106,7 @@ public class AggMergeSortNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    AggMergeSortNode that = (AggMergeSortNode) o;
+    AggregationMergeSortNode that = (AggregationMergeSortNode) o;
     return mergeOrderParameter.equals(that.mergeOrderParameter)
         && devices.equals(that.devices)
         && outputColumnNames.equals(that.outputColumnNames)
@@ -172,7 +172,7 @@ public class AggMergeSortNode extends MultiChildProcessNode {
     }
   }
 
-  public static AggMergeSortNode deserialize(ByteBuffer byteBuffer) {
+  public static AggregationMergeSortNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
@@ -200,7 +200,7 @@ public class AggMergeSortNode extends MultiChildProcessNode {
       mapSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggMergeSortNode(
+    return new AggregationMergeSortNode(
         planNodeId, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 

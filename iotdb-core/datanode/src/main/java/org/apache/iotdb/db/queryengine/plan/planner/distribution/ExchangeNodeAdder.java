@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggMergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -202,7 +202,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
-  public PlanNode visitAggMergeSort(AggMergeSortNode node, NodeGroupContext context) {
+  public PlanNode visitAggregationMergeSort(
+      AggregationMergeSortNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
 
@@ -412,7 +413,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
-    if (node instanceof AggMergeSortNode) {
+    if (node instanceof AggregationMergeSortNode) {
       return processAggMergeSortNode(node, visitedChildren, context, newNode, dataRegion);
     }
 
@@ -512,7 +513,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       NodeGroupContext context,
       MultiChildProcessNode newNode,
       TRegionReplicaSet dataRegion) {
-    AggMergeSortNode aggMergeSortNode = (AggMergeSortNode) node;
+    AggregationMergeSortNode aggMergeSortNode = (AggregationMergeSortNode) node;
     Map<TRegionReplicaSet, DeviceViewNode> regionTopKNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
@@ -531,7 +532,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                     new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
                 return childDeviceViewNode;
               });
-      String device = ((SeriesAggregationScanNode) child).getSeriesPath().getDevice();
+      String device = getChildNodeDevice(child);
       deviceViewNode
           .getDeviceToMeasurementIndexesMap()
           .put(device, aggMergeSortNode.getDeviceToMeasurementIndexesMap().get(device));
@@ -554,6 +555,19 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       }
     }
     return newNode;
+  }
+
+  private String getChildNodeDevice(PlanNode child) {
+    String device;
+    if (child instanceof SeriesAggregationScanNode) {
+      device = ((SeriesAggregationScanNode) child).getSeriesPath().getDevice();
+    } else if (child instanceof AlignedSeriesAggregationScanNode) {
+      device = ((AlignedSeriesAggregationScanNode) child).getAlignedPath().getDevice();
+    } else {
+      throw new UnsupportedOperationException(
+          String.format("Unsupported child node of AggMergeSortNode, node: %s", child.getClass()));
+    }
+    return device;
   }
 
   @Override

@@ -36,10 +36,11 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 
 /**
- * Since devices have been sorted by the merge order as expected, what {@link AggMergeSortOperator}
- * need to do is traversing the device child operators, get all tsBlocks of one device and transform
- * it to the form we need, adding the device column and allocating value column to its expected
- * location, then get the next device operator until no next device.
+ * Since devices have been sorted by the merge order as expected, what {@link
+ * AggregationMergeSortOperator} need to do is traversing the device child operators, get all
+ * tsBlocks of one device and transform it to the form we need, adding the device column and
+ * allocating value column to its expected location, then get the next device operator until no next
+ * device.
  *
  * <p>The deviceOperators can be aggregationSeriesScanOperator, imeJoinOperator or
  * seriesScanOperator that have not transformed the result form.
@@ -48,7 +49,7 @@ import java.util.List;
  * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
  * with NullColumn.
  */
-public class AggMergeSortOperator implements ProcessOperator {
+public class AggregationMergeSortOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   // The size devices and deviceOperators should be the same.
@@ -63,7 +64,7 @@ public class AggMergeSortOperator implements ProcessOperator {
 
   private int deviceIndex;
 
-  public AggMergeSortOperator(
+  public AggregationMergeSortOperator(
       OperatorContext operatorContext,
       List<String> devices,
       List<Operator> deviceOperators,
@@ -76,10 +77,6 @@ public class AggMergeSortOperator implements ProcessOperator {
     this.dataTypes = dataTypes;
 
     this.deviceIndex = 0;
-  }
-
-  private String getCurDeviceName() {
-    return devices.get(deviceIndex);
   }
 
   private Operator getCurDeviceOperator() {
