@@ -53,6 +53,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
+  public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -218,6 +222,9 @@ public class PipeConfig {
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
+    LOGGER.info(
+        "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
+        getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(

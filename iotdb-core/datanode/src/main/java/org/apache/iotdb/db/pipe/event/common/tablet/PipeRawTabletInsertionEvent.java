@@ -99,7 +99,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(tablet);
+    allocatedMemoryBlock = PipeResourceManager.memory().forceAllocateWithRetry(tablet);
     return true;
   }
 
@@ -200,7 +200,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public TabletInsertionEvent parseEventWithPatternOrTime() {
+  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
   }
