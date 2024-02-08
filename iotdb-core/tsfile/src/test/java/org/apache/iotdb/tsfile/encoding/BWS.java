@@ -131,7 +131,6 @@ public class BWS {
                 }
             }
         }
-//        return encode_pos;
     }
 
     public static void unpack8Values(byte[] encoded, int offset,int width,  ArrayList<Integer> result_list) {
@@ -268,42 +267,6 @@ public class BWS {
 
         return ts_block_delta;
     }
-
-//    public static int[] getAbsDeltaTsBlock(
-//            int[] ts_block,
-//            int i,
-//            int block_size,
-//            int remaining,
-//            int[] min_delta) {
-//        int[] ts_block_delta = new int[block_size-1];
-//
-//
-//        int value_delta_min = Integer.MAX_VALUE;
-//        int value_delta_max = Integer.MIN_VALUE;
-//        for (int j = i*block_size+1; j < i*block_size+remaining; j++) {
-//
-//            int epsilon_v = ts_block[j] - ts_block[j - 1];
-//
-//            if (epsilon_v < value_delta_min) {
-//                value_delta_min = epsilon_v;
-//            }
-//            if (epsilon_v > value_delta_max) {
-//                value_delta_max = epsilon_v;
-//            }
-//
-//        }
-//        min_delta[0] = (ts_block[i*block_size]);
-//        min_delta[1] = (value_delta_min);
-//        min_delta[2] = (value_delta_max-value_delta_min);
-//
-//        int base = i*block_size+1;
-//        int end = i*block_size + remaining;
-//        for (int j = base; j < end; j++) {
-//            int epsilon_v = ts_block[j] - value_delta_min - ts_block[j - 1];
-//            ts_block_delta[j-base] =epsilon_v;
-//        }
-//        return ts_block_delta;
-//    }
 
 
     public static int encodeOutlier2Bytes(
@@ -648,9 +611,6 @@ public class BWS {
             k_start_value_close = (int) pow(2,alpha);//close
             int pow_2_alpha_i = alpha_count_list[alpha+1];
             int pow_2_alpha_i_1_to_2_alpha_i = alpha_box_count_list[alpha];
-//            if(pow_2_alpha_i_1_to_2_alpha_i+pow_2_alpha_i==0)
-//                continue;
-
             cur_k1_close += pow_2_alpha_i; // x_min+2^{alpha_i}
             cur_k1_close += pow_2_alpha_i_1_to_2_alpha_i;//alpha_box_count_list[alpha];//(x_min+2^{alpha_i-1},x_min+2^{alpha_i})
 
@@ -725,8 +685,6 @@ public class BWS {
                 cur_bits = 0;
                 int pow_2_gamma_i = gamma_count_list[gamma+1];
                 int pow_2_gamma_i_1_to_2_gamma_i = gamma_box_count_list[gamma];
-//                if(pow_2_gamma_i_1_to_2_gamma_i+pow_2_gamma_i==0)
-//                    continue;
                 cur_k2_close += pow_2_gamma_i; // x_max-2^{gamma_i}
                 cur_k2_close += pow_2_gamma_i_1_to_2_gamma_i;//gamma_box_count_list[gamma]; //(x_max-2^{gamma_i},x_max-2^{gamma_i-1})
 
@@ -951,7 +909,6 @@ public class BWS {
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-//        if(k1+k2!=block_size)
         final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
 
         decode_pos = decode_pos_normal.get(0);
@@ -1049,8 +1006,7 @@ public class BWS {
 
     @Test
     public void BWSTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/bws";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1101,7 +1057,6 @@ public class BWS {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -1138,10 +1093,8 @@ public class BWS {
 
                 loader.readHeaders();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
@@ -1240,7 +1193,6 @@ public class BWS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 
         int repeatTime2 = 500;
-//        for (int file_i = 0; file_i < 8; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1333,39 +1285,5 @@ public class BWS {
 
         }
     }
-
-//    @Test
-//    public void BWSTest2() throws IOException {
-//        int[] testarray = {0,1,2,3,4,5,6,7};
-//        int max_delta_value = 7;
-//        int max_bit = getBitWith(max_delta_value);
-//        int[] alpha_count_list = new int[max_bit+1];//count(xmin) count(xmin + 2) count(xmin + 4)... count(xmax)
-//        int[] alpha_box_count_list = new int[max_bit+1];// count(xmin, xmin + 2), count(xmin + 2, xmin + 4)...
-//        int[] gamma_count_list = new int[max_bit+1];
-//        int[] gamma_box_count_list = new int[max_bit+1];
-//        for(int value:testarray){
-//            if (value == 0){
-//                alpha_count_list[0]++;
-//            }
-//            else if (value == pow(2,getBitWith(value)-1)){
-//                alpha_count_list[getBitWith(value)]++;
-//            }else {
-//                alpha_box_count_list[getBitWith(value)]++;
-//            }
-//            if (value == max_delta_value){
-//                gamma_count_list[0]++;
-//            }
-//            else if (max_delta_value - value == pow(2,getBitWith(max_delta_value-value)-1)){
-//                gamma_count_list[getBitWith(max_delta_value-value)]++;
-//            }else {
-//                gamma_box_count_list[getBitWith(max_delta_value-value)]++;
-//            }
-//        }
-//
-//        for(int value: alpha_box_count_list){
-//            System.out.println(value);
-//        }
-//
-//    }
 
 }
