@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 import static java.lang.Math.pow;
 
-public class SPRINTZExactBOSTest {
+public class SPRINTZBOSVTest {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -179,26 +179,7 @@ public class SPRINTZExactBOSTest {
     }
 
     // -----------------------------------------------------------------
-    public static int[] getAbsDeltaTsBlock(
-            int[] ts_block,
-            ArrayList<Integer> min_delta,
-            int supple_length) {
 
-        int[] ts_block_delta = new int[ts_block.length+supple_length-1];
-        int block_size = ts_block.length-1;
-
-        for (int i = 0; i < block_size; i++) {
-
-            int epsilon_v = ts_block[i+1] - ts_block[i];
-            epsilon_v = zigzag(epsilon_v);
-            ts_block_delta[i] = epsilon_v;
-        }
-        for(int i = block_size;i<block_size+supple_length;i++){
-            ts_block_delta[i] = 0;
-        }
-        min_delta.add(ts_block[0]);
-        return ts_block_delta;
-    }
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
@@ -462,88 +443,37 @@ public class SPRINTZExactBOSTest {
         }
 
         int left_shift = getBitWith(block_size);
-        int mask =  (1 << left_shift) - 1; //block_size*2-1; //
+        int mask =  (1 << left_shift) - 1;
         long[] sorted_value_list = new long[unique_value_count];
         int count = 0;
-//        int[] new_value_list = new int[unique_value_count];
+
         for(int i=0;i<unique_value_count;i++){
             int value = value_list[i];
-//            new_value_list[i] = value;
-//            count += value_count_list[value];
             sorted_value_list[i] = (((long) value) << left_shift) + value_count_list[value];
         }
         Arrays.sort(sorted_value_list);
-//        Arrays.sort(new_value_list);
+
         for(int i=0;i<unique_value_count;i++){
             count += getCount(sorted_value_list[i], mask);
             sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
         }
 
 
-        int final_k_start_value = -1;//getUniqueValue(sorted_value_list[0], left_shift);
+        int final_k_start_value = -1;
         int final_k_end_value = max_delta_value+1;
 
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value ) * (block_size));
-        //int end_value_i = start_value_i;
-//        for (int end_value_i = 1; end_value_i < unique_value_count; end_value_i++) {
-//
-//            int k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
-//
-//            int cur_bits = 0;
-//            int cur_k2;
-//            int cur_k1 = 0;
-//            int k_start_value = -1;
-//            cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
-//            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
-//            if (cur_k1 != 0)
-//                cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
-//            if (cur_k1 + cur_k2 != block_size)
-//                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
-//            if (cur_k2 != 0)
-//                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value + 1);//min_upper_outlier
-//
-//
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k_start_value;
-//                final_k_end_value = k_end_value;
-//            }
-////                if (k_end_value == max_delta_value)
-////                    break;
-//        }
 
 
-        int start_value_size =  unique_value_count; //valueMap.size();//start_value.size(); //
-        for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) { //start_value_size
-            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;//  valueMap.get(start_value_i); //start_value.get(start_value_i);//
+        int start_value_size =  unique_value_count;
+        for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) {
+            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;
 
             int cur_k1 = getCount(sorted_value_list[start_value_i],mask);
-//                if (start_value_i != 0) {
-//                    cur_k1 = getCount(sorted_value_list[start_value_i-1],mask);//countMap.get(start_value_i - 1);//PDF.get(start_value_i - 1).get(1);//
-//                }
-            //int end_value_i = start_value_i;
             int k_end_value;
             int cur_bits;
             int cur_k2;
-//            k_end_value = max_delta_value + 1;
-//
-//            cur_bits = 0;
-//            cur_k2 = 0;
-//            cur_bits += Math.min((cur_k2 + cur_k1) * getBitWith(block_size-1), block_size + cur_k2 + cur_k1);
-//            if (cur_k1 != 0)
-//                cur_bits += cur_k1 * getBitWith(k_start_value + 1);//left_max
-//            if (cur_k1 + cur_k2 != block_size)
-//                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value- k_start_value -2);
-//            if (cur_k2 != 0)
-//                cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
-//
-//
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k_start_value;
-//                final_k_end_value = k_end_value;
-//            }
 
             for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
 
@@ -554,11 +484,11 @@ public class SPRINTZExactBOSTest {
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                    cur_bits += cur_k1 * getBitWith(k_start_value);
                 if (cur_k1 + cur_k2 != block_size)
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value-2);
                 if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
 
 
                 if (cur_bits < min_bits) {
@@ -566,11 +496,10 @@ public class SPRINTZExactBOSTest {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-//                if (k_end_value == max_delta_value)
-//                    break;
+
             }
         }
-        //System.out.println(min_bits);
+
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
