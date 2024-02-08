@@ -447,13 +447,6 @@ public class SPRINTZBOSHTest {
         block_size = remaining - 1;
         int max_delta_value = min_delta[2];
 
-//        int countall = 0;
-//        int count5_7 = 0;
-//        int count5_4 = 0;
-//        int count5_5 = 0;
-//        int count5_6 = 0;
-//        int countC = 0;
-
         int boundary_index = (int) ((double) block_size / (double) (getBitWith(block_size-1)-1));
 
         int max_bit_width = getBitWith(max_delta_value) + 1;
@@ -667,9 +660,6 @@ public class SPRINTZBOSHTest {
             int max_lambda = lambda_0;
             int cur_k2 = k2; // count(x_max)
             int gamma_i = 0;
-//            if (alpha == 12){
-//                int temp = 1;
-//            }
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
                 if(gamma > gamma_size){
@@ -708,8 +698,6 @@ public class SPRINTZBOSHTest {
                 }
 
                 // prop 5.4
-//                int cur_xl = k1_start + gap_alpha - 1; // x_min+2^{alpha}-1
-//                int cur_xu = k2_end; //x_max - 2^{gamma-1}
                 int prop_5_4_k1 = cur_k1 + alpha_value_count; //count[x_min, x_min+2^{alpha}-1]
 
                 cur_bits = 0;
@@ -769,15 +757,6 @@ public class SPRINTZBOSHTest {
 
                     for(int beta = min_beta;beta <= max_beta;beta++) {
                         int pow_2_beta = (int) pow(2, beta);
-//                        if (beta >= alpha + max_lambda && beta <= gamma + 1 && pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta >= gamma + max_lambda && pow_2_beta + pow_2_alpha / 2 + pow_2_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta <= gamma + 1 && pow_2_beta + pow_2_alpha / 2 + gap_gamma > max_delta_value) {
-//
-//                        }
                         if (beta >= alpha + max_lambda && beta <= gamma + 1 ){
                             if(pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value){
 
@@ -791,23 +770,13 @@ public class SPRINTZBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -840,23 +809,13 @@ public class SPRINTZBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -888,23 +847,13 @@ public class SPRINTZBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -934,23 +883,13 @@ public class SPRINTZBOSHTest {
 
                                 int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                 int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1){
                                 int unique_s = cur_group_gamma.invert[x_u_i_start];
                                 int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                 for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                     cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                     cur_bits = 0;
@@ -996,9 +935,6 @@ public class SPRINTZBOSHTest {
 
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
-//                if (alpha == 12 && gamma == 12){
-//                    int temp = 1;
-//                }
                 gap_gamma = (int) pow(2, gamma-1);
                 cur_group_gamma = groupU[gamma];
                 k2_end = max_delta_value - gap_gamma;
@@ -1016,19 +952,8 @@ public class SPRINTZBOSHTest {
                     int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
                     int x_u_i_end = Math.max(0,Math.min(k2_end - k1_start - x_l_i,gap_gamma));
                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-
-//                    if (x_l_i == 484){
-//                        int temp2 = 1;
-//                    }
-
                     for (int unique_i = 0; unique_i < unique_e; unique_i++) {
                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-//                        if(k2_end - x_u_i <= k1_start+x_l_i){
-//                            break;
-//                        }
-//                        if (unique_i == unique_e - 1){
-//                            int temp2 = 1;
-//                        }
                         int unique_i_cur_k2 = cur_k2+ cur_group_gamma.getCount(gamma_sorted[unique_i]);
                         cur_bits = 0;
                         cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
@@ -1121,48 +1046,6 @@ public class SPRINTZBOSHTest {
             gamma_unique_number = cur_group_gamma.unique_number;
 
             int pow_2_gamma = gap_gamma*2;
-
-
-//
-//            // prop 5.5
-//            int prop_5_5_k2 = k2 + gamma_value_count; // count[x_max - 2^{gamma}+1,x_max}
-//
-//            cur_bits = 0;
-//            cur_bits += Math.min((k1 + prop_5_5_k2) * lambda_0, block_size + k1 + prop_5_5_k2);// (lambda * (prop_5_5_k1 + prop_5_5_k2) + zeta);
-//            cur_bits += (k1 * alpha_size);
-//            cur_bits += (prop_5_5_k2 * gamma);
-//            cur_bits += ((block_size - k1 - prop_5_5_k2) * getBitWith(k2_end - gap_gamma - k1_start - 1));
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k1_start;
-//                final_k_end_value = k2_end - gap_gamma + 1;
-//            }
-//
-//            // prop 5.6
-//
-//            cur_bits = 0;
-//            cur_bits += Math.min((k1 + k2) * lambda_0, block_size + k1 + k2);//(lambda * (prop_5_6_k1 + prop_5_6_k2) + zeta);
-//            cur_bits += (k1 * alpha_size);
-//            cur_bits += (k2 * gamma);
-//            cur_bits += ((block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2));
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k1_start;
-//                final_k_end_value = k2_end;
-//            }
-//
-//            int max_beta = getBitWith(k2_end-k1_start);
-//
-
-
-//            for(int beta = 1;beta <= max_beta;beta++) {
-//                int pow_2_beta = (int) pow(2, beta);
-//                if (beta <= alpha_size + 1 && beta >= gamma + max_lambda && pow_2_beta + gap_alpha + pow_2_gamma >= max_delta_value) {
-//
-//                }
-//                else if (beta <= alpha_size + 1 && beta <= gamma + 1 && pow_2_beta + gap_alpha + gap_gamma > max_delta_value) {
-//
-//                } else {
             for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
                 int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
                 int x_u_i_end = k2_end - k1_start - x_l_i; // x_u_i>= k2_end - k1_start - x_l_i; break ;
@@ -1170,9 +1053,7 @@ public class SPRINTZBOSHTest {
                 if(x_u_i_end <= 0 || x_l_i >= x_l_i_end){
                     break;
                 }
-//                        x_u_i_end -= (pow_2_beta/2+2);
                 int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
-//                        int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
                 x_u_i_end = Math.min(x_u_i_end,gap_gamma - 1);
                 int unique_e = cur_group_gamma.invert[x_u_i_end];
 
@@ -1180,13 +1061,6 @@ public class SPRINTZBOSHTest {
                 for(int unique_i=0;unique_i<unique_e;unique_i++){
 
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-//                            if(x_u_i<x_u_i_start){
-//                                continue;
-//                            }
-//                            if(x_u_i>=x_u_i_end){
-//                                break;
-//                            }
-
                     int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                     cur_bits = 0;
                     cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
@@ -1203,10 +1077,6 @@ public class SPRINTZBOSHTest {
                 }
             }
 
-//                }
-//
-//            }
-
 
             k2 += gamma_value_count;
 
@@ -1215,14 +1085,6 @@ public class SPRINTZBOSHTest {
         }
         // ------------------ [x_min+2^{alpha_size-1},x_max)--------------------
 
-
-
-//        // 8187 12282 14014 20044 alpha = gamma = 13
-        //   2532 2537 6632   2530 2539 6632 11906
-//        System.out.println(min_bits);
-//        if (min_bits == 11786){
-//            int temp = 1;
-//        }
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1246,7 +1108,6 @@ public class SPRINTZBOSHTest {
         for (int i = 0; i < block_num; i++) {
 
             encode_pos =  BOSBlockEncoder(data, i, block_size,block_size, encode_pos,encoded_result);
-//            System.out.println(encode_pos);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1458,8 +1319,7 @@ public class SPRINTZBOSHTest {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-//                String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/sprintz_pruning";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1510,7 +1370,6 @@ public class SPRINTZBOSHTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1596,9 +1455,6 @@ public class SPRINTZBOSHTest {
                     };
                     writer.writeRecord(record);
                     System.out.println(ratio);
-
-//                    break;
-
             }
             writer.close();
 

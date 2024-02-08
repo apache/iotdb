@@ -15,12 +15,6 @@ import static java.lang.Math.*;
 
 public class TSDIFFBOSHTest {
 
-//    public int countall;
-//    public int count5_7;
-//    public int count5_4;
-//    public int count5_5;
-//    public int count5_6;
-
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
     }
@@ -270,43 +264,6 @@ public class TSDIFFBOSHTest {
         return ts_block_delta;
     }
 
-//    public static int[] getAbsDeltaTsBlock(
-//            int[] ts_block,
-//            int i,
-//            int block_size,
-//            int remaining,
-//            int[] min_delta) {
-//        int[] ts_block_delta = new int[block_size-1];
-//
-//
-//        int value_delta_min = Integer.MAX_VALUE;
-//        int value_delta_max = Integer.MIN_VALUE;
-//        for (int j = i*block_size+1; j < i*block_size+remaining; j++) {
-//
-//            int epsilon_v = ts_block[j] - ts_block[j - 1];
-//
-//            if (epsilon_v < value_delta_min) {
-//                value_delta_min = epsilon_v;
-//            }
-//            if (epsilon_v > value_delta_max) {
-//                value_delta_max = epsilon_v;
-//            }
-//
-//        }
-//        min_delta[0] = (ts_block[i*block_size]);
-//        min_delta[1] = (value_delta_min);
-//        min_delta[2] = (value_delta_max-value_delta_min);
-//
-//        int base = i*block_size+1;
-//        int end = i*block_size + remaining;
-//        for (int j = base; j < end; j++) {
-//            int epsilon_v = ts_block[j] - value_delta_min - ts_block[j - 1];
-//            ts_block_delta[j-base] =epsilon_v;
-//        }
-//        return ts_block_delta;
-//    }
-
-
     public static int encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
             int bit_width,
@@ -535,13 +492,6 @@ public class TSDIFFBOSHTest {
 
         block_size = remaining - 1;
         int max_delta_value = min_delta[2];
-
-//        int countall = 0;
-//        int count5_7 = 0;
-//        int count5_4 = 0;
-//        int count5_5 = 0;
-//        int count5_6 = 0;
-//        int countC = 0;
 
         int boundary_index = (int) ((double) block_size / (double) (getBitWith(block_size-1)-1));
 
@@ -792,8 +742,6 @@ public class TSDIFFBOSHTest {
                 }
 
                 // prop 5.4
-//                int cur_xl = k1_start + gap_alpha - 1; // x_min+2^{alpha}-1
-//                int cur_xu = k2_end; //x_max - 2^{gamma-1}
                 int prop_5_4_k1 = cur_k1 + alpha_value_count; //count[x_min, x_min+2^{alpha}-1]
 
                 cur_bits = 0;
@@ -1040,48 +988,6 @@ public class TSDIFFBOSHTest {
             gamma_unique_number = cur_group_gamma.unique_number;
 
             int pow_2_gamma = gap_gamma*2;
-
-
-//
-//            // prop 5.5
-//            int prop_5_5_k2 = k2 + gamma_value_count; // count[x_max - 2^{gamma}+1,x_max}
-//
-//            cur_bits = 0;
-//            cur_bits += Math.min((k1 + prop_5_5_k2) * lambda_0, block_size + k1 + prop_5_5_k2);// (lambda * (prop_5_5_k1 + prop_5_5_k2) + zeta);
-//            cur_bits += (k1 * alpha_size);
-//            cur_bits += (prop_5_5_k2 * gamma);
-//            cur_bits += ((block_size - k1 - prop_5_5_k2) * getBitWith(k2_end - gap_gamma - k1_start - 1));
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k1_start;
-//                final_k_end_value = k2_end - gap_gamma + 1;
-//            }
-//
-//            // prop 5.6
-//
-//            cur_bits = 0;
-//            cur_bits += Math.min((k1 + k2) * lambda_0, block_size + k1 + k2);//(lambda * (prop_5_6_k1 + prop_5_6_k2) + zeta);
-//            cur_bits += (k1 * alpha_size);
-//            cur_bits += (k2 * gamma);
-//            cur_bits += ((block_size - k1 - k2) * getBitWith(k2_end - k1_start - 2));
-//            if (cur_bits < min_bits) {
-//                min_bits = cur_bits;
-//                final_k_start_value = k1_start;
-//                final_k_end_value = k2_end;
-//            }
-//
-//            int max_beta = getBitWith(k2_end-k1_start);
-//
-
-
-//            for(int beta = 1;beta <= max_beta;beta++) {
-//                int pow_2_beta = (int) pow(2, beta);
-//                if (beta <= alpha_size + 1 && beta >= gamma + max_lambda && pow_2_beta + gap_alpha + pow_2_gamma >= max_delta_value) {
-//
-//                }
-//                else if (beta <= alpha_size + 1 && beta <= gamma + 1 && pow_2_beta + gap_alpha + gap_gamma > max_delta_value) {
-//
-//                } else {
             for (int unique_j=0;unique_j<alpha_unique_number;unique_j++) {
                 int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
                 int x_u_i_end = k2_end - k1_start - x_l_i; // x_u_i>= k2_end - k1_start - x_l_i; break ;
@@ -1089,18 +995,13 @@ public class TSDIFFBOSHTest {
                 if(x_u_i_end <= 0 || x_l_i >= x_l_i_end){
                     break;
                 }
-//                        x_u_i_end -= (pow_2_beta/2+2);
                 int unique_j_cur_k1 = k1 + cur_group_alpha.getCount(alpha_sorted[unique_j]);// gamma_box_count_list[gamma];
-//                        int x_u_i_start =  Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2));
                 x_u_i_end = Math.min(x_u_i_end,gap_gamma);
 
 
                 for(int unique_i=0;unique_i<gamma_unique_number;unique_i++){
 
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-//                            if(x_u_i<x_u_i_start){
-//                                continue;
-//                            }
                     if(x_u_i>=x_u_i_end){
                         break;
                     }
@@ -1120,23 +1021,12 @@ public class TSDIFFBOSHTest {
                     }
                 }
             }
-
-//                }
-//
-//            }
-
-
             k2 += gamma_value_count;
 
 
 
         }
         // ------------------ [x_min+2^{alpha_size-1},x_max)--------------------
-
-
-
-//        // 2685 2693
-//        System.out.println(min_bits);
         encode_pos = BOSEncodeBits(ts_block_delta,  final_k_start_value, final_k_end_value, max_delta_value,
                 min_delta, encode_pos , cur_byte);
 
@@ -1171,7 +1061,6 @@ public class TSDIFFBOSHTest {
 
         for (int i = 0; i < block_num; i++) {
             encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
-//            System.out.println(encode_pos);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1292,7 +1181,6 @@ public class TSDIFFBOSHTest {
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-//        if(k1+k2!=block_size)
         final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
 
         decode_pos = decode_pos_normal.get(0);
@@ -1390,8 +1278,7 @@ public class TSDIFFBOSHTest {
 
     @Test
     public void PruneBOSTest() throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/pruning_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1442,7 +1329,6 @@ public class TSDIFFBOSHTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -1481,10 +1367,8 @@ public class TSDIFFBOSHTest {
 
                 loader.readHeaders();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
@@ -1528,7 +1412,6 @@ public class TSDIFFBOSHTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-//break;
             }
             writer.close();
 

@@ -722,9 +722,6 @@ public class RLEBOSHTest {
             int max_lambda = lambda_0;
             int cur_k2 = k2; // count(x_max)
             int gamma_i = 0;
-//            if (alpha == 12){
-//                int temp = 1;
-//            }
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
                 if(gamma > gamma_size){
@@ -763,8 +760,6 @@ public class RLEBOSHTest {
                 }
 
                 // prop 5.4
-//                int cur_xl = k1_start + gap_alpha - 1; // x_min+2^{alpha}-1
-//                int cur_xu = k2_end; //x_max - 2^{gamma-1}
                 int prop_5_4_k1 = cur_k1 + alpha_value_count; //count[x_min, x_min+2^{alpha}-1]
 
                 cur_bits = 0;
@@ -824,15 +819,6 @@ public class RLEBOSHTest {
 
                     for(int beta = min_beta;beta <= max_beta;beta++) {
                         int pow_2_beta = (int) pow(2, beta);
-//                        if (beta >= alpha + max_lambda && beta <= gamma + 1 && pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta >= gamma + max_lambda && pow_2_beta + pow_2_alpha / 2 + pow_2_gamma >= max_delta_value) {
-//
-//                        }
-//                        else if (beta <= alpha + 1 && beta <= gamma + 1 && pow_2_beta + pow_2_alpha / 2 + gap_gamma > max_delta_value) {
-//
-//                        }
                         if (beta >= alpha + max_lambda && beta <= gamma + 1 ){
                             if(pow_2_beta + pow_2_alpha + gap_gamma >= max_delta_value){
 
@@ -846,23 +832,14 @@ public class RLEBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
+
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -895,23 +872,13 @@ public class RLEBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -943,23 +910,13 @@ public class RLEBOSHTest {
 
                                     int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                     int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1);
                                     int unique_s = cur_group_gamma.invert[x_u_i_start];
                                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                     for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                         cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                         cur_bits = 0;
@@ -989,23 +946,13 @@ public class RLEBOSHTest {
 
                                 int x_u_i_start =  Math.min(Math.max(0, k2_end - ( pow_2_beta + k1_start + x_l_i + 2)),gap_gamma-1);
                                 int x_u_i_end = Math.max(0,Math.min(k2_end -( pow_2_beta/2 + k1_start + x_l_i + 2),gap_gamma));
-//                                int unique_s = 0;
-//                                int unique_e = cur_group_gamma.unique_number;
-//                                if (cur_group_gamma.unique_number>=1){
                                 int unique_s = cur_group_gamma.invert[x_u_i_start];
                                 int unique_e = cur_group_gamma.invert[x_u_i_end];
-//                                }
 
 
 
                                 for (int unique_i = unique_s; unique_i < unique_e; unique_i++) {
                                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);//<=x_u_i_end
-//                                        if(x_u_i < x_u_i_start){
-//                                            continue;
-//                                        }
-//                                        if(x_u_i > x_u_i_end){
-//                                            break;
-//                                        }
                                     cur_cur_k2 = cur_k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
 
                                     cur_bits = 0;
@@ -1051,9 +998,6 @@ public class RLEBOSHTest {
 
             for (; gamma_i < num_of_gamma_list; gamma_i++) {
                 int gamma = gamma_list[gamma_i];
-//                if (alpha == 12 && gamma == 12){
-//                    int temp = 1;
-//                }
                 gap_gamma = (int) pow(2, gamma-1);
                 cur_group_gamma = groupU[gamma];
                 k2_end = max_delta_value - gap_gamma;
@@ -1071,19 +1015,8 @@ public class RLEBOSHTest {
                     int x_l_i = cur_group_alpha.getUniqueValue(alpha_sorted[unique_j]);
                     int x_u_i_end = Math.max(0,Math.min(k2_end - k1_start - x_l_i,gap_gamma));
                     int unique_e = cur_group_gamma.invert[x_u_i_end];
-
-//                    if (x_l_i == 484){
-//                        int temp2 = 1;
-//                    }
-
                     for (int unique_i = 0; unique_i < unique_e; unique_i++) {
                         int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-//                        if(k2_end - x_u_i <= k1_start+x_l_i){
-//                            break;
-//                        }
-//                        if (unique_i == unique_e - 1){
-//                            int temp2 = 1;
-//                        }
                         int unique_i_cur_k2 = cur_k2+ cur_group_gamma.getCount(gamma_sorted[unique_i]);
                         cur_bits = 0;
                         cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
@@ -1194,13 +1127,6 @@ public class RLEBOSHTest {
                 for(int unique_i=0;unique_i<unique_e;unique_i++){
 
                     int x_u_i = cur_group_gamma.getUniqueValue(gamma_sorted[unique_i]);
-//                            if(x_u_i<x_u_i_start){
-//                                continue;
-//                            }
-//                            if(x_u_i>=x_u_i_end){
-//                                break;
-//                            }
-
                     int unique_i_cur_k2 = k2 + cur_group_gamma.getCount(gamma_sorted[unique_i]);
                     cur_bits = 0;
                     cur_bits += Math.min((unique_j_cur_k1 + unique_i_cur_k2) * getBitWith(block_size - 1), block_size + unique_j_cur_k1 + unique_i_cur_k2);
@@ -1250,7 +1176,6 @@ public class RLEBOSHTest {
 
         for (int i = 0; i < block_num; i++) {
             encode_pos = BOSBlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result);
-//            System.out.println(encode_pos);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1267,12 +1192,6 @@ public class RLEBOSHTest {
 
 
             encode_pos = BOSBlockEncoder(data, block_num, block_size, remaining, encode_pos, encoded_result);
-
-//            int[] ts_block = new int[length_all-start];
-//            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0, length_all - start);
-//
-//
-//            encode_pos = BOSBlockEncoder(ts_block, encode_pos,encoded_result);
 
         }
 
@@ -1330,7 +1249,6 @@ public class RLEBOSHTest {
 
         if (final_alpha == 0) { // 0
             int bitmap_bytes = (int) Math.ceil((double) (cur_block_size + k1 + k2) / (double) 8);
-//            System.out.println("bitmap_bytes:" + bitmap_bytes);
             for (int i = 0; i < bitmap_bytes; i++) {
                 bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
                 decode_pos += 1;
@@ -1474,7 +1392,6 @@ public class RLEBOSHTest {
         decode_pos += 4;
         int block_size = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-//        block_size--;
 
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
@@ -1499,8 +1416,7 @@ public class RLEBOSHTest {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
-        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_pruning";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -1551,8 +1467,6 @@ public class RLEBOSHTest {
 //        dataset_block_size.add(1024);
 
         int repeatTime2 = 100;
-//        for (int file_i = 8; file_i < 9; file_i++) {
-//
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
