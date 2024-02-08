@@ -52,7 +52,9 @@ public class CompactionMetricsManager {
             Tag.NAME.toString(),
             compactionType.toString(),
             Tag.TYPE.toString(),
-            (aligned ? "ALIGNED" : "NOT_ALIGNED") + "_" + processChunkType.toString());
+            aligned ? "ALIGNED" : "NOT_ALIGNED",
+            Tag.TYPE.toString(),
+            processChunkType.toString());
     MetricService.getInstance()
         .count(
             byteNum / 1024L,
@@ -132,7 +134,9 @@ public class CompactionMetricsManager {
                 Metric.COST_TASK.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                (isInnerTask ? "inner" : "cross") + "_compaction");
+                "compaction",
+                Tag.NAME.toString(),
+                isInnerTask ? "inner" : "cross");
         if (isInnerTask) {
           MetricService.getInstance()
               .count(
@@ -152,9 +156,7 @@ public class CompactionMetricsManager {
                   Metric.COMPACTION_TASK_COUNT.toString(),
                   MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
-                  "cross_compaction_count",
-                  Tag.TYPE.toString(),
-                  "cross");
+                  "cross_compaction_count");
         }
         break;
     }

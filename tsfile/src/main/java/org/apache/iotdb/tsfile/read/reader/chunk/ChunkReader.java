@@ -118,6 +118,10 @@ public class ChunkReader implements IChunkReader {
     return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
+  public void skipCurrentPage() throws IOException {
+    pageReaderList.remove(0);
+  }
+
   private void skipBytesInStreamByLength(int length) {
     chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }

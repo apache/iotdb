@@ -22,8 +22,7 @@ package org.apache.iotdb.db.service.metrics.enums;
 public enum Tag {
   TYPE,
   NAME,
-  STATUS,
-  SG;
+  STATUS;
 
   @Override
   public String toString() {

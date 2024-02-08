@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -97,7 +96,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   public void endFile() throws IOException {
     fileWriter.endFile();
     if (isEmptyFile) {
-      resource.setStatus(TsFileResourceStatus.DELETED);
+      fileWriter.getFile().delete();
     }
   }
 

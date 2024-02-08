@@ -76,7 +76,7 @@ public interface IChunkGroupWriter {
    *
    * @param measurementSchema a measurement descriptor containing the message of the series
    */
-  void tryToAddSeriesWriter(MeasurementSchema measurementSchema) throws IOException;
+  void tryToAddSeriesWriter(MeasurementSchema measurementSchema);
 
   /**
    * given a measurement descriptor list, create corresponding writers and put into this
@@ -84,7 +84,7 @@ public interface IChunkGroupWriter {
    *
    * @param measurementSchemas
    */
-  void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas) throws IOException;
+  void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas);
 
   /**
    * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not

@@ -35,7 +35,9 @@ public enum AggregationType {
   MIN_TIME,
   MAX_VALUE,
   MIN_VALUE,
-  EXTREME;
+  EXTREME,
+  LSMKSHAPE,
+  LSMMSHAPE;
 
   /**
    * give an integer to return a data type.
@@ -65,6 +67,10 @@ public enum AggregationType {
         return MIN_VALUE;
       case 9:
         return EXTREME;
+      case 10:
+        return LSMKSHAPE;
+      case 11:
+        return LSMMSHAPE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -102,6 +108,12 @@ public enum AggregationType {
         break;
       case EXTREME:
         i = 9;
+        break;
+      case LSMKSHAPE:
+        i = 10;
+        break;
+      case LSMMSHAPE:
+        i = 11;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

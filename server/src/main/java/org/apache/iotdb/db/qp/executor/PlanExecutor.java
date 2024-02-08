@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -106,7 +105,6 @@ import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.ExportSchemaPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -181,17 +179,12 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -206,10 +199,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.audit.AuditLogOperation.DDL;
-import static org.apache.iotdb.db.audit.AuditLogOperation.DML;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_START_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ARCHIVING_TARGET_DIRECTORY;
@@ -242,6 +232,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
@@ -250,16 +241,14 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SYSTEM_STORAGE_GROUP;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
-  private static boolean enableAuditLog =
-      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
-
+  private static final Logger AUDIT_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   // for data query
   protected IQueryRouter queryRouter;
@@ -438,30 +427,16 @@ public class PlanExecutor implements IPlanExecutor {
       case PAUSE_ARCHIVING:
         operatePauseArchiving((PauseArchivingPlan) plan);
         return true;
-      case EXPORT_SCHEMA:
-        return exportSchema((ExportSchemaPlan) plan);
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorName()));
     }
   }
 
-  private boolean exportSchema(ExportSchemaPlan plan) throws QueryProcessException {
-    try {
-      IoTDB.metaManager.exportSchema(plan.getTargetDir());
-    } catch (MetadataException | IOException e) {
-      throw new QueryProcessException(e.getMessage(), e);
-    }
-    return true;
-  }
-
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("create template %s", createTemplatePlan.getName()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -471,9 +446,6 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean dropTemplate(DropTemplatePlan dropTemplatePlan) throws QueryProcessException {
     try {
       IoTDB.metaManager.dropSchemaTemplate(dropTemplatePlan);
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("drop template %s", dropTemplatePlan.getName()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -483,9 +455,6 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean appendTemplate(AppendTemplatePlan plan) throws QueryProcessException {
     try {
       IoTDB.metaManager.appendSchemaTemplate(plan);
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("append template %s", plan.getName()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -495,9 +464,6 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean pruneTemplate(PruneTemplatePlan plan) throws QueryProcessException {
     try {
       IoTDB.metaManager.pruneSchemaTemplate(plan);
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("prune template %s", plan.getName()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -507,9 +473,6 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean setTemplate(SetTemplatePlan setTemplatePlan) throws QueryProcessException {
     try {
       IoTDB.metaManager.setSchemaTemplate(setTemplatePlan);
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("set template %s", setTemplatePlan.getTemplateName()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -520,10 +483,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.setUsingSchemaTemplate(activateTemplatePlan);
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("active template in %s", activateTemplatePlan.getPaths()), DML);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -561,9 +520,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       // delete related data
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("delete timeseries %s", pathToDelete), DDL);
-      }
+      AUDIT_LOGGER.info("delete timeseries {}", pathToDelete);
       DeleteTimeSeriesPlan dtsp = new DeleteTimeSeriesPlan(pathToDelete);
       for (PartialPath path : pathToDelete) {
         StorageEngine.getInstance()
@@ -587,10 +544,6 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean unsetTemplate(UnsetTemplatePlan unsetTemplatePlan) throws QueryProcessException {
     try {
       IoTDB.metaManager.unsetSchemaTemplate(unsetTemplatePlan);
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("unset template %s", unsetTemplatePlan.getTemplateName()), DML);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -599,54 +552,33 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
     UDFRegistrationService.getInstance().register(plan.getUdfName(), plan.getClassName(), true);
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "create function,udf name: %s,class name:%s", plan.getUdfName(), plan.getClassName()),
-          DDL);
-    }
     return true;
   }
 
   private boolean operateDropFunction(DropFunctionPlan plan) throws UDFRegistrationException {
     UDFRegistrationService.getInstance().deregister(plan.getUdfName());
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("drop function,udf name: %s", plan.getUdfName()), DDL);
-    }
     return true;
   }
 
   private boolean operateCreateTrigger(CreateTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationService.getInstance().register(plan);
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("create trigger %s", plan.getTriggerName()), DDL);
-    }
     return true;
   }
 
   private boolean operateDropTrigger(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().deregister(plan);
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("drop trigger %s", plan.getTriggerName()), DDL);
-    }
     return true;
   }
 
   private boolean operateStartTrigger(StartTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationService.getInstance().activate(plan);
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("start trigger %s", plan.getTriggerName()), DML);
-    }
     return true;
   }
 
   private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().inactivate(plan);
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("stop trigger %s", plan.getTriggerName()), DML);
-    }
     return true;
   }
 
@@ -662,9 +594,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateCreateSnapshot() {
     IoTDB.metaManager.createMTreeSnapshot();
-    if (enableAuditLog) {
-      AuditLogger.log("create snapshot", DDL);
-    }
   }
 
   private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {
@@ -1448,16 +1377,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "delete data from %s in [%s,%s]",
-              deletePlan.getPaths(),
-              deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime()),
-          DML);
-    }
-
+    AUDIT_LOGGER.info(
+        "delete data from {} in [{},{}]",
+        deletePlan.getPaths(),
+        deletePlan.getDeleteStartTime(),
+        deletePlan.getDeleteEndTime());
     for (PartialPath path : deletePlan.getPaths()) {
       delete(
           path,
@@ -1469,13 +1393,10 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
-    File file = getOrDownloadFile(plan.getFilePath());
+    File file = plan.getFile();
     if (!file.exists()) {
       throw new QueryProcessException(
           String.format("File path '%s' doesn't exists.", file.getPath()));
-    }
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("load files from %s ", file.getPath()), DDL);
     }
     if (file.isDirectory()) {
       loadDir(file, plan);
@@ -1484,58 +1405,38 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private File getOrDownloadFile(String filePath) throws QueryProcessException {
-    try {
-      // try to get remote files
-      URL url = new URI(filePath).toURL();
-      String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
-      File destFile =
-          new File(
-              IoTDBDescriptor.getInstance().getConfig().getLoadTempDir()
-                  + File.separator
-                  + fileName);
-      FileUtils.copyURLToFile(url, destFile);
-      return destFile;
-    } catch (MalformedURLException | URISyntaxException | IllegalArgumentException e) {
-      // try to get local files
-      File file = new File(filePath);
-      if (!file.exists()) {
-        throw new QueryProcessException(String.format("File path '%s' doesn't exists.", filePath));
-      }
-      return file;
-    } catch (Exception e) {
-      logger.warn(String.format("Can not find loading file %s.", filePath), e);
-      throw new QueryProcessException(
-          String.format("Find loading file %s error, because of %s", filePath, e.getMessage()));
-    }
-  }
-
   private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
-    final File[] files = curFile.listFiles();
-    final List<String> failedFiles = new ArrayList<>();
-    final List<File> tsFiles =
-        Arrays.stream(files)
-            .filter(o -> o.getName().endsWith(TSFILE_SUFFIX))
-            .collect(Collectors.toList());
-    tsFiles.sort(
+    File[] files = curFile.listFiles();
+    long[] establishTime = new long[files.length];
+    List<Integer> tsfiles = new ArrayList<>();
+    List<String> failedFiles = new ArrayList<>();
+
+    for (int i = 0; i < files.length; i++) {
+      File file = files[i];
+      if (!file.isDirectory()) {
+        String fileName = file.getName();
+        if (fileName.endsWith(TSFILE_SUFFIX)) {
+          establishTime[i] = Long.parseLong(fileName.split(FILE_NAME_SEPARATOR)[0]);
+          tsfiles.add(i);
+        }
+      }
+    }
+    Collections.sort(
+        tsfiles,
         (o1, o2) -> {
-          String file1Name = o1.getName();
-          String file2Name = o2.getName();
-          try {
-            return TsFileResource.checkAndCompareFileName(file1Name, file2Name);
-          } catch (IOException e) {
-            return file1Name.compareTo(file2Name);
+          if (establishTime[o1] == establishTime[o2]) {
+            return 0;
           }
+          return establishTime[o1] < establishTime[o2] ? -1 : 1;
         });
-    tsFiles.forEach(
-        f -> {
-          try {
-            loadFile(f, plan);
-          } catch (QueryProcessException e) {
-            logger.error("{}, skip load {}.", e.getMessage(), f.getAbsolutePath());
-            failedFiles.add(f.getAbsolutePath());
-          }
-        });
+    for (Integer i : tsfiles) {
+      try {
+        loadFile(files[i], plan);
+      } catch (QueryProcessException e) {
+        logger.error("{}, skip load {}.", e.getMessage(), files[i].getAbsolutePath());
+        failedFiles.add(files[i].getAbsolutePath());
+      }
+    }
 
     for (File file : files) {
       if (file.isDirectory()) {
@@ -1759,10 +1660,6 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException(
             String.format("File '%s' doesn't exist.", plan.getFile().getAbsolutePath()));
       }
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("remove file from %s ", plan.getFile().getAbsolutePath()), DDL);
-      }
     } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format("Cannot remove file because %s", e.getMessage()));
@@ -1779,10 +1676,6 @@ public class PlanExecutor implements IPlanExecutor {
           || !StorageEngine.getInstance().unloadTsfile(plan.getFile(), plan.getTargetDir())) {
         throw new QueryProcessException(
             String.format("File '%s' doesn't exist.", plan.getFile().getAbsolutePath()));
-      }
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("unload file from %s ", plan.getFile().getAbsolutePath()), DDL);
       }
     } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
@@ -2001,15 +1894,6 @@ public class PlanExecutor implements IPlanExecutor {
                   insertRowPlan.getValues()[i], insertRowPlan.isNeedInferType());
         }
       }
-      if (!insertRowPlan.getDevicePath().getFullPath().startsWith(SYSTEM_STORAGE_GROUP)
-          && enableAuditLog) {
-        AuditLogger.log(
-            String.format(
-                "insert into %s , paths: %s,time: %s ",
-                insertRowPlan.getDevicePath(), insertRowPlan.getPaths(), insertRowPlan.getTime()),
-            DML,
-            insertRowPlan.isNativeInsertApi());
-      }
 
       StorageEngine.getInstance().insert(insertRowPlan);
 
@@ -2026,17 +1910,6 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "insert into %s,paths:%s,time start: %s,time end: %s ",
-              insertMultiTabletPlan.getDevicePath(),
-              insertMultiTabletPlan.getPaths(),
-              insertMultiTabletPlan.getMinTime(),
-              insertMultiTabletPlan.getMaxTime()),
-          DML,
-          insertMultiTabletPlan.isNativeInsertApi());
-    }
     if (insertMultiTabletPlan.isEnableMultiThreading()) {
       insertTabletParallel(insertMultiTabletPlan);
     } else {
@@ -2136,17 +2009,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       insertTabletPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format(
-                "insert into %s , paths: %s , time start: %s ,time end: %s ",
-                insertTabletPlan.getDevicePath(),
-                insertTabletPlan.getPaths(),
-                insertTabletPlan.getTimes()[0],
-                insertTabletPlan.getTimes()[insertTabletPlan.getTimes().length - 1]),
-            DML,
-            insertTabletPlan.isNativeInsertApi());
-      }
+
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
 
       if (insertTabletPlan.getFailedMeasurements() != null) {
@@ -2235,10 +2098,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createTimeseries(createTimeSeriesPlan);
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("create time series %s", createTimeSeriesPlan.getPaths()), DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -2249,11 +2108,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("create aligned time series %s", createAlignedTimeSeriesPlan.getPaths()),
-            DDL);
-      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -2295,9 +2149,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
-    if (enableAuditLog) {
-      AuditLogger.log(String.format("delete time series %s", deleteTimeSeriesPlan.getPaths()), DDL);
-    }
+    AUDIT_LOGGER.info("delete timeseries {}", deleteTimeSeriesPlan.getPaths());
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
@@ -2336,13 +2188,6 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     PartialPath path = alterTimeSeriesPlan.getPath();
     Map<String, String> alterMap = alterTimeSeriesPlan.getAlterMap();
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "alter time series %s,alter type:%s",
-              alterTimeSeriesPlan.getPaths(), alterTimeSeriesPlan.getAlterType()),
-          DDL);
-    }
     try {
       switch (alterTimeSeriesPlan.getAlterType()) {
         case RENAME:
@@ -2383,10 +2228,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format("set storage group to %s", setStorageGroupPlan.getPaths()), DDL);
-    }
+    AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
@@ -2398,10 +2240,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format("set storage group to %s", deleteStorageGroupPlan.getPaths()), DDL);
-    }
+    AUDIT_LOGGER.info("delete storage group {}", deleteStorageGroupPlan.getPaths());
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {

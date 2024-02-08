@@ -40,7 +40,10 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(RawQueryReadTaskPoolManager.class);
 
   private RawQueryReadTaskPoolManager() {
-    int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread();
+    int threadCnt =
+        Math.min(
+            Runtime.getRuntime().availableProcessors(),
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());

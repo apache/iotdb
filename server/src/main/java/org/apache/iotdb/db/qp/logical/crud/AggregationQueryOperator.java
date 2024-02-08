@@ -130,6 +130,8 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.MAX_TIME:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.LAST_VALUE:
+      case SQLConstant.LSMKSHAPE:
+      case SQLConstant.LSMMSHAPE:
       default:
         return true;
     }
@@ -167,6 +169,7 @@ public class AggregationQueryOperator extends QueryOperator {
   protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
+    aggregationPlan.setParameters(selectComponent.getAggregationAttributes());
     if (isGroupByLevel()) {
       initGroupByLevel(aggregationPlan);
     }

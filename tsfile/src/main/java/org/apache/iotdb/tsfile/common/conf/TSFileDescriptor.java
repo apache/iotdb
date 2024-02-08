@@ -81,6 +81,8 @@ public class TSFileDescriptor {
     writer.setString(conf::setValueEncoder, "value_encoder");
     writer.setString(conf::setCompressor, "compressor");
     writer.setInt(conf::setBatchSize, "batch_size");
+    writer.setInt(conf::setClusterNum, "cluster_num");
+    writer.setInt(conf::setSeqLength, "seq_length");
   }
 
   private class PropertiesOverWriter {

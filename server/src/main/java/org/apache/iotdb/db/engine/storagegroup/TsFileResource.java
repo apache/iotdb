@@ -183,12 +183,6 @@ public class TsFileResource {
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
-  /** Used for compaction to create target files. */
-  public TsFileResource(File file, TsFileResourceStatus status) {
-    this(file);
-    this.status = status;
-  }
-
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
@@ -323,25 +317,6 @@ public class TsFileResource {
     }
   }
 
-  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
-    readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory()
-            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
-      ReadWriteIOUtils.readByte(inputStream);
-      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
-        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
-      }
-      return (DeviceTimeIndex) timeIndexFromResourceFile;
-    } catch (Exception e) {
-      throw new IOException(
-          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
-    } finally {
-      readUnlock();
-    }
-  }
-
   public void updateStartTime(String device, long time) {
     timeIndex.updateStartTime(device, time);
   }
@@ -459,11 +434,6 @@ public class TsFileResource {
 
   public void close() throws IOException {
     this.setStatus(TsFileResourceStatus.CLOSED);
-    closeWithoutSettingStatus();
-  }
-
-  /** Used for compaction. */
-  public void closeWithoutSettingStatus() throws IOException {
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -651,10 +621,6 @@ public class TsFileResource {
 
   public boolean isCompactionCandidate() {
     return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
-  }
-
-  public TsFileResourceStatus getStatus() {
-    return this.status;
   }
 
   public void setStatus(TsFileResourceStatus status) {
@@ -1092,31 +1058,5 @@ public class TsFileResource {
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
-  }
-
-  /**
-   * Compare two TsFile's name.This method will first check whether the two names meet the standard
-   * naming specifications, and then use the generating time as the first keyword, and use the
-   * version number as the second keyword to compare the size of the two names. Notice that this
-   * method will not compare the merge count.
-   *
-   * @param fileName1 a name of TsFile
-   * @param fileName2 a name of TsFile
-   * @return -1, if fileName1 is smaller than fileNam2, 1 if bigger, 0 means fileName1 equals to
-   *     fileName2
-   * @throws IOException if fileName1 or fileName2 do not meet the standard naming specifications.
-   */
-  public static int checkAndCompareFileName(String fileName1, String fileName2) throws IOException {
-    TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
-    TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
-    long timeDiff = tsFileName1.getTime() - tsFileName2.getTime();
-    if (timeDiff != 0) {
-      return timeDiff < 0 ? -1 : 1;
-    }
-    long versionDiff = tsFileName1.getVersion() - tsFileName2.getVersion();
-    if (versionDiff != 0) {
-      return versionDiff < 0 ? -1 : 1;
-    }
-    return 0;
   }
 }

@@ -292,12 +292,8 @@ public abstract class Traverser {
     StringBuilder builder =
         nodes.hasNext() ? new StringBuilder(nodes.next().getName()) : new StringBuilder();
     while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node == currentNode) {
-        break;
-      }
       builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(node.getName());
+      builder.append(nodes.next().getName());
     }
     if (builder.length() != 0) {
       builder.append(TsFileConstant.PATH_SEPARATOR);

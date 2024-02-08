@@ -195,14 +195,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
-
-      if (targetTsFileResource.isDeleted()) {
-        // target resource is empty after compaction, then delete it
-        targetTsFileResource.remove();
-      } else {
-        // set target resource to CLOSED, so that it can be selected to compact
-        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      }
     } catch (Throwable throwable) {
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (sizeTieredCompactionLogger != null) {

@@ -115,13 +115,26 @@ public class QueryRouter implements IQueryRouter {
     AggregationExecutor engineExecutor = getAggregationExecutor(context, aggregationPlan);
 
     QueryDataSet dataSet;
-
-    if (aggregationPlan.getExpression() != null
+    List<String> aggregations = aggregationPlan.getDeduplicatedAggregations();
+    if (aggregations.size() == 1 && aggregations.get(0).toLowerCase().equals("lsmkshape")) {
+      KshapeExecutor kshapeExecutor = new KshapeExecutor(context, aggregationPlan);
+      dataSet = kshapeExecutor.execute(aggregationPlan);
+    } else if (aggregations.size() == 1 && aggregations.get(0).toLowerCase().equals("lsmmshape")) {
+      KshapeMExecutor kshapeMExecutor = new KshapeMExecutor(context, aggregationPlan);
+      dataSet = kshapeMExecutor.execute(aggregationPlan);
+    } else if (aggregationPlan.getExpression() != null
         && aggregationPlan.getExpression().getType() != ExpressionType.GLOBAL_TIME) {
       dataSet = engineExecutor.executeWithValueFilter(aggregationPlan);
     } else {
       dataSet = engineExecutor.executeWithoutValueFilter(aggregationPlan);
     }
+
+    //    if (aggregationPlan.getExpression() != null
+    //        && aggregationPlan.getExpression().getType() != ExpressionType.GLOBAL_TIME) {
+    //      dataSet = engineExecutor.executeWithValueFilter(aggregationPlan);
+    //    } else {
+    //      dataSet = engineExecutor.executeWithoutValueFilter(aggregationPlan);
+    //    }
 
     return dataSet;
   }

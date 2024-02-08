@@ -134,7 +134,6 @@ public class CompactionTaskManager implements IService {
   @Override
   public void stop() {
     if (taskExecutionPool != null) {
-      subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
       compactionTaskSubmissionThreadPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
@@ -147,7 +146,6 @@ public class CompactionTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
-      awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
       awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
@@ -186,7 +184,7 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
-    while (!subCompactionTaskExecutionPool.isTerminated() || !taskExecutionPool.isTerminated()) {
+    while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
         Thread.sleep(200);
@@ -204,7 +202,6 @@ public class CompactionTaskManager implements IService {
       }
     }
     taskExecutionPool = null;
-    subCompactionTaskExecutionPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -372,8 +369,6 @@ public class CompactionTaskManager implements IService {
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       if (taskExecutionPool != null) {
-        subCompactionTaskExecutionPool.shutdownNow();
-        subCompactionTaskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
         this.taskExecutionPool.shutdownNow();
         this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
       }
@@ -382,11 +377,6 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
-      this.subCompactionTaskExecutionPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-              ThreadName.COMPACTION_SUB_SERVICE.getName());
       this.compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(

@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -48,9 +47,6 @@ public class StorageGroupInfo {
       IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
 
   private AtomicLong lastReportedSize = new AtomicLong();
-
-  /** Must report to the system when this value is true */
-  private final AtomicBoolean needToReportToSystem = new AtomicBoolean();
 
   /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
@@ -86,22 +82,11 @@ public class StorageGroupInfo {
   }
 
   public boolean needToReportToSystem() {
-    boolean needToReport =
-        memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold
-            || needToReportToSystem.get();
-    // report once and then reset flag to false
-    if (needToReportToSystem.get()) {
-      needToReportToSystem.set(false);
-    }
-    return needToReport;
+    return memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold;
   }
 
   public void setLastReportedSize(long size) {
     lastReportedSize.set(size);
-  }
-
-  public void setNeedToReportToSystem(boolean needToReport) {
-    needToReportToSystem.set(needToReport);
   }
 
   /**
