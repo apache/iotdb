@@ -129,8 +129,6 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
-      // report after reset sg status, because slow write may not reach the report threshold
-      storageGroupInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
     }
 
@@ -278,24 +276,11 @@ public class SystemInfo {
   }
 
   public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    if (!config.isEnableCompactionMemControl()) {
-      return;
-    }
     long originSize = this.compactionMemoryCost.get();
-    long waittingTime = 0L;
     while (originSize + memoryCost > memorySizeForCompaction
         || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
       Thread.sleep(100);
       originSize = this.compactionMemoryCost.get();
-      waittingTime += 100L;
-      if (waittingTime >= 60_000L) {
-        throw new RuntimeException(
-            "Cannot get enough memory for compaction, want "
-                + memoryCost
-                + " bytes but only "
-                + (memorySizeForCompaction - compactionMemoryCost.get())
-                + " bytes left.");
-      }
     }
   }
 

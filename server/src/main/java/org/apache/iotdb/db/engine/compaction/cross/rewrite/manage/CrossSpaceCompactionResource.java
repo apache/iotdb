@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -81,9 +80,9 @@ public class CrossSpaceCompactionResource {
    */
   private void filterUnseqResource(List<TsFileResource> unseqResources) {
     for (TsFileResource resource : unseqResources) {
-      if (resource.getStatus() != TsFileResourceStatus.CLOSED || !resource.getTsFile().exists()) {
+      if (resource.isCompacting() || resource.isCompactionCandidate() || !resource.isClosed()) {
         return;
-      } else if (resource.stillLives(ttlLowerBound)) {
+      } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         this.unseqFiles.add(resource);
       }
     }

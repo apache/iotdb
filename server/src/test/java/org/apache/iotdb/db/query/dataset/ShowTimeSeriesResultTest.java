@@ -48,9 +48,7 @@ public class ShowTimeSeriesResultTest {
             CompressionType.SNAPPY,
             100,
             tag,
-            attribute,
-            null,
-            "{}");
+            attribute);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     showTimeSeriesResult.serialize(outputStream);

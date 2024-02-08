@@ -167,7 +167,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (Throwable e) {
+    } catch (IOException e) {
       logger.warn(
           "Cannot deserialize TsFileResource {}, construct it using " + "TsFileSequenceReader",
           tsFileResource.getTsFile(),
@@ -291,16 +291,11 @@ public class TsFileRecoverPerformer {
     try {
       if (!recoverMemTable.isEmpty() && recoverMemTable.getSeriesNumber() != 0) {
         // flush logs
-        String virtualStorageGroupId =
-            tsFileResource.getTsFile().getParentFile().getParentFile().getName();
-        String logicalStorageGroupName =
-            tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
-
         MemTableFlushTask tableFlushTask =
             new MemTableFlushTask(
                 recoverMemTable,
                 restorableTsFileIOWriter,
-                logicalStorageGroupName + File.separator + virtualStorageGroupId);
+                tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         tsFileResource.updatePlanIndexes(recoverMemTable.getMinPlanIndex());
         tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());

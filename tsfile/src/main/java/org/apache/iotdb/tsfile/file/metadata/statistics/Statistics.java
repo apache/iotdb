@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.util.KMeans;
+import org.apache.iotdb.tsfile.file.metadata.statistics.util.KShape;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -33,6 +37,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -46,6 +53,8 @@ import java.util.Objects;
  */
 public abstract class Statistics<T extends Serializable> {
 
+  private static final TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
    * isEmpty being false means this statistic has been initialized and the max and min is not null;
@@ -57,6 +66,23 @@ public abstract class Statistics<T extends Serializable> {
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
+  private List<Long> timeWindow = new ArrayList<>();
+  private List<Double> valueWindow = new ArrayList<>();
+  private static final int k = tsFileConfig.getClusterNum(); // cluster num
+  private static final int l = tsFileConfig.getSeqLength(); // subsequence length
+  private static final int edK = k + 2; // cluster num for euclidean
+  public double[][][] sumMatrices = new double[k][l][l];
+  public double[][] centroids = new double[k][l];
+  public double[] deltas = new double[k];
+  public int[] idx = new int[1000];
+  public double[] headExtraPoints = new double[l];
+  public double[] tailExtraPoints = new double[l];
+
+  // pre-computed metadata for K-shape-M
+  public double[][] edCentroids = new double[edK][l];
+  public double[] edDeltas = new double[edK];
+  public int[] edCounts = new int[edK];
+  public int[] edIdx = new int[1000];
 
   static final String STATS_UNSUPPORTED_MSG = "%s statistics does not support: %s";
 
@@ -87,6 +113,29 @@ public abstract class Statistics<T extends Serializable> {
     }
   }
 
+  public Statistics clone() {
+    Statistics newInstance = new DoubleStatistics();
+    newInstance.setCount((int) this.count);
+    newInstance.setStartTime(this.startTime);
+    newInstance.setEndTime(this.endTime);
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++)
+        for (int p = 0; p < l; p++) newInstance.setSumMatrices(this.sumMatrices[i][j][p], i, j, p);
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++) newInstance.setCentroids(this.centroids[i][j], i, j);
+    for (int i = 0; i < k; i++) newInstance.setDeltas(this.deltas[i], i);
+    for (int i = 0; i < 1000; i++) newInstance.setIdx(this.idx[i], i);
+    for (int i = 0; i < l; i++) newInstance.setHeadExtraPoints(this.headExtraPoints[i], i);
+    for (int i = 0; i < l; i++) newInstance.setTailExtraPoints(this.tailExtraPoints[i], i);
+
+    for (int i = 0; i < edK; i++)
+      for (int j = 0; j < l; j++) newInstance.setEdCentroids(this.edCentroids[i][j], i, j);
+    for (int i = 0; i < edK; i++) newInstance.setEdDelta(this.edDeltas[i], i);
+    for (int i = 0; i < edK; i++) newInstance.setEdCounts(this.edCounts[i], i);
+    for (int i = 0; i < 1000; i++) newInstance.setEdIdx(this.edIdx[i], i);
+    return newInstance;
+  }
+
   public static int getSizeByType(TSDataType type) {
     switch (type) {
       case INT32:
@@ -113,6 +162,15 @@ public abstract class Statistics<T extends Serializable> {
   public int getSerializedSize() {
     return ReadWriteForEncodingUtils.uVarIntSize(count) // count
         + 16 // startTime, endTime
+        + 8 * k * l * l // sumMatrices
+        + 8 * k * l // centroids
+        + 8 * k // deltas
+        + 4 * 1000 // idx
+        + 8 * edK * l // edCentroids
+        + 8 * edK // edDeltas
+        + 4 * edK // edCounts
+        + 4 * 1000 // edIdx
+        + 8 * l * 2 // headExtraPoints, tailExtraPoints
         + getStatsSize();
   }
 
@@ -120,9 +178,38 @@ public abstract class Statistics<T extends Serializable> {
 
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
+
+    updateStatistics();
+    System.out.println("========================");
+    System.out.println("k=" + k + ", l=" + l);
+    System.out.println("Start time = " + startTime + ", end time = " + endTime);
+    System.out.println("========================");
+
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
+
+    for (int i = 0; i < k; i++) {
+      double[][] _matrix = sumMatrices[i];
+      for (int j = 0; j < l; j++)
+        for (int p = 0; p < l; p++) byteLen += ReadWriteIOUtils.write(_matrix[j][p], outputStream);
+    }
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++) byteLen += ReadWriteIOUtils.write(centroids[i][j], outputStream);
+    for (int i = 0; i < k; i++) byteLen += ReadWriteIOUtils.write(deltas[i], outputStream);
+    for (int i = 0; i < 1000; i++) byteLen += ReadWriteIOUtils.write(idx[i], outputStream);
+
+    // metadata for K-Shape-M
+    for (int i = 0; i < edK; i++)
+      for (int j = 0; j < l; j++)
+        byteLen += ReadWriteIOUtils.write(edCentroids[i][j], outputStream);
+    for (int i = 0; i < edK; i++) byteLen += ReadWriteIOUtils.write(edDeltas[i], outputStream);
+    for (int i = 0; i < edK; i++) byteLen += ReadWriteIOUtils.write(edCounts[i], outputStream);
+    for (int i = 0; i < 1000; i++) byteLen += ReadWriteIOUtils.write(edIdx[i], outputStream);
+
+    for (int i = 0; i < l; i++) byteLen += ReadWriteIOUtils.write(headExtraPoints[i], outputStream);
+    for (int i = 0; i < l; i++) byteLen += ReadWriteIOUtils.write(tailExtraPoints[i], outputStream);
+
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
     return byteLen;
@@ -156,6 +243,22 @@ public abstract class Statistics<T extends Serializable> {
   public void mergeStatistics(Statistics<? extends Serializable> stats) {
     if (this.getClass() == stats.getClass()) {
       if (!stats.isEmpty) {
+        this.timeWindow = stats.timeWindow;
+        this.valueWindow = stats.valueWindow;
+
+        this.sumMatrices = stats.sumMatrices;
+        this.centroids = stats.centroids;
+        this.deltas = stats.deltas;
+        this.idx = stats.idx;
+
+        this.edCentroids = stats.edCentroids;
+        this.edDeltas = stats.edDeltas;
+        this.edCounts = stats.edCounts;
+        this.edIdx = stats.edIdx;
+
+        this.headExtraPoints = stats.headExtraPoints;
+        this.tailExtraPoints = stats.tailExtraPoints;
+
         if (stats.startTime < this.startTime) {
           this.startTime = stats.startTime;
         }
@@ -200,6 +303,8 @@ public abstract class Statistics<T extends Serializable> {
   public void update(long time, double value) {
     update(time);
     updateStats(value);
+    this.timeWindow.add(time);
+    this.valueWindow.add(value);
   }
 
   public void update(long time, Binary value) {
@@ -332,6 +437,30 @@ public abstract class Statistics<T extends Serializable> {
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
+    // metadata for K-Shape
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++)
+        for (int p = 0; p < l; p++)
+          statistics.setSumMatrices(ReadWriteIOUtils.readDouble(inputStream), i, j, p);
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++)
+        statistics.setCentroids(ReadWriteIOUtils.readDouble(inputStream), i, j);
+    for (int i = 0; i < k; i++) statistics.setDeltas(ReadWriteIOUtils.readDouble(inputStream), i);
+    for (int i = 0; i < 1000; i++) statistics.setIdx(ReadWriteIOUtils.readInt(inputStream), i);
+
+    // metadata for K-Shape-M
+    for (int i = 0; i < edK; i++)
+      for (int j = 0; j < l; j++)
+        statistics.setEdCentroids(ReadWriteIOUtils.readDouble(inputStream), i, j);
+    for (int i = 0; i < edK; i++)
+      statistics.setEdDelta(ReadWriteIOUtils.readDouble(inputStream), i);
+    for (int i = 0; i < edK; i++) statistics.setEdCounts(ReadWriteIOUtils.readInt(inputStream), i);
+    for (int i = 0; i < 1000; i++) statistics.setEdIdx(ReadWriteIOUtils.readInt(inputStream), i);
+
+    for (int i = 0; i < l; i++)
+      statistics.setHeadExtraPoints(ReadWriteIOUtils.readDouble(inputStream), i);
+    for (int i = 0; i < l; i++)
+      statistics.setTailExtraPoints(ReadWriteIOUtils.readDouble(inputStream), i);
     statistics.deserialize(inputStream);
     statistics.isEmpty = false;
     return statistics;
@@ -343,6 +472,30 @@ public abstract class Statistics<T extends Serializable> {
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
+    // metadata for K-Shape
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++)
+        for (int p = 0; p < l; p++)
+          statistics.setSumMatrices(ReadWriteIOUtils.readDouble(buffer), i, j, p);
+    for (int i = 0; i < k; i++)
+      for (int j = 0; j < l; j++)
+        statistics.setCentroids(ReadWriteIOUtils.readDouble(buffer), i, j);
+    for (int i = 0; i < k; i++) statistics.setDeltas(ReadWriteIOUtils.readDouble(buffer), i);
+    for (int i = 0; i < 1000; i++) statistics.setIdx(ReadWriteIOUtils.readInt(buffer), i);
+
+    // metadata for K-Shape-M
+    for (int i = 0; i < edK; i++)
+      for (int j = 0; j < l; j++)
+        statistics.setEdCentroids(ReadWriteIOUtils.readDouble(buffer), i, j);
+    for (int i = 0; i < edK; i++) statistics.setEdDelta(ReadWriteIOUtils.readDouble(buffer), i);
+    for (int i = 0; i < edK; i++) statistics.setEdCounts(ReadWriteIOUtils.readInt(buffer), i);
+    for (int i = 0; i < 1000; i++) statistics.setEdIdx(ReadWriteIOUtils.readInt(buffer), i);
+
+    for (int i = 0; i < l; i++)
+      statistics.setHeadExtraPoints(ReadWriteIOUtils.readDouble(buffer), i);
+    for (int i = 0; i < l; i++)
+      statistics.setTailExtraPoints(ReadWriteIOUtils.readDouble(buffer), i);
+
     statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;
@@ -372,6 +525,46 @@ public abstract class Statistics<T extends Serializable> {
     this.count = count;
   }
 
+  public void setSumMatrices(double v, int i, int j, int p) {
+    this.sumMatrices[i][j][p] = v;
+  }
+
+  public void setCentroids(double v, int i, int j) {
+    this.centroids[i][j] = v;
+  }
+
+  public void setDeltas(double v, int i) {
+    this.deltas[i] = v;
+  }
+
+  public void setIdx(int v, int i) {
+    this.idx[i] = v;
+  }
+
+  public void setHeadExtraPoints(double v, int i) {
+    this.headExtraPoints[i] = v;
+  }
+
+  public void setTailExtraPoints(double v, int i) {
+    this.tailExtraPoints[i] = v;
+  }
+
+  public void setEdCentroids(double v, int i, int j) {
+    this.edCentroids[i][j] = v;
+  }
+
+  public void setEdDelta(double v, int i) {
+    this.edDeltas[i] = v;
+  }
+
+  public void setEdIdx(int v, int i) {
+    this.edIdx[i] = v;
+  }
+
+  public void setEdCounts(int v, int i) {
+    this.edCounts[i] = v;
+  }
+
   public abstract long calculateRamSize();
 
   @Override
@@ -390,5 +583,95 @@ public abstract class Statistics<T extends Serializable> {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), count, startTime, endTime);
+  }
+
+  private void updateStatistics() {
+    if (this.timeWindow.size() < l) {
+      return;
+    }
+    int n = this.timeWindow.size(); // all points
+    //    double timeInterval = (double) calTimeInterval();
+
+    long seqStartTime = (long) (Math.ceil(this.startTime * 1.0 / l) * l);
+    long seqEndTime = (long) (Math.floor(this.endTime * 1.0 / l) * l);
+    Arrays.fill(this.idx, -1);
+
+    List<List<Double>> tmpSeqs = new ArrayList<>();
+    List<Double> tmpSeq = new ArrayList<>();
+    int _i = 0;
+    while (_i < n) {
+      if (this.timeWindow.get(_i) < seqStartTime) {
+        this.headExtraPoints[_i] = this.valueWindow.get(_i);
+        _i++;
+        continue;
+      }
+      tmpSeq.add(this.valueWindow.get(_i));
+      if (tmpSeq.size() == l) {
+        tmpSeqs.add(tmpSeq);
+        tmpSeq = new ArrayList<>();
+      }
+      _i++;
+    }
+    if (tmpSeq.size() > 0)
+      for (int i = 0; i < tmpSeq.size(); i++)
+        this.tailExtraPoints[l - tmpSeq.size() + i] = tmpSeq.get(i);
+
+    double[][] X = new double[tmpSeqs.size()][l];
+    for (int i = 0; i < tmpSeqs.size(); i++) {
+      X[i] = tmpSeqs.get(i).stream().mapToDouble(Double::doubleValue).toArray();
+      X[i] = normalize(X[i]);
+    }
+
+    int seqNum = X.length;
+    int l = X[0].length;
+
+    // pre-compute metadata for K-Shape
+    KShape kshape = new KShape(k, 30);
+    kshape.fit(X);
+    for (int i = 0; i < k; i++)
+      this.sumMatrices[i] = kshape.getSumMatrices()[i].getArray(); // k * l * l
+    this.centroids = kshape.getCentroids(); // k * l
+    this.deltas = kshape.getDeltas(); // k
+    for (int i = 0; i < kshape.getIdx().length; i++) this.idx[i] = kshape.getIdx()[i];
+
+    // pre-compute metadata for K-Shape-M
+    Arrays.fill(this.edIdx, -1);
+    Arrays.fill(this.edCounts, 0);
+    KMeans clustering = new KMeans.Builder(edK, X).iterations(30).ifPlusInitial(true).build();
+    this.edCentroids = clustering.getCentroids();
+    this.edDeltas = clustering.getDeltas();
+    for (int i = 0; i < clustering.getIdx().length; i++) this.edIdx[i] = clustering.getIdx()[i];
+    for (int idx : this.edIdx) {
+      if (idx == -1) break;
+      this.edCounts[idx]++;
+    }
+  }
+
+  private long calTimeInterval() {
+    int count = 0;
+    long maxFreqInterval = timeWindow.get(1) - timeWindow.get(0);
+    for (int i = 2; i < timeWindow.size(); i++) {
+      if (maxFreqInterval == timeWindow.get(i) - timeWindow.get(i - 1)) count++;
+      else {
+        count--;
+        if (count == 0) {
+          maxFreqInterval = timeWindow.get(i) - timeWindow.get(i - 1);
+          count++;
+        }
+      }
+    }
+    return maxFreqInterval;
+  }
+
+  private double[] normalize(double[] x) {
+    double sum = 0.0;
+    for (double v : x) sum += v;
+    double mean = sum / x.length;
+    double std = 0.0;
+    for (double v : x) std += (v - mean) * (v - mean);
+    std = Math.sqrt(std / (x.length - 1));
+    double[] res = new double[x.length];
+    for (int i = 0; i < x.length; i++) res[i] = (x[i] - mean) / std;
+    return res;
   }
 }

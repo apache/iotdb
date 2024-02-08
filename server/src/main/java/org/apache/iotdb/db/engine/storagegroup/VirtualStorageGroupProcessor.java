@@ -843,7 +843,7 @@ public class VirtualStorageGroupProcessor {
           tsFileManager.add(tsFileResource, isSeq);
           updateLastFlushTime(tsFileResource, isSeq);
         }
-      } catch (Throwable e) {
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
       } finally {
@@ -2217,17 +2217,13 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void executeCompaction() {
-    try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-      for (long timePartition : timePartitions) {
-        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
-      }
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+    // sort the time partition from largest to smallest
+    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+    for (long timePartition : timePartitions) {
+      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**

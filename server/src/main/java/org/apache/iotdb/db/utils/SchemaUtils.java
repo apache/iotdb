@@ -197,6 +197,8 @@ public class SchemaUtils {
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
+      case SQLConstant.LSMKSHAPE:
+      case SQLConstant.LSMMSHAPE:
       default:
         return null;
     }

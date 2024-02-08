@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
@@ -36,10 +33,6 @@ import java.util.Map;
 public abstract class AbstractCompactionEstimator implements AutoCloseable {
 
   protected Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
-
-  protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio() + 1;
 
   /**
    * Estimate the memory cost of compacting the unseq file and its corresponding overlapped seq

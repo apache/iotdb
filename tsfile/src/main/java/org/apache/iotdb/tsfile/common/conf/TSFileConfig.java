@@ -73,9 +73,9 @@ public class TSFileConfig implements Serializable {
   /** Memory size threshold for flushing to disk, default value is 128MB. */
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
-  private int pageSizeInByte = 64 * 1024;
+  private int pageSizeInByte = 64000 * 1024;
   /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 10240;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -148,6 +148,10 @@ public class TSFileConfig implements Serializable {
   private int batchSize = 1000;
 
   private int patternMatchingThreshold = 1000000;
+
+  private int clusterNum = 3;
+
+  private int seqLength = 166;
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -431,5 +435,21 @@ public class TSFileConfig implements Serializable {
 
   public void setPatternMatchingThreshold(int patternMatchingThreshold) {
     this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public void setClusterNum(int clusterNum) {
+    this.clusterNum = clusterNum;
+  }
+
+  public int getClusterNum() {
+    return this.clusterNum;
+  }
+
+  public void setSeqLength(int seqLength) {
+    this.seqLength = seqLength;
+  }
+
+  public int getSeqLength() {
+    return this.seqLength;
   }
 }

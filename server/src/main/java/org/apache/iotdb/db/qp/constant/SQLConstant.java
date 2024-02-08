@@ -72,6 +72,9 @@ public class SQLConstant {
   public static final String AVG = "avg";
   public static final String SUM = "sum";
 
+  public static final String LSMKSHAPE = "lsmkshape";
+  public static final String LSMMSHAPE = "lsmmshape";
+
   public static final String ALL = "all";
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
@@ -86,7 +89,9 @@ public class SQLConstant {
               LAST_VALUE,
               COUNT,
               SUM,
-              AVG));
+              AVG,
+              LSMKSHAPE,
+              LSMMSHAPE));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
@@ -199,7 +204,6 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
   public static final int TOK_SHOW_QUERY_RESOURCE = 123;
   public static final int TOK_SCHEMA_TEMPLATE_DEACTIVATE = 124;
-  public static final int TOK_EXPORT_SCHEMA = 125;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 

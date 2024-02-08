@@ -21,29 +21,19 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -53,16 +43,12 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
+  TsFileManager tsFileManager =
+      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   private final String oldThreadName = Thread.currentThread().getName();
 
@@ -2040,71 +2026,6 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     validateSeqFiles();
   }
 
-  /**
-   * Target files of first cross compaction task should not be selected to participate in other
-   * tasks util the first task is finished.<br>
-   * Seq Files index : 1 ~ 10<br>
-   * Unseq Files index : 1 ~ 2<br>
-   * Unseq file 1 overlaps with seq file 4,5 and unseq file 2 overlaps with seq file 5,6
-   */
-  @Test
-  public void testCompactionSchedule() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
-    createFiles(10, 10, 5, 1000, 0, 0, 100, 100, false, true);
-    createFiles(1, 5, 10, 1000, 4000, 4000, 0, 100, false, false);
-    createFiles(1, 5, 10, 1000, 5000, 5000, 0, 100, false, false);
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    // first cross compaction task
-    CrossSpaceCompactionResource crossSpaceCompactionResource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
-    RewriteCompactionFileSelector crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(crossSpaceCompactionResource, Long.MAX_VALUE);
-    List[] sourceFiles = crossSpaceCompactionSelector.select();
-    Assert.assertEquals(2, sourceFiles[0].size());
-    Assert.assertEquals(1, sourceFiles[1].size());
-    List<TsFileResource> targetResources =
-        TsFileNameGenerator.getCrossCompactionTargetFileResources(sourceFiles[0]);
-
-    CompactionUtils.compact(sourceFiles[0], sourceFiles[1], targetResources);
-
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
-    CompactionUtils.combineModsInCompaction(sourceFiles[0], sourceFiles[1], targetResources);
-    tsFileManager.replace(sourceFiles[0], sourceFiles[1], targetResources, 0, true);
-
-    // Suppose the read lock of the source file is occupied by other threads, causing the first task
-    // to get stuck.
-    // Target file of the first task should not be selected to participate in other cross compaction
-    // tasks.
-    crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(
-            new CrossSpaceCompactionResource(
-                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
-            Long.MAX_VALUE);
-    Assert.assertEquals(0, crossSpaceCompactionSelector.select().length);
-
-    // first compaction task finishes successfully
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
-
-    // target file of first compaction task can be selected to participate in another cross
-    // compaction task
-    crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(
-            new CrossSpaceCompactionResource(
-                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
-            Long.MAX_VALUE);
-    List[] pairs = crossSpaceCompactionSelector.select();
-    Assert.assertEquals(2, pairs.length);
-    Assert.assertEquals(2, pairs[0].size());
-    Assert.assertEquals(1, pairs[1].size());
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs[0].get(0));
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs[0].get(1));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs[1].get(0));
-  }
-
   private void validateSeqFiles() {
     List<File> files = new ArrayList<>();
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
@@ -2113,228 +2034,5 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     TsFileValidationTool.findUncorrectFiles(files);
     Assert.assertEquals(0, TsFileValidationTool.badFileNum);
     TsFileValidationTool.clearMap();
-  }
-
-  @Test
-  public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles1() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
-    createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
-    createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
-    createFiles(3, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    // delete d0 ~ d5 in seq files
-    Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    for (int d = 0; d < 5; d++) {
-      for (int m = 0; m < 5; m++) {
-        deleteMap.put(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + m,
-            new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
-      }
-    }
-    for (TsFileResource resource : seqResources) {
-      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
-    }
-
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
-      }
-    }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
-        readSourceFiles(timeseriesPaths, Collections.emptyList());
-
-    // inner seq space compact
-    SizeTieredCompactionSelector sizeTieredCompactionSelector =
-        new SizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, tsFileManager, true, new InnerSpaceCompactionTaskFactory());
-
-    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
-        new PriorityQueue<>(new SizeTieredCompactionSelector.SizeTieredCompactionTaskComparator());
-    sizeTieredCompactionSelector.selectLevelTask(0, taskPriorityQueue);
-    ;
-    for (Pair<List<TsFileResource>, Long> taskResource : taskPriorityQueue) {
-      new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              taskResource.left,
-              true,
-              new AtomicInteger(0))
-          .call();
-    }
-
-    // select cross compaction
-    CrossSpaceCompactionResource crossSpaceCompactionResource =
-        new CrossSpaceCompactionResource(
-            tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false));
-    RewriteCompactionFileSelector crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(crossSpaceCompactionResource, Long.MAX_VALUE);
-    List[] pairs = crossSpaceCompactionSelector.select();
-    Assert.assertEquals(2, pairs.length);
-    Assert.assertEquals(1, pairs[0].size());
-    Assert.assertEquals(2, pairs[1].size());
-
-    new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, pairs[0], pairs[1], new AtomicInteger(0), 0)
-        .call();
-
-    validateSeqFiles();
-    validateTargetDatas(sourceData, Collections.emptyList());
-  }
-
-  @Test
-  public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles2() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
-    createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
-    createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    // delete d0 ~ d5 in seq files
-    Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    for (int d = 0; d < 5; d++) {
-      for (int m = 0; m < 5; m++) {
-        deleteMap.put(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + m,
-            new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
-      }
-    }
-    for (TsFileResource resource : seqResources) {
-      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
-    }
-
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
-      }
-    }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
-        readSourceFiles(timeseriesPaths, Collections.emptyList());
-
-    // inner seq space compact
-    SizeTieredCompactionSelector sizeTieredCompactionSelector =
-        new SizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, tsFileManager, true, new InnerSpaceCompactionTaskFactory());
-
-    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
-        new PriorityQueue<>(new SizeTieredCompactionSelector.SizeTieredCompactionTaskComparator());
-    sizeTieredCompactionSelector.selectLevelTask(0, taskPriorityQueue);
-    ;
-    for (Pair<List<TsFileResource>, Long> taskResource : taskPriorityQueue) {
-      new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              taskResource.left,
-              true,
-              new AtomicInteger(0))
-          .call();
-    }
-
-    // select cross compaction
-    CrossSpaceCompactionResource crossSpaceCompactionResource =
-        new CrossSpaceCompactionResource(
-            tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false));
-    RewriteCompactionFileSelector crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(crossSpaceCompactionResource, Long.MAX_VALUE);
-    List[] pairs = crossSpaceCompactionSelector.select();
-    Assert.assertEquals(2, pairs.length);
-    Assert.assertEquals(1, pairs[0].size());
-    Assert.assertEquals(2, pairs[1].size());
-
-    new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, pairs[0], pairs[1], new AtomicInteger(0), 0)
-        .call();
-
-    validateSeqFiles();
-    validateTargetDatas(sourceData, Collections.emptyList());
-  }
-
-  @Test
-  public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles3() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
-    createFiles(4, 10, 5, 1000, 0, 0, 100, 100, false, true);
-    createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
-    createFiles(1, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    // delete d0 ~ d5 in seq files
-    Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    for (int d = 0; d < 5; d++) {
-      for (int m = 0; m < 5; m++) {
-        deleteMap.put(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + m,
-            new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
-      }
-    }
-    for (TsFileResource resource : seqResources) {
-      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
-    }
-
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
-      }
-    }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
-        readSourceFiles(timeseriesPaths, Collections.emptyList());
-
-    // inner seq space compact
-    SizeTieredCompactionSelector sizeTieredCompactionSelector =
-        new SizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, tsFileManager, true, new InnerSpaceCompactionTaskFactory());
-
-    PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
-        new PriorityQueue<>(new SizeTieredCompactionSelector.SizeTieredCompactionTaskComparator());
-    sizeTieredCompactionSelector.selectLevelTask(0, taskPriorityQueue);
-    for (Pair<List<TsFileResource>, Long> taskResource : taskPriorityQueue) {
-      new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              taskResource.left,
-              true,
-              new AtomicInteger(0))
-          .call();
-    }
-
-    // select cross compaction
-    CrossSpaceCompactionResource crossSpaceCompactionResource =
-        new CrossSpaceCompactionResource(
-            tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false));
-    RewriteCompactionFileSelector crossSpaceCompactionSelector =
-        new RewriteCompactionFileSelector(crossSpaceCompactionResource, Long.MAX_VALUE);
-    List[] pairs = crossSpaceCompactionSelector.select();
-    Assert.assertEquals(2, pairs.length);
-    Assert.assertEquals(1, pairs[0].size());
-    Assert.assertEquals(2, pairs[1].size());
-
-    new RewriteCrossSpaceCompactionTask(
-            "0", COMPACTION_TEST_SG, 0, tsFileManager, pairs[0], pairs[1], new AtomicInteger(0), 0)
-        .call();
-
-    validateSeqFiles();
-    validateTargetDatas(sourceData, Collections.emptyList());
   }
 }

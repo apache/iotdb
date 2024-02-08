@@ -172,7 +172,6 @@ public class TsFileNameGenerator {
     for (TsFileResource resource : seqResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
-      // set target resource to COMPACTING until the end of this task
       targetFileResources.add(
           new TsFileResource(
               new File(
@@ -184,8 +183,7 @@ public class TsFileNameGenerator {
                       + tsFileName.innerCompactionCnt
                       + FILE_NAME_SEPARATOR
                       + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX),
-              TsFileResourceStatus.COMPACTING));
+                      + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)));
     }
     return targetFileResources;
   }
@@ -216,7 +214,6 @@ public class TsFileNameGenerator {
       maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
-    // set target resource to COMPACTING until the end of this task
     return sequence
         ? new TsFileResource(
             new File(
@@ -228,8 +225,7 @@ public class TsFileNameGenerator {
                     + (maxInnerMergeCount + 1)
                     + FILE_NAME_SEPARATOR
                     + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
-            TsFileResourceStatus.COMPACTING)
+                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
         : new TsFileResource(
             new File(
                 tsFileResources.get(0).getTsFile().getParent(),
@@ -240,8 +236,7 @@ public class TsFileNameGenerator {
                     + (maxInnerMergeCount + 1)
                     + FILE_NAME_SEPARATOR
                     + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
-            TsFileResourceStatus.COMPACTING);
+                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
   }
 
   public static class TsFileName {
