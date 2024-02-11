@@ -9,15 +9,23 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static java.lang.Math.pow;
 
-public class RLEBOSAmortizationTest {
+public class RLEBOSVTest {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
+    public static int getCount(long long1, int mask) {
+        return ((int) (long1 & mask));
+    }
+    public static int getUniqueValue(long long1, int left_shift) {
+        return ((int) ((long1) >> left_shift));
+    }
+
 
     public static void int2Bytes(int integer,int encode_pos , byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
@@ -154,95 +162,49 @@ public class RLEBOSAmortizationTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking  纵向8个，bit width是多少列
+        for (int i = 0; i < block_num; i++) { // bitpacking
             unpack8Values( encoded, decode_pos, bit_width,  result_list);
             decode_pos += bit_width;
         }
         return result_list;
     }
 
-    public static int[] getAbsDeltaTsBlock(
-            int[] ts_block,
-            ArrayList<Integer> min_delta,
-            ArrayList<Integer> repeat_count) {
-        int[] ts_block_delta = new int[ts_block.length];
-
-
-        int value_delta_min = Integer.MAX_VALUE;
-        for (Integer integer : ts_block) {
-            if (integer < value_delta_min) value_delta_min = integer;
-        }
-        int repeat_i = 0;
-        int pre_delta = ts_block[0] - value_delta_min;
-        int pre_count = 1;
-        min_delta.add(value_delta_min);
-        int block_size =ts_block.length;
-
-        int ts_block_delta_i = 0;
-        for (int i = 1; i < block_size; i++) {
-            int delta = ts_block[i] - value_delta_min;
-            if (delta == pre_delta) {
-                pre_count++;
-            } else {
-                if (pre_count > 7) {
-                    repeat_count.add(repeat_i); // index_repeat
-                    repeat_count.add(pre_count); // repeat_count
-                    ts_block_delta[ts_block_delta_i]=pre_delta;
-                    ts_block_delta_i ++;
-                } else {
-                    for (int j = 0; j < pre_count; j++){
-                        ts_block_delta[ts_block_delta_i] =pre_delta;
-                        ts_block_delta_i++;
-                    }
-
-                }
-                pre_count = 1;
-                repeat_i = i;
-            }
-            pre_delta = delta;
-
-        }
-        for (int j = 0; j < pre_count; j++){
-            ts_block_delta[ts_block_delta_i] =pre_delta;
-            ts_block_delta_i++;
-        }
-        min_delta.add(ts_block_delta_i);
-        int[] new_ts_block_delta = new int[ts_block_delta_i];
-        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
-
-
-        return new_ts_block_delta;
-    }
 
     public static int[]  getAbsDeltaTsBlock(
             int[] ts_block,
             int i,
             int block_size,
-            ArrayList<Integer> min_delta,
+            int remaining,
+            int[] min_delta,
             ArrayList<Integer> repeat_count) {
-        int[] ts_block_delta = new int[ts_block.length];
+        int[] ts_block_delta = new int[remaining];
 
         int value_delta_min = Integer.MAX_VALUE;
-        for (int j = i*block_size; j < (i+1)*block_size; j++) {
+        int value_delta_max = Integer.MIN_VALUE;
+        int base = i*block_size;
+        int end = i*block_size+remaining;
+        for (int j = base; j < end; j++) {
 
             int integer = ts_block[j];
             if (integer < value_delta_min) value_delta_min = integer;
-
+            if (integer > value_delta_max) {
+                value_delta_max = integer;
+            }
         }
         int pre_delta = ts_block[i*block_size]-value_delta_min;
         int pre_count = 1;
 
-        min_delta.add(value_delta_min);
+        min_delta[0]=(value_delta_min);
         int repeat_i = 0;
         int ts_block_delta_i = 0;
-        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
+        for (int j = base+1; j < end; j++) {
             int delta = ts_block[j]-value_delta_min;
             if(delta == pre_delta){
                 pre_count ++;
             } else {
                 if(pre_count>7){
                     repeat_count.add(repeat_i);
-                    repeat_count.add(pre_count); // repeat_count
+                    repeat_count.add(pre_count);
                     ts_block_delta[ts_block_delta_i]=pre_delta;
                     ts_block_delta_i ++;
                 } else{
@@ -261,13 +223,15 @@ public class RLEBOSAmortizationTest {
             ts_block_delta[ts_block_delta_i] =pre_delta;
             ts_block_delta_i++;
         }
-        min_delta.add(ts_block_delta_i);
+        min_delta[1]=(ts_block_delta_i);
+        min_delta[2]=(value_delta_max-value_delta_min);
         int[] new_ts_block_delta = new int[ts_block_delta_i];
         System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
-
         return new_ts_block_delta;
     }
+
+
 
     public static int encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
@@ -290,6 +254,7 @@ public class RLEBOSAmortizationTest {
                 cur_remaining += ((cur_value >> cur_bit_width));
                 long2intBytes(cur_remaining,encode_pos,encoded_result);
                 encode_pos += 4;
+
                 cur_remaining = 0;
                 cur_number_bits = 0;
             }
@@ -302,7 +267,6 @@ public class RLEBOSAmortizationTest {
         long2intBytes(cur_remaining,encode_pos,encoded_result);
         encode_pos += 4;
         return encode_pos;
-
 
     }
 
@@ -323,6 +287,7 @@ public class RLEBOSAmortizationTest {
         ArrayList<Long> int_remaining = new ArrayList<>();
         int int_remaining_size = remaining * bit_width / 32 + 1;
         for (int j = 0; j < int_remaining_size; j++) {
+
             int_remaining.add(bytesLong2Integer(encoded, decode_pos));
             decode_pos += 4;
         }
@@ -356,16 +321,14 @@ public class RLEBOSAmortizationTest {
     }
 
     private static int BOSEncodeBits(int[] ts_block_delta,
-                                     int init_block_size,
-                                     int final_left_max,
-                                     int final_k_start_value,
-                                     int final_k_end_value,
-                                     int max_delta_value,
-                                     int final_alpha,
-                                     ArrayList<Integer> min_delta,
-                                     ArrayList<Integer> repeat_count,
-                                     int encode_pos,
-                                     byte[] cur_byte) {
+                                      int init_block_size,
+                                      int final_k_start_value,
+                                      int final_k_end_value,
+                                      int max_delta_value,
+                                      int[] min_delta,
+                                      ArrayList<Integer> repeat_count,
+                                      int encode_pos,
+                                      byte[] cur_byte) {
         int block_size = ts_block_delta.length;
 
         ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
@@ -416,7 +379,7 @@ public class RLEBOSAmortizationTest {
                 k2++;
 
             } else {
-                final_normal.add(cur_value - final_k_start_value);
+                final_normal.add(cur_value - final_k_start_value-1);
                 index_bitmap_outlier <<= 1;
                 cur_index_bitmap_outlier_bits += 1;
             }
@@ -428,9 +391,11 @@ public class RLEBOSAmortizationTest {
         if (cur_index_bitmap_outlier_bits % 8 != 0) {
 
             index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
+
             index_bitmap_outlier &= 0xFF;
             bitmap_outlier.add(index_bitmap_outlier);
         }
+        int final_alpha = ((k1 + k2) * getBitWith(block_size-1)) <= (block_size + k1 + k2) ? 1 : 0;
 
         int k_byte = (k1 << 1);
         k_byte += final_alpha;
@@ -439,37 +404,38 @@ public class RLEBOSAmortizationTest {
         int2Bytes(k_byte,encode_pos,cur_byte);
         encode_pos += 4;
 
-        int2Bytes(min_delta.get(0),encode_pos,cur_byte);
+        int2Bytes(min_delta[0],encode_pos,cur_byte);
         encode_pos += 4;
         int size = repeat_count.size();
         intByte2Bytes(size,encode_pos,cur_byte);
         encode_pos += 1;
 
-
         if (size != 0)
-            encode_pos =encodeOutlier2Bytes(repeat_count, getBitWith(init_block_size),encode_pos,cur_byte);
+            encode_pos =encodeOutlier2Bytes(repeat_count, getBitWith(init_block_size-1),encode_pos,cur_byte);
+
 
 
         int2Bytes(final_k_start_value,encode_pos,cur_byte);
         encode_pos += 4;
-        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
+        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value-2);
         intByte2Bytes(bit_width_final,encode_pos,cur_byte);
         encode_pos += 1;
-        int left_bit_width = getBitWith(final_left_max);
+        int left_bit_width = getBitWith(final_k_start_value);
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);
         intByte2Bytes(left_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
         intByte2Bytes(right_bit_width,encode_pos,cur_byte);
         encode_pos += 1;
         if (final_alpha == 0) {
+
             for (int i : bitmap_outlier) {
 
                 intByte2Bytes(i,encode_pos,cur_byte);
                 encode_pos += 1;
             }
         } else {
-            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
-            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size-1),encode_pos,cur_byte);
         }
         encode_pos =encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
@@ -480,268 +446,116 @@ public class RLEBOSAmortizationTest {
 
     }
 
-    private static int BOSBlockEncoder(int[] ts_block, int k, int q, int encode_pos, byte[] cur_byte) {
-
-    int block_size;
-    ArrayList<Integer> repeat_count = new ArrayList<>();
-    ArrayList<Integer> min_delta = new ArrayList<>();
-    int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta, repeat_count);
-
-    int init_block_size = ts_block.length;
-    block_size = min_delta.get(1);
-
-    int final_right_max = 0;
-    double sum = 0;
-    double sumOfSquares = 0;
-
-    for (int i = 0; i < block_size; i++) {
-        int delta = ts_block_delta[i];
-        if (delta > final_right_max) {
-            final_right_max = delta;
-        }
-        sum += delta;
-        sumOfSquares += delta * delta;
-    }
-
-    double mu = sum / block_size;
-    double variance = (sumOfSquares / block_size) - (mu * mu);
-    double sigma = Math.sqrt(variance);
-
-    if(sigma ==0){
-        encode_pos=  BOSEncodeBits(ts_block_delta, init_block_size,0, 0, 0, final_right_max,
-              1,  min_delta, repeat_count,encode_pos, cur_byte);
-        return encode_pos;
-    }
 
 
-        final_right_max = ((final_right_max + 1)/q +1)*q;
-        int final_up_bound = ((int) ((mu + k * sigma) / q + 1) * q);
 
-        int max_delta_value_bit_width = getBitWith(final_up_bound);
-
-    int final_k_start_value = 0;
-    int final_k_end_value = final_right_max;
-    ArrayList<Integer> spread_value = new ArrayList<>();
-    for (int i =(int) Math.floor(Math.log(sigma)); i < max_delta_value_bit_width; i++) {
-        int spread_v = (int) pow(2, i) - 1;
-        spread_value.add(spread_v);
-    }
-
-    int min_bits = 0;
-    min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size ));
-
-    // Divided into buckets
-    int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
-        int[] bucket_count = new int[bucket_num];
-        for(int i=0;i<bucket_num;i++){
-            bucket_count[i]=0;
-        }
-        for (int i = 0; i < block_size; i++) {
-            int tmp_i = ts_block_delta[i]/q;
-            bucket_count[tmp_i]  ++;
-        }
-        int[] PDF = new int[bucket_num];
-        int cumulative = 0;
-        int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));
-        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));
-        for(int i=0;i<bucket_num;i++){
-            int count = bucket_count[i];
-            PDF[i] = cumulative;
-            cumulative += count;
-        }
-        PDF[bucket_num-1] = cumulative;
-
-        int k1=0;
-        int k2=0;
-    for(int i =bucket_start_i;i<bucket_end_i;i++){
-        if(bucket_count[i] == 0){
-            continue;
-        }
-        int k_start_value = i * q;
-        for (int k_spread_value : spread_value) {
-            int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
-
-            int cur_bits = 0;
-            int cur_k1 = PDF[i];
-
-            int k_end_value_bucket = k_end_value/q ;
-            k_end_value = k_end_value_bucket *q;
-
-            int cur_k2;
-            if(k_end_value_bucket != bucket_num -1)
-                cur_k2 =  block_size - PDF[k_end_value_bucket+1];
-            else cur_k2 =  block_size - PDF[k_end_value_bucket];
-
-
-            cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
-            if (cur_k1 != 0)
-                cur_bits += cur_k1 * getBitWith(k_start_value);
-            if (cur_k1 + cur_k2 != block_size)
-                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
-            if (cur_k2 != 0)
-                cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);
-
-
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                k1 = cur_k1;
-                k2 = cur_k2;
-                final_k_start_value = k_start_value;
-                final_k_end_value = k_end_value;
-            }
-            if (k_end_value == final_right_max)
-                break;
-        }
-    }
-
-    int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
-
-        encode_pos = BOSEncodeBits(ts_block_delta,init_block_size, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-            final_alpha,   min_delta, repeat_count,encode_pos, cur_byte);
-
-    return encode_pos;
-}
-
-    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int k, int q, int encode_pos , byte[] cur_byte) {
-
+    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size,int remaining, int encode_pos , byte[] cur_byte) {
 
         ArrayList<Integer> repeat_count = new ArrayList<>();
         int init_block_size = block_size;
-        ArrayList<Integer> min_delta = new ArrayList<>();
 
-        int[]  ts_block_delta = getAbsDeltaTsBlock(ts_block,block_i, init_block_size, min_delta, repeat_count);
-        block_size = min_delta.get(1);
+        int[] min_delta = new int[3];
+        int[]  ts_block_delta = getAbsDeltaTsBlock(ts_block,block_i, init_block_size,remaining, min_delta, repeat_count);
+        block_size = min_delta[1];
 
-        int final_right_max = 0;
-        double sum = 0;
-        double sumOfSquares = 0;
 
-        for (int i = 0; i < block_size; i++) {
-            int delta = ts_block_delta[i];
-            if (delta > final_right_max) {
-                final_right_max = delta;
+        int max_delta_value = min_delta[2];
+        int[] value_list = new int[block_size];
+        int unique_value_count = 0;
+        int[] value_count_list = new int[max_delta_value+1];
+        for(int value:ts_block_delta){
+            if(value_count_list[value]==0){
+                value_count_list[value] = 1;
+                value_list[unique_value_count] = value;
+                unique_value_count ++;
+            }else{
+                value_count_list[value] ++;
             }
-            sum += delta;
-            sumOfSquares += delta * delta;
         }
 
-        double mu = sum / block_size;
-        double variance = (sumOfSquares / block_size) - (mu * mu);
-        double sigma = Math.sqrt(variance);
+        int left_shift = getBitWith(block_size);
+        int mask =  (1 << left_shift) - 1;
+        long[] sorted_value_list = new long[unique_value_count];
+        int count = 0;
 
-        if(sigma ==0){
-            encode_pos=  BOSEncodeBits(ts_block_delta, init_block_size,0, 0, 0, final_right_max,
-                    1,  min_delta, repeat_count,encode_pos, cur_byte);
-            return encode_pos;
+        for(int i=0;i<unique_value_count;i++){
+            int value = value_list[i];
+
+            sorted_value_list[i] = (((long) value) << left_shift) + value_count_list[value];
+        }
+        Arrays.sort(sorted_value_list);
+
+        for(int i=0;i<unique_value_count;i++){
+            count += getCount(sorted_value_list[i], mask);
+            sorted_value_list[i] = (((long)getUniqueValue(sorted_value_list[i], left_shift) ) << left_shift) + count;//new_value_list[i]
         }
 
 
-        final_right_max = ((final_right_max + 1)/q +1)*q;
-
-        int final_up_bound = ((int) ((mu + k * sigma) / q + 1) * q);
-
-        int max_delta_value_bit_width = getBitWith(final_up_bound);
-
-        int final_k_start_value = 0;
-        int final_k_end_value = final_right_max;
-        ArrayList<Integer> spread_value = new ArrayList<>();
-        for (int i =(int) Math.floor(Math.log(sigma)); i < max_delta_value_bit_width; i++) {
-            int spread_v = (int) pow(2, i) - 1;
-            spread_value.add(spread_v);
-        }
+        int final_k_start_value = -1;
+        int final_k_end_value = max_delta_value+1;
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size ));
-
-        // Divided into buckets
-        int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
-        int[] bucket_count = new int[bucket_num];
-        for(int i=0;i<bucket_num;i++){
-            bucket_count[i]=0;
-        }
-        for (int i = 0; i < block_size; i++) {
-            int tmp_i = ts_block_delta[i]/q;
-            bucket_count[tmp_i]  ++;
-        }
-        int[] PDF = new int[bucket_num];
-        int cumulative = 0;
-        int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));
-        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));
-        for(int i=0;i<bucket_num;i++){
-            int count = bucket_count[i];
-            PDF[i] = cumulative;
-            cumulative += count;
-        }
-        PDF[bucket_num-1] = cumulative;
-
-        int k1=0;
-        int k2=0;
-        for(int i =bucket_start_i;i<bucket_end_i;i++){
-            if(bucket_count[i] == 0){
-                continue;
-            }
-            int k_start_value = i * q;
-            for (int k_spread_value : spread_value) {
-                int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
-
-                int cur_bits = 0;
-                int cur_k1 = PDF[i];
-
-                int k_end_value_bucket = k_end_value/q ;
-                k_end_value = k_end_value_bucket *q;
-
-                int cur_k2;
-                if(k_end_value_bucket != bucket_num -1)
-                    cur_k2 =  block_size - PDF[k_end_value_bucket+1];
-                else cur_k2 =  block_size - PDF[k_end_value_bucket];
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value ) * (block_size));
 
 
-                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+        int start_value_size =  unique_value_count;
+        for (int start_value_i = 0; start_value_i < start_value_size; start_value_i++) {
+            int k_start_value =  getUniqueValue(sorted_value_list[start_value_i], left_shift) ;
+
+            int cur_k1 = getCount(sorted_value_list[start_value_i],mask);
+
+            int k_end_value;
+            int cur_bits;
+            int cur_k2;
+
+
+            for (int end_value_i = start_value_i + 1; end_value_i < unique_value_count; end_value_i++) {
+
+                k_end_value = getUniqueValue(sorted_value_list[end_value_i], left_shift);
+
+                cur_bits = 0;
+                cur_k2 = block_size - getCount(sorted_value_list[end_value_i-1],mask);
+
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size-1), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
                     cur_bits += cur_k1 * getBitWith(k_start_value);
                 if (cur_k1 + cur_k2 != block_size)
-                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value-2);
                 if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);
 
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    k1 = cur_k1;
-                    k2 = cur_k2;
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if (k_end_value == final_right_max)
-                    break;
+
             }
         }
 
-        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
-
-        encode_pos = BOSEncodeBits(ts_block_delta,init_block_size, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-                final_alpha,   min_delta, repeat_count,encode_pos, cur_byte);
+        encode_pos = BOSEncodeBits(ts_block_delta,init_block_size,  final_k_start_value, final_k_end_value, max_delta_value,
+                min_delta,repeat_count, encode_pos , cur_byte);
 
         return encode_pos;
     }
 
-
     public static int BOSEncoder(
-            int[] data, int block_size, int k, int q, byte[] encoded_result) {
+            int[] data, int block_size, byte[] encoded_result) {
 
         int length_all = data.length;
 
         int encode_pos = 0;
         int2Bytes(length_all,encode_pos,encoded_result);
         encode_pos += 4;
+
         int block_num = length_all / block_size;
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
 
         for (int i = 0; i < block_num; i++) {
-
-            encode_pos =  BOSBlockEncoder(data, i, block_size, k,q,encode_pos,encoded_result);
-
+            encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
+//            System.out.println(encode_pos);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -754,19 +568,24 @@ public class RLEBOSAmortizationTest {
         } else {
 
             int start = block_num * block_size;
-            int[] ts_block = new int[length_all-start];
-            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0, length_all - start);
+            int remaining = length_all-start;
 
 
+            encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result);
 
-            encode_pos = BOSBlockEncoder(ts_block, k,q,encode_pos,encoded_result);
+//            int[] ts_block = new int[length_all-start];
+//            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0, length_all - start);
+//
+//
+//            encode_pos = BOSBlockEncoder(ts_block, encode_pos,encoded_result);
+
         }
 
 
         return encode_pos;
     }
 
-    public static int BOSBlockDecoder(byte[] encoded, int decode_pos, int[] value_list, int block_size, int[] value_pos_arr) {
+    public static int BOSBlockDecoder(byte[] encoded, int decode_pos, int[] value_list,int init_block_size, int block_size, int[] value_pos_arr) {
 
         int k_byte = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -786,11 +605,10 @@ public class RLEBOSAmortizationTest {
         ArrayList<Integer> repeat_count = new ArrayList<>();
         if (count_size != 0) {
             ArrayList<Integer> repeat_count_result = new ArrayList<>();
-            repeat_count = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size), count_size, repeat_count_result);
+            repeat_count = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(init_block_size-1), count_size, repeat_count_result);
             decode_pos = repeat_count_result.get(0);
 
         }
-
 
         int cur_block_size = block_size;
         for (int i = 1; i < count_size; i += 2) {
@@ -815,9 +633,9 @@ public class RLEBOSAmortizationTest {
         ArrayList<Integer> final_normal;
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
 
-        if (final_alpha == 0) {
+        if (final_alpha == 0) { // 0
             int bitmap_bytes = (int) Math.ceil((double) (cur_block_size + k1 + k2) / (double) 8);
-
+//            System.out.println("bitmap_bytes:" + bitmap_bytes);
             for (int i = 0; i < bitmap_bytes; i++) {
                 bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
                 decode_pos += 1;
@@ -866,14 +684,13 @@ public class RLEBOSAmortizationTest {
             }
         } else {
 
+                ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
+                final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size-1), k1, decode_pos_result_left);
+                decode_pos = (decode_pos_result_left.get(0));
 
-            ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
-            final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size), k1, decode_pos_result_left);
-            decode_pos = (decode_pos_result_left.get(0));
-
-            ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
-            final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size), k2, decode_pos_result_right);
-            decode_pos = (decode_pos_result_right.get(0));
+                ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
+                final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size-1), k2, decode_pos_result_right);
+                decode_pos = (decode_pos_result_right.get(0));
 
         }
 
@@ -885,6 +702,7 @@ public class RLEBOSAmortizationTest {
         if (k1 != 0) {
             ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
             final_left_outlier = decodeOutlier2Bytes(encoded, decode_pos, left_bit_width, k1, decode_pos_result_left);
+
             decode_pos = decode_pos_result_left.get(0);
         }
         if (k2 != 0) {
@@ -905,13 +723,13 @@ public class RLEBOSAmortizationTest {
             int current_delta;
             if (left_outlier_i >= k1) {
                 if (right_outlier_i >= k2) {
-                    current_delta = final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value+1;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
                     current_delta = final_right_outlier.get(right_outlier_i) + final_k_end_value;
                     right_outlier_i++;
                 } else {
-                    current_delta = final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value+1;
                     normal_i++;
                 }
             } else if (i == final_left_outlier_index.get(left_outlier_i)) {
@@ -920,13 +738,13 @@ public class RLEBOSAmortizationTest {
             } else {
 
                 if (right_outlier_i >= k2) {
-                    current_delta = final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value+1;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
                     current_delta = final_right_outlier.get(right_outlier_i) + final_k_end_value;
                     right_outlier_i++;
                 } else {
-                    current_delta = final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value+1;
                     normal_i++;
                 }
             }
@@ -962,20 +780,15 @@ public class RLEBOSAmortizationTest {
         int block_size = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
 
+
         int block_num = length_all / block_size;
         int remain_length = length_all - block_num * block_size;
-        int zero_number;
-        if (remain_length % 8 == 0) {
-            zero_number = 0;
-        } else {
-            zero_number = 8 - remain_length % 8;
-        }
-        int[] value_list = new int[length_all+8];
+
+        int[] value_list = new int[length_all+block_size];
         int[] value_pos_arr = new int[1];
 
         for (int k = 0; k < block_num; k++) {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size,value_pos_arr);
-
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list,block_size, block_size,value_pos_arr);
         }
 
         if (remain_length <= 3) {
@@ -986,13 +799,14 @@ public class RLEBOSAmortizationTest {
                 value_pos_arr[0]++;
             }
         } else {
-            BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, value_pos_arr);
+            BOSBlockDecoder(encoded, decode_pos, value_list,block_size, remain_length, value_pos_arr);
         }
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "rle_bos_amortization";
+//        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";// your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1013,40 +827,42 @@ public class RLEBOSAmortizationTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
+//        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
 
+        int repeatTime2 = 100;
+//        for (int file_i = 8; file_i < 9; file_i++) {
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
-
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -1067,7 +883,6 @@ public class RLEBOSAmortizationTest {
             assert tempList != null;
 
             for (File f : tempList) {
-
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1078,12 +893,9 @@ public class RLEBOSAmortizationTest {
 
 
                 loader.readHeaders();
-
                 while (loader.readRecord()) {
-
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-
                 }
 
                 inputStream.close();
@@ -1096,13 +908,13 @@ public class RLEBOSAmortizationTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 500;
+
 
                 int length = 0;
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), 1,4,encoded_result);
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -1119,7 +931,7 @@ public class RLEBOSAmortizationTest {
 
                 String[] record = {
                         f.toString(),
-                        "RLE+BOS-A",
+                        "RLE+BOS-O",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -1128,10 +940,9 @@ public class RLEBOSAmortizationTest {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-
-
             }
             writer.close();
+
 
         }
     }

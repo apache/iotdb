@@ -109,8 +109,10 @@ public class PFORTest {
 
 
     public static void main(@NotNull String[] args) throws IOException {
-        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "pfor_ratio/";
+        //String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+        String parent_dir = "/Users/zihanguo/Downloads/R/outlier/outliier_code/encoding-outlier/";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/pfor_ratio/";
+        //String output_parent_dir = parent_dir + "pfor_ratio/";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -169,7 +171,7 @@ public class PFORTest {
 
         output_path_list.add(output_parent_dir + "EPM-Education_ratio.csv");//11
 
-
+//        for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
