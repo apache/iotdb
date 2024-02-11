@@ -57,7 +57,7 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairScheduleTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
@@ -585,8 +585,8 @@ public class StorageEngine implements IService {
     if (!UnsortedFileRepairTaskScheduler.hasRunningRepairTask()) {
       return;
     }
-    RepairScheduleTaskManager.getInstance().abortRepairTask();
     try {
+      RepairTaskManager.getInstance().abortRepairTask();
       UnsortedFileRepairTaskScheduler.markRepairTaskStopped();
     } catch (IOException ignored) {
     }

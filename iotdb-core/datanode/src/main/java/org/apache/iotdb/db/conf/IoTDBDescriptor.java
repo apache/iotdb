@@ -488,6 +488,13 @@ public class IoTDBDescriptor {
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
 
+    int repairScanTaskNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "repair_scan_task_num", Integer.toString(conf.getRepairScanTaskNum())));
+    repairScanTaskNum = repairScanTaskNum <= 0 ? 1 : repairScanTaskNum;
+    conf.setRepairScanTaskNum(repairScanTaskNum);
+
     conf.setQueryTimeoutThreshold(
         Long.parseLong(
             properties.getProperty(

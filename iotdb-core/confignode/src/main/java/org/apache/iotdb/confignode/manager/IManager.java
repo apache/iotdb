@@ -449,6 +449,7 @@ public interface IManager {
   /** Check and repair unsorted tsfile by compaction. */
   TSStatus startRepairData();
 
+  /** Stop repair data task */
   TSStatus stopRepairData();
 
   /** Load configuration on all DataNodes. */

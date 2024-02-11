@@ -526,6 +526,9 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
+  /** The number of threads to be set up to perform time partition scan in repair data task. */
+  private int repairScanTaskNum = 4;
+
   private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
@@ -2866,6 +2869,14 @@ public class IoTDBConfig {
 
   public void setSubCompactionTaskNum(int subCompactionTaskNum) {
     this.subCompactionTaskNum = subCompactionTaskNum;
+  }
+
+  public int getRepairScanTaskNum() {
+    return repairScanTaskNum;
+  }
+
+  public void setRepairScanTaskNum(int repairScanTaskNum) {
+    this.repairScanTaskNum = repairScanTaskNum;
   }
 
   public int getCachedMNodeSizeInPBTreeMode() {

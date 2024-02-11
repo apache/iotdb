@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +35,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public class RepairScheduleTaskManager implements IService {
+public class RepairTaskManager implements IService {
 
-  private int maxScanTaskNum = 4;
+  private final int maxScanTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getRepairScanTaskNum();
   private ExecutorService repairScheduleTaskThreadPool;
-  private static Logger logger = LoggerFactory.getLogger(RepairScheduleTaskManager.class);
-  private static final RepairScheduleTaskManager INSTANCE = new RepairScheduleTaskManager();
-  private Set<Future<Void>> repairTasks = new HashSet<>();
+  private static final Logger logger = LoggerFactory.getLogger(RepairTaskManager.class);
+  private static final RepairTaskManager INSTANCE = new RepairTaskManager();
+  private final Set<Future<Void>> repairTasks = new HashSet<>();
 
   @Override
   public synchronized void start() throws StartupException {
@@ -97,7 +99,7 @@ public class RepairScheduleTaskManager implements IService {
     return maxScanTaskNum;
   }
 
-  public synchronized Future<Void> submitScanTask(UnsortedDataScanTask scanTask) {
+  public synchronized Future<Void> submitScanTask(RepairTimePartitionScanTask scanTask) {
     Future<Void> future = repairScheduleTaskThreadPool.submit(scanTask);
     repairTasks.add(future);
     return future;
@@ -127,7 +129,7 @@ public class RepairScheduleTaskManager implements IService {
     logger.info("RepairScheduleTaskManager stopped");
   }
 
-  public static RepairScheduleTaskManager getInstance() {
+  public static RepairTaskManager getInstance() {
     return INSTANCE;
   }
 }

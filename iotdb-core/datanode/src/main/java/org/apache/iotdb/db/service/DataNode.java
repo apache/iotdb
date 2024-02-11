@@ -75,7 +75,7 @@ import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.CacheHitRatioMonitor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairScheduleTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -584,7 +584,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(CompactionTaskManager.getInstance());
-    registerManager.register(RepairScheduleTaskManager.getInstance());
+    registerManager.register(RepairTaskManager.getInstance());
 
     registerManager.register(PipeAgent.runtime());
   }

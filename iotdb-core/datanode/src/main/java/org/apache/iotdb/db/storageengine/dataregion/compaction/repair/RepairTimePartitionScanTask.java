@@ -22,21 +22,14 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class UnsortedDataScanTask implements Callable<Void> {
+public class RepairTimePartitionScanTask implements Callable<Void> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
@@ -55,7 +48,7 @@ public class UnsortedDataScanTask implements Callable<Void> {
   private final RepairProgress progress;
   private static final Lock submitRepairFileTaskLock = new ReentrantLock();
 
-  public UnsortedDataScanTask(
+  public RepairTimePartitionScanTask(
       List<RepairTimePartition> repairTimePartitions,
       RepairLogger repairLogger,
       RepairProgress progress) {
@@ -108,7 +101,15 @@ public class UnsortedDataScanTask implements Callable<Void> {
           latch.countDown();
           continue;
         }
-        if (TsFileResourceUtils.validateTsFileDataCorrectness(sourceFile)) {
+        RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(sourceFile);
+        scanUtil.scanTsFile();
+        if (scanUtil.isBrokenFile()) {
+          LOGGER.warn("[RepairScheduler] file {} is skipped because it is broken", sourceFile);
+          sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+          latch.countDown();
+          continue;
+        }
+        if (!scanUtil.hasUnsortedData()) {
           latch.countDown();
           continue;
         }
@@ -139,7 +140,8 @@ public class UnsortedDataScanTask implements Callable<Void> {
     TsFileManager tsFileManager = timePartition.getTsFileManager();
     List<TsFileResource> seqList =
         tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
-    List<TsFileResource> overlapFiles = checkTimePartitionHasOverlap(seqList);
+    List<TsFileResource> overlapFiles =
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
@@ -172,57 +174,6 @@ public class UnsortedDataScanTask implements Callable<Void> {
     } finally {
       submitRepairFileTaskLock.unlock();
     }
-  }
-
-  private List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
-    List<TsFileResource> overlapResources = new ArrayList<>();
-    Map<String, Long> deviceEndTimeMap = new HashMap<>();
-    for (TsFileResource resource : resources) {
-      if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
-          || resource.getStatus() == TsFileResourceStatus.DELETED) {
-        continue;
-      }
-      DeviceTimeIndex deviceTimeIndex;
-      try {
-        deviceTimeIndex = getDeviceTimeIndex(resource);
-      } catch (Exception ignored) {
-        continue;
-      }
-
-      Set<String> devices = deviceTimeIndex.getDevices();
-      boolean fileHasOverlap = false;
-      // check overlap
-      for (String device : devices) {
-        long deviceStartTimeInCurrentFile = deviceTimeIndex.getStartTime(device);
-        if (deviceStartTimeInCurrentFile > deviceTimeIndex.getEndTime(device)) {
-          continue;
-        }
-        if (!deviceEndTimeMap.containsKey(device)) {
-          continue;
-        }
-        long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
-        if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
-          fileHasOverlap = true;
-          overlapResources.add(resource);
-          break;
-        }
-      }
-      // update end time map
-      if (!fileHasOverlap) {
-        for (String device : devices) {
-          deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device));
-        }
-      }
-    }
-    return overlapResources;
-  }
-
-  private DeviceTimeIndex getDeviceTimeIndex(TsFileResource resource) throws IOException {
-    ITimeIndex timeIndex = resource.getTimeIndex();
-    if (timeIndex instanceof DeviceTimeIndex) {
-      return (DeviceTimeIndex) timeIndex;
-    }
-    return resource.buildDeviceTimeIndex();
   }
 
   private void finishRepairTimePartition(RepairTimePartition timePartition) {

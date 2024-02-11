@@ -89,7 +89,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     try {
-      RepairScheduleTaskManager.getInstance().start();
+      RepairTaskManager.getInstance().start();
     } catch (StartupException e) {
       throw new RuntimeException(e);
     }

@@ -222,7 +222,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void dispatchTimePartitionScanTask() throws InterruptedException {
-    int maxTaskNum = RepairScheduleTaskManager.getInstance().getMaxScanTaskNum();
+    int maxTaskNum = RepairTaskManager.getInstance().getMaxScanTaskNum();
     List<RepairTimePartition>[] taskAllocatedPartitions =
         new ArrayList[Math.min(maxTaskNum, allTimePartitionFiles.size())];
     Arrays.fill(taskAllocatedPartitions, new ArrayList<>());
@@ -234,9 +234,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     List<Future<Void>> results = new ArrayList<>();
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
       results.add(
-          RepairScheduleTaskManager.getInstance()
+          RepairTaskManager.getInstance()
               .submitScanTask(
-                  new UnsortedDataScanTask(
+                  new RepairTimePartitionScanTask(
                       Collections.singletonList(timePartition), repairLogger, repairProgress)));
     }
     for (Future<Void> result : results) {
