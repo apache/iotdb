@@ -61,7 +61,7 @@ public class PipeMemoryManager {
   // threshold, allocations of memory block for tablets will be rejected.
   private static final double TABLET_MEMORY_REJECT_THRESHOLD =
       PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
-  private long usedMemorySizeInBytesOfTablets;
+  private volatile long usedMemorySizeInBytesOfTablets;
 
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
@@ -78,8 +78,13 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, false);
   }
 
-  public PipeMemoryBlock forceAllocateWithRetry(Tablet tablet)
+  public PipeTabletMemoryBlock forceAllocateWithRetry(Tablet tablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      // No need to calculate the tablet size, skip it to save time
+      return new PipeTabletMemoryBlock(0);
+    }
+
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
           < TABLET_MEMORY_REJECT_THRESHOLD) {
@@ -104,7 +109,8 @@ public class PipeMemoryManager {
     }
 
     synchronized (this) {
-      final PipeMemoryBlock block = forceAllocate(calculateTabletSizeInBytes(tablet), true);
+      final PipeTabletMemoryBlock block =
+          (PipeTabletMemoryBlock) forceAllocate(calculateTabletSizeInBytes(tablet), true);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -313,6 +319,7 @@ public class PipeMemoryManager {
     final PipeMemoryBlock returnedMemoryBlock =
         isForTablet ? new PipeTabletMemoryBlock(sizeInBytes) : new PipeMemoryBlock(sizeInBytes);
     allocatedBlocks.add(returnedMemoryBlock);
+    System.out.println(returnedMemoryBlock);
     return returnedMemoryBlock;
   }
 
@@ -349,6 +356,7 @@ public class PipeMemoryManager {
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     if (block instanceof PipeTabletMemoryBlock) {
       usedMemorySizeInBytesOfTablets -= block.getMemoryUsageInBytes();
+      LOGGER.info("Released for tablet, total memory: {}", usedMemorySizeInBytesOfTablets);
     }
     block.markAsReleased();
 
