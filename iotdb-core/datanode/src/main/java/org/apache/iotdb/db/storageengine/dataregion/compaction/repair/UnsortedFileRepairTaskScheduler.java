@@ -161,6 +161,12 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   @Override
   public void run() {
+    try {
+      RepairTaskManager.getInstance().waitReady();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return;
+    }
     if (!initSuccess) {
       LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
       RepairTaskManager.getInstance().markRepairTaskFinish();

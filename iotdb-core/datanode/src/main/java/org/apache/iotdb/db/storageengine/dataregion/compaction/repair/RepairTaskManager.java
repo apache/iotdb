@@ -51,6 +51,8 @@ public class RepairTaskManager implements IService {
   /** a repair task is running */
   private final AtomicBoolean isRepairingData = new AtomicBoolean(false);
 
+  private volatile boolean init = false;
+
   public boolean markRepairTaskStart() {
     return isRepairingData.compareAndSet(false, true);
   }
@@ -83,6 +85,13 @@ public class RepairTaskManager implements IService {
       initThreadPool();
     }
     logger.info("Repair schedule task manager started.");
+    init = true;
+  }
+
+  public void waitReady() throws InterruptedException {
+    while (!init) {
+      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+    }
   }
 
   @Override
