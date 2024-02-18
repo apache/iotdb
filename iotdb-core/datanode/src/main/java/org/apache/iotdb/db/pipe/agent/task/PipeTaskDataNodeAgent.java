@@ -349,9 +349,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         continue;
       }
 
-      if (mayLinkedTsFileCountReachDangerousThreshold()
-          || mayMemTablePinnedCountReachDangerousThreshold()
-          || mayWalSizeReachThrottleThreshold()) {
+      if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
         LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
       }
@@ -359,11 +357,6 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     // Restart all stuck pipes
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
-  }
-
-  private boolean mayLinkedTsFileCountReachDangerousThreshold() {
-    return PipeResourceManager.tsfile().getLinkedTsfileCount()
-        >= 2 * PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
