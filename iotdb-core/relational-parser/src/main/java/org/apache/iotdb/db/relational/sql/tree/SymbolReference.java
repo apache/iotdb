@@ -22,20 +22,45 @@ package org.apache.iotdb.db.relational.sql.tree;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Objects;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
+public class SymbolReference extends Expression {
+
+  private final String name;
+
+  public SymbolReference(String name) {
+    super(null);
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitSymbolReference(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
     return ImmutableList.of();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    SymbolReference that = (SymbolReference) o;
+    return Objects.equals(name, that.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name);
   }
 }

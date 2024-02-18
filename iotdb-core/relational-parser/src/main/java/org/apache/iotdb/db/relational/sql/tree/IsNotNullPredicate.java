@@ -22,20 +22,58 @@ package org.apache.iotdb.db.relational.sql.tree;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Objects;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
+import static java.util.Objects.requireNonNull;
+
+public class IsNotNullPredicate extends Expression {
+
+  private final Expression value;
+
+  public IsNotNullPredicate(Expression value) {
+    super(null);
+    this.value = requireNonNull(value, "value is null");
+  }
+
+  public IsNotNullPredicate(NodeLocation location, Expression value) {
+    super(requireNonNull(location, "location is null"));
+    this.value = requireNonNull(value, "value is null");
+  }
+
+  public Expression getValue() {
+    return value;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitIsNotNullPredicate(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of();
+    return ImmutableList.of(value);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    IsNotNullPredicate that = (IsNotNullPredicate) o;
+    return Objects.equals(value, that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return value.hashCode();
+  }
+
+  @Override
+  public boolean shallowEquals(Node other) {
+    return sameClass(this, other);
   }
 }

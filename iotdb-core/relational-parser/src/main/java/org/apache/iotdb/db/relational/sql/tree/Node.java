@@ -61,7 +61,7 @@ public abstract class Node {
     throw new UnsupportedOperationException("not yet implemented: " + getClass().getName());
   }
 
-  static boolean sameClass(Node left, Node right) {
+  public static boolean sameClass(Node left, Node right) {
     if (left == right) {
       return true;
     }

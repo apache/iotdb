@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+
 import javax.annotation.Nullable;
 
 public abstract class AstVisitor<R, C> {

@@ -22,20 +22,58 @@ package org.apache.iotdb.db.relational.sql.tree;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Objects;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
+import static java.util.Objects.requireNonNull;
+
+public class SubqueryExpression extends Expression {
+
+  private final Query query;
+
+  public SubqueryExpression(Query query) {
+    super(null);
+    this.query = requireNonNull(query, "query is null");
+  }
+
+  public SubqueryExpression(NodeLocation location, Query query) {
+    super(requireNonNull(location, "location is null"));
+    this.query = requireNonNull(query, "query is null");
+  }
+
+  public Query getQuery() {
+    return query;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitSubqueryExpression(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of();
+    return ImmutableList.of(query);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SubqueryExpression that = (SubqueryExpression) o;
+    return Objects.equals(query, that.query);
+  }
+
+  @Override
+  public int hashCode() {
+    return query.hashCode();
+  }
+
+  @Override
+  public boolean shallowEquals(Node other) {
+    return sameClass(this, other);
   }
 }

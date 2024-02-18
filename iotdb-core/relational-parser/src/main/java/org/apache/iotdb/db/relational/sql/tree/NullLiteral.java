@@ -19,23 +19,42 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-import com.google.common.collect.ImmutableList;
+import static java.util.Objects.requireNonNull;
 
-import java.util.List;
-import javax.annotation.Nullable;
+public class NullLiteral extends Literal {
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
+  public NullLiteral() {
+    super(null);
+  }
+
+  public NullLiteral(NodeLocation location) {
+    super(requireNonNull(location, "location is null"));
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitNullLiteral(this, context);
   }
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of();
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return getClass().hashCode();
+  }
+
+  @Override
+  public boolean shallowEquals(Node other) {
+    return sameClass(this, other);
   }
 }

@@ -19,23 +19,17 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-import com.google.common.collect.ImmutableList;
-
-import java.util.List;
 import javax.annotation.Nullable;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
+public abstract class QueryBody extends Relation {
+
+  protected QueryBody(@Nullable NodeLocation location) {
     super(location);
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitQueryBody(this, context);
   }
 
-  @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of();
-  }
 }

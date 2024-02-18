@@ -21,6 +21,8 @@ package org.apache.iotdb.db.relational.sql.util;
 
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.Literal;
+import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
 import java.util.Optional;
 import java.util.function.Function;

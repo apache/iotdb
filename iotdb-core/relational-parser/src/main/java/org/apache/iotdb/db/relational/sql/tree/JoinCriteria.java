@@ -19,23 +19,19 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-import com.google.common.collect.ImmutableList;
-
 import java.util.List;
-import javax.annotation.Nullable;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
-  }
+public abstract class JoinCriteria {
+
+  // Force subclasses to have a proper equals and hashcode implementation
+  @Override
+  public abstract boolean equals(Object obj);
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
-  }
+  public abstract int hashCode();
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of();
-  }
+  public abstract String toString();
+
+  public abstract List<Node> getNodes();
 }

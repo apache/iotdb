@@ -22,20 +22,61 @@ package org.apache.iotdb.db.relational.sql.tree;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Objects;
 
-public abstract class Literal extends Expression {
-  protected Literal(@Nullable NodeLocation location) {
-    super(location);
+import static java.util.Objects.requireNonNull;
+
+public class Parameter extends Expression {
+  private final int id;
+
+  public Parameter(int id) {
+    super(null);
+    this.id = id;
+  }
+
+  public Parameter(NodeLocation location, int id) {
+    super(requireNonNull(location, "location is null"));
+    this.id = id;
+  }
+
+  public int getId() {
+    return id;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitLiteral(this, context);
+    return visitor.visitParameter(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
     return ImmutableList.of();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    Parameter that = (Parameter) o;
+    return Objects.equals(id, that.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id;
+  }
+
+  @Override
+  public boolean shallowEquals(Node other) {
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    return id == ((Parameter) other).id;
   }
 }

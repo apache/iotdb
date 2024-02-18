@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.db.relational.sql.util.ExpressionFormatter;
+
 import javax.annotation.Nullable;
 
 public abstract class Expression extends Node {
