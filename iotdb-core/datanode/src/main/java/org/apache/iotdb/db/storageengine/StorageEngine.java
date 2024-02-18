@@ -572,7 +572,7 @@ public class StorageEngine implements IService {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
-    if (!UnsortedFileRepairTaskScheduler.markRepairTaskStart()) {
+    if (!RepairTaskManager.getInstance().markRepairTaskStart()) {
       return false;
     }
     LOGGER.info("start repair data");
@@ -587,13 +587,13 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void stopRepairData() throws StorageEngineException {
-    if (!UnsortedFileRepairTaskScheduler.hasRunningRepairTask()) {
+    if (!RepairTaskManager.getInstance().hasRunningRepairTask()) {
       return;
     }
     LOGGER.info("stop repair data");
     try {
       RepairTaskManager.getInstance().abortRepairTask();
-      UnsortedFileRepairTaskScheduler.markRepairTaskStopped();
+      RepairTaskManager.getInstance().markRepairTaskStopped();
     } catch (IOException ignored) {
     }
   }
@@ -615,7 +615,7 @@ public class StorageEngine implements IService {
             .filter(f -> f.getName().endsWith(RepairLogger.repairLogSuffix) && f.isFile())
             .collect(Collectors.toList());
     if (!fileList.isEmpty()) {
-      UnsortedFileRepairTaskScheduler.markRepairTaskStart();
+      RepairTaskManager.getInstance().markRepairTaskStart();
       cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, true));
     }
   }

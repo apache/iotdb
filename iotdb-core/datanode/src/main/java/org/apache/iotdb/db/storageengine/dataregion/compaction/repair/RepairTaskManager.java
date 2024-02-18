@@ -29,11 +29,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RepairTaskManager implements IService {
 
@@ -43,6 +47,35 @@ public class RepairTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(RepairTaskManager.class);
   private static final RepairTaskManager INSTANCE = new RepairTaskManager();
   private final Set<Future<Void>> repairTasks = new HashSet<>();
+
+  /** a repair task is running */
+  private final AtomicBoolean isRepairingData = new AtomicBoolean(false);
+
+  public boolean markRepairTaskStart() {
+    return isRepairingData.compareAndSet(false, true);
+  }
+
+  public boolean hasRunningRepairTask() {
+    return isRepairingData.get() || !repairTasks.isEmpty();
+  }
+
+  public void markRepairTaskFinish() {
+    isRepairingData.set(false);
+  }
+
+  public void markRepairTaskStopped() throws IOException {
+    isRepairingData.set(false);
+    String repairLogDirPath =
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+            + File.separator
+            + RepairLogger.repairLogDir
+            + File.separator
+            + RepairLogger.stopped;
+    File stoppedMark = new File(repairLogDirPath);
+    if (!stoppedMark.exists()) {
+      Files.createFile(stoppedMark.toPath());
+    }
+  }
 
   @Override
   public synchronized void start() throws StartupException {
@@ -93,10 +126,6 @@ public class RepairTaskManager implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.REPAIR_DATA_SERVICE;
-  }
-
-  public int getMaxScanTaskNum() {
-    return maxScanTaskNum;
   }
 
   public synchronized Future<Void> submitScanTask(RepairTimePartitionScanTask scanTask) {

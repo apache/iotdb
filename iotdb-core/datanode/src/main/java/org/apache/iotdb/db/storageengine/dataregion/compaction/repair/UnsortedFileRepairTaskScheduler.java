@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -33,9 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -43,12 +40,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UnsortedFileRepairTaskScheduler implements Runnable {
-
-  /** a repair task is running */
-  private static final AtomicBoolean isRepairingData = new AtomicBoolean(false);
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
@@ -58,32 +51,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private boolean initSuccess = false;
   private long repairTaskTime;
   private RepairProgress repairProgress;
-
-  public static boolean markRepairTaskStart() {
-    return isRepairingData.compareAndSet(false, true);
-  }
-
-  public static boolean hasRunningRepairTask() {
-    return isRepairingData.get();
-  }
-
-  public static void markRepairTaskFinish() {
-    isRepairingData.set(false);
-  }
-
-  public static void markRepairTaskStopped() throws IOException {
-    isRepairingData.set(false);
-    String repairLogDirPath =
-        IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-            + File.separator
-            + RepairLogger.repairLogDir
-            + File.separator
-            + RepairLogger.stopped;
-    File stoppedMark = new File(repairLogDirPath);
-    if (!stoppedMark.exists()) {
-      Files.createFile(stoppedMark.toPath());
-    }
-  }
 
   /** Used for create a new repair schedule task */
   public UnsortedFileRepairTaskScheduler(
@@ -196,19 +163,19 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   public void run() {
     if (!initSuccess) {
       LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
-      markRepairTaskFinish();
+      RepairTaskManager.getInstance().markRepairTaskFinish();
       return;
     }
     CompactionScheduler.exclusiveLockCompactionSelection();
     try {
       CompactionTaskManager.getInstance().waitAllCompactionFinish();
-      dispatchTimePartitionScanTask();
+      runTimePartitionScanTasks();
     } catch (InterruptedException interruptedException) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
       LOGGER.error("[RepairScheduler] Meet error when execute repair schedule task", e);
     } finally {
-      markRepairTaskFinish();
+      RepairTaskManager.getInstance().markRepairTaskFinish();
       try {
         repairLogger.close();
       } catch (Exception e) {
@@ -222,16 +189,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
   }
 
-  private void dispatchTimePartitionScanTask() throws InterruptedException {
-    int maxTaskNum = RepairTaskManager.getInstance().getMaxScanTaskNum();
-    List<RepairTimePartition>[] taskAllocatedPartitions =
-        new ArrayList[Math.min(maxTaskNum, allTimePartitionFiles.size())];
-    Arrays.fill(taskAllocatedPartitions, new ArrayList<>());
-    int i = 0;
-    for (RepairTimePartition timePartition : allTimePartitionFiles) {
-      taskAllocatedPartitions[i % maxTaskNum].add(timePartition);
-      i++;
-    }
+  private void runTimePartitionScanTasks() throws InterruptedException {
     List<Future<Void>> results = new ArrayList<>();
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
       results.add(
