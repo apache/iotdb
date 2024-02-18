@@ -147,9 +147,22 @@ public abstract class AbstractCompactionTask {
           storageGroupName,
           dataRegionId,
           e.getMessage());
+      List<TsFileResource> unsortedTsFileResources = new ArrayList<>();
+      if (e instanceof CompactionLastTimeCheckFailedException) {
+        unsortedTsFileResources.addAll(getAllSourceTsFiles());
+      } else {
+        CompactionValidationFailedException validationException =
+            (CompactionValidationFailedException) e;
+        TsFileResource overlappedTsFileResource = validationException.getOverlappedTsFileResource();
+        if (overlappedTsFileResource != null) {
+          unsortedTsFileResources.add(overlappedTsFileResource);
+        }
+      }
       // these exceptions generally caused by unsorted data, mark all source files as NEED_TO_REPAIR
-      for (TsFileResource resource : getAllSourceTsFiles()) {
-        resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+      for (TsFileResource resource : unsortedTsFileResources) {
+        if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+        }
       }
     } else if (e instanceof InterruptedException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);

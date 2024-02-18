@@ -19,9 +19,24 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 public class CompactionValidationFailedException extends RuntimeException {
+  private TsFileResource overlappedTsFileResource = null;
+
   public CompactionValidationFailedException(String msg) {
     super(msg);
+  }
+
+  public CompactionValidationFailedException(TsFileResource overlappedTsFileResource) {
+    super(
+        "Failed to pass compaction validation, sequence files has overlap, file is "
+            + overlappedTsFileResource);
+    this.overlappedTsFileResource = overlappedTsFileResource;
+  }
+
+  public TsFileResource getOverlappedTsFileResource() {
+    return overlappedTsFileResource;
   }
 
   @Override
