@@ -1032,12 +1032,12 @@ public class SessionPool implements ISessionPool {
 
   /**
    * Insert aligned data in batch format, which can reduce the overhead of network. This method is
-   * just like jdbc batch insert, we pack some insert request in batch and send them to server If
-   * you want improve your performance, please see insertTablet method.
+   * just like jdbc batch insert, we pack some insert request in batch and send them to server. If
+   * you want to improve your performance, please see insertTablet method.
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be thrown
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,

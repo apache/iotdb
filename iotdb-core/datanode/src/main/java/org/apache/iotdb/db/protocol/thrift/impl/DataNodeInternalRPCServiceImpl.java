@@ -308,7 +308,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-    // TODO
+    resp.setNeedRetry(executionResult.isNeedRetry());
     return resp;
   }
 

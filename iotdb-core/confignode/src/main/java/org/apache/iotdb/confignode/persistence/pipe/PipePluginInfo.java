@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -53,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -122,9 +122,11 @@ public class PipePluginInfo implements SnapshotProcessor {
     return !pipePluginMetaKeeper.containsJar(jarName);
   }
 
-  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
-    final PipeParameters extractorParameters =
-        new PipeParameters(createPipeRequest.getExtractorAttributes());
+  public void checkPipePluginExistence(
+      Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String extractorPluginName =
         extractorParameters.getStringOrDefault(
             Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
@@ -132,28 +134,26 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(extractorPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create pipe, the pipe extractor plugin %s does not exist",
+              "Failed to create or alter pipe, the pipe extractor plugin %s does not exist",
               extractorPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
-    final PipeParameters processorParameters =
-        new PipeParameters(createPipeRequest.getProcessorAttributes());
+    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final String processorPluginName =
         processorParameters.getStringOrDefault(
             PipeProcessorConstant.PROCESSOR_KEY, DO_NOTHING_PROCESSOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(processorPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create pipe, the pipe processor plugin %s does not exist",
+              "Failed to create or alter pipe, the pipe processor plugin %s does not exist",
               processorPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
-    final PipeParameters connectorParameters =
-        new PipeParameters(createPipeRequest.getConnectorAttributes());
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final String connectorPluginName =
         connectorParameters.getStringOrDefault(
             Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
@@ -161,7 +161,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create pipe, the pipe connector plugin %s does not exist",
+              "Failed to create or alter pipe, the pipe connector plugin %s does not exist",
               connectorPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);

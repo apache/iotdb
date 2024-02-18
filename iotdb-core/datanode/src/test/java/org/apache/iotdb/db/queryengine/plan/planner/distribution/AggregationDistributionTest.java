@@ -304,7 +304,8 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPath)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPath))))),
             null,
             Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
@@ -344,7 +345,8 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPath)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPath))))),
             null,
             Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
@@ -421,7 +423,8 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPath)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPath))))),
             null,
             Ordering.ASC);
 
@@ -503,14 +506,16 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s1Path))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS1))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS1)))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS2))))),
             null,
             Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
@@ -569,14 +574,16 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS1))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS1)))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS2))))),
             null,
             Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
@@ -665,14 +672,16 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS1))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS1)))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
-                    2,
+                    1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath(groupedPathS2))))),
             null,
             Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
@@ -840,7 +849,7 @@ public class AggregationDistributionTest {
     List<CrossSeriesAggregationDescriptor> descriptors = node.getGroupByLevelDescriptors();
     assertEquals(expected.size(), descriptors.size());
     for (CrossSeriesAggregationDescriptor descriptor : descriptors) {
-      String outputExpression = descriptor.getOutputExpression().getExpressionString();
+      String outputExpression = descriptor.getOutputExpressions().get(0).getExpressionString();
       assertEquals(expected.get(outputExpression).size(), descriptor.getInputExpressions().size());
       for (Expression inputExpression : descriptor.getInputExpressions()) {
         assertTrue(expected.get(outputExpression).contains(inputExpression.getExpressionString()));

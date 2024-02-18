@@ -145,6 +145,7 @@ public enum StatementType {
   DROP_PIPESINK,
 
   CREATE_PIPE,
+  ALTER_PIPE,
   START_PIPE,
   STOP_PIPE,
   DROP_PIPE,

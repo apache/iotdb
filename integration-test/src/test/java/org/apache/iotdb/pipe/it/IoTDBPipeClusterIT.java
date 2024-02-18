@@ -237,7 +237,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           }
           try {
             senderEnv.startDataNode(i);
-            ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+            Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
           } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -261,14 +261,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -363,13 +357,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           Collections.singleton("2,"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -637,7 +626,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+        Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
       } catch (Exception e) {
         e.printStackTrace();
         return;
@@ -695,13 +684,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       return;
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
-
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
     TestUtils.assertDataOnEnv(
         receiverEnv,
         "select count(*) from root.**",

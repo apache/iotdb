@@ -196,7 +196,8 @@ public class OperatorMemoryTest {
               Ordering.ASC,
               SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath),
               false,
-              null);
+              null,
+              -1);
 
       long maxPeekMemory =
           Math.max(
@@ -1198,9 +1199,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1253,9 +1254,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1326,9 +1327,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1406,9 +1407,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),

@@ -151,6 +151,7 @@ public class CommonConfig {
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
   private int pipeDataStructureTabletRowSize = 2048;
+  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -529,6 +530,16 @@ public class CommonConfig {
 
   public void setPipeDataStructureTabletRowSize(int pipeDataStructureTabletRowSize) {
     this.pipeDataStructureTabletRowSize = pipeDataStructureTabletRowSize;
+  }
+
+  public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    return pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
+  }
+
+  public void setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
+    this.pipeDataStructureTabletMemoryBlockAllocationRejectThreshold =
+        pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {

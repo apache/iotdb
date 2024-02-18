@@ -171,6 +171,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of memtable memory for device path cache */
+  private double devicePathCacheProportion = 0.05;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -359,9 +362,6 @@ public class IoTDBConfig {
    */
   private int maxPendingWindowEvaluationTasks = 64;
 
-  /** Is the write mem control for writing enable. */
-  private boolean enableMemControl = true;
-
   /** Is the write ahead log enable. */
   private boolean enableIndex = false;
 
@@ -382,9 +382,6 @@ public class IoTDBConfig {
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
   private long seqTsFileSize = 0L;
-
-  /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
-  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
   private boolean enableTimedFlushSeqMemtable = true;
@@ -459,13 +456,6 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
-
-  /**
-   * Enable compaction memory control or not. If true and estimated memory size of one compaction
-   * task exceeds the threshold, system will block the compaction. It only works for cross space
-   * compaction currently.
-   */
-  private boolean enableCompactionMemControl = true;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -761,9 +751,6 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the num of memtable in each database */
-  private int concurrentWritingTimePartition = 1;
-
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
@@ -948,8 +935,6 @@ public class IoTDBConfig {
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 1000;
-
-  private int devicePathCacheSize = 500_000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -1208,14 +1193,6 @@ public class IoTDBConfig {
   public void setUdfInitialByteArrayLengthForMemoryControl(
       int udfInitialByteArrayLengthForMemoryControl) {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
-  }
-
-  public int getConcurrentWritingTimePartition() {
-    return concurrentWritingTimePartition;
-  }
-
-  public void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
-    this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
@@ -2031,22 +2008,6 @@ public class IoTDBConfig {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
-  public boolean isEnableMemControl() {
-    return enableMemControl;
-  }
-
-  public void setEnableMemControl(boolean enableMemControl) {
-    this.enableMemControl = enableMemControl;
-  }
-
-  public long getMemtableSizeThreshold() {
-    return memtableSizeThreshold;
-  }
-
-  public void setMemtableSizeThreshold(long memtableSizeThreshold) {
-    this.memtableSizeThreshold = memtableSizeThreshold;
-  }
-
   public boolean isEnableTimedFlushSeqMemtable() {
     return enableTimedFlushSeqMemtable;
   }
@@ -2755,14 +2716,6 @@ public class IoTDBConfig {
     this.compactionPriority = compactionPriority;
   }
 
-  public boolean isEnableCompactionMemControl() {
-    return enableCompactionMemControl;
-  }
-
-  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
-    this.enableCompactionMemControl = enableCompactionMemControl;
-  }
-
   public long getTargetCompactionFileSize() {
     return targetCompactionFileSize;
   }
@@ -3097,14 +3050,6 @@ public class IoTDBConfig {
     this.partitionCacheSize = partitionCacheSize;
   }
 
-  public int getDevicePathCacheSize() {
-    return devicePathCacheSize;
-  }
-
-  public void setDevicePathCacheSize(int devicePathCacheSize) {
-    this.devicePathCacheSize = devicePathCacheSize;
-  }
-
   public int getAuthorCacheSize() {
     return authorCacheSize;
   }
@@ -3263,6 +3208,14 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getDevicePathCacheProportion() {
+    return devicePathCacheProportion;
+  }
+
+  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
+    this.devicePathCacheProportion = devicePathCacheProportion;
   }
 
   public static String getEnvironmentVariables() {
