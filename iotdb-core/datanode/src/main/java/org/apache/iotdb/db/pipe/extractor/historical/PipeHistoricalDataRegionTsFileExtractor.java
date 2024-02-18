@@ -258,31 +258,31 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
-      // No need to flush data region if real-time extraction is enabled.
+      // As for the correctness, there is no need to flush data region if real-time extraction is
+      // enabled.
       // If a tsFile exists but is not sealed here, the "hybrid" and "log" realtime extractor
       // will send tsFile instead of tablets in this epoch, and the data won't be lost.
+      // However, we still flush here to ensure the wal can be released when restarting.
+      // Detailed logic can be seen at PipeTaskDataNodeAgent#restartAllStuckPipes()
 
-      if (!isRealtimeExtractorEnabled) {
-        LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
-        synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
-          final long lastFlushedByPipeTime =
-              DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
-          if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
-            dataRegion.syncCloseAllWorkingTsFileProcessors();
-            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(
-                dataRegionId, System.currentTimeMillis());
-            LOGGER.info(
-                "Pipe {}@{}: finish to flush data region, took {} ms",
-                pipeName,
-                dataRegionId,
-                System.currentTimeMillis() - startHistoricalExtractionTime);
-          } else {
-            LOGGER.info(
-                "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
-                pipeName,
-                dataRegionId,
-                System.currentTimeMillis() - lastFlushedByPipeTime);
-          }
+      LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+        final long lastFlushedByPipeTime =
+            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          dataRegion.syncCloseAllWorkingTsFileProcessors();
+          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
+          LOGGER.info(
+              "Pipe {}@{}: finish to flush data region, took {} ms",
+              pipeName,
+              dataRegionId,
+              System.currentTimeMillis() - startHistoricalExtractionTime);
+        } else {
+          LOGGER.info(
+              "Pipe {}@{}: skip to flush data region, last flushed time {} ms ago",
+              pipeName,
+              dataRegionId,
+              System.currentTimeMillis() - lastFlushedByPipeTime);
         }
       }
 
