@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,6 +75,35 @@ public class RepairLoggerTest extends AbstractCompactionTest {
       Assert.assertTrue(entry.getValue().contains(resource2.getTsFile().getName()));
       break;
     }
+  }
+
+  @Test
+  public void testReadManyTimePartitionLogFile() throws IOException {
+    RepairTimePartition mockRepairTimePartition = Mockito.mock(RepairTimePartition.class);
+    Mockito.when(mockRepairTimePartition.getDatabaseName()).thenReturn("root.testsg");
+    Mockito.when(mockRepairTimePartition.getDataRegionId()).thenReturn("0");
+    Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L, 1L, 2L);
+    Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
+        .thenReturn(Collections.emptyList());
+    Path tempDirPath = Files.createTempDirectory("");
+    File logFile =
+        new File(
+            tempDirPath.toString()
+                + File.separator
+                + System.currentTimeMillis()
+                + RepairLogger.repairLogSuffix);
+    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
+      for (int i = 0; i < 3; i++) {
+        logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
+        logger.recordCannotRepairFiles(mockRepairTimePartition);
+        logger.markEndOfRepairedTimePartition(mockRepairTimePartition);
+      }
+    }
+    RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
+    logParser.parse();
+    Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
+        logParser.getRepairedTimePartitionsWithCannotRepairFiles();
+    Assert.assertEquals(3, repairedTimePartitionsWithCannotRepairFiles.size());
   }
 
   @Test

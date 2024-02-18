@@ -39,21 +39,21 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
   @Override
   public AbstractCompactionTask take() throws InterruptedException {
     final ReentrantLock lock = this.lock;
-    lock.lockInterruptibly();
-    try {
-      while (true) {
+    while (true) {
+      lock.lockInterruptibly();
+      try {
         while (queue.isEmpty()) {
           notEmpty.await();
         }
         AbstractCompactionTask task = pollExecutableTask();
-        if (task == null) {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-          continue;
+        // task == null indicates that there is no runnable task now
+        if (task != null) {
+          return task;
         }
-        return task;
+      } finally {
+        lock.unlock();
       }
-    } finally {
-      this.lock.unlock();
+      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
     }
   }
 
