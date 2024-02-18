@@ -121,7 +121,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           continue;
         }
 
-        exceptionHandler.handleExceptionStatus(
+        receiverStatusHandler.handleReceiverStatus(
             resp.getStatus(),
             String.format(
                 "Transfer snapshot %s error, result status %s.", snapshot, resp.getStatus()),
@@ -145,7 +145,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           e);
     }
 
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
         String.format("Seal file %s error, result status %s.", snapshot, resp.getStatus()),
         snapshot.toString());

@@ -64,7 +64,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSyncSslConnector {
           e);
     }
     final TSStatus status = resp.getStatus();
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
             "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",

@@ -52,9 +52,9 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int dataRegionId) {
+  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int regionId) {
     this.pendingQueue = pendingQueue;
-    this.regionId = dataRegionId;
+    this.regionId = regionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 

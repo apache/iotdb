@@ -190,7 +190,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
           e);
     }
 
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
         String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
         tabletBatchBuilder.deepCopyEvents().toString());
@@ -236,7 +236,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
             "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
@@ -273,7 +273,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
             "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
@@ -334,7 +334,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
           continue;
         }
 
-        exceptionHandler.handleExceptionStatus(
+        receiverStatusHandler.handleReceiverStatus(
             resp.getStatus(),
             String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()),
             tsFile.getName());
@@ -355,7 +355,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
           String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
     }
 
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
         String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
         tsFile.getName());

@@ -108,8 +108,8 @@ public class PipeTransferTsFileInsertionEventHandler
     if (isSealSignalSent.get()) {
       try {
         connector
-            .getExceptionHandler()
-            .handleExceptionStatusWithLaterRetry(
+            .getReceiverStatusHandler()
+            .handleReceiverStatusWithLaterExceptionRetry(
                 response.getStatus(),
                 String.format(
                     "Seal file %s error, result status %s.", tsFile, response.getStatus()),
@@ -156,8 +156,8 @@ public class PipeTransferTsFileInsertionEventHandler
         LOGGER.info("Redirect file position to {}.", position);
       } else {
         connector
-            .getExceptionHandler()
-            .handleExceptionStatusWithLaterRetry(
+            .getReceiverStatusHandler()
+            .handleReceiverStatusWithLaterExceptionRetry(
                 response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
       }
 

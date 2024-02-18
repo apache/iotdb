@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.task.subtask;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
@@ -130,7 +129,7 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     // because the upper layer relies on this to stop all the related pipe tasks
     // Other exceptions may cause the subtask to stop forever and can not be restarted
     super.onFailure(
-        throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
+        throwable instanceof PipeRuntimeConnectorCriticalException
             ? throwable
             : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }

@@ -73,7 +73,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected boolean isTabletBatchModeEnabled = true;
 
-  protected PipeReceiverStatusHandler exceptionHandler;
+  protected PipeReceiverStatusHandler receiverStatusHandler;
 
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";
@@ -121,7 +121,7 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
 
-    exceptionHandler =
+    receiverStatusHandler =
         new PipeReceiverStatusHandler(
             parameters
                 .getStringOrDefault(
@@ -223,7 +223,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
-  public PipeReceiverStatusHandler getExceptionHandler() {
-    return exceptionHandler;
+  public PipeReceiverStatusHandler getReceiverStatusHandler() {
+    return receiverStatusHandler;
   }
 }

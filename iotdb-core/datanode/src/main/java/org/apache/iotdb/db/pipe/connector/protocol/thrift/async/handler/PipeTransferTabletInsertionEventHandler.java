@@ -74,8 +74,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     final TSStatus status = response.getStatus();
     try {
       connector
-          .getExceptionHandler()
-          .handleExceptionStatusWithLaterRetry(
+          .getReceiverStatusHandler()
+          .handleReceiverStatusWithLaterExceptionRetry(
               response.getStatus(), response.getStatus().getMessage(), event.toString());
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)

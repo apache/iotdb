@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -59,14 +60,14 @@ public class PipeReceiverStatusHandler {
   /**
    * Handle {@link TSStatus} returned by receiver. Do nothing if ignore the {@link Event}, and throw
    * exception if retry the {@link Event}. This method does not implement the retry logic and caller
-   * should retry later by invoking {@link PipeReceiverStatusHandler#handleExceptionStatus(TSStatus,
+   * should retry later by invoking {@link PipeReceiverStatusHandler#handleReceiverStatus(TSStatus,
    * String, String)}. It is also thread-safe since it only reads from class variables.
    *
    * @throws PipeException to retry the current event
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
    */
-  public void handleExceptionStatusWithLaterRetry(
+  public void handleReceiverStatusWithLaterExceptionRetry(
       TSStatus status, String exceptionMessage, String recordMessage) {
     switch (status.getCode()) {
         // SUCCESS_STATUS
@@ -79,13 +80,13 @@ public class PipeReceiverStatusHandler {
         return;
         // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
       case 1808:
-        throw new PipeException(exceptionMessage);
+        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
         // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1810:
         if (isAllowConflictRetry) {
           LOGGER.warn(
               "User conflict exception status in pipe transfer, will retry. status: {}", status);
-          throw new PipeException(exceptionMessage);
+          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
         }
         if (conflictRecordIgnoredData) {
           LOGGER.warn(
@@ -95,7 +96,7 @@ public class PipeReceiverStatusHandler {
         // Other exceptions
       default:
         LOGGER.warn("Unclassified exception in pipe transfer, will retry. status: {}", status);
-        throw new PipeException(exceptionMessage);
+        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
     }
   }
 
@@ -111,8 +112,7 @@ public class PipeReceiverStatusHandler {
    *     that the same {@link Event} generates always the same record message, for instance, do not
    *     put any time-related info here
    */
-  public void handleExceptionStatus(
-      TSStatus status, String exceptionMessage, String recordMessage) {
+  public void handleReceiverStatus(TSStatus status, String exceptionMessage, String recordMessage) {
     // Reset the time counter if the event changes
     if (!lastRecordMessage.equals(recordMessage)) {
       firstEncounterTime = 0;
@@ -134,7 +134,7 @@ public class PipeReceiverStatusHandler {
         LOGGER.info(
             "Temporary unavailable exception in pipe transfer, will retry forever. status: {}",
             status);
-        throw new PipeException(exceptionMessage);
+        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
         // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
       case 1810:
         if (firstEncounterTime == 0 && isAllowConflictRetry) {
@@ -176,7 +176,7 @@ public class PipeReceiverStatusHandler {
           firstEncounterTime = 0;
           return;
         }
-        throw new PipeException(exceptionMessage);
+        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
     }
   }
 }
