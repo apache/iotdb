@@ -23,13 +23,9 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-<<<<<<< HEAD
-=======
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -54,15 +50,11 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-<<<<<<< HEAD
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int regionId) {
-=======
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int dataRegionId) {
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
     this.pendingQueue = pendingQueue;
-    this.regionId = regionId;
+    this.regionId = dataRegionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 

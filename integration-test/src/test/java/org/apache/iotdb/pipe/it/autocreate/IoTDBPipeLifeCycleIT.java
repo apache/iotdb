@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -463,8 +464,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
+    Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
 
     try (SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -527,16 +528,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
               });
       t.start();
 
-<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/pipe/it/autocreate/IoTDBPipeLifeCycleIT.java
-      try {
-        TestUtils.restartCluster(receiverEnv, 10);
-      } catch (Exception e) {
-        e.printStackTrace();
-        return;
-      }
-=======
-      Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179:integration-test/src/test/java/org/apache/iotdb/pipe/it/IoTDBPipeLifeCycleIT.java
+      Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
       t.join();
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -609,141 +601,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/pipe/it/autocreate/IoTDBPipeLifeCycleIT.java
-=======
-  public void testDoubleLiving() throws Exception {
-    // Double living is two clusters with pipes connecting each other.
-    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    String senderIp = senderDataNode.getIp();
-    int senderPort = senderDataNode.getPort();
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
-
-    for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
-
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
-
-      // add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-    }
-    for (int i = 100; i < 200; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-
-    for (int i = 200; i < 300; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
-
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
-
-      // add this property to avoid to make self cycle.
-      connectorAttributes.put("source.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", senderIp);
-      connectorAttributes.put("connector.port", Integer.toString(senderPort));
-
-      TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-    }
-    for (int i = 300; i < 400; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-
-    Set<String> expectedResSet = new HashSet<>();
-    for (int i = 0; i < 400; ++i) {
-      expectedResSet.add(i + ",1.0,");
-    }
-
-    TestUtils.assertDataOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
-
-    for (int i = 400; i < 500; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-      return;
-    }
-    for (int i = 500; i < 600; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i))) {
-        return;
-      }
-    }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
-      return;
-    }
-
-    for (int i = 400; i < 600; ++i) {
-      expectedResSet.add(i + ",1.0,");
-    }
-    TestUtils.assertDataOnEnv(
-        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-    TestUtils.assertDataOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
-  }
-
-  @Test
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179:integration-test/src/test/java/org/apache/iotdb/pipe/it/IoTDBPipeLifeCycleIT.java
   public void testPermission() {
     createUser(senderEnv, "test", "test123");
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,11 +32,8 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftS
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-<<<<<<< HEAD
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
-=======
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -125,25 +121,6 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
       return;
     }
 
-<<<<<<< HEAD
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                .parseEventWithPatternOrTime());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(
-            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
-      }
-      return;
-    } else {
-      // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-          && ((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-        return;
-      }
-    }
-
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         doTransfer();
@@ -153,19 +130,6 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
         doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-=======
-    try {
-      if (isTabletBatchModeEnabled) {
-        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
-          doTransfer();
-        }
-      } else {
-        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-        } else {
-          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-        }
->>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
       }
     }
   }
