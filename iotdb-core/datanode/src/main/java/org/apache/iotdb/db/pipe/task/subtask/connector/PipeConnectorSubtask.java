@@ -169,7 +169,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
                 taskID,
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
-                    : lastEvent,
+                    : lastEvent.toString(),
                 ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
