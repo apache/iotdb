@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -329,11 +330,88 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   private void restartStuckPipe(PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
     final long startTime = System.currentTimeMillis();
-    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
+    handleStopPipeForStuckRestart(
+        pipeMeta.getStaticMeta().getPipeName(), pipeMeta.getStaticMeta().getCreationTime());
     handleSinglePipeMetaChangesInternal(pipeMeta);
     LOGGER.warn(
         "Pipe {} was restarted because of stuck, time cost: {} ms.",
         pipeMeta.getStaticMeta(),
+        System.currentTimeMillis() - startTime);
+  }
+
+  protected void handleStopPipeForStuckRestart(String pipeName, long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (!checkBeforeStopPipe(pipeMeta, pipeName, creationTime)) {
+      LOGGER.info(
+          "Stop Pipe: Pipe {} has already been dropped or has not been created. Skip stopping.",
+          pipeName);
+      return;
+    }
+
+    // Get pipe tasks
+    final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+
+    final long startTime = System.currentTimeMillis();
+    Set<Integer> existedRegionId = new HashSet<>(pipeTasks.keySet());
+
+    // Get data region tasks
+    final Set<PipeTask> removedPipeTasks =
+        existedRegionId.stream()
+            .filter(
+                regionId ->
+                    StorageEngine.getInstance()
+                        .getAllDataRegionIds()
+                        .contains(new DataRegionId(regionId)))
+            .map(regionId -> pipeTaskManager.removePipeTask(pipeMeta.getStaticMeta(), regionId))
+            .collect(Collectors.toSet());
+
+    // Drop data region tasks
+    removedPipeTasks.parallelStream().forEach(PipeTask::drop);
+
+    // Stop schema region tasks
+    pipeTaskManager
+        .getPipeTasks(pipeMeta.getStaticMeta())
+        .values()
+        .parallelStream()
+        .forEach(PipeTask::stop);
+
+    // Re-create data region tasks
+    removedPipeTasks
+        .parallelStream()
+        .forEach(
+            pipeTask -> {
+              PipeTask newPipeTask =
+                  new PipeDataNodeTaskBuilder(
+                          pipeMeta.getStaticMeta(),
+                          ((PipeDataNodeTask) pipeTask).getRegionId(),
+                          pipeMeta
+                              .getRuntimeMeta()
+                              .getConsensusGroupId2TaskMetaMap()
+                              .get(((PipeDataNodeTask) pipeTask).getRegionId()))
+                      .build();
+              newPipeTask.create();
+              pipeTaskManager.addPipeTask(
+                  pipeMeta.getStaticMeta(),
+                  ((PipeDataNodeTask) pipeTask).getRegionId(),
+                  newPipeTask);
+            });
+
+    // Set pipe meta status to STOPPED
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
         System.currentTimeMillis() - startTime);
   }
 }

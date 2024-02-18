@@ -34,6 +34,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeMetaDeSerTest {
 
@@ -66,7 +67,7 @@ public class PipeMetaDeSerTest {
 
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap<Integer, PipeTaskMeta>() {
+            new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
                 put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));

@@ -110,7 +110,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
           e);
     }
     final TSStatus status = resp.getStatus();
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
             "Transfer PipeWriteConfigPlanEvent %s error, result status %s",
@@ -167,7 +167,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
           continue;
         }
 
-        exceptionHandler.handleExceptionStatus(
+        receiverStatusHandler.handleReceiverStatus(
             resp.getStatus(),
             String.format(
                 "Transfer snapshot %s error, result status %s.", snapshot, resp.getStatus()),
@@ -192,7 +192,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
           e);
     }
 
-    exceptionHandler.handleExceptionStatus(
+    receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
         String.format("Seal snapshot file %s error, result status %s.", snapshot, resp.getStatus()),
         snapshot.toString());

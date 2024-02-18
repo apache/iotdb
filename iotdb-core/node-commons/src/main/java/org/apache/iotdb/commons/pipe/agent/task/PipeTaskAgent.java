@@ -569,7 +569,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Get pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(

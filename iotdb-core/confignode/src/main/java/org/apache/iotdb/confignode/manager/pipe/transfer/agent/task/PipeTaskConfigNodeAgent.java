@@ -32,9 +32,13 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 
 public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskConfigNodeAgent.class);
 
   @Override
   protected boolean isShutdown() {

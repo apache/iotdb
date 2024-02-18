@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class PipeTableRespTest {
 
@@ -53,7 +55,7 @@ public class PipeTableRespTest {
     connectorAttributes.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<Integer, PipeTaskMeta> pipeTasks = new HashMap<>();
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
@@ -73,7 +75,7 @@ public class PipeTableRespTest {
     connectorAttributes1.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<Integer, PipeTaskMeta> pipeTasks1 = new HashMap<>();
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
     pipeTasks1.put(1, pipeTaskMeta1);
     PipeStaticMeta pipeStaticMeta1 =
         new PipeStaticMeta(
@@ -93,7 +95,7 @@ public class PipeTableRespTest {
     connectorAttributes2.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<Integer, PipeTaskMeta> pipeTasks2 = new HashMap<>();
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks2 = new ConcurrentHashMap<>();
     pipeTasks2.put(1, pipeTaskMeta2);
     PipeStaticMeta pipeStaticMeta2 =
         new PipeStaticMeta(

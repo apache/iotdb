@@ -29,12 +29,13 @@ public class PipeTaskManager {
   private final Map<PipeStaticMeta, Map<Integer, PipeTask>> pipeMap = new HashMap<>();
 
   /**
-   * Leader region count in this node. We simply update it when adding pipe task but not remove it
-   * when removing pipe task. So it may be larger than the actual leader region count in this node.
+   * Leader region count in this node. We simply update it when adding {@link PipeTask} but not
+   * remove it when removing {@link PipeTask}. So it may be larger than the actual leader region
+   * count in this node.
    */
   private volatile int leaderRegionCount = 0;
 
-  /** Add pipe task by pipe static meta and consensus group id. */
+  /** Add {@link PipeTask} by {@link PipeStaticMeta} and consensus group id. */
   public synchronized void addPipeTask(
       PipeStaticMeta pipeStaticMeta, int consensusGroupId, PipeTask pipeTask) {
     final Map<Integer, PipeTask> regionId2PipeTask =
@@ -45,7 +46,7 @@ public class PipeTaskManager {
     leaderRegionCount = Math.max(leaderRegionCount, regionId2PipeTask.size());
   }
 
-  /** Add pipe tasks by pipe static meta. */
+  /** Add {@link PipeTask}s by {@link PipeStaticMeta}. */
   public synchronized void addPipeTasks(
       PipeStaticMeta pipeStaticMeta, Map<Integer, PipeTask> pipeTasks) {
     final Map<Integer, PipeTask> regionId2PipeTask =
@@ -57,11 +58,11 @@ public class PipeTaskManager {
   }
 
   /**
-   * Remove pipe task by pipe static meta and consensus group id.
+   * Remove {@link PipeTask} by {@link PipeStaticMeta} and consensus group id.
    *
-   * @param pipeStaticMeta pipe static meta
+   * @param pipeStaticMeta {@link PipeStaticMeta}
    * @param consensusGroupId consensus group id
-   * @return pipe task if exists, null otherwise
+   * @return {@link PipeTask} if exists, {@code null} otherwise
    */
   public synchronized PipeTask removePipeTask(PipeStaticMeta pipeStaticMeta, int consensusGroupId) {
     Map<Integer, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
@@ -72,21 +73,21 @@ public class PipeTaskManager {
   }
 
   /**
-   * Remove pipe tasks by pipe static meta.
+   * Remove {@link PipeTask}s by {@link PipeStaticMeta}.
    *
-   * @param pipeStaticMeta pipe static meta
-   * @return pipe tasks if exists, null otherwise
+   * @param pipeStaticMeta {@link PipeStaticMeta}
+   * @return {@link PipeTask}s if exists, {@code null} otherwise
    */
   public synchronized Map<Integer, PipeTask> removePipeTasks(PipeStaticMeta pipeStaticMeta) {
     return pipeMap.remove(pipeStaticMeta);
   }
 
   /**
-   * Get pipe task by pipe static meta and consensus group id.
+   * Get {@link PipeTask} by {@link PipeStaticMeta} and consensus group id.
    *
-   * @param pipeStaticMeta pipe static meta
+   * @param pipeStaticMeta {@link PipeStaticMeta}
    * @param consensusGroupId consensus group id
-   * @return pipe task if exists, null otherwise
+   * @return {@link PipeTask} if exists, {@code null} otherwise
    */
   public synchronized PipeTask getPipeTask(PipeStaticMeta pipeStaticMeta, int consensusGroupId) {
     Map<Integer, PipeTask> consensusGroupIdPipeTaskMap = pipeMap.get(pipeStaticMeta);
@@ -97,10 +98,10 @@ public class PipeTaskManager {
   }
 
   /**
-   * Get pipe tasks by pipe static meta.
+   * Get {@link PipeTask}s by {@link PipeStaticMeta}.
    *
-   * @param pipeStaticMeta pipe static meta
-   * @return pipe tasks if exists, null otherwise
+   * @param pipeStaticMeta {@link PipeStaticMeta}
+   * @return {@link PipeTask}s if exists, {@code null} otherwise
    */
   public synchronized Map<Integer, PipeTask> getPipeTasks(PipeStaticMeta pipeStaticMeta) {
     return pipeMap.get(pipeStaticMeta);

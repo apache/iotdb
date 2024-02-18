@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -34,7 +33,6 @@ import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -154,7 +152,7 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
       outputPipeConnector.transfer(event);
 
       releaseLastEvent(true);
-    } catch (PipeConnectionException | PipeRuntimeConnectorRetryTimesConfigurableException e) {
+    } catch (PipeException e) {
       if (!isClosed.get()) {
         throw e;
       } else {

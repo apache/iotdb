@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -93,13 +94,8 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
         "count(timeseries),",
         Collections.singleton(String.format("%d,", successCount)));
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
+    Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
 
     for (int i = 10; i < 20; ++i) {
       if (TestUtils.tryExecuteNonQueryWithRetry(
@@ -160,13 +156,8 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
       }
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
+    Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
 
     for (int i = 10; i < 20; ++i) {
       if (TestUtils.tryExecuteNonQueryWithRetry(
