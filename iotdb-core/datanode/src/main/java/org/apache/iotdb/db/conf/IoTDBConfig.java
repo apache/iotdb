@@ -172,6 +172,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of memtable memory for device path cache */
+  private double devicePathCacheProportion = 0.05;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -930,8 +933,6 @@ public class IoTDBConfig {
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 1000;
-
-  private int devicePathCacheSize = 500_000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -3039,14 +3040,6 @@ public class IoTDBConfig {
     this.partitionCacheSize = partitionCacheSize;
   }
 
-  public int getDevicePathCacheSize() {
-    return devicePathCacheSize;
-  }
-
-  public void setDevicePathCacheSize(int devicePathCacheSize) {
-    this.devicePathCacheSize = devicePathCacheSize;
-  }
-
   public int getAuthorCacheSize() {
     return authorCacheSize;
   }
@@ -3205,6 +3198,14 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getDevicePathCacheProportion() {
+    return devicePathCacheProportion;
+  }
+
+  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
+    this.devicePathCacheProportion = devicePathCacheProportion;
   }
 
   public static String getEnvironmentVariables() {

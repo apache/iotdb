@@ -133,4 +133,6 @@ public interface CommonConfig {
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
+
+  CommonConfig setWalMode(String walMode);
 }

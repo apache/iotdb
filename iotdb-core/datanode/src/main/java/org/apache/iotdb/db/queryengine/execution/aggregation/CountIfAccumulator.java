@@ -48,14 +48,15 @@ public class CountIfAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  public void addInput(Column[] columns, BitMap bitMap) {
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       // the input parameter 'bitMap' and 'lastIndex' effects on ControlColumn
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (column[1].isNull(i)) {
+      if (columns[1].isNull(i)) {
         if (!this.ignoreNull) {
           // data point segment was over, judge whether to count
           if (lastPointIsSatisfy && keepEvaluator.apply(keep)) {
@@ -65,7 +66,7 @@ public class CountIfAccumulator implements Accumulator {
           lastPointIsSatisfy = false;
         }
       } else {
-        if (column[1].getBoolean(i)) {
+        if (columns[1].getBoolean(i)) {
           keep++;
           lastPointIsSatisfy = true;
         } else {
