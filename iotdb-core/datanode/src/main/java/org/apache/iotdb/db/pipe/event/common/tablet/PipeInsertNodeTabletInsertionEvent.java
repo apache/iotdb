@@ -255,4 +255,13 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         + " - "
         + super.toString();
   }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
+            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe)
+        + " - "
+        + super.coreReportMessage();
+  }
 }

@@ -166,7 +166,11 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
         throw new PipeException(
             String.format(
                 "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+                taskID,
+                lastEvent instanceof EnrichedEvent
+                    ? ((EnrichedEvent) lastEvent).coreReportMessage()
+                    : lastEvent,
+                ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);

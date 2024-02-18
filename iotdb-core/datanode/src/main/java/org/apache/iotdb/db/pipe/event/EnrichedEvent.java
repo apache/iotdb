@@ -255,27 +255,50 @@ public abstract class EnrichedEvent implements Event {
     return "EnrichedEvent{"
         + "referenceCount="
         + referenceCount.get()
+        + '\''
         + ", pipeName='"
         + pipeName
         + '\''
         + ", pipeTaskMeta="
         + pipeTaskMeta
+        + '\''
         + ", committerKey='"
         + committerKey
         + '\''
         + ", commitId="
         + commitId
+        + '\''
         + ", pattern='"
         + pattern
         + '\''
         + ", startTime="
         + startTime
+        + '\''
         + ", endTime="
         + endTime
+        + '\''
         + ", isPatternParsed="
         + isPatternParsed
+        + '\''
         + ", isTimeParsed="
         + isTimeParsed
+        + '\''
+        + ", shouldReportOnCommit="
+        + shouldReportOnCommit
+        + '}';
+  }
+
+  public String coreReportMessage() {
+    return "EnrichedEvent{"
+        + "referenceCount="
+        + referenceCount.get()
+        + '\''
+        + ", pipeName='"
+        + pipeName
+        + '\''
+        + ", committerKey='"
+        + committerKey
+        + '\''
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
         + '}';
