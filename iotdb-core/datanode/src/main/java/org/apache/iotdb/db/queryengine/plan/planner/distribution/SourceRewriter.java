@@ -236,23 +236,17 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitAggregationMergeSort(
       AggregationMergeSortNode node, DistributionPlanContext context) {
+    // TODO what's the meaning of newRoot
     AggregationMergeSortNode newRoot =
         new AggregationMergeSortNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getMergeOrderParameter(),
             node.getOutputColumnNames(),
             node.getDeviceToMeasurementIndexesMap());
-    for (int i = 0; i < node.getDevices().size(); i++) {
+    for (int i = 0; i < node.getChildren().size(); i++) {
       List<PlanNode> rewroteNode = rewrite(node.getChildren().get(i), context);
       for (PlanNode planNode : rewroteNode) {
-        if (planNode instanceof AggregationNode) {
-          // if children of AggregationNode can only be AggScanNode?
-          for (PlanNode aggScanNode : planNode.getChildren()) {
-            newRoot.addChildDeviceNode(node.getDevices().get(i), aggScanNode);
-          }
-        } else {
-          newRoot.addChildDeviceNode(node.getDevices().get(i), planNode);
-        }
+        newRoot.addChild(planNode);
       }
     }
     return Collections.singletonList(newRoot);

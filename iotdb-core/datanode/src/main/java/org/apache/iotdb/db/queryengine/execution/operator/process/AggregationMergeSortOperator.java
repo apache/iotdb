@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,173 +21,228 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-/**
- * Since devices have been sorted by the merge order as expected, what {@link
- * AggregationMergeSortOperator} need to do is traversing the device child operators, get all
- * tsBlocks of one device and transform it to the form we need, adding the device column and
- * allocating value column to its expected location, then get the next device operator until no next
- * device.
- *
- * <p>The deviceOperators can be aggregationSeriesScanOperator, imeJoinOperator or
- * seriesScanOperator that have not transformed the result form.
- *
- * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
- * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
- * with NullColumn.
- */
-public class AggregationMergeSortOperator implements ProcessOperator {
+import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-  private final OperatorContext operatorContext;
-  // The size devices and deviceOperators should be the same.
-  private final List<String> devices;
-  private final List<Operator> deviceOperators;
-  // Used to fill columns and leave null columns which doesn't exist in some devices.
-  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
-  // not 0 because device is the first column
-  private final List<List<Integer>> deviceColumnIndex;
-  // Column dataTypes that includes device column
+public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
+
   private final List<TSDataType> dataTypes;
+  private final TsBlockBuilder tsBlockBuilder;
+  private final boolean[] noMoreTsBlocks;
+  private final MergeSortHeap mergeSortHeap;
+  private final Comparator<SortKey> comparator;
 
-  private int deviceIndex;
+  private boolean finished;
 
   public AggregationMergeSortOperator(
       OperatorContext operatorContext,
-      List<String> devices,
-      List<Operator> deviceOperators,
-      List<List<Integer>> deviceColumnIndex,
-      List<TSDataType> dataTypes) {
-    this.operatorContext = operatorContext;
-    this.devices = devices;
-    this.deviceOperators = deviceOperators;
-    this.deviceColumnIndex = deviceColumnIndex;
+      List<Operator> inputOperators,
+      List<TSDataType> dataTypes,
+      Comparator<SortKey> comparator) {
+    super(operatorContext, inputOperators);
     this.dataTypes = dataTypes;
-
-    this.deviceIndex = 0;
-  }
-
-  private Operator getCurDeviceOperator() {
-    return deviceOperators.get(deviceIndex);
-  }
-
-  private List<Integer> getCurDeviceIndexes() {
-    return deviceColumnIndex.get(deviceIndex);
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
+    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
+    this.comparator = comparator;
+    this.noMoreTsBlocks = new boolean[inputOperatorsCount];
+    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (deviceIndex >= deviceOperators.size()) {
-      return NOT_BLOCKED;
-    }
-    ListenableFuture<?> blocked = getCurDeviceOperator().isBlocked();
-    if (!blocked.isDone()) {
-      return blocked;
-    }
-    return NOT_BLOCKED;
-  }
-
-  @Override
-  public TsBlock next() throws Exception {
-    if (!getCurDeviceOperator().hasNextWithTimer()) {
-      // close finished child
-      getCurDeviceOperator().close();
-      deviceOperators.set(deviceIndex, null);
-      // increment index, move to next child
-      deviceIndex++;
-      return null;
-    }
-
-    boolean deviceView =
-        getCurDeviceOperator() instanceof DeviceViewOperator
-            || getCurDeviceOperator() instanceof ExchangeOperator;
-
-    TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
-    if (tsBlock == null) {
-      return null;
-    }
-    List<Integer> indexes = getCurDeviceIndexes();
-
-    // fill existing columns
-    Column[] newValueColumns = new Column[dataTypes.size()];
-    for (int i = 0; i < indexes.size(); i++) {
-      newValueColumns[indexes.get(i)] = tsBlock.getColumn(deviceView ? i + 1 : i);
-    }
-    // construct device column
-    ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeBinary(tsBlock.getColumn(0).getBinary(0));
-    newValueColumns[0] =
-        new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
-    // construct other null columns
-    for (int i = 0; i < dataTypes.size(); i++) {
-      if (newValueColumns[i] == null) {
-        newValueColumns[i] = NullColumn.create(dataTypes.get(i), tsBlock.getPositionCount());
+    boolean hasReadyChild = false;
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      ListenableFuture<?> blocked = children.get(i).isBlocked();
+      if (blocked.isDone()) {
+        hasReadyChild = true;
+        canCallNext[i] = true;
+      } else {
+        listenableFutures.add(blocked);
       }
     }
-    return new TsBlock(tsBlock.getPositionCount(), tsBlock.getTimeColumn(), newValueColumns);
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
+  }
+
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
+  @Override
+  public TsBlock next() throws Exception {
+    // start stopwatch
+    long startTime = System.nanoTime();
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
+    // 1. fill consumed up TsBlock
+    if (!prepareInput()) {
+      return null;
+    }
+
+    // 2. check if we can directly return the original TsBlock instead of merging way
+    MergeSortKey minMergeSortKey = mergeSortHeap.poll();
+    if (mergeSortHeap.isEmpty()
+        || comparator.compare(
+                new MergeSortKey(
+                    minMergeSortKey.tsBlock, minMergeSortKey.tsBlock.getPositionCount() - 1),
+                mergeSortHeap.peek())
+            < 0) {
+      inputTsBlocks[minMergeSortKey.inputChannelIndex] = null;
+      return minMergeSortKey.rowIndex == 0
+          ? minMergeSortKey.tsBlock
+          : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
+    }
+    mergeSortHeap.push(minMergeSortKey);
+
+    // 3. do merge sort until one TsBlock is consumed up
+    tsBlockBuilder.reset();
+    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    while (!mergeSortHeap.isEmpty()) {
+      MergeSortKey mergeSortKey = mergeSortHeap.poll();
+      TsBlock targetBlock = mergeSortKey.tsBlock;
+      int rowIndex = mergeSortKey.rowIndex;
+      timeBuilder.writeLong(targetBlock.getTimeByIndex(rowIndex));
+      for (int i = 0; i < valueColumnBuilders.length; i++) {
+        if (targetBlock.getColumn(i).isNull(rowIndex)) {
+          valueColumnBuilders[i].appendNull();
+          continue;
+        }
+        valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
+      }
+      tsBlockBuilder.declarePosition();
+      if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
+        inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
+        break;
+      } else {
+        mergeSortKey.rowIndex++;
+        mergeSortHeap.push(mergeSortKey);
+      }
+      // break if time is out or tsBlockBuilder is full
+      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
+        break;
+      }
+    }
+    return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return deviceIndex < deviceOperators.size();
-  }
-
-  @Override
-  public void close() throws Exception {
-    for (int i = deviceIndex, n = deviceOperators.size(); i < n; i++) {
-      Operator currentChild = deviceOperators.get(i);
-      if (currentChild != null) {
-        deviceOperators.get(i).close();
+    if (finished) {
+      return false;
+    }
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!isEmpty(i)) {
+        return true;
+      } else if (!noMoreTsBlocks[i]) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
+          return true;
+        } else {
+          children.get(i).close();
+          children.set(i, null);
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+        }
       }
     }
+    return false;
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return !this.hasNextWithTimer();
+    if (finished) {
+      return true;
+    }
+    finished = true;
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!noMoreTsBlocks[i] || !isEmpty(i)) {
+        finished = false;
+        break;
+      }
+    }
+    return finished;
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext();
-    for (Operator child : deviceOperators) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+    // MergeToolKit will cache startKey and endKey
+    long maxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    // inputTsBlocks will cache all the tsBlocks returned by inputOperators
+    for (Operator operator : children) {
+      maxPeekMemory += operator.calculateMaxReturnSize();
+      maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
     }
-    return maxPeekMemory;
+    for (Operator operator : children) {
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, calculateMaxReturnSize());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    // null columns would be filled, so return size equals to
-    // (numberOfValueColumns(dataTypes.size() - 1) + 1(timeColumn)) * columnSize + deviceColumnSize
-    // size of device name column is ignored
-    return (long) (dataTypes.size())
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return (1L + dataTypes.size()) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long max = 0;
-    for (Operator operator : deviceOperators) {
-      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : children) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
     }
-    return max;
+    return currentRetainedSize - minChildReturnSize;
   }
+
+  // region helper function used in prepareInput
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @return true if we can skip the currentChild in prepareInput
+   */
+  @Override
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return noMoreTsBlocks[currentChildIndex]
+        || !isEmpty(currentChildIndex)
+        || children.get(currentChildIndex) == null;
+  }
+
+  /** @param currentInputIndex index of the input TsBlock */
+  @Override
+  protected void processCurrentInputTsBlock(int currentInputIndex) {
+    mergeSortHeap.push(new MergeSortKey(inputTsBlocks[currentInputIndex], 0, currentInputIndex));
+  }
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @throws Exception Potential Exception thrown by Operator.close()
+   */
+  @Override
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    noMoreTsBlocks[currentChildIndex] = true;
+    inputTsBlocks[currentChildIndex] = null;
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
+  }
+
+  // endregion
 }

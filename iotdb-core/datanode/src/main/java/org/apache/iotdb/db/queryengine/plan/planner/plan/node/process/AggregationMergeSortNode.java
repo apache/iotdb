@@ -37,42 +37,67 @@ import java.util.Objects;
 
 public class AggregationMergeSortNode extends MultiChildProcessNode {
 
-  // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first SortItem in this list has higher priority.
-  protected final OrderByParameter mergeOrderParameter;
+  private final OrderByParameter mergeOrderParameter;
 
-  // The size devices and children should be the same.
-  protected final List<String> devices = new ArrayList<>();
-
-  // Device column and measurement columns in result output
-  protected final List<String> outputColumnNames;
+  private final List<String> outputColumns;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public AggregationMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
-      List<String> outputColumnNames,
+      List<String> outputColumns,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumnNames = outputColumnNames;
+    this.outputColumns = outputColumns;
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
   public AggregationMergeSortNode(
       PlanNodeId id,
+      List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
-      List<String> outputColumnNames,
-      List<String> devices,
+      List<String> outputColumns,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    super(id);
+    super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumnNames = outputColumnNames;
-    this.devices.addAll(devices);
+    this.outputColumns = outputColumns;
     this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+  }
+
+  public OrderByParameter getMergeOrderParameter() {
+    return mergeOrderParameter;
+  }
+
+  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
+    return deviceToMeasurementIndexesMap;
+  }
+
+  @Override
+  public PlanNode clone() {
+    return new AggregationMergeSortNode(
+        getPlanNodeId(),
+        getMergeOrderParameter(),
+        outputColumns,
+        getDeviceToMeasurementIndexesMap());
+  }
+
+  @Override
+  public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+    return new AggregationMergeSortNode(
+        new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
+        new ArrayList<>(children.subList(startIndex, endIndex)),
+        getMergeOrderParameter(),
+        outputColumns,
+        getDeviceToMeasurementIndexesMap());
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return outputColumns;
   }
 
   @Override
@@ -81,64 +106,12 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
   }
 
   @Override
-  public PlanNode clone() {
-    return new AggregationMergeSortNode(
-        getPlanNodeId(),
-        mergeOrderParameter,
-        outputColumnNames,
-        devices,
-        deviceToMeasurementIndexesMap);
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return outputColumnNames;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    AggregationMergeSortNode that = (AggregationMergeSortNode) o;
-    return mergeOrderParameter.equals(that.mergeOrderParameter)
-        && devices.equals(that.devices)
-        && outputColumnNames.equals(that.outputColumnNames)
-        && deviceToMeasurementIndexesMap.equals(that.deviceToMeasurementIndexesMap);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        super.hashCode(),
-        mergeOrderParameter,
-        devices,
-        outputColumnNames,
-        deviceToMeasurementIndexesMap);
-  }
-
-  @Override
-  public String toString() {
-    return "AggMergeSort-" + this.getPlanNodeId();
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.AGG_MERGE_SORT.serialize(byteBuffer);
     mergeOrderParameter.serializeAttributes(byteBuffer);
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String column : outputColumnNames) {
+    ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
+    for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, byteBuffer);
-    }
-    ReadWriteIOUtils.write(devices.size(), byteBuffer);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, byteBuffer);
     }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), byteBuffer);
     for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
@@ -154,13 +127,9 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.AGG_MERGE_SORT.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
-    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
-    for (String column : outputColumnNames) {
+    ReadWriteIOUtils.write(outputColumns.size(), stream);
+    for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, stream);
-    }
-    ReadWriteIOUtils.write(devices.size(), stream);
-    for (String deviceName : devices) {
-      ReadWriteIOUtils.write(deviceName, stream);
     }
     ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
     for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
@@ -173,18 +142,12 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
   }
 
   public static AggregationMergeSortNode deserialize(ByteBuffer byteBuffer) {
-    OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
+    OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
+    List<String> outputColumns = new ArrayList<>();
     while (columnSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
-    }
-    int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> devices = new ArrayList<>();
-    while (devicesSize > 0) {
-      devices.add(ReadWriteIOUtils.readString(byteBuffer));
-      devicesSize--;
     }
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
@@ -201,23 +164,31 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AggregationMergeSortNode(
-        planNodeId, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+        planNodeId, orderByParameter, outputColumns, deviceToMeasurementIndexesMap);
   }
 
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.devices.add(deviceName);
-    this.children.add(childNode);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    AggregationMergeSortNode that = (AggregationMergeSortNode) o;
+    return Objects.equals(mergeOrderParameter, that.getMergeOrderParameter());
   }
 
-  public List<String> getDevices() {
-    return devices;
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), mergeOrderParameter);
   }
 
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
-  }
-
-  public OrderByParameter getMergeOrderParameter() {
-    return mergeOrderParameter;
+  @Override
+  public String toString() {
+    return "AggregationMergeSort-" + this.getPlanNodeId();
   }
 }

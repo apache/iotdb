@@ -507,6 +507,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return newNode;
   }
 
+  // TODO the impl of this method is not clear
   private PlanNode processAggMergeSortNode(
       MultiChildProcessNode node,
       List<PlanNode> visitedChildren,
@@ -514,11 +515,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       MultiChildProcessNode newNode,
       TRegionReplicaSet dataRegion) {
     AggregationMergeSortNode aggMergeSortNode = (AggregationMergeSortNode) node;
-    Map<TRegionReplicaSet, DeviceViewNode> regionTopKNodeMap = new HashMap<>();
+    Map<TRegionReplicaSet, DeviceViewNode> regionAggMergeNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
       DeviceViewNode deviceViewNode =
-          regionTopKNodeMap.computeIfAbsent(
+          regionAggMergeNodeMap.computeIfAbsent(
               region,
               k -> {
                 DeviceViewNode childDeviceViewNode =
@@ -539,7 +540,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       deviceViewNode.addChildDeviceNode(device, child);
     }
 
-    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionTopKNodeMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionAggMergeNodeMap.entrySet()) {
       TRegionReplicaSet deviceViewNodeLocatedRegion = entry.getKey();
       DeviceViewNode deviceViewNode = entry.getValue();
 
@@ -564,6 +565,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     } else if (child instanceof AlignedSeriesAggregationScanNode) {
       device = ((AlignedSeriesAggregationScanNode) child).getAlignedPath().getDevice();
     } else {
+      // TODO can be other Node?
       throw new UnsupportedOperationException(
           String.format("Unsupported child node of AggMergeSortNode, node: %s", child.getClass()));
     }

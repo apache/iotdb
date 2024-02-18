@@ -806,7 +806,6 @@ public class LogicalPlanBuilder {
             valueFilterLimit);
       } else {
         // has order by expression, use TopKNode + DeviceViewNode
-
         topKNode.addChild(
             addDeviceViewNode(
                 orderByParameter,
@@ -837,8 +836,8 @@ public class LogicalPlanBuilder {
             addAggMergeSortNode(
                 orderByParameter,
                 outputColumnNames,
-                deviceToMeasurementIndexesMap,
                 deviceNameToSourceNodesMap,
+                deviceToMeasurementIndexesMap,
                 -1);
       } else {
         this.root =
@@ -953,8 +952,8 @@ public class LogicalPlanBuilder {
   private MultiChildProcessNode addAggMergeSortNode(
       OrderByParameter orderByParameter,
       List<String> outputColumnNames,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       long valueFilterLimit) {
     AggregationMergeSortNode aggMergeSortNode =
         new AggregationMergeSortNode(
@@ -964,14 +963,14 @@ public class LogicalPlanBuilder {
             deviceToMeasurementIndexesMap);
 
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();
       if (valueFilterLimit > 0) {
+        // TODO test this situation
         LimitNode limitNode =
             new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
-        aggMergeSortNode.addChildDeviceNode(deviceName, limitNode);
+        aggMergeSortNode.addChild(limitNode);
       } else {
-        aggMergeSortNode.addChildDeviceNode(deviceName, subPlan);
+        aggMergeSortNode.addChild(subPlan);
       }
     }
     return aggMergeSortNode;

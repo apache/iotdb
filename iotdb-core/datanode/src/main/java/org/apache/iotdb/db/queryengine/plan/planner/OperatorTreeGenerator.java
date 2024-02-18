@@ -833,16 +833,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DeviceViewOperator.class.getSimpleName());
-    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    List<List<Integer>> deviceColumnIndex =
-        node.getDevices().stream()
-            .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
-            .collect(Collectors.toList());
-    List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+                MergeSortOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    context.setCachedDataTypes(dataTypes);
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
 
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
     return new AggregationMergeSortOperator(
-        operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
+        operatorContext,
+        children,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override
