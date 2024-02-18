@@ -86,10 +86,11 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   /** Used for create a new repair schedule task */
-  public UnsortedFileRepairTaskScheduler(List<DataRegion> dataRegions, boolean isRecoverIoTDB) {
+  public UnsortedFileRepairTaskScheduler(
+      List<DataRegion> dataRegions, boolean isRecoverStorageEngine) {
     this.isRecover = false;
     try {
-      repairLogger = new RepairLogger(isRecoverIoTDB);
+      repairLogger = new RepairLogger(isRecoverStorageEngine);
     } catch (Exception e) {
       try {
         LOGGER.error("[RepairScheduler] Failed to create repair logger", e);

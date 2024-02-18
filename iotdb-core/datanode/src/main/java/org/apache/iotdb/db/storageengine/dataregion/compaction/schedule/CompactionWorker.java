@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
@@ -59,10 +55,6 @@ public class CompactionWorker implements Runnable {
       AbstractCompactionTask task;
       try {
         task = compactionTaskQueue.take();
-        if (task == null) {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-          continue;
-        }
       } catch (InterruptedException e) {
         LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
         Thread.currentThread().interrupt();
@@ -70,71 +62,6 @@ public class CompactionWorker implements Runnable {
       }
       processOneCompactionTask(task);
     }
-  }
-
-  public boolean processOneCompactionTask2(AbstractCompactionTask task) {
-    long estimatedMemoryCost = 0L;
-    boolean memoryAcquired = false;
-    boolean fileHandleAcquired = false;
-    boolean taskSuccess = false;
-    try {
-      if (task == null || !task.isCompactionAllowed()) {
-        LOGGER.info(
-            "Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
-        return false;
-      }
-      if (!task.isDiskSpaceCheckPassed()) {
-        LOGGER.debug(
-            "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-        return false;
-      }
-      task.transitSourceFilesToMerging();
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
-        estimatedMemoryCost = task.getEstimatedMemoryCost();
-        if (estimatedMemoryCost < 0) {
-          return false;
-        }
-        CompactionTaskType taskType = task.getCompactionTaskType();
-        memoryAcquired =
-            SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
-        CompactionMetrics.getInstance()
-            .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
-        CompactionMetrics.getInstance()
-            .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
-      }
-      fileHandleAcquired =
-          SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
-      CompactionTaskSummary summary = task.getSummary();
-      CompactionTaskFuture future = new CompactionTaskFuture(summary);
-      CompactionTaskManager.getInstance().recordTask(task, future);
-      task.start();
-      taskSuccess = true;
-      return true;
-    } catch (FileCannotTransitToCompactingException
-        | CompactionMemoryNotEnoughException
-        | CompactionFileCountExceededException e) {
-      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e.getMessage());
-    } catch (InterruptedException e) {
-      LOGGER.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
-      Thread.currentThread().interrupt();
-    } finally {
-      if (task != null) {
-        task.resetCompactionCandidateStatusForAllSourceFiles();
-        task.handleTaskCleanup();
-      }
-      if (memoryAcquired) {
-        SystemInfo.getInstance()
-            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
-      }
-      if (fileHandleAcquired) {
-        SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
-      }
-      if (taskSuccess) {
-        task.getAllSourceTsFiles()
-            .forEach(AbstractCompactionEstimator::removeFileInfoFromGlobalFileInfoCache);
-      }
-    }
-    return false;
   }
 
   public boolean processOneCompactionTask(AbstractCompactionTask task) {

@@ -581,10 +581,16 @@ public class StorageEngine implements IService {
     return true;
   }
 
+  /**
+   * stop repair data by interrupt
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
   public void stopRepairData() throws StorageEngineException {
     if (!UnsortedFileRepairTaskScheduler.hasRunningRepairTask()) {
       return;
     }
+    LOGGER.info("stop repair data");
     try {
       RepairTaskManager.getInstance().abortRepairTask();
       UnsortedFileRepairTaskScheduler.markRepairTaskStopped();

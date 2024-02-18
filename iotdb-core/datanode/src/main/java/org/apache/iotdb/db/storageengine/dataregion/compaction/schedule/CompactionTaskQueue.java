@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractCompactionTask> {
@@ -49,14 +50,14 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
     }
   }
 
-  private AbstractCompactionTask pollExecutableTask() {
+  private AbstractCompactionTask pollExecutableTask() throws InterruptedException {
     List<AbstractCompactionTask> retryTasks = new ArrayList<>();
     try {
       while (true) {
         if (queue.isEmpty()) {
           queue.addAll(retryTasks);
           retryTasks.clear();
-          return null;
+          Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         }
         AbstractCompactionTask task = queue.pollFirst();
         if (task == null) {
