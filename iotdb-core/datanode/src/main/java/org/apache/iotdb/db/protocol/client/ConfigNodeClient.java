@@ -472,6 +472,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus createManyDatabases() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.setTTL(setTTLReq), status -> !updateConfigNodeLeader(status));

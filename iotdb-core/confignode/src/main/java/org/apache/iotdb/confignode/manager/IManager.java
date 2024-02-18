@@ -314,6 +314,8 @@ public interface IManager {
    */
   TSStatus deleteDatabases(List<String> deletedPaths);
 
+  TSStatus createManyDatabases();
+
   /**
    * Get SchemaPartition.
    *

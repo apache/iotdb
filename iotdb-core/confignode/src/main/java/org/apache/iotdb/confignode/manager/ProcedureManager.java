@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -50,6 +51,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -168,6 +170,18 @@ public class ProcedureManager {
           LOGGER.info("ProcedureManager is stopped successfully.");
         }
       }
+    }
+  }
+
+  @TestOnly
+  public TSStatus createManyDatabases() {
+    long id = this.executor.submitProcedure(new CreateManyDatabasesProcedure());
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean success = waitingProcedureFinished(Collections.singletonList(id), procedureStatus);
+    if (success) {
+      return StatusUtils.OK;
+    } else {
+      return RpcUtils.getStatus(procedureStatus);
     }
   }
 
