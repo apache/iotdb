@@ -75,6 +75,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.mine.rpc.InsertRecordsReq;
 import org.mine.rpc.InsertRecordsSerializeInColumnUtils;
+import org.mine.rpc.SerializedBuffers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1906,10 +1907,11 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (enableRedirection) {
+    boolean flag = false;
+    if (enableRedirection && flag) {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
-    } else if (!useNewFormat) {
+    } else if (!SessionConfig.USE_NEW_RECORDS_RPC_FORMAT) {
       TSInsertRecordsReq request;
       try {
         request =
@@ -1927,7 +1929,7 @@ public class Session implements ISession {
       // insert using new column rpc format
       InsertRecordsReq req =
           new InsertRecordsReq(deviceIds, measurementsList, typesList, valuesList, times);
-      ByteBuffer buffer = null;
+      SerializedBuffers buffer = null;
       try {
         buffer = InsertRecordsSerializeInColumnUtils.encode(req);
       } catch (IOException e) {
@@ -1935,7 +1937,9 @@ public class Session implements ISession {
         return;
       }
       TSInsertRecordsReqV2ColumnFormat request = new TSInsertRecordsReqV2ColumnFormat();
-      request.setBuffer(buffer);
+      request.setDeviceBuffer(buffer.deviceBuffer);
+      request.setMeasurementsBuffer(buffer.measurementBuffer);
+      request.setValuesBuffer(buffer.valueBuffer);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (Exception e) {

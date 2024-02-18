@@ -257,7 +257,9 @@ struct TSInsertRecordsReq {
 
 struct TSInsertRecordsReqV2ColumnFormat {
   1: required i64 sessionId
-  2: required binary buffer
+  2: required binary deviceBuffer
+  3: required binary measurementsBuffer
+  4: required binary valuesBuffer
 }
 
 struct TSInsertRecordsOfOneDeviceReq {

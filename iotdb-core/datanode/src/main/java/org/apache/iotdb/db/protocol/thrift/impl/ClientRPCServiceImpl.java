@@ -195,6 +195,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -1700,15 +1701,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus insertRecordsV2ColumnFormat(TSInsertRecordsReqV2ColumnFormat req) {
-    byte[] buffer = req.getBuffer();
-    if (buffer == null) {
+    ByteBuffer deviceBuffer = req.deviceBuffer;
+    ByteBuffer measurementBuffer = req.measurementsBuffer;
+    ByteBuffer valueBuffer = req.valuesBuffer;
+    req.deviceBuffer = null;
+    req.measurementsBuffer = null;
+    req.valuesBuffer = null;
+    if (Objects.isNull(deviceBuffer)
+        || Objects.isNull(measurementBuffer)
+        || Objects.isNull(valueBuffer)) {
       return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "Buffer is null");
     }
     try {
       InsertRecordsReq originalReq =
-          InsertRecordsSerializeInColumnUtils.decode(ByteBuffer.wrap(buffer));
+          InsertRecordsSerializeInColumnUtils.decode(deviceBuffer, measurementBuffer, valueBuffer);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableQuickGc()) {
+        deviceBuffer = null;
+        measurementBuffer = null;
+        valueBuffer = null;
+      }
       InsertRowsStatement statement = StatementGenerator.createStatement(originalReq);
-      //      originalReq = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableQuickGc()) {
+        originalReq = null;
+      }
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
           COORDINATOR.execute(

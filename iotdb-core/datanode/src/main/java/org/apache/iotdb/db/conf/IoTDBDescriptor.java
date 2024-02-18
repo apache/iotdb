@@ -588,6 +588,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cross_compaction_file_selection_time_budget",
                 Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
+    conf.setEnableQuickGc(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_quick_gc", Boolean.toString(conf.isEnableQuickGc()).trim())));
     conf.setMergeIntervalSec(
         Long.parseLong(
             properties.getProperty(

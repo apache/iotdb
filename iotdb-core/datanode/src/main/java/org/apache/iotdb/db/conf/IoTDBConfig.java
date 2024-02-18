@@ -1088,6 +1088,8 @@ public class IoTDBConfig {
   /** Resource control */
   private boolean quotaEnable = false;
 
+  private boolean enableQuickGc = false;
+
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
    * interval of time. 2. AverageIntervalRateLimiter : This limiter will refill resources at every
@@ -3810,5 +3812,13 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public boolean isEnableQuickGc() {
+    return enableQuickGc;
+  }
+
+  public void setEnableQuickGc(boolean enableQuickGc) {
+    this.enableQuickGc = enableQuickGc;
   }
 }

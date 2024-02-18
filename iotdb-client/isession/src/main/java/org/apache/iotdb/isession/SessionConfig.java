@@ -30,6 +30,7 @@ public class SessionConfig {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
   public static final boolean DEFAULT_REDIRECTION_MODE = true;
+  public static boolean USE_NEW_RECORDS_RPC_FORMAT = true;
 
   public static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
   public static final int DEFAULT_SESSION_EXECUTOR_THREAD_NUM = 2 * CPU_CORES;
