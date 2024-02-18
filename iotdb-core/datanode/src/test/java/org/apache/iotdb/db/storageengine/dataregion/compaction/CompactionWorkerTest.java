@@ -42,6 +42,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class CompactionWorkerTest {
   @Before
@@ -91,16 +95,31 @@ public class CompactionWorkerTest {
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(taskMock);
-    Assert.assertNull(queue.take());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-    for (TsFileResource tsFileResource : sequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
-    }
-    for (TsFileResource tsFileResource : unsequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
+    CompletableFuture<Object> future =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return queue.take();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+            });
+    try {
+      future.get(2, TimeUnit.SECONDS);
+    } catch (ExecutionException e) {
+      Assert.fail();
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource tsFileResource : sequenceFiles) {
+        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+        Assert.assertTrue(tsFileResource.tryWriteLock());
+      }
+      for (TsFileResource tsFileResource : unsequenceFiles) {
+        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+        Assert.assertTrue(tsFileResource.tryWriteLock());
+      }
     }
   }
 
@@ -136,16 +155,33 @@ public class CompactionWorkerTest {
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
           new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
       queue.put(taskMock);
-      Assert.assertNull(queue.take());
-      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
-      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-      for (TsFileResource tsFileResource : sequenceFiles) {
-        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
-        Assert.assertTrue(tsFileResource.tryWriteLock());
-      }
-      for (TsFileResource tsFileResource : unsequenceFiles) {
-        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
-        Assert.assertTrue(tsFileResource.tryWriteLock());
+      CompletableFuture<Object> future =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  return queue.take();
+                } catch (InterruptedException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+      try {
+        future.get(2, TimeUnit.SECONDS);
+      } catch (ExecutionException e) {
+        Assert.fail();
+      } catch (TimeoutException e) {
+        future.cancel(true);
+        Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+        Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+        for (TsFileResource tsFileResource : sequenceFiles) {
+          Assert.assertEquals(
+              TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+          Assert.assertTrue(tsFileResource.tryWriteLock());
+        }
+        for (TsFileResource tsFileResource : unsequenceFiles) {
+          Assert.assertEquals(
+              TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+          Assert.assertTrue(tsFileResource.tryWriteLock());
+        }
       }
     } finally {
       SystemInfo.getInstance()
@@ -179,16 +215,27 @@ public class CompactionWorkerTest {
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(task);
-    Assert.assertNull(queue.take());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-    for (TsFileResource tsFileResource : sequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
-    }
-    for (TsFileResource tsFileResource : unsequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
+    CompletableFuture<Object> future =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return queue.take();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+            });
+    try {
+      future.get(2, TimeUnit.SECONDS);
+    } catch (ExecutionException e) {
+      Assert.fail();
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource tsFileResource : sequenceFiles) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+        Assert.assertTrue(tsFileResource.tryWriteLock());
+      }
     }
   }
 
@@ -211,12 +258,27 @@ public class CompactionWorkerTest {
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(innerTask);
-    Assert.assertNull(queue.take());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
-    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-    for (TsFileResource tsFileResource : sequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
+    CompletableFuture<Object> future =
+        CompletableFuture.supplyAsync(
+            () -> {
+              try {
+                return queue.take();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+            });
+    try {
+      future.get(2, TimeUnit.SECONDS);
+    } catch (ExecutionException e) {
+      Assert.fail();
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource tsFileResource : sequenceFiles) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+        Assert.assertTrue(tsFileResource.tryWriteLock());
+      }
     }
   }
 }

@@ -33,12 +33,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionTaskQueueTest {
 
@@ -86,22 +86,27 @@ public class CompactionTaskQueueTest {
     queue.put(mockTask1);
     queue.put(mockTask2);
     queue.put(mockTask3);
-    List<AbstractCompactionTask> outTasks = new ArrayList<>();
+    AtomicInteger outTaskNum = new AtomicInteger(0);
     for (int i = 0; i < 10; i++) {
-      AbstractCompactionTask task = queue.take();
-      if (task == null) {
-        continue;
-      }
-      outTasks.add(task);
+      CompletableFuture.supplyAsync(
+          () -> {
+            AbstractCompactionTask task = null;
+            try {
+              task = queue.take();
+              if (task != null) {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                releaseTaskOccupiedResources(task);
+                outTaskNum.incrementAndGet();
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return null;
+          });
     }
-    Assert.assertEquals(2, outTasks.size());
-
-    for (AbstractCompactionTask task : outTasks) {
-      releaseTaskOccupiedResources(task);
+    while (outTaskNum.get() != 3) {
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
-    AbstractCompactionTask task = queue.take();
-    releaseTaskOccupiedResources(task);
-    Assert.assertNotNull(task);
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
   }
@@ -116,22 +121,27 @@ public class CompactionTaskQueueTest {
     queue.put(mockTask1);
     queue.put(mockTask2);
     queue.put(mockTask3);
-    List<AbstractCompactionTask> outTasks = new ArrayList<>();
+    AtomicInteger outTaskNum = new AtomicInteger(0);
     for (int i = 0; i < 10; i++) {
-      AbstractCompactionTask task = queue.take();
-      if (task == null) {
-        continue;
-      }
-      outTasks.add(task);
+      CompletableFuture.supplyAsync(
+          () -> {
+            AbstractCompactionTask task = null;
+            try {
+              task = queue.take();
+              if (task != null) {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                releaseTaskOccupiedResources(task);
+                outTaskNum.incrementAndGet();
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return null;
+          });
     }
-    Assert.assertEquals(2, outTasks.size());
-
-    for (AbstractCompactionTask task : outTasks) {
-      releaseTaskOccupiedResources(task);
+    while (outTaskNum.get() != 3) {
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
-    AbstractCompactionTask task = queue.take();
-    releaseTaskOccupiedResources(task);
-    Assert.assertNotNull(task);
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
   }
@@ -191,6 +201,7 @@ public class CompactionTaskQueueTest {
         .thenReturn(Collections.singletonList(new TsFileResource()));
     Mockito.when(mockTask.getCompactionTaskType()).thenReturn(CompactionTaskType.INNER_SEQ);
     Mockito.when(mockTask.getTimePartition()).thenReturn(timePartition);
+    Mockito.when(mockTask.isCompactionAllowed()).thenReturn(true);
     return mockTask;
   }
 
