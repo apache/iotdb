@@ -319,7 +319,6 @@ public class PipeMemoryManager {
     final PipeMemoryBlock returnedMemoryBlock =
         isForTablet ? new PipeTabletMemoryBlock(sizeInBytes) : new PipeMemoryBlock(sizeInBytes);
     allocatedBlocks.add(returnedMemoryBlock);
-    System.out.println(returnedMemoryBlock);
     return returnedMemoryBlock;
   }
 
@@ -356,7 +355,6 @@ public class PipeMemoryManager {
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     if (block instanceof PipeTabletMemoryBlock) {
       usedMemorySizeInBytesOfTablets -= block.getMemoryUsageInBytes();
-      LOGGER.info("Released for tablet, total memory: {}", usedMemorySizeInBytesOfTablets);
     }
     block.markAsReleased();
 
