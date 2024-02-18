@@ -237,7 +237,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           }
           try {
             senderEnv.startDataNode(i);
-            ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+            Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
           } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -261,14 +261,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -363,13 +357,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -637,7 +626,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        ((AbstractEnv) senderEnv).testWorkingNoUnknown();
+        Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
       } catch (Exception e) {
         e.printStackTrace();
         return;
@@ -695,6 +684,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       return;
     }
 
+<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/pipe/it/autocreate/IoTDBPipeClusterIT.java
     try {
       TestUtils.restartCluster(senderEnv);
     } catch (Exception e) {
@@ -703,6 +693,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
 
     TestUtils.assertDataEventuallyOnEnv(
+=======
+    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    TestUtils.assertDataOnEnv(
+>>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179:integration-test/src/test/java/org/apache/iotdb/pipe/it/IoTDBPipeClusterIT.java
         receiverEnv,
         "select count(*) from root.**",
         "count(root.db.d1.s1),",

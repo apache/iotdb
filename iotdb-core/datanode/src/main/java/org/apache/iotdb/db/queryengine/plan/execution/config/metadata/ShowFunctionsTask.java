@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -122,24 +121,18 @@ public class ShowFunctionsTask implements IConfigTask {
 
   private static String getFunctionType(UDFInformation udfInformation) {
     String functionType = null;
-    try {
-      if (udfInformation.isBuiltin()) {
-        if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {
-          functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-        } else if (UDFManagementService.getInstance().isUDAF(udfInformation.getFunctionName())) {
-          functionType = FUNCTION_TYPE_BUILTIN_UDAF;
-        }
-      } else {
-        if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {
-          functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-        } else if (UDFManagementService.getInstance().isUDAF(udfInformation.getFunctionName())) {
-          functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
-        }
+    if (udfInformation.isBuiltin()) {
+      if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {
+        functionType = FUNCTION_TYPE_BUILTIN_UDTF;
+      } else if (UDFManagementService.getInstance().isUDAF(udfInformation.getFunctionName())) {
+        functionType = FUNCTION_TYPE_BUILTIN_UDAF;
       }
-    } catch (InstantiationException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | IllegalAccessException ignore) {
+    } else {
+      if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {
+        functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
+      } else if (UDFManagementService.getInstance().isUDAF(udfInformation.getFunctionName())) {
+        functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
+      }
     }
     return functionType;
   }

@@ -136,7 +136,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -192,7 +191,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -248,7 +246,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -309,7 +306,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -374,7 +370,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -440,7 +435,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -509,7 +503,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), false);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -583,7 +576,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 10000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -649,7 +641,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -710,7 +701,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -761,7 +751,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -813,7 +802,6 @@ public class RawDataAggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
 
@@ -879,7 +867,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new SessionWindowParameter(2, false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -987,7 +974,7 @@ public class RawDataAggregationOperatorTest {
 
     List<Aggregator> aggregators = new ArrayList<>();
     List<Accumulator> accumulators =
-        AccumulatorFactory.createAccumulators(
+        AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

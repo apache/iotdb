@@ -654,8 +654,17 @@ public class TestUtils {
     }
   }
 
+<<<<<<< HEAD
   public static void restartCluster(BaseEnv env) {
     restartCluster(env, 1);
+=======
+  public static boolean restartCluster(BaseEnv env) {
+    env.shutdownAllDataNodes();
+    env.shutdownAllConfigNodes();
+    env.startAllConfigNodes();
+    env.startAllDataNodes();
+    return ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
+>>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
   }
 
   public static void restartCluster(BaseEnv env, long waitSeconds) {

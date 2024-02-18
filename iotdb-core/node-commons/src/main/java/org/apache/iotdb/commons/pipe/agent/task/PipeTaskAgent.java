@@ -561,7 +561,36 @@ public abstract class PipeTaskAgent {
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
 
-  protected abstract void stopPipe(String pipeName, long creationTime);
+  protected void stopPipe(String pipeName, long creationTime) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
+      return;
+    }
+
+    // Get pipe tasks
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+
+    // Trigger stop() method for each pipe task by parallel stream
+    final long startTime = System.currentTimeMillis();
+    pipeTasks.values().parallelStream().forEach(PipeTask::stop);
+    LOGGER.info(
+        "Stop all pipe tasks on Pipe {} successfully within {} ms",
+        pipeName,
+        System.currentTimeMillis() - startTime);
+
+    // Set pipe meta status to STOPPED
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+  }
 
   ////////////////////////// Checker //////////////////////////
 

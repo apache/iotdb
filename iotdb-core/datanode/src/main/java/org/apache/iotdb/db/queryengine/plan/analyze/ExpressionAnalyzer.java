@@ -175,7 +175,7 @@ public class ExpressionAnalyzer {
       return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
     } else if (expression instanceof FunctionExpression) {
       List<Expression> inputExpressions = expression.getExpressions();
-      if (expression.isBuiltInAggregationFunctionExpression()) {
+      if (expression.isAggregationFunctionExpression()) {
         for (Expression inputExpression : inputExpressions) {
           if (identifyOutputColumnType(inputExpression, false)
               == ResultColumn.ColumnType.AGGREGATION) {
@@ -509,7 +509,7 @@ public class ExpressionAnalyzer {
     return new LowercaseNormalizeVisitor().process(expression, null);
   }
 
-  /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
+  /** Check for arithmetic expression, logical expression, UDTF. Returns true if it exists. */
   public static boolean checkIsNeedTransform(Expression expression) {
     if (expression instanceof TernaryExpression) {
       return true;
@@ -518,7 +518,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return true;
     } else if (expression instanceof FunctionExpression) {
-      return !expression.isBuiltInAggregationFunctionExpression();
+      return !expression.isAggregationFunctionExpression();
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
     } else if (expression instanceof ConstantOperand) {

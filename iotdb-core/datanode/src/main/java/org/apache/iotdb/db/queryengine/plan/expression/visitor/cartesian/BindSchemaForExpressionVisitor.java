@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
@@ -84,7 +84,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       // keep other input Expressions as origin and bind Type
       if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
         List<Expression> children = functionExpression.getExpressions();
-        bindTypeForAggregationNonSeriesInputExpressions(
+        bindTypeForBuiltinAggregationNonSeriesInputExpressions(
             functionExpression.getFunctionName(), children, extendedExpressions);
         break;
       }

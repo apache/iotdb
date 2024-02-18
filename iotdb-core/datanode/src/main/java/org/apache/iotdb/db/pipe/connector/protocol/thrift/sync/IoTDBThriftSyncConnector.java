@@ -33,8 +33,11 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftS
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+<<<<<<< HEAD
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+=======
+>>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -122,6 +125,7 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
       return;
     }
 
+<<<<<<< HEAD
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         transfer(
@@ -149,6 +153,19 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
         doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+=======
+    try {
+      if (isTabletBatchModeEnabled) {
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
+          doTransfer();
+        }
+      } else {
+        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        } else {
+          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        }
+>>>>>>> b78a88002f1c41044dd7be0b2471ff313038e179
       }
     }
   }
@@ -160,20 +177,6 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
-      return;
-    }
-
-    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
-      LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
-          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
-      }
       return;
     }
 
