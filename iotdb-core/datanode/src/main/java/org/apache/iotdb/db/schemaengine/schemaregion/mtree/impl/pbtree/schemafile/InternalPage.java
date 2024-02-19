@@ -140,8 +140,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   }
 
   @Override
-  public int updateRecord(String key, Integer buffer)
-      throws SegmentOverflowException, RecordDuplicatedException {
+  public int updateRecord(String key, Integer buffer) throws MetadataException {
     return 0;
   }
 

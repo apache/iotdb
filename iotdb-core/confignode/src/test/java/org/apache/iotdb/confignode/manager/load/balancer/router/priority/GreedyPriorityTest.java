@@ -57,7 +57,7 @@ public class GreedyPriorityTest {
     }
 
     /* Build nodeCacheMap */
-    long currentTimeMillis = System.currentTimeMillis();
+    long currentTimeNs = System.nanoTime();
     Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
     NodeStatus[] statuses =
         new NodeStatus[] {
@@ -69,8 +69,8 @@ public class GreedyPriorityTest {
           .get(i)
           .cacheHeartbeatSample(
               new NodeHeartbeatSample(
-                  new TDataNodeHeartbeatResp(currentTimeMillis, statuses[i].getStatus()),
-                  currentTimeMillis));
+                  new TDataNodeHeartbeatResp(currentTimeNs, statuses[i].getStatus()),
+                  currentTimeNs));
     }
     nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);
 

@@ -196,12 +196,12 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(functionExpression)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
       Transformer transformer;
-      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      if (functionExpression.isAggregationFunctionExpression()) {
         transformer =
             new TransparentTransformer(
                 context.rawTimeSeriesInputLayer.constructValuePointReader(
                     functionExpression.getInputColumnIndex()));
-      } else if (functionExpression.isBuiltInScalarFunction()) {
+      } else if (functionExpression.isBuiltInScalarFunctionExpression()) {
         transformer = getBuiltInScalarFunctionTransformer(functionExpression, context);
       } else {
         try {

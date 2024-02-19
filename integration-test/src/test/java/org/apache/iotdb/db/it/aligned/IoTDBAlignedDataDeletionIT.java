@@ -181,35 +181,6 @@ public class IoTDBAlignedDataDeletionIT {
   }
 
   @Test
-  public void testMerge() throws SQLException {
-    prepareMerge();
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("merge");
-      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
-
-      // before merge completes
-      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
-        int cnt = 0;
-        while (set.next()) {
-          cnt++;
-        }
-      }
-
-      // after merge completes
-      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
-        int cnt = 0;
-        while (set.next()) {
-          cnt++;
-        }
-        assertEquals(5000, cnt);
-      }
-      cleanData();
-    }
-  }
-
-  @Test
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -505,13 +476,13 @@ public class IoTDBAlignedDataDeletionIT {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.execute("merge");
+      statement.execute("flush");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.execute("merge");
+      statement.execute("flush");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(
@@ -529,25 +500,6 @@ public class IoTDBAlignedDataDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
-    }
-  }
-
-  public void prepareMerge() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      // prepare BufferWrite data
-      for (int i = 10001; i <= 20000; i++) {
-        statement.addBatch(
-            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
-      }
-      statement.executeBatch();
-      // prepare Overflow data
-      for (int i = 1; i <= 10000; i++) {
-        statement.addBatch(
-            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
-      }
-      statement.executeBatch();
     }
   }
 }

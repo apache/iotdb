@@ -66,12 +66,6 @@ public abstract class AbstractMemTable implements IMemTable {
   /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
-  /**
-   * The initial value is true because we want to calculate the text data size when recover
-   * memTable.
-   */
-  protected boolean disableMemControl = true;
-
   private boolean shouldFlush = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
@@ -97,6 +91,14 @@ public abstract class AbstractMemTable implements IMemTable {
   private final long memTableId = memTableIdCounter.incrementAndGet();
 
   private final long createdTime = System.currentTimeMillis();
+
+  /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
+  private long updateTime = createdTime;
+  /**
+   * check whether this memTable has been updated since last timed flush check, update updateTime
+   * when changed
+   */
+  private long lastTotalPointsNum = totalPointsNum;
 
   private String database;
   private String dataRegionId;
@@ -197,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
         dataTypes.add(schema.getType());
       }
     }
-    memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
+    memSize += MemUtils.getRowRecordSize(dataTypes, values);
     write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
 
     int pointsInserted =
@@ -244,7 +246,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
+    memSize += MemUtils.getAlignedRowRecordSize(dataTypes, values);
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
         insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();
@@ -268,7 +270,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       writeTabletNode(insertTabletNode, start, end);
-      memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
+      memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
@@ -294,7 +296,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       writeAlignedTablet(insertTabletNode, start, end);
-      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, disableMemControl);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end);
       int pointsInserted =
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
@@ -587,6 +589,16 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCreatedTime() {
     return createdTime;
+  }
+
+  /** Check whether updated since last get method */
+  @Override
+  public long getUpdateTime() {
+    if (lastTotalPointsNum != totalPointsNum) {
+      lastTotalPointsNum = totalPointsNum;
+      updateTime = System.currentTimeMillis();
+    }
+    return updateTime;
   }
 
   @Override

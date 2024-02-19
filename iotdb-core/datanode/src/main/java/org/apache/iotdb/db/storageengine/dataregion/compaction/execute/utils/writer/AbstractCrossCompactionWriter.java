@@ -28,8 +28,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -75,12 +74,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
-    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
           new CompactionTsFileWriter(
               targetResources.get(i).getTsFile(),
-              enableMemoryControl,
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION));
       isEmptyFile[i] = true;
@@ -95,8 +92,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      chunkGroupHeaderSize = targetFileWriters.get(i).startChunkGroup(deviceId);
+    for (CompactionTsFileWriter targetFileWriter : targetFileWriters) {
+      chunkGroupHeaderSize = targetFileWriter.startChunkGroup(deviceId);
     }
   }
 
@@ -141,8 +138,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   /** Write data in batch, only used for aligned device. */
   @Override
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException;
+  public abstract void write(TsBlock tsBlock, int subTaskId) throws IOException;
 
   @Override
   public void endFile() throws IOException {
@@ -168,8 +164,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
-    for (int i = 0; i < targetFileWriters.size(); i++) {
-      CompactionTsFileWriter fileIoWriter = targetFileWriters.get(i);
+    for (CompactionTsFileWriter fileIoWriter : targetFileWriters) {
       fileIoWriter.checkMetadataSizeAndMayFlush();
     }
   }

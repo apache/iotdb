@@ -120,7 +120,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+  protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
       PipeMeta pipeMetaFromCoordinator) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
@@ -291,7 +291,7 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+  protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
     // Do nothing if node is removing or removed
     if (isShutdown()) {
       return null;
@@ -765,10 +765,9 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
    */
   protected boolean checkBeforeDropPipe(
-      PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
+      PipeMeta existedPipeMeta, String pipeName, long creationTime) {
     if (existedPipeMeta == null) {
       LOGGER.info(
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
@@ -795,10 +794,8 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
-   * @throws IllegalStateException if current pipe status is illegal.
    */
-  protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName)
-      throws IllegalStateException {
+  protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName) {
     if (existedPipeMeta == null) {
       LOGGER.info(
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);

@@ -32,9 +32,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -59,7 +59,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
  * LoadCommand}. This class turn the content of a piece of loading TsFile into a new TsFile. When
- * DataNode finish transfer pieces, this class will flush all TsFile and laod them into IoTDB, or
+ * DataNode finish transfer pieces, this class will flush all TsFile and load them into IoTDB, or
  * delete all.
  */
 public class LoadTsFileManager {
@@ -91,7 +91,7 @@ public class LoadTsFileManager {
         .registerPeriodicalJob(
             "LoadTsFileManager#cleanupTasks",
             this::cleanupTasks,
-            LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND);
+            CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() >> 2);
   }
 
   private void cleanupTasks() {
@@ -138,7 +138,7 @@ public class LoadTsFileManager {
 
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }
@@ -150,7 +150,7 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
-            new CleanupTask(uuid, LoadTsFileScheduler.LOAD_TASK_MAX_TIME_IN_SECOND * 1000);
+            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
         uuid2CleanupTask.put(uuid, cleanupTask);
         cleanupTaskQueue.add(cleanupTask);
       }
@@ -318,17 +318,27 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
-        MetricService.getInstance()
-            .count(
-                getTsFileWritePointCount(writer),
-                Metric.QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                Metric.POINTS_IN.toString(),
-                Tag.DATABASE.toString(),
-                dataRegion.getDatabaseName(),
-                Tag.REGION.toString(),
-                dataRegion.getDataRegionId());
+        dataRegion
+            .getNonSystemDatabaseName()
+            .ifPresent(
+                databaseName -> {
+                  long writePointCount = getTsFileWritePointCount(writer);
+                  // Report load tsFile points to IoTDB flush metrics
+                  MemTableFlushTask.recordFlushPointsMetricInternal(
+                      writePointCount, databaseName, dataRegion.getDataRegionId());
+
+                  MetricService.getInstance()
+                      .count(
+                          writePointCount,
+                          Metric.QUANTITY.toString(),
+                          MetricLevel.CORE,
+                          Tag.NAME.toString(),
+                          Metric.POINTS_IN.toString(),
+                          Tag.DATABASE.toString(),
+                          databaseName,
+                          Tag.REGION.toString(),
+                          dataRegion.getDataRegionId());
+                });
       }
     }
 

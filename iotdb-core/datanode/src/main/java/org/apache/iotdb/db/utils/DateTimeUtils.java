@@ -451,6 +451,14 @@ public class DateTimeUtils {
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
           .toFormatter();
 
+  public static long convertTimestampOrDatetimeStrToLongWithDefaultZone(String timeStr) {
+    try {
+      return Long.parseLong(timeStr);
+    } catch (NumberFormatException e) {
+      return DateTimeUtils.convertDatetimeStrToLong(timeStr, ZoneId.systemDefault());
+    }
+  }
+
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(
         str,

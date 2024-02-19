@@ -54,19 +54,19 @@ public class VarianceAccumulator implements Accumulator {
   }
 
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
+  public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, bitMap, lastIndex);
+        addIntInput(columns, bitMap);
         return;
       case INT64:
-        addLongInput(column, bitMap, lastIndex);
+        addLongInput(columns, bitMap);
         return;
       case FLOAT:
-        addFloatInput(column, bitMap, lastIndex);
+        addFloatInput(columns, bitMap);
         return;
       case DOUBLE:
-        addDoubleInput(column, bitMap, lastIndex);
+        addDoubleInput(columns, bitMap);
         return;
       case TEXT:
       case BOOLEAN:
@@ -211,8 +211,9 @@ public class VarianceAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private void addIntInput(Column[] columns, BitMap bitmap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addIntInput(Column[] columns, BitMap bitmap) {
+    int size = columns[0].getPositionCount();
+    for (int i = 0; i < size; i++) {
       if (bitmap != null && !bitmap.isMarked(i)) {
         continue;
       }
@@ -226,8 +227,9 @@ public class VarianceAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] columns, BitMap bitmap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addLongInput(Column[] columns, BitMap bitmap) {
+    int size = columns[0].getPositionCount();
+    for (int i = 0; i < size; i++) {
       if (bitmap != null && !bitmap.isMarked(i)) {
         continue;
       }
@@ -241,8 +243,9 @@ public class VarianceAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] columns, BitMap bitmap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addFloatInput(Column[] columns, BitMap bitmap) {
+    int size = columns[0].getPositionCount();
+    for (int i = 0; i < size; i++) {
       if (bitmap != null && !bitmap.isMarked(i)) {
         continue;
       }
@@ -256,8 +259,9 @@ public class VarianceAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] columns, BitMap bitmap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  private void addDoubleInput(Column[] columns, BitMap bitmap) {
+    int size = columns[0].getPositionCount();
+    for (int i = 0; i < size; i++) {
       if (bitmap != null && !bitmap.isMarked(i)) {
         continue;
       }

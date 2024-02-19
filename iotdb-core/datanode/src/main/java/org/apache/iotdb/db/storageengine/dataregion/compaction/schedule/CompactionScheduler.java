@@ -40,8 +40,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.Phaser;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
@@ -62,14 +62,22 @@ public class CompactionScheduler {
   private CompactionScheduler() {}
 
   /** avoid timed compaction schedule conflict with manually triggered schedule */
-  private static final Lock compactionTaskSelectionLock = new ReentrantLock();
+  private static final ReadWriteLock compactionTaskSelectionLock = new ReentrantReadWriteLock();
 
-  public static void lockCompactionSelection() {
-    compactionTaskSelectionLock.lock();
+  public static void sharedLockCompactionSelection() {
+    compactionTaskSelectionLock.readLock().lock();
   }
 
-  public static void unlockCompactionSelection() {
-    compactionTaskSelectionLock.unlock();
+  public static void sharedUnlockCompactionSelection() {
+    compactionTaskSelectionLock.readLock().unlock();
+  }
+
+  public static void exclusiveLockCompactionSelection() {
+    compactionTaskSelectionLock.writeLock().lock();
+  }
+
+  public static void exclusiveUnlockCompactionSelection() {
+    compactionTaskSelectionLock.writeLock().unlock();
   }
 
   /**

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -622,7 +623,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
     try {
-      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
+      insertNode.setDevicePath(
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(ReadWriteIOUtils.readString(stream)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }

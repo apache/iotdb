@@ -38,6 +38,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MemUtilsTest {
 
   @Test
@@ -50,7 +53,44 @@ public class MemUtilsTest {
   }
 
   @Test
-  public void getRecordSizeWithInsertNodeTest() throws IllegalPathException {
+  public void getRecordSizeWithInsertRowNodeTest() {
+    Object[] row = {1, 2L, 3.0f, 4.0d, new Binary("5", TSFileConfig.STRING_CHARSET)};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    int sizeSum = 0;
+    dataTypes.add(TSDataType.INT32);
+    sizeSum += 8 + TSDataType.INT32.getDataTypeSize();
+    dataTypes.add(TSDataType.INT64);
+    sizeSum += 8 + TSDataType.INT64.getDataTypeSize();
+    dataTypes.add(TSDataType.FLOAT);
+    sizeSum += 8 + TSDataType.FLOAT.getDataTypeSize();
+    dataTypes.add(TSDataType.DOUBLE);
+    sizeSum += 8 + TSDataType.DOUBLE.getDataTypeSize();
+    dataTypes.add(TSDataType.TEXT);
+    sizeSum += 8;
+    Assert.assertEquals(sizeSum, MemUtils.getRowRecordSize(dataTypes, row));
+  }
+
+  @Test
+  public void getRecordSizeWithInsertAlignedRowNodeTest() {
+    Object[] row = {1, 2L, 3.0f, 4.0d, new Binary("5", TSFileConfig.STRING_CHARSET)};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    int sizeSum = 0;
+    dataTypes.add(TSDataType.INT32);
+    sizeSum += TSDataType.INT32.getDataTypeSize();
+    dataTypes.add(TSDataType.INT64);
+    sizeSum += TSDataType.INT64.getDataTypeSize();
+    dataTypes.add(TSDataType.FLOAT);
+    sizeSum += TSDataType.FLOAT.getDataTypeSize();
+    dataTypes.add(TSDataType.DOUBLE);
+    sizeSum += TSDataType.DOUBLE.getDataTypeSize();
+    dataTypes.add(TSDataType.TEXT);
+    // time and index size
+    sizeSum += 8 + 4;
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedRowRecordSize(dataTypes, row));
+  }
+
+  @Test
+  public void getRecordSizeWithInsertTableNodeTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     Object[] columns = {
@@ -83,13 +123,52 @@ public class MemUtilsTest {
             null,
             columns,
             1);
-    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1, false));
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1));
+  }
+
+  @Test
+  public void getRecordSizeWithInsertAlignedTableNodeTest() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d1");
+    String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
+    Object[] columns = {
+      new int[] {1},
+      new long[] {2},
+      new float[] {3},
+      new double[] {4},
+      new Binary[] {new Binary("5", TSFileConfig.STRING_CHARSET)}
+    };
+    TSDataType[] dataTypes = new TSDataType[6];
+    int sizeSum = 0;
+    dataTypes[0] = TSDataType.INT32;
+    sizeSum += TSDataType.INT32.getDataTypeSize();
+    dataTypes[1] = TSDataType.INT64;
+    sizeSum += TSDataType.INT64.getDataTypeSize();
+    dataTypes[2] = TSDataType.FLOAT;
+    sizeSum += TSDataType.FLOAT.getDataTypeSize();
+    dataTypes[3] = TSDataType.DOUBLE;
+    sizeSum += TSDataType.DOUBLE.getDataTypeSize();
+    dataTypes[4] = TSDataType.TEXT;
+    sizeSum += TSDataType.TEXT.getDataTypeSize();
+    // time and index size
+    sizeSum += 8 + 4;
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            device,
+            true,
+            measurements,
+            dataTypes,
+            new long[1],
+            null,
+            columns,
+            1);
+    Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 1));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
   @Test
   public void getMemSizeTest() {
-    int totalSize = 0;
+    long totalSize = 0;
     String device = "root.sg.d1";
     TSRecord record = new TSRecord(0, device);
 
@@ -123,7 +202,7 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point6);
     record.addTuple(point6);
 
-    totalSize += 8 * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
+    totalSize += 8L * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
 
     Assert.assertEquals(totalSize, MemUtils.getTsRecordMem(record));
   }

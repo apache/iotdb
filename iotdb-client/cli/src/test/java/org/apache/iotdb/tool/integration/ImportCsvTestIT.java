@@ -23,11 +23,14 @@ import org.apache.iotdb.cli.AbstractScript;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 
+/*! The only way this test can pass, is if any of the tests in the previous build have left an instance of IoTDB running */
+@Ignore("This test has been moved to the Integration-Test module")
 public class ImportCsvTestIT extends AbstractScript {
 
   @Before

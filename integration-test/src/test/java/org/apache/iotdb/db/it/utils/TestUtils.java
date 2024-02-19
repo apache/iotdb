@@ -631,21 +631,12 @@ public class TestUtils {
     }
   }
 
-  public static void restartCluster(BaseEnv env) throws Exception {
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.shutdownConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.shutdownDataNode(i);
-    }
-    TimeUnit.SECONDS.sleep(1);
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.startConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.startDataNode(i);
-    }
-    ((AbstractEnv) env).testWorkingNoUnknown();
+  public static boolean restartCluster(BaseEnv env) {
+    env.shutdownAllDataNodes();
+    env.shutdownAllConfigNodes();
+    env.startAllConfigNodes();
+    env.startAllDataNodes();
+    return ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
   }
 
   public static void assertDataOnEnv(

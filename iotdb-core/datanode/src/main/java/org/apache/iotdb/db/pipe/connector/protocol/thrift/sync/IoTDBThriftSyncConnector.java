@@ -34,7 +34,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -196,25 +195,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                .parseEventWithPatternOrTime());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(
-            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
-      }
-      return;
-    } else {
-      // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-          return;
-        }
-      }
-    }
-
     try {
       if (isTabletBatchModeEnabled) {
         if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
@@ -243,20 +223,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
-      return;
-    }
-
-    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
-      LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
-          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
-      }
       return;
     }
 

@@ -98,7 +98,7 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithoutTimeFilter() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -122,7 +122,7 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithoutTimeFilterOrderByTimeDesc() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -148,7 +148,7 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -179,7 +179,7 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -213,8 +213,9 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -242,8 +243,9 @@ public class SeriesAggregationScanOperatorTest {
   @Test
   public void testAggregationWithTimeFilter1() throws Exception {
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -268,8 +270,9 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithTimeFilter2() throws Exception {
     Filter timeFilter = TimeFilterApi.ltEq(379);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -293,8 +296,9 @@ public class SeriesAggregationScanOperatorTest {
   public void testAggregationWithTimeFilter3() throws Exception {
     Filter timeFilter = FilterFactory.and(TimeFilterApi.gtEq(100), TimeFilterApi.ltEq(399));
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -323,8 +327,9 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -357,7 +362,7 @@ public class SeriesAggregationScanOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -388,8 +393,9 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -429,8 +435,9 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -473,8 +480,9 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -507,8 +515,9 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -539,8 +548,9 @@ public class SeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -581,8 +591,9 @@ public class SeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
