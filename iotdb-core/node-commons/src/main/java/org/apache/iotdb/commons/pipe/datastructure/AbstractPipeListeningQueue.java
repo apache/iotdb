@@ -112,7 +112,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   /////////////////////////////// Snapshot ///////////////////////////////
   @Override
   public final boolean serializeToFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName, SNAPSHOT_PREFIX);
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -133,7 +133,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public final void deserializeFromFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName, SNAPSHOT_PREFIX);
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot, snapshot file [{}] is not exist.",
