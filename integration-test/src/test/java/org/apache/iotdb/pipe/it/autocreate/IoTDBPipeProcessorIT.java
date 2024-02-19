@@ -75,6 +75,17 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Test the mixture of historical and realtime data
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 1)",
+              "insert into root.vehicle.d0(time, s1) values (10000, 2)"))) {
+        return;
+      }
+
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
@@ -101,13 +112,9 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)",
-              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
               "insert into root.vehicle.d0(time, s1) values (19999, 3)",
               "insert into root.vehicle.d0(time, s1) values (20000, 4)",
               "insert into root.vehicle.d0(time, s1) values (20001, 5)",
