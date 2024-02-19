@@ -182,7 +182,30 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
+  public boolean shouldParsePatternOrTime() {
+    boolean shouldParsePatternOrTime = super.shouldParsePatternOrTime();
+    if (!shouldParsePatternOrTime) {
+      close();
+    }
+    return shouldParsePatternOrTime;
+  }
+
+  @Override
+  public boolean shouldParsePattern() {
+    if (!super.shouldParsePattern()) {
+      return false;
+    }
+    initDataContainer();
+    return dataContainer.shouldParsePattern();
+  }
+
+  @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    initDataContainer();
+    return dataContainer.toTabletInsertionEvents();
+  }
+
+  private void initDataContainer() {
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
@@ -190,7 +213,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             new TsFileInsertionDataContainer(
                 tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
-      return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
