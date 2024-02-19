@@ -119,8 +119,9 @@ public class PipeMemoryManager {
   private PipeMemoryBlock forceAllocate(long sizeInBytes, boolean isForTablet)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      // No need to consider isForTablet, for memory control is disabled
-      return new PipeMemoryBlock(sizeInBytes);
+      return isForTablet
+          ? new PipeTabletMemoryBlock(sizeInBytes)
+          : new PipeMemoryBlock(sizeInBytes);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -161,6 +162,11 @@ public class PipeMemoryManager {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
+
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeMemoryBlock(sizeInBytes);
+    }
+
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
         && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
       return forceAllocate(sizeInBytes);
