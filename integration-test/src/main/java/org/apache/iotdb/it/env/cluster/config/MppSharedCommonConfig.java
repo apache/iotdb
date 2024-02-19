@@ -261,6 +261,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSeqMemtableFlushIntervalInMs(long seqMemtableFlushIntervalInMs) {
+    cnConfig.setSeqMemtableFlushIntervalInMs(seqMemtableFlushIntervalInMs);
+    dnConfig.setSeqMemtableFlushIntervalInMs(seqMemtableFlushIntervalInMs);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setUnseqMemtableFlushIntervalInMs(long unseqMemtableFlushIntervalInMs) {
+    cnConfig.setUnseqMemtableFlushIntervalInMs(unseqMemtableFlushIntervalInMs);
+    dnConfig.setUnseqMemtableFlushIntervalInMs(unseqMemtableFlushIntervalInMs);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     cnConfig.setConfigNodeRatisSnapshotTriggerThreshold(ratisSnapshotTriggerThreshold);

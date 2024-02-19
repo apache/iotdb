@@ -38,7 +38,12 @@ abstract class AbstractPipeDualManualIT {
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+      senderEnv
+          .getConfig()
+          .getCommonConfig()
+          .setAutoCreateSchemaEnabled(false)
+          .setSeqMemtableFlushIntervalInMs(6000)
+          .setUnseqMemtableFlushIntervalInMs(6000);
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
 
       senderEnv.initClusterEnvironment();
