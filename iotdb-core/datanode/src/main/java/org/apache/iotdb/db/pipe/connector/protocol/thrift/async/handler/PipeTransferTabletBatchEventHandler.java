@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<TPipeTransferResp> {
 
@@ -90,7 +91,13 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   public void onError(Exception exception) {
     LOGGER.warn(
         "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
-        events,
+        events.stream()
+            .map(
+                event ->
+                    event instanceof EnrichedEvent
+                        ? ((EnrichedEvent) event).coreReportMessage()
+                        : event.toString())
+            .collect(Collectors.toList()),
         requestCommitIds,
         exception);
 

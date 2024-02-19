@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -33,8 +34,8 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * This handler is used by the Pipe to find the corresponding insert node. Besides, it can try to
- * pin/unpin the wal entries by the memTable id.
+ * This handler is used by the Pipe to find the corresponding {@link InsertNode}. Besides, it can
+ * try to pin/unpin the {@link WALEntry}s by the memTable id.
  */
 public class WALEntryHandler {
 
