@@ -78,7 +78,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | repairData | explain
+    : | flush | clearCache | settle | repairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
@@ -563,19 +563,19 @@ connectorAttributeClause
 
 alterPipe
     : ALTER PIPE pipeName=identifier
-        modifyProcessorAttributesClause?
-        modifyConnectorAttributesClause?
+        alterProcessorAttributesClause?
+        alterConnectorAttributesClause?
     ;
 
-modifyProcessorAttributesClause
-    : MODIFY PROCESSOR
+alterProcessorAttributesClause
+    : (MODIFY | REPLACE) PROCESSOR
         LR_BRACKET
         (processorAttributeClause COMMA)* processorAttributeClause?
         RR_BRACKET
     ;
 
-modifyConnectorAttributesClause
-    : MODIFY (CONNECTOR | SINK)
+alterConnectorAttributesClause
+    : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
@@ -932,16 +932,6 @@ usernameWithRoot
 /**
  * 5. Utility Statements
  */
-
-// Merge
-merge
-    : MERGE (ON (LOCAL | CLUSTER))?
-    ;
-
-// Full Merge
-fullMerge
-    : FULL MERGE (ON (LOCAL | CLUSTER))?
-    ;
 
 // Flush
 flush

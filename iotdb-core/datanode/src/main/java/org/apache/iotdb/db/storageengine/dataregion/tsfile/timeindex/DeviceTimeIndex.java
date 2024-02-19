@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -117,7 +116,9 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream).intern();
+      String path =
+          DataNodeDevicePathCache.getInstance()
+              .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       int index = ReadWriteIOUtils.readInt(inputStream);
       deviceToIndex.put(path, index);
     }
@@ -138,7 +139,8 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path = SerializeUtils.deserializeString(buffer).intern();
+      String path =
+          DataNodeDevicePathCache.getInstance().getDeviceId(ReadWriteIOUtils.readString(buffer));
       int index = buffer.getInt();
       deviceToIndex.put(path, index);
     }
@@ -171,7 +173,9 @@ public class DeviceTimeIndex implements ITimeIndex {
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
     Set<String> devices = new HashSet<>();
     for (int i = 0; i < deviceNum; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream).intern();
+      String path =
+          DataNodeDevicePathCache.getInstance()
+              .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
       devices.add(path);
     }
@@ -215,7 +219,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       index = deviceToIndex.get(deviceId);
     } else {
       index = deviceToIndex.size();
-      deviceToIndex.put(deviceId.intern(), index);
+      deviceToIndex.put(DataNodeDevicePathCache.getInstance().getDeviceId(deviceId), index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);

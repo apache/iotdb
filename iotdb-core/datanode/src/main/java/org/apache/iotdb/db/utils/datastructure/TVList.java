@@ -46,10 +46,8 @@ import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HE
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList implements WALEntryValue {
-
-  protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-  protected static final long targetChunkSize =
+  protected static final long TARGET_CHUNK_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
@@ -93,9 +91,9 @@ public abstract class TVList implements WALEntryValue {
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value array mem size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    size += PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     // two array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList

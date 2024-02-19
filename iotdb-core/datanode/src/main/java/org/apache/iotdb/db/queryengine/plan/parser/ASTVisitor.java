@@ -188,7 +188,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -225,6 +224,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -2885,7 +2885,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // type check of input expressions is put in ExpressionTypeAnalyzer
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
       checkAggregationFunctionInput(functionExpression);
-    } else if (functionExpression.isBuiltInScalarFunction()) {
+    } else if (functionExpression.isBuiltInScalarFunctionExpression()) {
       checkBuiltInScalarFunctionInput(functionExpression);
     }
     return functionExpression;
@@ -3120,27 +3120,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseStringLiteral(ctx.getText());
     }
     return parseIdentifier(ctx.getText());
-  }
-
-  // Merge
-  @Override
-  public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
-    }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
-  }
-
-  @Override
-  public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
-    MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
-    }
-    mergeStatement.setOnCluster(ctx.LOCAL() == null);
-    return mergeStatement;
   }
 
   // Flush
@@ -3628,19 +3607,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
     }
-    if (ctx.modifyProcessorAttributesClause() != null) {
+    if (ctx.alterProcessorAttributesClause() != null) {
       alterPipeStatement.setProcessorAttributes(
           parseProcessorAttributesClause(
-              ctx.modifyProcessorAttributesClause().processorAttributeClause()));
+              ctx.alterProcessorAttributesClause().processorAttributeClause()));
+      alterPipeStatement.setReplaceAllProcessorAttributes(
+          Objects.nonNull(ctx.alterProcessorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setProcessorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
-    if (ctx.modifyConnectorAttributesClause() != null) {
+    if (ctx.alterConnectorAttributesClause() != null) {
       alterPipeStatement.setConnectorAttributes(
           parseConnectorAttributesClause(
-              ctx.modifyConnectorAttributesClause().connectorAttributeClause()));
+              ctx.alterConnectorAttributesClause().connectorAttributeClause()));
+      alterPipeStatement.setReplaceAllConnectorAttributes(
+          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
     } else {
       alterPipeStatement.setConnectorAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllConnectorAttributes(false);
     }
     return alterPipeStatement;
   }

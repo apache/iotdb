@@ -161,7 +161,7 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
       replacedChildren.add(this.process(child, context));
     }
     functionExpression.setExpressions(replacedChildren);
-    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+    if (functionExpression.isAggregationFunctionExpression()) {
       this.hasProcessedAggregationFunction = true;
     }
     return functionExpression;
