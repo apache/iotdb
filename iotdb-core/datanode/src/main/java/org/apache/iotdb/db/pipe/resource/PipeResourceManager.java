@@ -34,7 +34,6 @@ public class PipeResourceManager {
   private final PipeTsFileResourceManager pipeTsFileResourceManager;
   private final AtomicReference<PipeWALResourceManager> pipeWALResourceManager;
   private final PipeMemoryManager pipeMemoryManager;
-
   private final PipeLogManager pipeLogManager;
 
   public static PipeTsFileResourceManager tsfile() {
