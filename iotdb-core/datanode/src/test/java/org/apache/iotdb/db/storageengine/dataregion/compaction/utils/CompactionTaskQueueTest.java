@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,14 +37,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CompactionTaskQueueTest {
+public class CompactionTaskQueueTest extends AbstractCompactionTest {
 
   private final long originalMemorySizeForCompaction =
       SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -64,7 +67,8 @@ public class CompactionTaskQueueTest {
   }
 
   @Test
-  public void testPutAndTake() throws InterruptedException {
+  public void testPutAndTake()
+      throws InterruptedException, IOException, MetadataException, WriteProcessException {
     AbstractCompactionTask mockTask = prepareTask(1000, 10);
     CompactionTaskQueue queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
@@ -77,7 +81,8 @@ public class CompactionTaskQueueTest {
   }
 
   @Test
-  public void testPutAndTakeWithTaskBlockedByMemoryLimit() throws InterruptedException {
+  public void testPutAndTakeWithTaskBlockedByMemoryLimit()
+      throws InterruptedException, IOException, MetadataException, WriteProcessException {
     AbstractCompactionTask mockTask1 = prepareTask(1500, 10);
     AbstractCompactionTask mockTask2 = prepareTask(200, 10);
     AbstractCompactionTask mockTask3 = prepareTask(600, 10);
@@ -112,7 +117,8 @@ public class CompactionTaskQueueTest {
   }
 
   @Test
-  public void testPutAndTakeWithTaskBlockedByFileNumLimit() throws InterruptedException {
+  public void testPutAndTakeWithTaskBlockedByFileNumLimit()
+      throws InterruptedException, IOException, MetadataException, WriteProcessException {
     AbstractCompactionTask mockTask1 = prepareTask(500, 3);
     AbstractCompactionTask mockTask2 = prepareTask(200, 40);
     AbstractCompactionTask mockTask3 = prepareTask(600, 10);
@@ -147,7 +153,8 @@ public class CompactionTaskQueueTest {
   }
 
   @Test
-  public void testIncrementPriority() throws InterruptedException {
+  public void testIncrementPriority()
+      throws InterruptedException, IOException, MetadataException, WriteProcessException {
     AbstractCompactionTask mockTask1 = prepareTask(200, 10, 1);
     AbstractCompactionTask mockTask2 = prepareTask(1600, 10, 2);
     Mockito.when(mockTask2.getRetryAllocateResourcesTimes()).thenReturn(Integer.MAX_VALUE);
@@ -190,22 +197,31 @@ public class CompactionTaskQueueTest {
     releaseTaskOccupiedResources(mockTask1);
   }
 
-  private AbstractCompactionTask prepareTask(long memCost, int fileNum, long timePartition) {
-    InnerSpaceCompactionTask mockTask = Mockito.mock(InnerSpaceCompactionTask.class);
-    Mockito.when(mockTask.getEstimatedMemoryCost()).thenReturn(memCost);
-    Mockito.when(mockTask.getProcessedFileNum()).thenReturn(fileNum);
-    Mockito.when(mockTask.getAllSourceTsFiles()).thenReturn(Arrays.asList());
-    Mockito.when(mockTask.isDiskSpaceCheckPassed()).thenReturn(true);
-    Mockito.when(mockTask.getSumOfCompactionCount()).thenReturn(1);
-    Mockito.when(mockTask.getSelectedTsFileResourceList())
-        .thenReturn(Collections.singletonList(new TsFileResource()));
-    Mockito.when(mockTask.getCompactionTaskType()).thenReturn(CompactionTaskType.INNER_SEQ);
-    Mockito.when(mockTask.getTimePartition()).thenReturn(timePartition);
-    Mockito.when(mockTask.isCompactionAllowed()).thenReturn(true);
+  private AbstractCompactionTask prepareTask(long memCost, int fileNum, long timePartition)
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(1, 1, 1, 1, 1, 1, 1, 1, true, true);
+    for (TsFileResource seqResource : seqResources) {
+      seqResource.setStatusForTest(TsFileResourceStatus.COMPACTION_CANDIDATE);
+    }
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            timePartition,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0);
+    InnerSpaceCompactionTask mockTask = Mockito.spy(task);
+    Mockito.doReturn(memCost).when(mockTask).getEstimatedMemoryCost();
+    Mockito.doReturn(fileNum).when(mockTask).getProcessedFileNum();
+    Mockito.doReturn(true).when(mockTask).isDiskSpaceCheckPassed();
+    Mockito.doReturn(1).when(mockTask).getSumOfCompactionCount();
+    Mockito.doReturn(true).when(mockTask).isCompactionAllowed();
     return mockTask;
   }
 
-  private AbstractCompactionTask prepareTask(long memCost, int fileNum) {
+  private AbstractCompactionTask prepareTask(long memCost, int fileNum)
+      throws IOException, MetadataException, WriteProcessException {
     return prepareTask(memCost, fileNum, 0);
   }
 

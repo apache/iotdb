@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.slf4j.Logger;
@@ -82,11 +81,6 @@ public class CompactionWorker implements Runnable {
     } catch (Exception e) {
       LOGGER.warn("Exception occurred when executing compaction task. {}", task, e);
     } finally {
-      task.resetCompactionCandidateStatusForAllSourceFiles();
-      task.handleTaskCleanup();
-      SystemInfo.getInstance()
-          .resetCompactionMemoryCost(task.getCompactionTaskType(), task.getEstimatedMemoryCost());
-      SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
       if (taskSuccess) {
         task.getAllSourceTsFiles()
             .forEach(AbstractCompactionEstimator::removeFileInfoFromGlobalFileInfoCache);

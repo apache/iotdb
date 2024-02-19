@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import java.util.ArrayList;
@@ -70,7 +67,7 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
         if (task == null) {
           continue;
         }
-        if (!tryOccupyResourcesForRunningTask(task)) {
+        if (!task.tryOccupyResourcesForRunning()) {
           incrementTaskPriority(task);
           retryTasks.add(task);
           continue;
@@ -89,9 +86,7 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
   private void dropCompactionTask(AbstractCompactionTask task) {
     task.resetCompactionCandidateStatusForAllSourceFiles();
     task.handleTaskCleanup();
-    SystemInfo.getInstance()
-        .resetCompactionMemoryCost(task.getCompactionTaskType(), task.getEstimatedMemoryCost());
-    SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
+    task.releaseOccupiedResources();
   }
 
   private boolean checkTaskValid(AbstractCompactionTask task) {
@@ -104,37 +99,6 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
       return false;
     }
     return true;
-  }
-
-  private boolean tryOccupyResourcesForRunningTask(AbstractCompactionTask task) {
-    if (!task.isDiskSpaceCheckPassed()) {
-      return false;
-    }
-    // check task retry times
-    int maxRetryTimes = 5;
-    boolean blockUntilCanExecute = task.getRetryAllocateResourcesTimes() >= maxRetryTimes;
-    long estimatedMemoryCost = task.getEstimatedMemoryCost();
-    boolean memoryAcquired = false;
-    boolean fileHandleAcquired = false;
-    try {
-      SystemInfo.getInstance()
-          .addCompactionMemoryCost(
-              task.getCompactionTaskType(), estimatedMemoryCost, blockUntilCanExecute);
-      memoryAcquired = true;
-      SystemInfo.getInstance()
-          .addCompactionFileNum(task.getProcessedFileNum(), blockUntilCanExecute);
-      fileHandleAcquired = true;
-    } catch (CompactionMemoryNotEnoughException | CompactionFileCountExceededException ignored) {
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    } finally {
-      // if file num acquired successfully, the allocation will success
-      if (memoryAcquired && !fileHandleAcquired) {
-        SystemInfo.getInstance()
-            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
-      }
-    }
-    return memoryAcquired && fileHandleAcquired;
   }
 
   private void incrementTaskPriority(AbstractCompactionTask task) {

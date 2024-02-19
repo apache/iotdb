@@ -208,7 +208,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       try {
         result.get();
       } catch (CancellationException cancellationException) {
-        LOGGER.error("[RepairScheduler] scan task is cancelled");
+        LOGGER.warn("[RepairScheduler] scan task is cancelled");
       } catch (Exception e) {
         LOGGER.error("[RepairScheduler] Meet errors when scan time partition files", e);
       }

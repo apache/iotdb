@@ -42,6 +42,9 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class RepairDataFileScanUtil {
+  private static final Logger logger = LoggerFactory.getLogger(RepairDataFileScanUtil.class);
   private final TsFileResource resource;
   private boolean hasUnsortedData;
   private boolean isBrokenFile;
@@ -78,7 +82,8 @@ public class RepairDataFileScanUtil {
           checkNonAlignedDeviceSeries(reader, device);
         }
       }
-    } catch (IOException ignored) {
+    } catch (IOException ioException) {
+      logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), ioException);
       isBrokenFile = true;
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedData = true;

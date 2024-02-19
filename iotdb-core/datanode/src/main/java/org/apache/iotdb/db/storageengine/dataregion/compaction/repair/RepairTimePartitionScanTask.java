@@ -78,6 +78,11 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         progress.incrementRepairedTimePartitionNum();
         continue;
       }
+      LOGGER.info(
+          "[RepairScheduler][{}][{}] start scan repair time partition {}",
+          timePartition.getDatabaseName(),
+          timePartition.getDataRegionId(),
+          timePartition.getTimePartitionId());
       // repair unsorted data in single file
       checkInternalUnsortedFileAndRepair(timePartition);
       // repair unsorted data between sequence files
@@ -95,6 +100,10 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
             .collect(Collectors.toList());
     CountDownLatch latch = new CountDownLatch(sourceFiles.size());
     for (TsFileResource sourceFile : sourceFiles) {
+      if (Thread.interrupted()) {
+        Thread.currentThread().interrupt();
+        throw new InterruptedException();
+      }
       sourceFile.readLock();
       try {
         if (sourceFile.getStatus() != TsFileResourceStatus.NORMAL) {
@@ -143,6 +152,9 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     List<TsFileResource> overlapFiles =
         RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
+      if (Thread.interrupted()) {
+        throw new InterruptedException();
+      }
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
@@ -186,7 +198,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
           "[RepairScheduler][{}][{}] failed to record repair log for time partition {}",
           timePartition.getDatabaseName(),
           timePartition.getDataRegionId(),
-          timePartition.getTimePartitionId());
+          timePartition.getTimePartitionId(),
+          e);
     }
     LOGGER.info(
         "[RepairScheduler][{}][{}] time partition {} has been repaired, progress: {}/{}",

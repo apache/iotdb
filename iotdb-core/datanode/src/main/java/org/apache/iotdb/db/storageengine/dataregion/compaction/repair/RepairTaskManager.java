@@ -96,7 +96,7 @@ public class RepairTaskManager implements IService {
 
   @Override
   public synchronized void stop() {
-    if (repairScheduleTaskThreadPool == null) {
+    if (!init) {
       return;
     }
     repairScheduleTaskThreadPool.shutdownNow();
@@ -145,8 +145,7 @@ public class RepairTaskManager implements IService {
 
   private synchronized void initThreadPool() {
     this.repairScheduleTaskThreadPool =
-        IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.REPAIR_DATA.getName(), maxScanTaskNum);
+        IoTDBThreadPoolFactory.newFixedThreadPool(maxScanTaskNum, ThreadName.REPAIR_DATA.getName());
   }
 
   private synchronized void waitForThreadPoolTerminated() {
