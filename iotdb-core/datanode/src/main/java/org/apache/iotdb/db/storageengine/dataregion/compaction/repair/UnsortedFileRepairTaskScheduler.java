@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
   private final Set<RepairTimePartition> allTimePartitionFiles = new HashSet<>();
   private RepairLogger repairLogger;
-  private final boolean isRecover;
   private boolean initSuccess = false;
   private boolean isRecoverStoppedTask = false;
   private long repairTaskTime;
@@ -56,7 +54,6 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   /** Used for create a new repair schedule task */
   public UnsortedFileRepairTaskScheduler(
       List<DataRegion> dataRegions, boolean isRecoverStorageEngine) {
-    this.isRecover = false;
     try {
       repairLogger = new RepairLogger(isRecoverStorageEngine);
     } catch (Exception e) {
@@ -87,10 +84,9 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
 
   @TestOnly
   public UnsortedFileRepairTaskScheduler(
-      List<DataRegion> dataRegions, boolean isRecoverIoTDB, File logFileDir) {
-    this.isRecover = false;
+      List<DataRegion> dataRegions, boolean isRecoverStorageEngine, File logFileDir) {
     try {
-      repairLogger = new RepairLogger(logFileDir, isRecoverIoTDB);
+      repairLogger = new RepairLogger(logFileDir, isRecoverStorageEngine);
     } catch (Exception e) {
       try {
         LOGGER.error("[RepairScheduler] Failed to create repair logger", e);
@@ -165,25 +161,19 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   @Override
   public void run() {
     try {
-      RepairTaskManager.getInstance().waitReady();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return;
-    }
-    if (isRecoverStoppedTask) {
-      RepairTaskManager.getInstance().markRepairTaskFinish();
-      return;
-    }
-    if (!initSuccess) {
-      LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
-      RepairTaskManager.getInstance().markRepairTaskFinish();
-      return;
-    }
-    CompactionScheduler.exclusiveLockCompactionSelection();
-    try {
-      LOGGER.info("[RepairScheduler] Wait all running compaction task finish");
-      CompactionTaskManager.getInstance().waitAllCompactionFinish();
-      runTimePartitionScanTasks();
+      if (!checkConditionsToStartRepairTask()) {
+        return;
+      }
+      LOGGER.info("[RepairScheduler] Wait compaction schedule task finish");
+      CompactionScheduler.exclusiveLockCompactionSelection();
+      try {
+        LOGGER.info("[RepairScheduler] Wait all running compaction task finish");
+        CompactionTaskManager.getInstance().waitAllCompactionFinish();
+        startTimePartitionScanTasks();
+        LOGGER.info("[RepairScheduler] Repair task finished");
+      } finally {
+        CompactionScheduler.exclusiveUnlockCompactionSelection();
+      }
     } catch (InterruptedException interruptedException) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
@@ -198,19 +188,28 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
             repairLogger.getRepairLogFilePath(),
             e);
       }
-      LOGGER.info("[RepairScheduler] Finished repair task");
-      CompactionScheduler.exclusiveUnlockCompactionSelection();
     }
   }
 
-  private void runTimePartitionScanTasks() throws InterruptedException {
+  private boolean checkConditionsToStartRepairTask() throws InterruptedException {
+    RepairTaskManager.getInstance().checkReady();
+    if (isRecoverStoppedTask) {
+      return false;
+    }
+    if (!initSuccess) {
+      LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
+      return false;
+    }
+    return true;
+  }
+
+  private void startTimePartitionScanTasks() throws InterruptedException {
     List<Future<Void>> results = new ArrayList<>();
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
       results.add(
           RepairTaskManager.getInstance()
               .submitScanTask(
-                  new RepairTimePartitionScanTask(
-                      Collections.singletonList(timePartition), repairLogger, repairProgress)));
+                  new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress)));
     }
     for (Future<Void> result : results) {
       try {

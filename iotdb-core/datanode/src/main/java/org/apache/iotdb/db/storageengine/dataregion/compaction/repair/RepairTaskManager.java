@@ -82,15 +82,12 @@ public class RepairTaskManager implements IService {
 
   @Override
   public synchronized void start() throws StartupException {
-    if (repairScheduleTaskThreadPool == null && maxScanTaskNum > 0) {
-      initThreadPool();
-    }
     logger.info("Repair schedule task manager started.");
   }
 
-  public void waitReady() throws InterruptedException {
-    while (!init) {
-      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+  public void checkReady() {
+    if (!init && maxScanTaskNum > 0) {
+      initThreadPool();
     }
   }
 
@@ -147,9 +144,9 @@ public class RepairTaskManager implements IService {
   }
 
   private synchronized void initThreadPool() {
-    init = true;
     this.repairScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(maxScanTaskNum, ThreadName.REPAIR_DATA.getName());
+    init = true;
   }
 
   private synchronized void waitForThreadPoolTerminated() {

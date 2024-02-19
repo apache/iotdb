@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RepairProgress {
   private final int totalTimePartitionNum;
-  private AtomicInteger repairedTimePartitionNum;
+  private final AtomicInteger repairedTimePartitionNum;
 
   public RepairProgress(int totalTimePartitionNum) {
     this.totalTimePartitionNum = totalTimePartitionNum;

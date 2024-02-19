@@ -50,10 +50,10 @@ public class RepairLogger implements Closeable {
   private boolean isPreviousTaskStopped = false;
   private boolean needRecoverFromLogFile = false;
 
-  public RepairLogger(boolean recover) throws IOException {
+  public RepairLogger(boolean isRecoverStorageEngine) throws IOException {
     this.logFileDir = getOrCreateRepairLogDir();
     checkPreviousRepairTaskStatus();
-    if (recover) {
+    if (isRecoverStorageEngine) {
       recoverPreviousTask();
     } else {
       startRepairTask();
@@ -99,17 +99,20 @@ public class RepairLogger implements Closeable {
     }
   }
 
+  /**
+   * Used for start a repair task. May restart a stopped repair task or create a new repair task.
+   */
   private void startRepairTask() throws IOException {
     if (hasPreviousTask && isPreviousTaskStopped) {
+      // Restart the stopped task
       // 1. delete stopped mark file
       unmarkStopped();
       // 2. recover from previous log file
       recoverPreviousTask();
       return;
     }
-    // 1. delete previous log file if exists
+    // Start a new repair task
     deletePreviousLogFileIfExists();
-    // 2. create new log file
     createNewLogFile();
   }
 
@@ -142,6 +145,7 @@ public class RepairLogger implements Closeable {
     this.logStream = new FileOutputStream(logFile, true);
   }
 
+  /** Used for recovering StorageEngine */
   private void recoverPreviousTask() throws FileNotFoundException {
     if (!hasPreviousTask) {
       return;

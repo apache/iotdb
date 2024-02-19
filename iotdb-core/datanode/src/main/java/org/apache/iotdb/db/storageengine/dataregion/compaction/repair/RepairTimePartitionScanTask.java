@@ -43,16 +43,14 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UnsortedFileRepairTaskScheduler.class);
 
-  private final List<RepairTimePartition> repairTimePartitions;
+  private final RepairTimePartition repairTimePartition;
   private final RepairLogger repairLogger;
   private final RepairProgress progress;
   private static final Lock submitRepairFileTaskLock = new ReentrantLock();
 
   public RepairTimePartitionScanTask(
-      List<RepairTimePartition> repairTimePartitions,
-      RepairLogger repairLogger,
-      RepairProgress progress) {
-    this.repairTimePartitions = repairTimePartitions;
+      RepairTimePartition repairTimePartition, RepairLogger repairLogger, RepairProgress progress) {
+    this.repairTimePartition = repairTimePartition;
     this.repairLogger = repairLogger;
     this.progress = progress;
   }
@@ -68,27 +66,25 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
   }
 
   private void scanTimePartitionFiles() throws InterruptedException {
-    for (RepairTimePartition timePartition : repairTimePartitions) {
-      if (timePartition.isRepaired()) {
-        LOGGER.info(
-            "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
-            timePartition.getDatabaseName(),
-            timePartition.getDataRegionId(),
-            timePartition.getTimePartitionId());
-        progress.incrementRepairedTimePartitionNum();
-        continue;
-      }
+    if (repairTimePartition.isRepaired()) {
       LOGGER.info(
-          "[RepairScheduler][{}][{}] start scan repair time partition {}",
-          timePartition.getDatabaseName(),
-          timePartition.getDataRegionId(),
-          timePartition.getTimePartitionId());
-      // repair unsorted data in single file
-      checkInternalUnsortedFileAndRepair(timePartition);
-      // repair unsorted data between sequence files
-      checkOverlapInSequenceSpaceAndRepair(timePartition);
-      finishRepairTimePartition(timePartition);
+          "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
+          repairTimePartition.getDatabaseName(),
+          repairTimePartition.getDataRegionId(),
+          repairTimePartition.getTimePartitionId());
+      progress.incrementRepairedTimePartitionNum();
+      return;
     }
+    LOGGER.info(
+        "[RepairScheduler][{}][{}] start scan repair time partition {}",
+        repairTimePartition.getDatabaseName(),
+        repairTimePartition.getDataRegionId(),
+        repairTimePartition.getTimePartitionId());
+    // repair unsorted data in single file
+    checkInternalUnsortedFileAndRepair(repairTimePartition);
+    // repair unsorted data between sequence files
+    checkOverlapInSequenceSpaceAndRepair(repairTimePartition);
+    finishRepairTimePartition(repairTimePartition);
   }
 
   private void checkInternalUnsortedFileAndRepair(RepairTimePartition timePartition)
