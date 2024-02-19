@@ -272,7 +272,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
-    if (noExtract) {
+    if (noExtract || hasBeenStarted.get()) {
       return;
     }
     super.start();
@@ -359,7 +359,7 @@ public class IoTDBDataRegionExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void close() throws Exception {
-    if (noExtract) {
+    if (!hasBeenStarted.get()) {
       return;
     }
     historicalExtractor.close();

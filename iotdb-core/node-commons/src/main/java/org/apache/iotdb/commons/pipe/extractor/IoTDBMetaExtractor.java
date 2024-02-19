@@ -41,6 +41,9 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    if (hasBeenStarted.get()) {
+      return;
+    }
     super.start();
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     long index;
