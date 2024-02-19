@@ -49,15 +49,15 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
     long index =
         progressIndex instanceof MinimumProgressIndex
                 // If the index is invalid, the queue is seen as cleared before and thus
-                // needs snapshot rebuilding
+                // needs snapshot re-transferring
                 || !getListeningQueue()
                     .isValidIndex(((MetaProgressIndex) progressIndex).getIndex() + 1)
-            ? fillSnapshot()
+            ? getNextIndexAfterSnapshot()
             : ((MetaProgressIndex) progressIndex).getIndex() + 1;
     itr = getListeningQueue().newIterator(index);
   }
 
-  private long fillSnapshot() {
+  private long getNextIndexAfterSnapshot() {
     Pair<Long, List<PipeSnapshotEvent>> eventPair = getListeningQueue().findAvailableSnapshots();
     // TODO: Trigger snapshot if not exists
     long index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
