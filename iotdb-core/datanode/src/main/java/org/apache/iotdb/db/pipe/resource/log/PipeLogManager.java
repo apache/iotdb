@@ -19,18 +19,22 @@
 
 package org.apache.iotdb.db.pipe.resource.log;
 
+import org.slf4j.Logger;
+
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeLogManager {
+
   private final ConcurrentMap<Class<?>, PipeLogStatus> logClass2LogStatusMap =
       new ConcurrentHashMap<>();
 
-  public void register(Class<?> logClass, int maxAverageScale, int maxLogInterval) {
-    logClass2LogStatusMap.put(logClass, new PipeLogStatus(maxAverageScale, maxLogInterval));
-  }
-
-  public boolean schedule(Class<?> logClass, int scale) {
-    return logClass2LogStatusMap.get(logClass).schedule(scale);
+  public Optional<Logger> schedule(
+      Class<?> logClass, int maxAverageScale, int maxLogInterval, int scale) {
+    return logClass2LogStatusMap
+        .computeIfAbsent(
+            logClass, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
+        .schedule(scale);
   }
 }

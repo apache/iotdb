@@ -464,6 +464,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_tsfile_pin_max_log_interval_rounds",
                 String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
+    config.setPipeWalPinMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_num_per_round",
+                String.valueOf(config.getPipeWalPinMaxLogNumPerRound()))));
+    config.setPipeWalPinMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_interval_rounds",
+                String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(

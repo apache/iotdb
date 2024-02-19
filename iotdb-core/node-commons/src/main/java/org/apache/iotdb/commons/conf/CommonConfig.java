@@ -193,6 +193,8 @@ public class CommonConfig {
   private int pipeMetaReportMaxLogIntervalRounds = 36;
   private int pipeTsFilePinMaxLogNumPerRound = 10;
   private int pipeTsFilePinMaxLogIntervalRounds = 90;
+  private int pipeWalPinMaxLogNumPerRound = 10;
+  private int pipeWalPinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
@@ -822,6 +824,22 @@ public class CommonConfig {
 
   public void setPipeTsFilePinMaxLogIntervalRounds(int pipeTsFilePinMaxLogIntervalRounds) {
     this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public int getPipeWalPinMaxLogNumPerRound() {
+    return pipeWalPinMaxLogNumPerRound;
+  }
+
+  public void setPipeWalPinMaxLogNumPerRound(int pipeWalPinMaxLogNumPerRound) {
+    this.pipeWalPinMaxLogNumPerRound = pipeWalPinMaxLogNumPerRound;
+  }
+
+  public int getPipeWalPinMaxLogIntervalRounds() {
+    return pipeWalPinMaxLogIntervalRounds;
+  }
+
+  public void setPipeWalPinMaxLogIntervalRounds(int pipeWalPinMaxLogIntervalRounds) {
+    this.pipeWalPinMaxLogIntervalRounds = pipeWalPinMaxLogIntervalRounds;
   }
 
   public boolean getPipeMemoryManagementEnabled() {

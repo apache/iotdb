@@ -19,24 +19,34 @@
 
 package org.apache.iotdb.db.pipe.resource.log;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 class PipeLogStatus {
+
+  private final Logger logger;
+
   private final int maxAverageScale;
   private final int maxLogInterval;
   private final AtomicLong currentRounds = new AtomicLong(0);
 
-  PipeLogStatus(int maxAverageScale, int maxLogInterval) {
+  PipeLogStatus(Class<?> logClass, int maxAverageScale, int maxLogInterval) {
+    logger = LoggerFactory.getLogger(logClass);
+
     this.maxAverageScale = maxAverageScale;
     this.maxLogInterval = maxLogInterval;
   }
 
-  boolean schedule(int scale) {
+  synchronized Optional<Logger> schedule(int scale) {
     if (currentRounds.incrementAndGet()
         >= Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval)) {
       currentRounds.set(0);
-      return true;
+      return Optional.of(logger);
     }
-    return false;
+
+    return Optional.empty();
   }
 }

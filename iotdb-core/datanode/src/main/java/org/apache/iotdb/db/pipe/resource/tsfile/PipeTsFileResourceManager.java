@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -56,11 +57,6 @@ public class PipeTsFileResourceManager {
             "PipeTsFileResourceManager#ttlCheck()",
             this::tryTtlCheck,
             Math.max(PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
-    PipeResourceManager.log()
-        .register(
-            PipeTsFileResourceManager.class,
-            PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
-            PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds());
   }
 
   private void tryTtlCheck() {
@@ -84,11 +80,14 @@ public class PipeTsFileResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
-    boolean printThisRound =
+    final Optional<Logger> logger =
         PipeResourceManager.log()
             .schedule(
                 PipeTsFileResourceManager.class,
+                PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
                 hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
+
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -96,12 +95,12 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          if (printThisRound) {
-            LOGGER.info(
-                "Pipe file (file name: {}) is still referenced {} times",
-                entry.getKey(),
-                entry.getValue().getReferenceCount());
-          }
+          logger.ifPresent(
+              l ->
+                  l.info(
+                      "Pipe file (file name: {}) is still referenced {} times",
+                      entry.getKey(),
+                      entry.getValue().getReferenceCount()));
         }
       } catch (IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
