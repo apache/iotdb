@@ -62,8 +62,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
           .getCommonConfig()
           .setAutoCreateSchemaEnabled(true)
           .setDefaultSchemaRegionGroupNumPerDatabase(1)
-          .setSeqMemtableFlushIntervalInMs(6000)
-          .setUnseqMemtableFlushIntervalInMs(6000);
+          .setSeqMemtableFlushIntervalInMs(60000)
+          .setUnseqMemtableFlushIntervalInMs(60000);
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
       // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region

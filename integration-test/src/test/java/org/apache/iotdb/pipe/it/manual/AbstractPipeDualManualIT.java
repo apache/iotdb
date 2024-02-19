@@ -42,8 +42,8 @@ abstract class AbstractPipeDualManualIT {
           .getConfig()
           .getCommonConfig()
           .setAutoCreateSchemaEnabled(false)
-          .setSeqMemtableFlushIntervalInMs(6000)
-          .setUnseqMemtableFlushIntervalInMs(6000);
+          .setSeqMemtableFlushIntervalInMs(60000)
+          .setUnseqMemtableFlushIntervalInMs(60000);
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
 
       senderEnv.initClusterEnvironment();
