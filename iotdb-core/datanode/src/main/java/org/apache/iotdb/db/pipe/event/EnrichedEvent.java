@@ -257,15 +257,15 @@ public abstract class EnrichedEvent implements Event {
         + referenceCount.get()
         + ", pipeName='"
         + pipeName
-        + ", pipeTaskMeta="
+        + "', pipeTaskMeta="
         + pipeTaskMeta
         + ", committerKey='"
         + committerKey
-        + ", commitId="
+        + "', commitId="
         + commitId
         + ", pattern='"
         + pattern
-        + ", startTime="
+        + "', startTime="
         + startTime
         + ", endTime="
         + endTime
@@ -284,13 +284,13 @@ public abstract class EnrichedEvent implements Event {
         + referenceCount.get()
         + ", pipeName='"
         + pipeName
-        + ", committerKey='"
+        + "', committerKey='"
         + committerKey
-        + ", commitId="
+        + "', commitId="
         + commitId
         + ", pattern='"
         + pattern
-        + ", startTime="
+        + "', startTime="
         + startTime
         + ", endTime="
         + endTime
