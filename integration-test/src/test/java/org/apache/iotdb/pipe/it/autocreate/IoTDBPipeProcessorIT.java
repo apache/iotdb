@@ -23,12 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,6 +45,29 @@ import java.util.Set;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
 public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
+  @Before
+  public void setUp() {
+    try {
+      MultiEnvFactory.createEnv(2);
+      senderEnv = MultiEnvFactory.getEnv(0);
+      receiverEnv = MultiEnvFactory.getEnv(1);
+
+      senderEnv
+          .getConfig()
+          .getCommonConfig()
+          .setAutoCreateSchemaEnabled(true)
+          .setTimestampPrecision("ms")
+          .setSeqMemtableFlushIntervalInMs(6000)
+          .setUnseqMemtableFlushIntervalInMs(6000);
+      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+
+      senderEnv.initClusterEnvironment();
+      receiverEnv.initClusterEnvironment();
+    } catch (Throwable e) {
+      Assume.assumeNoException(e);
+    }
+  }
+
   @Test
   public void testDownSamplingProcessor() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -51,6 +77,17 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // Test the mixture of historical and realtime data
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.d0(time, s1) values (0, 1)",
+              "insert into root.vehicle.d0(time, s1) values (10000, 2)"))) {
+        return;
+      }
+
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
@@ -77,17 +114,14 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      // Do not fail if the failure has nothing to do with pipe
-      // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.vehicle.d0(time, s1) values (0, 1)",
-              "insert into root.vehicle.d0(time, s1) values (10000, 2)",
               "insert into root.vehicle.d0(time, s1) values (19999, 3)",
               "insert into root.vehicle.d0(time, s1) values (20000, 4)",
               "insert into root.vehicle.d0(time, s1) values (20001, 5)",
-              "insert into root.vehicle.d0(time, s1) values (45000, 6)"))) {
+              "insert into root.vehicle.d0(time, s1) values (45000, 6)",
+              "flush"))) {
         return;
       }
 

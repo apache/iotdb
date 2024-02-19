@@ -86,6 +86,10 @@ public interface CommonConfig {
 
   CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
 
+  CommonConfig setSeqMemtableFlushIntervalInMs(long seqMemtableFlushIntervalInMs);
+
+  CommonConfig setUnseqMemtableFlushIntervalInMs(long unseqMemtableFlushIntervalInMs);
+
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);

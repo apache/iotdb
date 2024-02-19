@@ -41,18 +41,28 @@ public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
 
   @Override
   public void start() throws Exception {
+    if (hasBeenStarted.get()) {
+      return;
+    }
     super.start();
     ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-    long index;
-    if (progressIndex instanceof MinimumProgressIndex) {
-      // TODO: Trigger snapshot if not exists
-      Pair<Long, List<PipeSnapshotEvent>> eventPair = getListeningQueue().findAvailableSnapshots();
-      index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
-      historicalEvents = eventPair.getRight();
-    } else {
-      index = ((MetaProgressIndex) progressIndex).getIndex() + 1;
-    }
+    long index =
+        progressIndex instanceof MinimumProgressIndex
+                // If the index is invalid, the queue is seen as cleared before and thus
+                // needs snapshot re-transferring
+                || !getListeningQueue()
+                    .isValidIndex(((MetaProgressIndex) progressIndex).getIndex() + 1)
+            ? getNextIndexAfterSnapshot()
+            : ((MetaProgressIndex) progressIndex).getIndex() + 1;
     itr = getListeningQueue().newIterator(index);
+  }
+
+  private long getNextIndexAfterSnapshot() {
+    Pair<Long, List<PipeSnapshotEvent>> eventPair = getListeningQueue().findAvailableSnapshots();
+    // TODO: Trigger snapshot if not exists
+    long index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
+    historicalEvents = eventPair.getRight();
+    return index;
   }
 
   @Override

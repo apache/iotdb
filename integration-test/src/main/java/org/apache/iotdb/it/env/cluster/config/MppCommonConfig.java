@@ -261,6 +261,19 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSeqMemtableFlushIntervalInMs(long seqMemtableFlushIntervalInMs) {
+    setProperty("seq_memtable_flush_interval_in_ms", String.valueOf(seqMemtableFlushIntervalInMs));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setUnseqMemtableFlushIntervalInMs(long unseqMemtableFlushIntervalInMs) {
+    setProperty(
+        "unseq_memtable_flush_interval_in_ms", String.valueOf(unseqMemtableFlushIntervalInMs));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableMemControl(boolean enableMemControl) {
     setProperty("enable_mem_control", String.valueOf(enableMemControl));
     return this;

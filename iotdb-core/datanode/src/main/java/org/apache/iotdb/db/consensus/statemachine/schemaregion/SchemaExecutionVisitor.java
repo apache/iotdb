@@ -541,10 +541,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     int id = schemaRegion.getSchemaRegionId().getId();
     SchemaNodeListeningQueue queue = SchemaNodeListeningQueue.getInstance(id);
     try {
-      if (node.isOpen()) {
+      if (node.isOpen() && !queue.isOpened()) {
         logger.info("Opened pipe listening queue on schema region {}", id);
         queue.open();
-      } else {
+      } else if (queue.isOpened()) {
         logger.info("Closed pipe listening queue on schema region {}", id);
         queue.close();
       }

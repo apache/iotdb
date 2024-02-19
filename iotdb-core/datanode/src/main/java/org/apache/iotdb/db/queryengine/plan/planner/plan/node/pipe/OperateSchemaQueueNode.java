@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -34,9 +35,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@link OperateSchemaQueueNode} is for pipe to manually open or close the schema listening queue.
- * It is for written to {@link SchemaRegion} consensus layer to ensure the identity of the queue in
- * all peers.
+ * {@link OperateSchemaQueueNode} is for pipe to open or close the {@link SchemaNodeListeningQueue}.
+ * It is for written to {@link SchemaRegion} consensus layer to ensure the identity of the {@link
+ * SchemaNodeListeningQueue} in all peers.
  */
 public class OperateSchemaQueueNode extends PlanNode {
 
@@ -94,9 +95,9 @@ public class OperateSchemaQueueNode extends PlanNode {
   }
 
   public static OperateSchemaQueueNode deserialize(ByteBuffer byteBuffer) {
-    boolean isClose = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean isOpen = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new OperateSchemaQueueNode(planNodeId, isClose);
+    return new OperateSchemaQueueNode(planNodeId, isOpen);
   }
 
   @Override
@@ -110,11 +111,12 @@ public class OperateSchemaQueueNode extends PlanNode {
 
     OperateSchemaQueueNode that = (OperateSchemaQueueNode) o;
 
-    return this.getPlanNodeId().equals(that.getPlanNodeId()) && Objects.equals(isOpen, that.isOpen);
+    return Objects.equals(getPlanNodeId(), that.getPlanNodeId())
+        && Objects.equals(isOpen, that.isOpen);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.getPlanNodeId(), isOpen);
+    return Objects.hash(getPlanNodeId(), isOpen);
   }
 }
