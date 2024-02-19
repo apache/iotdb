@@ -165,4 +165,24 @@ public class TElasticFramedTransport extends TTransport {
   public TTransport getSocket() {
     return underlying;
   }
+
+  @Override
+  public int getBytesRemainingInBuffer() {
+    return readBuffer.getBytesRemainingInBuffer();
+  }
+
+  @Override
+  public byte[] getBuffer() {
+    return readBuffer.getBuffer();
+  }
+
+  @Override
+  public int getBufferPosition() {
+    return readBuffer.getBufferPosition();
+  }
+
+  @Override
+  public void consumeBuffer(int len) {
+    readBuffer.consumeBuffer(len);
+  }
 }
