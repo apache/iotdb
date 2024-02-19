@@ -164,7 +164,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
             filteredMeasurements.add(measurement);
           } else {
-            // Parse pattern iff there are filtered measurements
+            // Parse pattern iff there are measurements filtered out
             shouldParsePattern = true;
           }
         }
