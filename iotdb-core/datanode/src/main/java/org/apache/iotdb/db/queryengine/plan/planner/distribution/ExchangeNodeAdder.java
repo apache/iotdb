@@ -507,7 +507,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return newNode;
   }
 
-  // TODO the impl of this method is not clear
+  /** TODO 1. The impl of this method is not clear 2. The main FI may not need DeviceViewNode */
   private PlanNode processAggMergeSortNode(
       MultiChildProcessNode node,
       List<PlanNode> visitedChildren,
@@ -564,6 +564,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       device = ((SeriesAggregationScanNode) child).getSeriesPath().getDevice();
     } else if (child instanceof AlignedSeriesAggregationScanNode) {
       device = ((AlignedSeriesAggregationScanNode) child).getAlignedPath().getDevice();
+    } else if (child instanceof HorizontallyConcatNode) {
+      device = ((SeriesAggregationScanNode) child.getChildren().get(0)).getSeriesPath().getDevice();
     } else {
       // TODO can be other Node?
       throw new UnsupportedOperationException(
