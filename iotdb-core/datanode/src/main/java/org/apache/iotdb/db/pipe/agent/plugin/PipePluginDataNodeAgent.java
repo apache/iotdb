@@ -214,4 +214,17 @@ public class PipePluginDataNodeAgent {
     // schemaRegionPluginAgent.validate(pipeName, extractorAttributes, processorAttributes,
     // connectorAttributes);
   }
+
+  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
+    dataRegionPluginAgent.validateExtractor(extractorAttributes);
+  }
+
+  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
+    dataRegionPluginAgent.validateProcessor(processorAttributes);
+  }
+
+  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
+      throws Exception {
+    dataRegionPluginAgent.validateConnector(pipeName, connectorAttributes);
+  }
 }

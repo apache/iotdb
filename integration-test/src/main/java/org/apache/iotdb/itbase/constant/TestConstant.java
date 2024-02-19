@@ -144,6 +144,18 @@ public class TestConstant {
     return String.format("var_samp(%s)", path);
   }
 
+  public static String countUDAF(String path) {
+    return String.format("count_udaf(%s)", path);
+  }
+
+  public static String sumUDAF(String path) {
+    return String.format("sum_udaf(%s)", path);
+  }
+
+  public static String avgUDAF(String path) {
+    return String.format("avg_udaf(%s)", path);
+  }
+
   public static String recordToInsert(TSRecord record) {
     StringBuilder measurements = new StringBuilder();
     StringBuilder values = new StringBuilder();

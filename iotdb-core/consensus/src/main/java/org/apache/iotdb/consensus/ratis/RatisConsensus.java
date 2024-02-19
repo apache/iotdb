@@ -157,7 +157,12 @@ class RatisConsensus implements IConsensus {
     this.ratisMetricSet = new RatisMetricSet();
     this.readRetryPolicy =
         RetryPolicy.<RaftClientReply>newBuilder()
-            .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setRetryHandler(
+                c ->
+                    !c.isSuccess()
+                        && (c.getException() instanceof ReadIndexException
+                            || c.getException() instanceof ReadException
+                            || c.getException() instanceof NotLeaderException))
             .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
             .setWaitTime(
                 TimeDuration.valueOf(
@@ -347,7 +352,7 @@ class RatisConsensus implements IConsensus {
       if (canServeStaleRead != null && isLinearizableRead) {
         canServeStaleRead.get(groupId).set(true);
       }
-    } catch (ReadException | ReadIndexException e) {
+    } catch (ReadException | ReadIndexException | NotLeaderException e) {
       if (isLinearizableRead) {
         // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
         // read requests.
@@ -426,11 +431,11 @@ class RatisConsensus implements IConsensus {
   public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
     RaftGroup group = buildRaftGroup(groupId, peers);
-    RaftGroup clientGroup =
-        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
-    try (RatisClient client = getRaftClient(clientGroup)) {
+    try {
       RaftClientReply reply =
-          client.getRaftClient().getGroupManagementApi(myself.getId()).add(group, true);
+          server.groupManagement(
+              GroupManagementRequest.newAdd(
+                  localFakeId, myself.getId(), localFakeCallId.incrementAndGet(), group, true));
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
@@ -796,7 +801,6 @@ class RatisConsensus implements IConsensus {
           new GenericKeyedObjectPool<>(
               new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
               new ClientPoolProperty.Builder<RatisClient>()
-                  .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());

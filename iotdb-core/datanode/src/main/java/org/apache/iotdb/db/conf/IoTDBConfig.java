@@ -171,6 +171,9 @@ public class IoTDBConfig {
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
 
+  /** The proportion of memtable memory for device path cache */
+  private double devicePathCacheProportion = 0.05;
+
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
@@ -359,9 +362,6 @@ public class IoTDBConfig {
    */
   private int maxPendingWindowEvaluationTasks = 64;
 
-  /** Is the write mem control for writing enable. */
-  private boolean enableMemControl = true;
-
   /** Is the write ahead log enable. */
   private boolean enableIndex = false;
 
@@ -383,32 +383,29 @@ public class IoTDBConfig {
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
   private long seqTsFileSize = 0L;
 
-  /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
-  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
-
   /** Whether to timed flush sequence tsfiles' memtables. */
   private boolean enableTimedFlushSeqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 10 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
-  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+  private long seqMemtableFlushCheckInterval = 30 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
   private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
-   * If a memTable's created time is older than current time minus this, the memtable will be
+   * If a memTable's last update time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 3 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 10 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 30 * 1000L;
 
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
@@ -459,13 +456,6 @@ public class IoTDBConfig {
    * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
-
-  /**
-   * Enable compaction memory control or not. If true and estimated memory size of one compaction
-   * task exceeds the threshold, system will block the compaction. It only works for cross space
-   * compaction currently.
-   */
-  private boolean enableCompactionMemControl = true;
 
   private double chunkMetadataSizeProportion = 0.1;
 
@@ -758,9 +748,6 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the num of memtable in each database */
-  private int concurrentWritingTimePartition = 1;
-
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
@@ -933,12 +920,6 @@ public class IoTDBConfig {
           : 1;
 
   /**
-   * The maximum number of clients that can be idle for a node in a clientManager. When the number
-   * of idle clients on a node exceeds this number, newly returned clients will be released
-   */
-  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
-
-  /**
    * The maximum number of clients that can be allocated for a node in a clientManager. When the
    * number of the client to a single node exceeds this number, the thread for applying for a client
    * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
@@ -951,8 +932,6 @@ public class IoTDBConfig {
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 1000;
-
-  private int devicePathCacheSize = 500_000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -1092,12 +1071,13 @@ public class IoTDBConfig {
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
-
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
-      0; // 0 means that the decision will be adaptive based on the number of sequences
+      0L; // 0 means that the decision will be adaptive based on the number of sequences
 
-  private long loadMemoryAllocateRetryIntervalMs = 1000;
+  private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
+
+  private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -1210,14 +1190,6 @@ public class IoTDBConfig {
   public void setUdfInitialByteArrayLengthForMemoryControl(
       int udfInitialByteArrayLengthForMemoryControl) {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
-  }
-
-  public int getConcurrentWritingTimePartition() {
-    return concurrentWritingTimePartition;
-  }
-
-  public void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
-    this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
@@ -2033,22 +2005,6 @@ public class IoTDBConfig {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
-  public boolean isEnableMemControl() {
-    return enableMemControl;
-  }
-
-  public void setEnableMemControl(boolean enableMemControl) {
-    this.enableMemControl = enableMemControl;
-  }
-
-  public long getMemtableSizeThreshold() {
-    return memtableSizeThreshold;
-  }
-
-  public void setMemtableSizeThreshold(long memtableSizeThreshold) {
-    this.memtableSizeThreshold = memtableSizeThreshold;
-  }
-
   public boolean isEnableTimedFlushSeqMemtable() {
     return enableTimedFlushSeqMemtable;
   }
@@ -2757,14 +2713,6 @@ public class IoTDBConfig {
     this.compactionPriority = compactionPriority;
   }
 
-  public boolean isEnableCompactionMemControl() {
-    return enableCompactionMemControl;
-  }
-
-  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
-    this.enableCompactionMemControl = enableCompactionMemControl;
-  }
-
   public long getTargetCompactionFileSize() {
     return targetCompactionFileSize;
   }
@@ -3042,14 +2990,6 @@ public class IoTDBConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
-  }
-
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -3097,14 +3037,6 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
-  }
-
-  public int getDevicePathCacheSize() {
-    return devicePathCacheSize;
-  }
-
-  public void setDevicePathCacheSize(int devicePathCacheSize) {
-    this.devicePathCacheSize = devicePathCacheSize;
   }
 
   public int getAuthorCacheSize() {
@@ -3265,6 +3197,14 @@ public class IoTDBConfig {
 
   public double getCompactionProportion() {
     return compactionProportion;
+  }
+
+  public double getDevicePathCacheProportion() {
+    return devicePathCacheProportion;
+  }
+
+  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
+    this.devicePathCacheProportion = devicePathCacheProportion;
   }
 
   public static String getEnvironmentVariables() {
@@ -3762,6 +3702,15 @@ public class IoTDBConfig {
 
   public void setLoadMemoryAllocateMaxRetries(int loadMemoryAllocateMaxRetries) {
     this.loadMemoryAllocateMaxRetries = loadMemoryAllocateMaxRetries;
+  }
+
+  public long getLoadCleanupTaskExecutionDelayTimeSeconds() {
+    return loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public void setLoadCleanupTaskExecutionDelayTimeSeconds(
+      long loadCleanupTaskExecutionDelayTimeSeconds) {
+    this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

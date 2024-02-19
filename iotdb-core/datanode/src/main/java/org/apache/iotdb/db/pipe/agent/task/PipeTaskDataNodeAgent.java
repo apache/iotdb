@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -33,11 +34,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskDataRegionBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskSchemaRegionBuilder;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -52,8 +57,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 
@@ -268,10 +277,18 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final Optional<Logger> logger =
+          PipeResourceManager.log()
+              .schedule(
+                  PipeTaskDataNodeAgent.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
+      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (IOException e) {
       throw new TException(e);
     }
@@ -298,15 +315,85 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final Optional<Logger> logger =
+          PipeResourceManager.log()
+              .schedule(
+                  PipeTaskDataNodeAgent.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
+      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (IOException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
 
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
+  }
+
+  ///////////////////////// Restart Logic /////////////////////////
+
+  public void restartAllStuckPipes() {
+    if (!tryWriteLockWithTimeOut(5)) {
+      return;
+    }
+    try {
+      restartAllStuckPipesInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void restartAllStuckPipesInternal() {
+    final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
+        PipeExtractorMetrics.getInstance().getExtractorMap();
+
+    final Set<PipeMeta> stuckPipes = new HashSet<>();
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+      final List<IoTDBDataRegionExtractor> extractors =
+          taskId2ExtractorMap.values().stream()
+              .filter(e -> e.getPipeName().equals(pipeName))
+              .collect(Collectors.toList());
+      if (extractors.isEmpty()
+          || !extractors.get(0).isStreamMode()
+          || extractors.stream()
+              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
+        continue;
+      }
+
+      if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
+        LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
+        stuckPipes.add(pipeMeta);
+      }
+    }
+
+    // Restart all stuck pipes
+    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+  }
+
+  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
+    return PipeResourceManager.wal().getPinnedWalCount()
+        >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+  }
+
+  private boolean mayWalSizeReachThrottleThreshold() {
+    return 3 * WALManager.getInstance().getTotalDiskUsage()
+        > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private void restartStuckPipe(PipeMeta pipeMeta) {
+    LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
+    final long startTime = System.currentTimeMillis();
+    handleDropPipeInternal(pipeMeta.getStaticMeta().getPipeName());
+    handleSinglePipeMetaChangesInternal(pipeMeta);
+    LOGGER.warn(
+        "Pipe {} was restarted because of stuck, time cost: {} ms.",
+        pipeMeta.getStaticMeta(),
+        System.currentTimeMillis() - startTime);
   }
 }

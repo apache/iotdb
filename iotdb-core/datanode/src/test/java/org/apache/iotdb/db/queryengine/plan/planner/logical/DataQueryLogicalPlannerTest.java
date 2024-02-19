@@ -586,7 +586,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -594,7 +595,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -603,7 +605,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -611,7 +614,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -620,7 +624,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -628,7 +633,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
                     1,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))))),
             null,
             Ordering.DESC);
 
@@ -849,7 +855,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -858,7 +865,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s2")))),
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
@@ -867,7 +875,8 @@ public class DataQueryLogicalPlannerTest {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     2,
                     Collections.emptyMap(),
-                    new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))))),
             null,
             Ordering.DESC);
 

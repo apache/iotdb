@@ -36,8 +36,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
 
   // Don't break in advance
   @Override
-  protected void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addIntInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -48,8 +49,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addLongInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addLongInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -60,8 +62,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addFloatInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addFloatInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -72,8 +75,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addDoubleInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addDoubleInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -84,8 +88,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addBooleanInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBooleanInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
@@ -96,8 +101,9 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   @Override
-  protected void addBinaryInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBinaryInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }

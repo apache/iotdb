@@ -62,22 +62,26 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public void processTsBlock(TsBlock tsBlock, BitMap bitMap, int lastIndex) {
+  public void processTsBlock(TsBlock tsBlock, BitMap bitMap) {
     long startTime = System.nanoTime();
     try {
       checkArgument(
           step.isInputRaw(),
           "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
       for (InputLocation[] inputLocations : inputLocationList) {
-        checkArgument(
-            inputLocations[0].getTsBlockIndex() == 0,
-            "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] timeAndValueColumn = new Column[2];
+        Column[] timeAndValueColumn = new Column[1 + inputLocations.length];
         timeAndValueColumn[0] = tsBlock.getTimeColumn();
-        int index = inputLocations[0].getValueColumnIndex();
-        // for count_time, time column is also its value column
-        timeAndValueColumn[1] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
-        accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
+        for (int i = 0; i < inputLocations.length; i++) {
+          checkArgument(
+              inputLocations[i].getTsBlockIndex() == 0,
+              "RawDataAggregateOperator can only process one tsBlock input.");
+          int index = inputLocations[i].getValueColumnIndex();
+          // for count_time, time column is also its value column
+          // for max_by, the input column can also be time column.
+          timeAndValueColumn[1 + i] =
+              index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
+        }
+        accumulator.addInput(timeAndValueColumn, bitMap);
       }
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(

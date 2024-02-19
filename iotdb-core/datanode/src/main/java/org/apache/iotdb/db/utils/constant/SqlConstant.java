@@ -47,6 +47,7 @@ public class SqlConstant {
   public static final String MAX_TIME = "max_time";
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
+  public static final String MAX_BY = "max_by";
   public static final String EXTREME = "extreme";
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";

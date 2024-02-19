@@ -90,7 +90,6 @@ public class TemplatedLogicalPlan {
 
   private void initCommonVariables() {
     if (whereExpression != null) {
-
       if (!analysis.isTemplateWildCardQuery()) {
         newMeasurementList = new ArrayList<>(measurementList);
         newSchemaList = new ArrayList<>(schemaList);

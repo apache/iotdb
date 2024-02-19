@@ -27,13 +27,14 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  public void addInput(Column[] columns, BitMap bitMap) {
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!column[1].isNull(i)) {
-        updateMaxTime(column[0].getLong(i));
+      if (!columns[1].isNull(i)) {
+        updateMaxTime(columns[0].getLong(i));
         return;
       }
     }

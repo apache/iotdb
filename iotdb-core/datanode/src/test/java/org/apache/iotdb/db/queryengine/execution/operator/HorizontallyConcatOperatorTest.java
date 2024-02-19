@@ -129,7 +129,7 @@ public class HorizontallyConcatOperatorTest {
       GroupByTimeParameter groupByTimeParameter =
           new GroupByTimeParameter(0, 10, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
       List<Aggregator> aggregators = new ArrayList<>();
-      AccumulatorFactory.createAccumulators(
+      AccumulatorFactory.createBuiltinAccumulators(
               aggregationTypes,
               TSDataType.INT32,
               Collections.emptyList(),

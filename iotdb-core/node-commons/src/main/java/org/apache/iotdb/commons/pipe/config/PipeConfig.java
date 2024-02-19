@@ -53,6 +53,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
+  public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -119,10 +123,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAsyncConnectorSelectorNumber();
   }
 
-  public int getPipeAsyncConnectorCoreClientNumber() {
-    return COMMON_CONFIG.getPipeAsyncConnectorCoreClientNumber();
-  }
-
   public int getPipeAsyncConnectorMaxClientNumber() {
     return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
@@ -177,6 +177,40 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
   }
 
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
+  }
+
+  /////////////////////////////// Logger ///////////////////////////////
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
+  }
+
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogIntervalRounds();
+  }
+
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogNumPerRound();
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
+  }
+
+  public int getPipeWalPinMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeWalPinMaxLogNumPerRound();
+  }
+
+  public int getPipeWalPinMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeWalPinMaxLogIntervalRounds();
+  }
+
   /////////////////////////////// Memory ///////////////////////////////
 
   public boolean getPipeMemoryManagementEnabled() {
@@ -214,6 +248,9 @@ public class PipeConfig {
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
+    LOGGER.info(
+        "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
+        getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(
@@ -245,9 +282,10 @@ public class PipeConfig {
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
+    LOGGER.info(
+        "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
-    LOGGER.info("PipeAsyncConnectorCoreClientNumber: {}", getPipeAsyncConnectorCoreClientNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
@@ -269,6 +307,15 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
+    LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
+
+    LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
+    LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
+    LOGGER.info("PipeTsFilePinMaxLogNumPerRound: {}", getPipeTsFilePinMaxLogNumPerRound());
+    LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
+    LOGGER.info("PipeWalPinMaxLogNumPerRound: {}", getPipeWalPinMaxLogNumPerRound());
+    LOGGER.info("PipeWalPinMaxLogIntervalRounds: {}", getPipeWalPinMaxLogIntervalRounds());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
@@ -278,9 +325,6 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
-
-    LOGGER.info(
-        "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

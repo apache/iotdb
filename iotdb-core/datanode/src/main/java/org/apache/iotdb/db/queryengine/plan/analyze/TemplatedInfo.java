@@ -71,6 +71,7 @@ public class TemplatedInfo {
   // utils variables, not serialize
   private Map<String, IMeasurementSchema> schemaMap;
   private Map<String, List<InputLocation>> layoutMap;
+  private int maxTsBlockLineNum = -1;
 
   // variables related to predicate push down
   private Expression pushDownPredicate;

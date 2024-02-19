@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
@@ -205,7 +206,7 @@ public class UDFManagementService {
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
 
       // ensure that it is a UDF class
-      UDTF udtf = (UDTF) functionClass.getDeclaredConstructor().newInstance();
+      UDF udf = (UDF) functionClass.getDeclaredConstructor().newInstance();
       udfTable.addUDFInformation(functionName, udfInformation);
       udfTable.addFunctionAndClass(functionName, functionClass);
     } catch (IOException
@@ -295,16 +296,48 @@ public class UDFManagementService {
         .collect(Collectors.toList());
   }
 
-  public boolean isUDTF(String functionName)
-      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
-    return udfTable.getFunctionClass(functionName).getDeclaredConstructor().newInstance()
-        instanceof UDTF;
+  public boolean isUDTF(String functionName) {
+    Class<?> udfClass = udfTable.getFunctionClass(functionName);
+    UDFInformation information = udfTable.getUDFInformation(functionName);
+    if (udfClass != null) {
+      try {
+        return udfClass.getDeclaredConstructor().newInstance() instanceof UDTF;
+      } catch (InstantiationException
+          | InvocationTargetException
+          | NoSuchMethodException
+          | IllegalAccessException e) {
+        String errorMessage =
+            String.format(
+                "Failed to reflect UDTF %s(%s) instance, because %s",
+                functionName, information.getClassName(), e);
+        LOGGER.warn(errorMessage, e);
+        throw new RuntimeException(errorMessage);
+      }
+    } else {
+      return false;
+    }
   }
 
-  /** always returns false for now */
   public boolean isUDAF(String functionName) {
-    return false;
+    Class<?> udfClass = udfTable.getFunctionClass(functionName);
+    UDFInformation information = udfTable.getUDFInformation(functionName);
+    if (udfClass != null) {
+      try {
+        return udfClass.getDeclaredConstructor().newInstance() instanceof UDAF;
+      } catch (InstantiationException
+          | InvocationTargetException
+          | NoSuchMethodException
+          | IllegalAccessException e) {
+        String errorMessage =
+            String.format(
+                "Failed to reflect UDAF %s(%s) instance, because %s",
+                functionName, information.getClassName(), e);
+        LOGGER.warn(errorMessage, e);
+        throw new RuntimeException(errorMessage);
+      }
+    } else {
+      return false;
+    }
   }
 
   @TestOnly

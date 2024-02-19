@@ -438,6 +438,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+MODIFY
+    : M O D I F Y
+    ;
+
 NAN
     : N A N
     ;
@@ -987,6 +991,10 @@ MANAGE_DATABASE
 
 MAINTAIN
     : M A I N T A I N
+    ;
+
+REPAIR
+    : R E P A I R
     ;
 
 SCHEMA_REPLICATION_FACTOR

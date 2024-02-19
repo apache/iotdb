@@ -279,6 +279,28 @@ public class PipeParameters {
         .toString();
   }
 
+  /**
+   * This method adds (non-existed) or replaces (existed) equivalent attributes in this
+   * PipeParameters with those from another PipeParameters.
+   *
+   * @param that provide the key that needs to be updated along with the value
+   * @return this pipe parameters
+   */
+  public PipeParameters addOrReplaceEquivalentAttributes(PipeParameters that) {
+    Map<String, Entry<String, String>> thisMap =
+        this.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    Map<String, Entry<String, String>> thatMap =
+        that.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
+    thatMap.forEach(
+        (key, entry) -> {
+          this.attributes.remove(thisMap.getOrDefault(key, entry).getKey());
+          this.attributes.put(entry.getKey(), entry.getValue());
+        });
+    return this;
+  }
+
   private static class KeyReducer {
 
     private static final Set<String> PREFIXES = new HashSet<>();
@@ -306,6 +328,7 @@ public class PipeParameters {
   }
 
   public static class ValueHider {
+
     private static final Set<String> KEYS = new HashSet<>();
 
     private static final String PLACEHOLDER = "******";
