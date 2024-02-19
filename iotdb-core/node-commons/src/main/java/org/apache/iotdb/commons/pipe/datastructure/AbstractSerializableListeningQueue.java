@@ -86,6 +86,11 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     return queue.tryRemoveBefore(newFirstIndex);
   }
 
+  public boolean isValidIndex(long index) {
+    // The "tailIndex" is permitted to listen to the next incoming element
+    return queue.getFirstIndex() <= index && queue.getTailIndex() >= index;
+  }
+
   /////////////////////////////// Snapshot ///////////////////////////////
 
   public boolean serializeToFile(File snapshotName) throws IOException {
