@@ -71,8 +71,13 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           throwable);
     }
 
+<<<<<<< HEAD:iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/pipe/task/subtask/PipeReportableSubtask.java
     if (retryCount.get() < maxRetryTimes) {
       retryCount.incrementAndGet();
+=======
+    retryCount.incrementAndGet();
+    if (retryCount.get() <= MAX_RETRY_TIMES) {
+>>>>>>> 1e7c9c0885ab3c13e8898a7b34dffa9174cb1ab2:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/task/subtask/PipeDataNodeSubtask.java
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}]",
           taskID,

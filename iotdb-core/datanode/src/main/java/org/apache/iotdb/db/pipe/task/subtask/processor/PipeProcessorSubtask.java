@@ -19,12 +19,19 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+<<<<<<< HEAD
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+=======
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+>>>>>>> 1e7c9c0885ab3c13e8898a7b34dffa9174cb1ab2
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
@@ -142,6 +149,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         }
       }
       releaseLastEvent(!isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+      LOGGER.info(
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
+          e);
+      return false;
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
@@ -163,6 +175,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  public boolean isStoppedByException() {
+    return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
   }
 
   @Override
