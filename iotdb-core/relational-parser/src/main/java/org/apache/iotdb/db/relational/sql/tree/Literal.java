@@ -21,8 +21,9 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
-import java.util.List;
 import javax.annotation.Nullable;
+
+import java.util.List;
 
 public abstract class Literal extends Expression {
   protected Literal(@Nullable NodeLocation location) {

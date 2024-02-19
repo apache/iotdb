@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.relational.sql.parser;
 
-import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.relational.sql.tree.NodeLocation;
+
+import org.antlr.v4.runtime.RecognitionException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

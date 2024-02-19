@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-
 import javax.annotation.Nullable;
 
 public abstract class AstVisitor<R, C> {
@@ -204,10 +203,6 @@ public abstract class AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitNullIfExpression(NullIfExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitIfExpression(IfExpression node, C context) {
     return visitExpression(node, context);
   }
@@ -284,10 +279,6 @@ public abstract class AstVisitor<R, C> {
     return visitRelation(node, context);
   }
 
-  protected R visitSampledRelation(SampledRelation node, C context) {
-    return visitRelation(node, context);
-  }
-
   protected R visitJoin(Join node, C context) {
     return visitRelation(node, context);
   }
@@ -305,7 +296,7 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitColumnDefinition(ColumnDefinition node, C context) {
-    return visitTableElement(node, context);
+    return visitNode(node, context);
   }
 
   protected R visitCreateDB(CreateDB node, C context) {

@@ -21,18 +21,17 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static java.util.Objects.requireNonNull;
 
 public class SearchedCaseExpression extends Expression {
   private final List<WhenClause> whenClauses;
-  @Nullable
-  private final Expression defaultValue;
+  @Nullable private final Expression defaultValue;
 
   public SearchedCaseExpression(List<WhenClause> whenClauses) {
     super(null);
@@ -52,7 +51,8 @@ public class SearchedCaseExpression extends Expression {
     this.defaultValue = null;
   }
 
-  public SearchedCaseExpression(NodeLocation location, List<WhenClause> whenClauses, Expression defaultValue) {
+  public SearchedCaseExpression(
+      NodeLocation location, List<WhenClause> whenClauses, Expression defaultValue) {
     super(requireNonNull(location, "location is null"));
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
     this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
@@ -91,8 +91,8 @@ public class SearchedCaseExpression extends Expression {
     }
 
     SearchedCaseExpression that = (SearchedCaseExpression) o;
-    return Objects.equals(whenClauses, that.whenClauses) &&
-        Objects.equals(defaultValue, that.defaultValue);
+    return Objects.equals(whenClauses, that.whenClauses)
+        && Objects.equals(defaultValue, that.defaultValue);
   }
 
   @Override

@@ -36,7 +36,6 @@ public class DecimalLiteral extends Literal {
     super(requireNonNull(location, "location is null"));
 
     this.value = requireNonNull(value, "value is null");
-
   }
 
   public String getValue() {

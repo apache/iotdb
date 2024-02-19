@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -81,8 +80,7 @@ public class With extends Node {
       return false;
     }
     With o = (With) obj;
-    return Objects.equals(recursive, o.recursive) &&
-        Objects.equals(queries, o.queries);
+    return Objects.equals(recursive, o.recursive) && Objects.equals(queries, o.queries);
   }
 
   @Override
@@ -92,10 +90,7 @@ public class With extends Node {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("recursive", recursive)
-        .add("queries", queries)
-        .toString();
+    return toStringHelper(this).add("recursive", recursive).add("queries", queries).toString();
   }
 
   @Override

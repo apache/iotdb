@@ -31,5 +31,4 @@ public abstract class QueryBody extends Relation {
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitQueryBody(this, context);
   }
-
 }

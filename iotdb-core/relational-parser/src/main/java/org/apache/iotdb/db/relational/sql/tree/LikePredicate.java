@@ -21,11 +21,11 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static java.util.Objects.requireNonNull;
 
@@ -33,8 +33,7 @@ public class LikePredicate extends Expression {
 
   private final Expression value;
   private final Expression pattern;
-  @Nullable
-  private final Expression escape;
+  @Nullable private final Expression escape;
 
   public LikePredicate(Expression value, Expression pattern, Expression escape) {
     super(null);
@@ -69,9 +68,7 @@ public class LikePredicate extends Expression {
 
   @Override
   public List<Node> getChildren() {
-    ImmutableList.Builder<Node> result = ImmutableList.<Node>builder()
-        .add(value)
-        .add(pattern);
+    ImmutableList.Builder<Node> result = ImmutableList.<Node>builder().add(value).add(pattern);
 
     if (escape != null) {
       result.add(escape);
@@ -90,9 +87,9 @@ public class LikePredicate extends Expression {
     }
 
     LikePredicate that = (LikePredicate) o;
-    return Objects.equals(value, that.value) &&
-        Objects.equals(pattern, that.pattern) &&
-        Objects.equals(escape, that.escape);
+    return Objects.equals(value, that.value)
+        && Objects.equals(pattern, that.pattern)
+        && Objects.equals(escape, that.escape);
   }
 
   @Override

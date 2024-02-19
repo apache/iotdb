@@ -30,7 +30,8 @@ import static java.util.Objects.requireNonNull;
 public class LogicalExpression extends Expression {
 
   public enum Operator {
-    AND, OR;
+    AND,
+    OR;
 
     public Operator flip() {
       if (this == AND) {

@@ -39,8 +39,11 @@ public class QuantifiedComparisonExpression extends Expression {
   private final Expression value;
   private final Expression subquery;
 
-  public QuantifiedComparisonExpression(ComparisonExpression.Operator operator, Quantifier quantifier, Expression value,
-                                        Expression subquery) {
+  public QuantifiedComparisonExpression(
+      ComparisonExpression.Operator operator,
+      Quantifier quantifier,
+      Expression value,
+      Expression subquery) {
     super(null);
     this.operator = requireNonNull(operator, "operator is null");
     this.quantifier = requireNonNull(quantifier, "quantifier is null");
@@ -48,8 +51,12 @@ public class QuantifiedComparisonExpression extends Expression {
     this.subquery = requireNonNull(subquery, "subquery is null");
   }
 
-  public QuantifiedComparisonExpression(NodeLocation location, ComparisonExpression.Operator operator,
-                                        Quantifier quantifier, Expression value, Expression subquery) {
+  public QuantifiedComparisonExpression(
+      NodeLocation location,
+      ComparisonExpression.Operator operator,
+      Quantifier quantifier,
+      Expression value,
+      Expression subquery) {
     super(requireNonNull(location, "location is null"));
     this.operator = requireNonNull(operator, "operator is null");
     this.quantifier = requireNonNull(quantifier, "quantifier is null");
@@ -93,10 +100,10 @@ public class QuantifiedComparisonExpression extends Expression {
     }
 
     QuantifiedComparisonExpression that = (QuantifiedComparisonExpression) o;
-    return operator == that.operator &&
-        quantifier == that.quantifier &&
-        Objects.equals(value, that.value) &&
-        Objects.equals(subquery, that.subquery);
+    return operator == that.operator
+        && quantifier == that.quantifier
+        && Objects.equals(value, that.value)
+        && Objects.equals(subquery, that.subquery);
   }
 
   @Override

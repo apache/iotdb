@@ -35,7 +35,8 @@ public class BooleanLiteral extends Literal {
   public BooleanLiteral(String value) {
     super(null);
     requireNonNull(value, "value is null");
-    checkArgument(value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
+    checkArgument(
+        value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
 
     this.value = value.toLowerCase(ENGLISH).equals("true");
   }
@@ -43,7 +44,8 @@ public class BooleanLiteral extends Literal {
   public BooleanLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
     requireNonNull(value, "value is null");
-    checkArgument(value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
+    checkArgument(
+        value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
 
     this.value = value.toLowerCase(ENGLISH).equals("true");
   }

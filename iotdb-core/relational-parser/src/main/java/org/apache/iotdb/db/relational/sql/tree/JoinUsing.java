@@ -60,9 +60,7 @@ public class JoinUsing extends JoinCriteria {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .addValue(columns)
-        .toString();
+    return toStringHelper(this).addValue(columns).toString();
   }
 
   @Override

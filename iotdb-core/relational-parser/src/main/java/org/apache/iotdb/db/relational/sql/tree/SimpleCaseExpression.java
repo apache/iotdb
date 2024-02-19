@@ -21,11 +21,11 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static java.util.Objects.requireNonNull;
 
@@ -33,8 +33,7 @@ public class SimpleCaseExpression extends Expression {
 
   private final Expression operand;
   private final List<WhenClause> whenClauses;
-  @Nullable
-  private final Expression defaultValue;
+  @Nullable private final Expression defaultValue;
 
   public SimpleCaseExpression(Expression operand, List<WhenClause> whenClauses) {
     super(null);
@@ -43,22 +42,27 @@ public class SimpleCaseExpression extends Expression {
     this.defaultValue = null;
   }
 
-  public SimpleCaseExpression(Expression operand, List<WhenClause> whenClauses, Expression defaultValue) {
+  public SimpleCaseExpression(
+      Expression operand, List<WhenClause> whenClauses, Expression defaultValue) {
     super(null);
     this.operand = requireNonNull(operand, "operand is null");
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
     this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
   }
 
-  public SimpleCaseExpression(NodeLocation location, Expression operand, List<WhenClause> whenClauses) {
+  public SimpleCaseExpression(
+      NodeLocation location, Expression operand, List<WhenClause> whenClauses) {
     super(requireNonNull(location, "location is null"));
     this.operand = requireNonNull(operand, "operand is null");
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
     this.defaultValue = null;
   }
 
-  public SimpleCaseExpression(NodeLocation location, Expression operand, List<WhenClause> whenClauses,
-                              Expression defaultValue) {
+  public SimpleCaseExpression(
+      NodeLocation location,
+      Expression operand,
+      List<WhenClause> whenClauses,
+      Expression defaultValue) {
     super(requireNonNull(location, "location is null"));
     this.operand = requireNonNull(operand, "operand is null");
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
@@ -103,9 +107,9 @@ public class SimpleCaseExpression extends Expression {
     }
 
     SimpleCaseExpression that = (SimpleCaseExpression) o;
-    return Objects.equals(operand, that.operand) &&
-        Objects.equals(whenClauses, that.whenClauses) &&
-        Objects.equals(defaultValue, that.defaultValue);
+    return Objects.equals(operand, that.operand)
+        && Objects.equals(whenClauses, that.whenClauses)
+        && Objects.equals(defaultValue, that.defaultValue);
   }
 
   @Override

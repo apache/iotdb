@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -35,7 +34,8 @@ public class Offset extends Node {
 
   public Offset(Expression rowCount) {
     super(null);
-    checkArgument(rowCount instanceof LongLiteral || rowCount instanceof Parameter,
+    checkArgument(
+        rowCount instanceof LongLiteral || rowCount instanceof Parameter,
         "unexpected rowCount class: %s",
         rowCount.getClass().getSimpleName());
     this.rowCount = rowCount;
@@ -44,7 +44,8 @@ public class Offset extends Node {
   public Offset(NodeLocation location, Expression rowCount) {
     super(requireNonNull(location, "location is null"));
 
-    checkArgument(rowCount instanceof LongLiteral || rowCount instanceof Parameter,
+    checkArgument(
+        rowCount instanceof LongLiteral || rowCount instanceof Parameter,
         "unexpected rowCount class: %s",
         rowCount.getClass().getSimpleName());
     this.rowCount = rowCount;
@@ -83,9 +84,7 @@ public class Offset extends Node {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("rowCount", rowCount)
-        .toString();
+    return toStringHelper(this).add("rowCount", rowCount).toString();
   }
 
   @Override

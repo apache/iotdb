@@ -21,11 +21,11 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -35,8 +35,7 @@ public class WithQuery extends Node {
   private final Identifier name;
   private final Query query;
 
-  @Nullable
-  private final List<Identifier> columnNames;
+  @Nullable private final List<Identifier> columnNames;
 
   public WithQuery(Identifier name, Query query) {
     super(null);
@@ -59,7 +58,8 @@ public class WithQuery extends Node {
     this.columnNames = null;
   }
 
-  public WithQuery(NodeLocation location, Identifier name, Query query, List<Identifier> columnNames) {
+  public WithQuery(
+      NodeLocation location, Identifier name, Query query, List<Identifier> columnNames) {
     super(requireNonNull(location, "location is null"));
     this.name = name;
     this.query = requireNonNull(query, "query is null");
@@ -112,9 +112,9 @@ public class WithQuery extends Node {
       return false;
     }
     WithQuery o = (WithQuery) obj;
-    return Objects.equals(name, o.name) &&
-        Objects.equals(query, o.query) &&
-        Objects.equals(columnNames, o.columnNames);
+    return Objects.equals(name, o.name)
+        && Objects.equals(query, o.query)
+        && Objects.equals(columnNames, o.columnNames);
   }
 
   @Override
@@ -124,6 +124,7 @@ public class WithQuery extends Node {
     }
 
     WithQuery otherRelation = (WithQuery) other;
-    return name.equals(otherRelation.name) && Objects.equals(columnNames, otherRelation.columnNames);
+    return name.equals(otherRelation.name)
+        && Objects.equals(columnNames, otherRelation.columnNames);
   }
 }

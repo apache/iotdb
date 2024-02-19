@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class QuerySpecification extends QueryBody {
@@ -49,7 +48,7 @@ public class QuerySpecification extends QueryBody {
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(Optional.empty(), select, from, where, groupBy, having, orderBy, offset, limit);
+    this(null, select, from, where, groupBy, having, orderBy, offset, limit);
   }
 
   public QuerySpecification(
@@ -62,37 +61,16 @@ public class QuerySpecification extends QueryBody {
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(Optional.of(location), select, from, where, groupBy, having, orderBy, offset, limit);
-  }
-
-  private QuerySpecification(
-      Optional<NodeLocation> location,
-      Select select,
-      Optional<Relation> from,
-      Optional<Expression> where,
-      Optional<GroupBy> groupBy,
-      Optional<Expression> having,
-      Optional<OrderBy> orderBy,
-      Optional<Offset> offset,
-      Optional<Limit> limit) {
     super(location);
-    requireNonNull(select, "select is null");
-    requireNonNull(from, "from is null");
-    requireNonNull(where, "where is null");
-    requireNonNull(groupBy, "groupBy is null");
-    requireNonNull(having, "having is null");
-    requireNonNull(orderBy, "orderBy is null");
-    requireNonNull(offset, "offset is null");
-    requireNonNull(limit, "limit is null");
 
-    this.select = select;
-    this.from = from;
-    this.where = where;
-    this.groupBy = groupBy;
-    this.having = having;
-    this.orderBy = orderBy;
-    this.offset = offset;
-    this.limit = limit;
+    this.select = requireNonNull(select, "select is null");
+    this.from = requireNonNull(from, "from is null");
+    this.where = requireNonNull(where, "where is null");
+    this.groupBy = requireNonNull(groupBy, "groupBy is null");
+    this.having = requireNonNull(having, "having is null");
+    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+    this.offset = requireNonNull(offset, "offset is null");
+    this.limit = requireNonNull(limit, "limit is null");
   }
 
   public Select getSelect() {
@@ -113,10 +91,6 @@ public class QuerySpecification extends QueryBody {
 
   public Optional<Expression> getHaving() {
     return having;
-  }
-
-  public List<WindowDefinition> getWindows() {
-    return windows;
   }
 
   public Optional<OrderBy> getOrderBy() {
@@ -144,7 +118,6 @@ public class QuerySpecification extends QueryBody {
     where.ifPresent(nodes::add);
     groupBy.ifPresent(nodes::add);
     having.ifPresent(nodes::add);
-    nodes.addAll(windows);
     orderBy.ifPresent(nodes::add);
     offset.ifPresent(nodes::add);
     limit.ifPresent(nodes::add);
@@ -159,7 +132,6 @@ public class QuerySpecification extends QueryBody {
         .add("where", where.orElse(null))
         .add("groupBy", groupBy)
         .add("having", having.orElse(null))
-        .add("windows", windows.isEmpty() ? null : windows)
         .add("orderBy", orderBy)
         .add("offset", offset.orElse(null))
         .add("limit", limit.orElse(null))
@@ -175,20 +147,19 @@ public class QuerySpecification extends QueryBody {
       return false;
     }
     QuerySpecification o = (QuerySpecification) obj;
-    return Objects.equals(select, o.select) &&
-        Objects.equals(from, o.from) &&
-        Objects.equals(where, o.where) &&
-        Objects.equals(groupBy, o.groupBy) &&
-        Objects.equals(having, o.having) &&
-        Objects.equals(windows, o.windows) &&
-        Objects.equals(orderBy, o.orderBy) &&
-        Objects.equals(offset, o.offset) &&
-        Objects.equals(limit, o.limit);
+    return Objects.equals(select, o.select)
+        && Objects.equals(from, o.from)
+        && Objects.equals(where, o.where)
+        && Objects.equals(groupBy, o.groupBy)
+        && Objects.equals(having, o.having)
+        && Objects.equals(orderBy, o.orderBy)
+        && Objects.equals(offset, o.offset)
+        && Objects.equals(limit, o.limit);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(select, from, where, groupBy, having, windows, orderBy, offset, limit);
+    return Objects.hash(select, from, where, groupBy, having, orderBy, offset, limit);
   }
 
   @Override

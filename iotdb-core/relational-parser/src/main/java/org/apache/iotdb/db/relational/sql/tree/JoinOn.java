@@ -58,9 +58,7 @@ public class JoinOn extends JoinCriteria {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .addValue(expression)
-        .toString();
+    return toStringHelper(this).addValue(expression).toString();
   }
 
   @Override

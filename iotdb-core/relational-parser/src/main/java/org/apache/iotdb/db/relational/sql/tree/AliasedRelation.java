@@ -39,7 +39,8 @@ public class AliasedRelation extends Relation {
     this.columnNames = columnNames;
   }
 
-  public AliasedRelation(NodeLocation location, Relation relation, Identifier alias, List<Identifier> columnNames) {
+  public AliasedRelation(
+      NodeLocation location, Relation relation, Identifier alias, List<Identifier> columnNames) {
     super(requireNonNull(location, "location is null"));
     this.relation = requireNonNull(relation, "relation is null");
     this.alias = requireNonNull(alias, "alias is null");
@@ -88,9 +89,9 @@ public class AliasedRelation extends Relation {
     }
 
     AliasedRelation that = (AliasedRelation) o;
-    return Objects.equals(relation, that.relation) &&
-        Objects.equals(alias, that.alias) &&
-        Objects.equals(columnNames, that.columnNames);
+    return Objects.equals(relation, that.relation)
+        && Objects.equals(alias, that.alias)
+        && Objects.equals(columnNames, that.columnNames);
   }
 
   @Override
@@ -105,6 +106,7 @@ public class AliasedRelation extends Relation {
     }
 
     AliasedRelation otherRelation = (AliasedRelation) other;
-    return alias.equals(otherRelation.alias) && Objects.equals(columnNames, otherRelation.columnNames);
+    return alias.equals(otherRelation.alias)
+        && Objects.equals(columnNames, otherRelation.columnNames);
   }
 }

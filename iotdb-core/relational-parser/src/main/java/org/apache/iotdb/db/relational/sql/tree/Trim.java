@@ -21,19 +21,18 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static java.util.Objects.requireNonNull;
 
 public class Trim extends Expression {
   private final Specification specification;
   private final Expression trimSource;
-  @Nullable
-  private final Expression trimCharacter;
+  @Nullable private final Expression trimCharacter;
 
   public Trim(Specification specification, Expression trimSource) {
     super(null);
@@ -56,7 +55,11 @@ public class Trim extends Expression {
     this.trimCharacter = null;
   }
 
-  public Trim(NodeLocation location, Specification specification, Expression trimSource, Expression trimCharacter) {
+  public Trim(
+      NodeLocation location,
+      Specification specification,
+      Expression trimSource,
+      Expression trimCharacter) {
     super(requireNonNull(location, "location is null"));
     this.specification = requireNonNull(specification, "specification is null");
     this.trimSource = requireNonNull(trimSource, "trimSource is null");
@@ -100,9 +103,9 @@ public class Trim extends Expression {
     }
 
     Trim that = (Trim) o;
-    return specification == that.specification &&
-        Objects.equals(trimSource, that.trimSource) &&
-        Objects.equals(trimCharacter, that.trimCharacter);
+    return specification == that.specification
+        && Objects.equals(trimSource, that.trimSource)
+        && Objects.equals(trimCharacter, that.trimCharacter);
   }
 
   @Override

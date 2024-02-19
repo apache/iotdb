@@ -62,9 +62,7 @@ public class OrderBy extends Node {
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("sortItems", sortItems)
-        .toString();
+    return toStringHelper(this).add("sortItems", sortItems).toString();
   }
 
   @Override

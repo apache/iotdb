@@ -108,15 +108,11 @@ showDatabasesStatement
     ;
 
 createDbStatement
-    : CREATE DATABASE (IF NOT EXISTS)? database=identifier charsetDesc? properties?
+    : CREATE DATABASE (IF NOT EXISTS)? database=identifier (WITH properties)?
     ;
 
 dropDbStatement
     : DROP DATABASE (IF EXISTS)? database=identifier
-    ;
-
-charsetDesc
-    : DEFAULT? (CHAR SET | CHARSET | CHARACTER SET) EQ? identifierOrString
     ;
 
 
@@ -128,6 +124,10 @@ createTableStatement
         charsetDesc?
         (WITH properties)?
      ;
+
+charsetDesc
+    : DEFAULT? (CHAR SET | CHARSET | CHARACTER SET) EQ? identifierOrString
+    ;
 
 columnDefinition
     : identifier type columnCategory? charsetName?
@@ -151,7 +151,7 @@ dropTableStatement
     ;
 
 showTableStatement
-    : SHOW TABLES ((FROM | IN) db=qualifiedName)?
+    : SHOW TABLES ((FROM | IN) database=identifier)?
           // ((LIKE pattern=string) | (WHERE expression))?
     ;
 
@@ -160,10 +160,10 @@ descTableStatement
     ;
 
 alterTableStatement
-    : ALTER TABLE from=qualifiedName RENAME TO to=qualifiedName                             #renameTable
+    : ALTER TABLE from=qualifiedName RENAME TO to=identifier                                #renameTable
     | ALTER TABLE tableName=qualifiedName ADD COLUMN column=columnDefinition                #addColumn
-    | ALTER TABLE tableName=qualifiedName RENAME COLUMN from=qualifiedName TO to=identifier #renameColumn
-    | ALTER TABLE tableName=qualifiedName DROP COLUMN column=qualifiedName                  #dropColumn
+    | ALTER TABLE tableName=qualifiedName RENAME COLUMN from=identifier TO to=identifier    #renameColumn
+    | ALTER TABLE tableName=qualifiedName DROP COLUMN column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;

@@ -38,7 +38,8 @@ public class GenericLiteral extends Literal {
       // we explicitly disallow "X" as type name, so if the user arrived here,
       // it must be because that he intended to give a binaryLiteral instead, but
       // added whitespace between the X and quote
-      throw new ParsingException("Spaces are not allowed between 'X' and the starting quote of a binary literal");
+      throw new ParsingException(
+          "Spaces are not allowed between 'X' and the starting quote of a binary literal");
     }
     this.value = requireNonNull(value, "value is null");
   }
@@ -51,7 +52,8 @@ public class GenericLiteral extends Literal {
       // we explicitly disallow "X" as type name, so if the user arrived here,
       // it must be because that he intended to give a binaryLiteral instead, but
       // added whitespace between the X and quote
-      throw new ParsingException("Spaces are not allowed between 'X' and the starting quote of a binary literal",
+      throw new ParsingException(
+          "Spaces are not allowed between 'X' and the starting quote of a binary literal",
           location);
     }
     this.value = requireNonNull(value, "value is null");
@@ -85,8 +87,7 @@ public class GenericLiteral extends Literal {
     }
 
     GenericLiteral other = (GenericLiteral) obj;
-    return Objects.equals(this.value, other.value) &&
-        Objects.equals(this.type, other.type);
+    return Objects.equals(this.value, other.value) && Objects.equals(this.type, other.type);
   }
 
   @Override

@@ -43,21 +43,11 @@ public class Query extends Statement {
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(Optional.empty(), with, queryBody, orderBy, offset, limit);
+    this(null, with, queryBody, orderBy, offset, limit);
   }
 
   public Query(
       NodeLocation location,
-      Optional<With> with,
-      QueryBody queryBody,
-      Optional<OrderBy> orderBy,
-      Optional<Offset> offset,
-      Optional<Node> limit) {
-    this(Optional.of(location), with, queryBody, orderBy, offset, limit);
-  }
-
-  private Query(
-      Optional<NodeLocation> location,
       Optional<With> with,
       QueryBody queryBody,
       Optional<OrderBy> orderBy,
@@ -69,7 +59,8 @@ public class Query extends Statement {
     requireNonNull(orderBy, "orderBy is null");
     requireNonNull(offset, "offset is null");
     requireNonNull(limit, "limit is null");
-    checkArgument(!limit.isPresent() || limit.get() instanceof FetchFirst || limit.get() instanceof Limit,
+    checkArgument(
+        !limit.isPresent() || limit.get() instanceof Limit,
         "limit must be optional of either FetchFirst or Limit type");
 
     this.with = with;
@@ -107,7 +98,6 @@ public class Query extends Statement {
   @Override
   public List<Node> getChildren() {
     ImmutableList.Builder<Node> nodes = ImmutableList.builder();
-    nodes.addAll(functions);
     with.ifPresent(nodes::add);
     nodes.add(queryBody);
     orderBy.ifPresent(nodes::add);
@@ -119,7 +109,6 @@ public class Query extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this)
-        .add("functions", functions.isEmpty() ? null : functions)
         .add("with", with.orElse(null))
         .add("queryBody", queryBody)
         .add("orderBy", orderBy)
@@ -138,22 +127,20 @@ public class Query extends Statement {
       return false;
     }
     Query o = (Query) obj;
-    return Objects.equals(functions, o.functions) &&
-        Objects.equals(with, o.with) &&
-        Objects.equals(queryBody, o.queryBody) &&
-        Objects.equals(orderBy, o.orderBy) &&
-        Objects.equals(offset, o.offset) &&
-        Objects.equals(limit, o.limit);
+    return Objects.equals(with, o.with)
+        && Objects.equals(queryBody, o.queryBody)
+        && Objects.equals(orderBy, o.orderBy)
+        && Objects.equals(offset, o.offset)
+        && Objects.equals(limit, o.limit);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(functions, with, queryBody, orderBy, offset, limit);
+    return Objects.hash(with, queryBody, orderBy, offset, limit);
   }
 
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
   }
-
 }

@@ -71,8 +71,7 @@ public class WhenClause extends Expression {
     }
 
     WhenClause that = (WhenClause) o;
-    return Objects.equals(operand, that.operand) &&
-        Objects.equals(result, that.result);
+    return Objects.equals(operand, that.operand) && Objects.equals(result, that.result);
   }
 
   @Override

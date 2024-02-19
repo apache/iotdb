@@ -21,11 +21,11 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -34,15 +34,19 @@ import static java.util.Objects.requireNonNull;
 public class Join extends Relation {
 
   public enum Type {
-    CROSS, INNER, LEFT, RIGHT, FULL, IMPLICIT
+    CROSS,
+    INNER,
+    LEFT,
+    RIGHT,
+    FULL,
+    IMPLICIT
   }
 
   private final Type type;
   private final Relation left;
   private final Relation right;
 
-  @Nullable
-  private final JoinCriteria criteria;
+  @Nullable private final JoinCriteria criteria;
 
   public Join(Type type, Relation left, Relation right) {
     super(null);
@@ -65,16 +69,23 @@ public class Join extends Relation {
   public Join(Type type, Relation left, Relation right, JoinCriteria criteria) {
     super(null);
     this.criteria = requireNonNull(criteria, "criteria is null");
-    checkArgument(!((type == Type.CROSS) || (type == Type.IMPLICIT)), "%s join cannot have join criteria", type);
+    checkArgument(
+        !((type == Type.CROSS) || (type == Type.IMPLICIT)),
+        "%s join cannot have join criteria",
+        type);
     this.type = type;
     this.left = requireNonNull(left, "left is null");
     this.right = requireNonNull(right, "right is null");
   }
 
-  public Join(NodeLocation location, Type type, Relation left, Relation right, JoinCriteria criteria) {
+  public Join(
+      NodeLocation location, Type type, Relation left, Relation right, JoinCriteria criteria) {
     super(requireNonNull(location, "location is null"));
     this.criteria = requireNonNull(criteria, "criteria is null");
-    checkArgument(!((type == Type.CROSS) || (type == Type.IMPLICIT)), "%s join cannot have join criteria", type);
+    checkArgument(
+        !((type == Type.CROSS) || (type == Type.IMPLICIT)),
+        "%s join cannot have join criteria",
+        type);
     this.type = type;
     this.left = requireNonNull(left, "left is null");
     this.right = requireNonNull(right, "right is null");
@@ -132,10 +143,10 @@ public class Join extends Relation {
       return false;
     }
     Join join = (Join) o;
-    return (type == join.type) &&
-        Objects.equals(left, join.left) &&
-        Objects.equals(right, join.right) &&
-        Objects.equals(criteria, join.criteria);
+    return (type == join.type)
+        && Objects.equals(left, join.left)
+        && Objects.equals(right, join.right)
+        && Objects.equals(criteria, join.criteria);
   }
 
   @Override

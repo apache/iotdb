@@ -649,11 +649,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitAtTimeZone(RelationalSqlParser.AtTimeZoneContext ctx) {
-    return super.visitAtTimeZone(ctx);
-  }
-
-  @Override
   public Node visitDereference(RelationalSqlParser.DereferenceContext ctx) {
     return super.visitDereference(ctx);
   }

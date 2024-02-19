@@ -30,11 +30,14 @@ import static java.util.Objects.requireNonNull;
 public class SortItem extends Node {
 
   public enum Ordering {
-    ASCENDING, DESCENDING
+    ASCENDING,
+    DESCENDING
   }
 
   public enum NullOrdering {
-    FIRST, LAST, UNDEFINED
+    FIRST,
+    LAST,
+    UNDEFINED
   }
 
   private final Expression sortKey;
@@ -48,7 +51,8 @@ public class SortItem extends Node {
     this.nullOrdering = nullOrdering;
   }
 
-  public SortItem(NodeLocation location, Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
+  public SortItem(
+      NodeLocation location, Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
     super(requireNonNull(location, "location is null"));
     this.ordering = ordering;
     this.sortKey = sortKey;
@@ -96,9 +100,9 @@ public class SortItem extends Node {
     }
 
     SortItem sortItem = (SortItem) o;
-    return Objects.equals(sortKey, sortItem.sortKey) &&
-        (ordering == sortItem.ordering) &&
-        (nullOrdering == sortItem.nullOrdering);
+    return Objects.equals(sortKey, sortItem.sortKey)
+        && (ordering == sortItem.ordering)
+        && (nullOrdering == sortItem.nullOrdering);
   }
 
   @Override

@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.db.relational.sql.parser.ParsingException;
+
 import com.google.common.base.CharMatcher;
 import com.google.common.io.BaseEncoding;
-import org.apache.iotdb.db.relational.sql.parser.ParsingException;
 
 import java.util.Arrays;
 
@@ -31,9 +32,8 @@ import static java.util.Objects.requireNonNull;
 public class BinaryLiteral extends Literal {
   // the grammar could possibly include whitespace in the value it passes to us
   private static final CharMatcher WHITESPACE_MATCHER = CharMatcher.whitespace();
-  private static final CharMatcher HEX_DIGIT_MATCHER = CharMatcher.inRange('A', 'F')
-      .or(CharMatcher.inRange('0', '9'))
-      .precomputed();
+  private static final CharMatcher HEX_DIGIT_MATCHER =
+      CharMatcher.inRange('A', 'F').or(CharMatcher.inRange('0', '9')).precomputed();
 
   private final byte[] value;
 
@@ -63,9 +63,7 @@ public class BinaryLiteral extends Literal {
     this.value = BaseEncoding.base16().decode(hexString);
   }
 
-  /**
-   * Return the valued as a hex-formatted string with upper-case characters
-   */
+  /** Return the valued as a hex-formatted string with upper-case characters */
   public String toHexString() {
     return BaseEncoding.base16().encode(value);
   }
