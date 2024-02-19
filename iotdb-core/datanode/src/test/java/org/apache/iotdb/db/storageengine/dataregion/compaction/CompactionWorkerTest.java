@@ -113,11 +113,11 @@ public class CompactionWorkerTest {
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       for (TsFileResource tsFileResource : sequenceFiles) {
-        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
         Assert.assertTrue(tsFileResource.tryWriteLock());
       }
       for (TsFileResource tsFileResource : unsequenceFiles) {
-        Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
         Assert.assertTrue(tsFileResource.tryWriteLock());
       }
     }
@@ -173,13 +173,11 @@ public class CompactionWorkerTest {
         Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
         Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
         for (TsFileResource tsFileResource : sequenceFiles) {
-          Assert.assertEquals(
-              TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+          Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
           Assert.assertTrue(tsFileResource.tryWriteLock());
         }
         for (TsFileResource tsFileResource : unsequenceFiles) {
-          Assert.assertEquals(
-              TsFileResourceStatus.COMPACTION_CANDIDATE, tsFileResource.getStatus());
+          Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
           Assert.assertTrue(tsFileResource.tryWriteLock());
         }
       }

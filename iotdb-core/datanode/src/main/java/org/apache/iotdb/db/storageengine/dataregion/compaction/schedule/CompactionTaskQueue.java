@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import java.util.ArrayList;
@@ -67,12 +68,16 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
         if (task == null) {
           continue;
         }
+        if (!checkTaskValid(task)) {
+          dropCompactionTask(task);
+          continue;
+        }
         if (!task.tryOccupyResourcesForRunning()) {
           incrementTaskPriority(task);
           retryTasks.add(task);
           continue;
         }
-        if (!checkTaskValid(task)) {
+        if (!transitTaskFileStatus(task)) {
           dropCompactionTask(task);
           continue;
         }
@@ -90,9 +95,12 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
   }
 
   private boolean checkTaskValid(AbstractCompactionTask task) {
-    if (!task.isCompactionAllowed()) {
-      return false;
-    }
+    return task.isCompactionAllowed()
+        && task.getEstimatedMemoryCost() <= SystemInfo.getInstance().getMemorySizeForCompaction()
+        && task.getProcessedFileNum() <= SystemInfo.getInstance().getTotalFileLimitForCompaction();
+  }
+
+  private boolean transitTaskFileStatus(AbstractCompactionTask task) {
     try {
       task.transitSourceFilesToMerging();
     } catch (Exception e) {

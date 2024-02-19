@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -141,6 +142,19 @@ public class RepairTaskManager implements IService {
     Future<Void> future = repairScheduleTaskThreadPool.submit(scanTask);
     repairTasks.add(future);
     return future;
+  }
+
+  public synchronized void waitRepairTaskFinish() {
+    for (Future<Void> result : repairTasks) {
+      try {
+        result.get();
+      } catch (CancellationException cancellationException) {
+        logger.warn("[RepairScheduler] scan task is cancelled");
+      } catch (Exception e) {
+        logger.error("[RepairScheduler] Meet errors when scan time partition files", e);
+      }
+    }
+    repairTasks.clear();
   }
 
   private synchronized void initThreadPool() {

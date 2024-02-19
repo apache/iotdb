@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -38,6 +43,17 @@ import java.util.Set;
 
 public class RepairLoggerTest extends AbstractCompactionTest {
 
+  @Before
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    super.setUp();
+  }
+
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    super.tearDown();
+  }
+
   @Test
   public void testSimpleReadWriteLogFile() throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
@@ -50,6 +66,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
     Path tempDirPath = Files.createTempDirectory("");
+    tempDirPath.toFile().deleteOnExit();
     File logFile =
         new File(
             tempDirPath.toString()
@@ -85,6 +102,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L, 1L, 2L);
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot()).thenReturn(Collections.emptyList());
     Path tempDirPath = Files.createTempDirectory("");
+    tempDirPath.toFile().deleteOnExit();
     File logFile =
         new File(
             tempDirPath.toString()
@@ -117,6 +135,7 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
     Path tempDirPath = Files.createTempDirectory("");
+    tempDirPath.toFile().deleteOnExit();
     File logFile =
         new File(
             tempDirPath.toString()

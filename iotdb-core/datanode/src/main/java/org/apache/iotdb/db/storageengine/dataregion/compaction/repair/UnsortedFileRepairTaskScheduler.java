@@ -32,13 +32,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.Future;
 
 public class UnsortedFileRepairTaskScheduler implements Runnable {
 
@@ -204,21 +201,11 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void startTimePartitionScanTasks() throws InterruptedException {
-    List<Future<Void>> results = new ArrayList<>();
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
-      results.add(
-          RepairTaskManager.getInstance()
-              .submitScanTask(
-                  new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress)));
+      RepairTaskManager.getInstance()
+          .submitScanTask(
+              new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress));
     }
-    for (Future<Void> result : results) {
-      try {
-        result.get();
-      } catch (CancellationException cancellationException) {
-        LOGGER.warn("[RepairScheduler] scan task is cancelled");
-      } catch (Exception e) {
-        LOGGER.error("[RepairScheduler] Meet errors when scan time partition files", e);
-      }
-    }
+    RepairTaskManager.getInstance().waitRepairTaskFinish();
   }
 }
