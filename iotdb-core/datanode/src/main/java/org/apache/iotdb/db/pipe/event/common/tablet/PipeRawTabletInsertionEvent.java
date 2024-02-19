@@ -223,8 +223,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s}",
-            tablet, isAligned, sourceEvent, needToReport)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s}",
+            tablet,
+            isAligned,
+            sourceEvent == null ? "null" : sourceEvent.coreReportMessage(),
+            needToReport,
+            allocatedMemoryBlock)
         + " - "
         + super.coreReportMessage();
   }
