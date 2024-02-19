@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,17 +36,28 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+/**
+ * This procedure will create numerous databases (perhaps 100), during which the confignode leader
+ * should be externally shutdown to test whether the procedure can be correctly recovered after the
+ * leader change. If the procedure is still not recovered by the time the last database is created,
+ * it will throw an exception which indicates the test to be poorly written.
+ */
 public class CreateManyDatabasesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
   public static final int MAX_STATE = 100;
   public static final String DATABASE_NAME_PREFIX = "root.test_";
   public static final int SLEEP_INTERVAL = 1000;
+  private boolean createFailedOnce = false;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv configNodeProcedureEnv, Integer state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (state < MAX_STATE) {
+      if (state == MAX_STATE - 1 && !isDeserialized()) {
+        throw new RuntimeException(
+            "This procedure is going to end and still not recovered yet, check your test code");
+      }
       createDatabase(configNodeProcedureEnv, state);
       setNextState(state + 1);
       return Flow.HAS_MORE_STATE;
@@ -57,8 +68,20 @@ public class CreateManyDatabasesProcedure
   private void createDatabase(ConfigNodeProcedureEnv env, int id) {
     String databaseName = DATABASE_NAME_PREFIX + id;
     TDatabaseSchema databaseSchema = new TDatabaseSchema(databaseName);
-    env.getConfigManager()
-        .setDatabase(new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    TSStatus status =
+        env.getConfigManager()
+            .setDatabase(
+                new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == status.getCode()) {
+      // first time fail is forgivable, second time fail means mistake
+      if (!createFailedOnce) {
+        createFailedOnce = true;
+      } else {
+        throw new RuntimeException("createDatabase fail twice");
+      }
+    } else if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+      throw new RuntimeException("Unexpected fail, tsStatus is " + status);
+    }
     if (!isDeserialized()) {
       ProcedureManager.sleepWithoutInterrupt(SLEEP_INTERVAL);
     }

@@ -71,7 +71,7 @@ public class IoTDBProcedureIT {
 
   /**
    * During CreateManyDatabasesProcedure executing, we expect the procedure will be interrupted only
-   * once. so lets shutdown the leader at the middle of it.
+   * once. so lets shutdown the leader at the middle of the procedure.
    */
   @Test
   public void stateMachineProcedureRecoverTest() throws Exception {
@@ -83,6 +83,7 @@ public class IoTDBProcedureIT {
       expectedDatabases.add(CreateManyDatabasesProcedure.DATABASE_NAME_PREFIX + id);
     }
     Assert.assertEquals(MAX_STATE, expectedDatabases.size());
+
     // prepare req
     final TGetDatabaseReq req =
         new TGetDatabaseReq(
@@ -95,15 +96,18 @@ public class IoTDBProcedureIT {
     SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     leaderClient.createManyDatabases();
+
+    // Check whether the procedure is ongoing, and is still far from finishing
     TShowDatabaseResp resp = leaderClient.showDatabase(req);
-    System.out.println(resp.getDatabaseInfoMap().size());
     Assert.assertTrue(0 < resp.getDatabaseInfoMap().size());
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE / 2);
+    // Then shutdown the leader, wait the new leader exist and the procedure continue
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
     leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     Thread.sleep(10000);
 
+    // Final check
     resp = leaderClient.showDatabase(req);
     Assert.assertEquals(MAX_STATE, resp.getDatabaseInfoMap().size());
     resp.getDatabaseInfoMap()
