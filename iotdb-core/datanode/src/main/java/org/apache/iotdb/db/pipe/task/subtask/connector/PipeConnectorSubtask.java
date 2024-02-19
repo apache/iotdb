@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -36,7 +35,6 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -115,7 +113,7 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
       }
 
       releaseLastEvent(true);
-    } catch (PipeConnectionException | PipeRuntimeConnectorRetryTimesConfigurableException e) {
+    } catch (PipeException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
