@@ -49,6 +49,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   private RepairLogger repairLogger;
   private final boolean isRecover;
   private boolean initSuccess = false;
+  private boolean isRecoverStoppedTask = false;
   private long repairTaskTime;
   private RepairProgress repairProgress;
 
@@ -81,6 +82,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
     repairProgress = new RepairProgress(allTimePartitionFiles.size());
     initSuccess = true;
+    isRecoverStoppedTask = repairLogger.isPreviousTaskStopped();
   }
 
   @TestOnly
@@ -112,6 +114,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
     repairProgress = new RepairProgress(allTimePartitionFiles.size());
     initSuccess = true;
+    isRecoverStoppedTask = repairLogger.isPreviousTaskStopped();
   }
 
   private void recover(File logFile) throws IOException {
@@ -167,6 +170,10 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       Thread.currentThread().interrupt();
       return;
     }
+    if (isRecoverStoppedTask) {
+      RepairTaskManager.getInstance().markRepairTaskFinish();
+      return;
+    }
     if (!initSuccess) {
       LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
       RepairTaskManager.getInstance().markRepairTaskFinish();
@@ -174,6 +181,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
     }
     CompactionScheduler.exclusiveLockCompactionSelection();
     try {
+      LOGGER.info("[RepairScheduler] Wait all running compaction task finish");
       CompactionTaskManager.getInstance().waitAllCompactionFinish();
       runTimePartitionScanTasks();
     } catch (InterruptedException interruptedException) {

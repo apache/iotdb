@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -142,6 +144,9 @@ public class CompactionScheduler {
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
       return 0;
     }
+    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
+      return 0;
+    }
 
     String storageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
@@ -180,7 +185,6 @@ public class CompactionScheduler {
       throws InterruptedException {
     int trySubmitCount = 0;
     for (AbstractCompactionTask task : tasks) {
-      // this check is not correct but it is
       if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
         break;
       }
@@ -221,6 +225,9 @@ public class CompactionScheduler {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
+    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
+      return 0;
+    }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
     RewriteCrossSpaceCompactionSelector selector =
@@ -256,6 +263,9 @@ public class CompactionScheduler {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
+    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
+      return 0;
+    }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
     ICrossSpaceSelector crossSpaceCompactionSelector =
@@ -275,21 +285,20 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      if (CompactionTaskManager.getInstance()
-          .addTaskToWaitingQueue(
-              new CrossSpaceCompactionTask(
-                  timePartition,
-                  tsFileManager,
-                  taskList.get(i).getSeqFiles(),
-                  taskList.get(i).getUnseqFiles(),
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getCrossCompactionPerformer()
-                      .createInstance(),
-                  memoryCost.get(i),
-                  tsFileManager.getNextCompactionTaskId()))) {
-        trySubmitCount++;
-      }
+      trySubmitCount =
+          addTaskToWaitingQueue(
+              Collections.singletonList(
+                  new CrossSpaceCompactionTask(
+                      timePartition,
+                      tsFileManager,
+                      taskList.get(i).getSeqFiles(),
+                      taskList.get(i).getUnseqFiles(),
+                      IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getCrossCompactionPerformer()
+                          .createInstance(),
+                      memoryCost.get(i),
+                      tsFileManager.getNextCompactionTaskId())));
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
     return trySubmitCount;

@@ -593,7 +593,7 @@ public class StorageEngine implements IService {
     LOGGER.info("stop repair data");
     try {
       RepairTaskManager.getInstance().abortRepairTask();
-      RepairTaskManager.getInstance().markRepairTaskStopped();
+      RepairTaskManager.getInstance().markRepairTaskStopping();
     } catch (IOException ignored) {
     }
   }

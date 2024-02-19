@@ -37,7 +37,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RepairTaskManager implements IService {
 
@@ -49,24 +49,25 @@ public class RepairTaskManager implements IService {
   private final Set<Future<Void>> repairTasks = new HashSet<>();
 
   /** a repair task is running */
-  private final AtomicBoolean isRepairingData = new AtomicBoolean(false);
+  private final AtomicReference<RepairTaskStatus> repairTaskStatus =
+      new AtomicReference<>(RepairTaskStatus.STOPPED);
 
   private volatile boolean init = false;
 
   public boolean markRepairTaskStart() {
-    return isRepairingData.compareAndSet(false, true);
+    return repairTaskStatus.compareAndSet(RepairTaskStatus.STOPPED, RepairTaskStatus.RUNNING);
   }
 
   public boolean hasRunningRepairTask() {
-    return isRepairingData.get() || !repairTasks.isEmpty();
+    return repairTaskStatus.get() == RepairTaskStatus.RUNNING || !repairTasks.isEmpty();
   }
 
   public void markRepairTaskFinish() {
-    isRepairingData.set(false);
+    repairTaskStatus.set(RepairTaskStatus.STOPPED);
   }
 
-  public void markRepairTaskStopped() throws IOException {
-    isRepairingData.set(false);
+  public void markRepairTaskStopping() throws IOException {
+    repairTaskStatus.compareAndSet(RepairTaskStatus.RUNNING, RepairTaskStatus.STOPPING);
     String repairLogDirPath =
         IoTDBDescriptor.getInstance().getConfig().getSystemDir()
             + File.separator
@@ -85,7 +86,6 @@ public class RepairTaskManager implements IService {
       initThreadPool();
     }
     logger.info("Repair schedule task manager started.");
-    init = true;
   }
 
   public void waitReady() throws InterruptedException {
@@ -106,6 +106,9 @@ public class RepairTaskManager implements IService {
 
   @Override
   public synchronized void waitAndStop(long milliseconds) {
+    if (!init) {
+      return;
+    }
     try {
       repairScheduleTaskThreadPool.shutdownNow();
       repairScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
@@ -144,6 +147,7 @@ public class RepairTaskManager implements IService {
   }
 
   private synchronized void initThreadPool() {
+    init = true;
     this.repairScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(maxScanTaskNum, ThreadName.REPAIR_DATA.getName());
   }

@@ -158,6 +158,10 @@ public class RepairLogger implements Closeable {
     return needRecoverFromLogFile;
   }
 
+  public boolean isPreviousTaskStopped() {
+    return isPreviousTaskStopped;
+  }
+
   public File getLogFile() {
     return logFile;
   }
