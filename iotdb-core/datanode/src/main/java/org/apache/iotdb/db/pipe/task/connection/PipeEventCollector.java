@@ -70,6 +70,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       } else {
         collectEvent(event);
       }
+    } catch (PipeException e) {
+      throw e;
     } catch (Exception e) {
       throw new PipeException("Error occurred when collecting events from processor.", e);
     }

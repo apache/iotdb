@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
     }
   }
 
-  public void checkClientStatusAndTryReconstructIfNecessary() throws IOException {
+  public void checkClientStatusAndTryReconstructIfNecessary() {
     // reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
