@@ -83,7 +83,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   // this is usually used to back-propagate exceptions to the parent plan without losing their
   // proper positions.
   private List<Integer> range;
-  private boolean isEncodedInSerialization = false;
+  private boolean isEncodedInSerialization = true;
+  private TSEncoding serializationEncoding = TSEncoding.TS_2DIFF;
   private PublicBAOS encodingTempBaos;
 
   public InsertTabletNode(PlanNodeId id) {
@@ -472,7 +473,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     } else {
       Encoder encoder =
-          TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF).getEncoder(TSDataType.INT64);
+          TSEncodingBuilder.getEncodingBuilder(serializationEncoding).getEncoder(TSDataType.INT64);
       for (long time : times) {
         encoder.encode(time, encodingTempBaos);
       }
@@ -500,7 +501,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     } else {
       long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
       Encoder encoder =
-          TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF).getEncoder(TSDataType.INT64);
+          TSEncodingBuilder.getEncodingBuilder(serializationEncoding).getEncoder(TSDataType.INT64);
       for (long time : times) {
         encoder.encode(time, encodingTempBaos);
       }
@@ -613,7 +614,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         } else {
           long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
           Encoder encoder =
-              TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF)
+              TSEncodingBuilder.getEncodingBuilder(serializationEncoding)
                   .getEncoder(TSDataType.DOUBLE);
           encodingTempBaos.reset();
           for (double val : doubleValues) {
@@ -683,7 +684,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         } else {
           long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
           Encoder encoder =
-              TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF)
+              TSEncodingBuilder.getEncodingBuilder(serializationEncoding)
                   .getEncoder(TSDataType.DOUBLE);
           encodingTempBaos.reset();
           for (double val : doubleValues) {
@@ -765,7 +766,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (!isEncodedInSerialization) {
       times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, (String) null);
     } else {
-      times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, TSEncoding.TS_2DIFF);
+      times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, serializationEncoding);
     }
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
@@ -780,7 +781,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     } else {
       columns =
           QueryDataSetUtils.readTabletValuesFromBuffer(
-              buffer, dataTypes, measurementSize, rowCount, TSEncoding.TS_2DIFF);
+              buffer, dataTypes, measurementSize, rowCount, serializationEncoding);
     }
 
     isAligned = buffer.get() == 1;
