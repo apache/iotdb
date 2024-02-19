@@ -444,6 +444,37 @@ public class CommonDescriptor {
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
 
+    config.setPipeMetaReportMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_num_per_round",
+                String.valueOf(config.getPipeMetaReportMaxLogNumPerRound()))));
+    config.setPipeMetaReportMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_interval_rounds",
+                String.valueOf(config.getPipeMetaReportMaxLogIntervalRounds()))));
+    config.setPipeTsFilePinMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_pin_max_log_num_per_round",
+                String.valueOf(config.getPipeTsFilePinMaxLogNumPerRound()))));
+    config.setPipeTsFilePinMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_pin_max_log_interval_rounds",
+                String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
+    config.setPipeWalPinMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_num_per_round",
+                String.valueOf(config.getPipeWalPinMaxLogNumPerRound()))));
+    config.setPipeWalPinMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_interval_rounds",
+                String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
+
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

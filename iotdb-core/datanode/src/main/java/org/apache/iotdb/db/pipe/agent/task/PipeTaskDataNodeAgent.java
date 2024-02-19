@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -276,10 +277,18 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final Optional<Logger> logger =
+          PipeResourceManager.log()
+              .schedule(
+                  PipeTaskDataNodeAgent.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
+      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (IOException e) {
       throw new TException(e);
     }
@@ -306,10 +315,18 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      final Optional<Logger> logger =
+          PipeResourceManager.log()
+              .schedule(
+                  PipeTaskDataNodeAgent.class,
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
+                  PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
+                  pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
+      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (IOException e) {
       throw new TException(e);
     }
