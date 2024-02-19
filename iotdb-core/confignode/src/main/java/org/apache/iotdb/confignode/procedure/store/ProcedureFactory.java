@@ -166,6 +166,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure();
         break;
+      case CREATE_MANY_DATABASES_PROCEDURE:
+        procedure = new CreateManyDatabasesProcedure();
+        break;
       default:
         LOGGER.error("unknown Procedure type: " + typeCode);
         throw new IOException("unknown Procedure type: " + typeCode);

@@ -20,18 +20,31 @@
 package org.apache.iotdb.confignode.it.procedure;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
+import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 public class IoTDBProcedureIT {
+  private static Logger LOGGER = LoggerFactory.getLogger(IoTDBProcedureIT.class);
 
   private static final int testReplicationFactor = 2;
 
@@ -39,35 +52,63 @@ public class IoTDBProcedureIT {
 
   private static final long testTimePartitionInterval = 604800000;
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS)
-//        .setSchemaReplicationFactor(testReplicationFactor)
+        //        .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(1);
   }
 
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  /**
+   * During CreateManyDatabasesProcedure executing, we expect the procedure will be interrupted only
+   * once. so lets shutdown the leader at the middle of it.
+   */
   @Test
-  public void recoverTest() throws Exception {
+  public void stateMachineProcedureRecoverTest() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(3, 1);
-    final SyncConfigNodeIServiceClient configClient =
+
+    // prepare expectedDatabases
+    Set<String> expectedDatabases = new HashSet<>();
+    for (int id = CreateManyDatabasesProcedure.getInitialStateStatic(); id < MAX_STATE; id++) {
+      expectedDatabases.add(CreateManyDatabasesProcedure.DATABASE_NAME_PREFIX + id);
+    }
+    Assert.assertEquals(MAX_STATE, expectedDatabases.size());
+    // prepare req
+    final TGetDatabaseReq req =
+        new TGetDatabaseReq(
+            Arrays.asList(
+                new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                    .getPathPattern()
+                    .getNodes()),
+            SchemaConstant.ALL_MATCH_SCOPE.serialize());
+
+    SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    configClient.createManyDatabases();
+    leaderClient.createManyDatabases();
+    TShowDatabaseResp resp = leaderClient.showDatabase(req);
+    System.out.println(resp.getDatabaseInfoMap().size());
+    Assert.assertTrue(0 < resp.getDatabaseInfoMap().size());
+    Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE / 2);
+    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     Thread.sleep(10000);
-    TShowDatabaseResp resp =
-        configClient.showDatabase(
-            new TGetDatabaseReq().setDatabasePathPattern(new ArrayList<>()).setScopePatternTree(new byte[] {}));
+
+    resp = leaderClient.showDatabase(req);
+    Assert.assertEquals(MAX_STATE, resp.getDatabaseInfoMap().size());
     resp.getDatabaseInfoMap()
-        .forEach(
-            (key, value) -> {
-              System.out.println(key + ": " + value);
-            });
-    //    for (Map.Entry<String, TDatabaseInfo> entry : .) {
-    //
-    //    }
+        .keySet()
+        .forEach(databaseName -> expectedDatabases.remove(databaseName));
+    Assert.assertEquals(0, expectedDatabases.size());
   }
 }

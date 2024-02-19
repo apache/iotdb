@@ -19,49 +19,48 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 public class CreateManyDatabasesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
-  private static int maxState = 10;
+  public static final int MAX_STATE = 100;
+  public static final String DATABASE_NAME_PREFIX = "root.test_";
+  public static final int SLEEP_INTERVAL = 1000;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv configNodeProcedureEnv, Integer state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    if (state < maxState) {
-      createDatabase(state);
+    if (state < MAX_STATE) {
+      createDatabase(configNodeProcedureEnv, state);
       setNextState(state + 1);
       return Flow.HAS_MORE_STATE;
     }
     return Flow.NO_MORE_STATE;
   }
 
-  private void createDatabase(int id) {
-    String databaseName = "test_" + id;
+  private void createDatabase(ConfigNodeProcedureEnv env, int id) {
+    String databaseName = DATABASE_NAME_PREFIX + id;
     TDatabaseSchema databaseSchema = new TDatabaseSchema(databaseName);
-    try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      configNodeClient.setDatabase(databaseSchema);
-    } catch (ClientManagerException e) {
-      throw new RuntimeException(e);
-    } catch (TException e) {
-      LOGGER.info("create database {} fail: ", databaseName, e);
+    env.getConfigManager()
+        .setDatabase(new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    if (!isDeserialized()) {
+      ProcedureManager.sleepWithoutInterrupt(SLEEP_INTERVAL);
     }
   }
 
@@ -81,6 +80,16 @@ public class CreateManyDatabasesProcedure
 
   @Override
   protected Integer getInitialState() {
+    return getInitialStateStatic();
+  }
+
+  public static Integer getInitialStateStatic() {
     return 0;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.CREATE_MANY_DATABASES_PROCEDURE.getTypeCode());
+    super.serialize(stream);
   }
 }
