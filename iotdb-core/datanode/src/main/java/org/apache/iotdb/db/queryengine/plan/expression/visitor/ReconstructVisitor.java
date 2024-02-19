@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,10 +79,11 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
     List<Expression> expressions = functionExpression.getExpressions();
 
     int childrenStartIndex = 0;
-    // We just process first input Expression of AggregationFunction.
-    // If AggregationFunction need more than one input series, we need to reconsider this.
+    // just process first input Expression of COUNT_IF
     int childrenEndIndex =
-        functionExpression.isBuiltInAggregationFunctionExpression() ? 1 : expressions.size();
+        SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())
+            ? 1
+            : expressions.size();
 
     List<Expression> reconstructedChildren = new ArrayList<>();
     for (int i = childrenStartIndex; i < childrenEndIndex; i++) {
