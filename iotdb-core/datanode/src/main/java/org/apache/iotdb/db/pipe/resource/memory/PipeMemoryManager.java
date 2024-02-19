@@ -116,6 +116,11 @@ public class PipeMemoryManager {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
+
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeMemoryBlock(sizeInBytes);
+    }
+
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
         && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
       return forceAllocate(sizeInBytes);
