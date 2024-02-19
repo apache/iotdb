@@ -178,7 +178,8 @@ public abstract class PageManager implements IPageManager {
     String alias;
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet().stream()
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet()
+            .stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       // check and pre-allocate
@@ -274,7 +275,9 @@ public abstract class PageManager implements IPageManager {
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildFlushingBuffer().entrySet()) {
+        ICachedMNodeContainer.getCachedMNodeContainer(node)
+            .getUpdatedChildFlushingBuffer()
+            .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       childBuffer = RecordUtils.node2Buffer(child);

@@ -275,40 +275,43 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public Map<String, ICachedMNode> getNewChildFlushingBuffer() {
-    if(newChildBuffer == null){
+    if (newChildBuffer == null) {
       return Collections.emptyMap();
-    }
-    else {
-      return newChildBuffer.getFlushingBuffer() == null? Collections.emptyMap() : newChildBuffer.getFlushingBuffer();
+    } else {
+      return newChildBuffer.getFlushingBuffer() == null
+          ? Collections.emptyMap()
+          : newChildBuffer.getFlushingBuffer();
     }
   }
 
   @Override
   public Map<String, ICachedMNode> getUpdatedChildFlushingBuffer() {
-    if(updatedChildBuffer == null){
+    if (updatedChildBuffer == null) {
       return Collections.emptyMap();
-    }
-    else {
-      return updatedChildBuffer.getFlushingBuffer() == null? Collections.emptyMap() : updatedChildBuffer.getFlushingBuffer();
+    } else {
+      return updatedChildBuffer.getFlushingBuffer() == null
+          ? Collections.emptyMap()
+          : updatedChildBuffer.getFlushingBuffer();
     }
   }
 
   @Override
   public Map<String, ICachedMNode> getUpdatedChildReceivingBuffer() {
-    if(updatedChildBuffer == null){
+    if (updatedChildBuffer == null) {
       return Collections.emptyMap();
-    }
-    else {
-      return updatedChildBuffer.getReceivingBuffer() == null? Collections.emptyMap() : updatedChildBuffer.getReceivingBuffer();
+    } else {
+      return updatedChildBuffer.getReceivingBuffer() == null
+          ? Collections.emptyMap()
+          : updatedChildBuffer.getReceivingBuffer();
     }
   }
 
   @Override
   public void transferAllBufferReceivingToFlushing() {
-    if(newChildBuffer != null){
+    if (newChildBuffer != null) {
       newChildBuffer.transferReceivingBufferToFlushingBuffer();
     }
-    if(updatedChildBuffer != null){
+    if (updatedChildBuffer != null) {
       updatedChildBuffer.transferReceivingBufferToFlushingBuffer();
     }
   }
@@ -354,7 +357,8 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void moveMNodeToCache(String name) {
-    ICachedMNode node = newChildBuffer == null ? null : newChildBuffer.removeFromFlushingBuffer(name);
+    ICachedMNode node =
+        newChildBuffer == null ? null : newChildBuffer.removeFromFlushingBuffer(name);
     if (node == null) {
       node = updatedChildBuffer == null ? null : updatedChildBuffer.removeFromFlushingBuffer(name);
     }

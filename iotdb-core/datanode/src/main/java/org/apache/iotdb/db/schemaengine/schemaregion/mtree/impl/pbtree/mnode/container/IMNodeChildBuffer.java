@@ -8,13 +8,13 @@ import java.util.Map;
 
 public interface IMNodeChildBuffer extends IMNodeContainer<ICachedMNode> {
 
-    Iterator<ICachedMNode> getMNodeChildBufferIterator();
+  Iterator<ICachedMNode> getMNodeChildBufferIterator();
 
-    Map<String, ICachedMNode> getFlushingBuffer();
+  Map<String, ICachedMNode> getFlushingBuffer();
 
-    Map<String, ICachedMNode> getReceivingBuffer();
+  Map<String, ICachedMNode> getReceivingBuffer();
 
-    void transferReceivingBufferToFlushingBuffer();
+  void transferReceivingBufferToFlushingBuffer();
 
-    ICachedMNode removeFromFlushingBuffer(Object key);
+  ICachedMNode removeFromFlushingBuffer(Object key);
 }

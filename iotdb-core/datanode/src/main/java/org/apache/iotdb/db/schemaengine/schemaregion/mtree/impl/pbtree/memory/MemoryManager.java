@@ -30,7 +30,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ca
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.INodeCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.LRUNodeCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 
 import java.util.ArrayList;
@@ -324,7 +323,7 @@ public class MemoryManager implements IMemoryManager {
     private void tryGetNext() {
       ICachedMNode node;
       CacheEntry cacheEntry;
-      if(!bufferedNodeIterator.hasNext() && status == 0){
+      if (!bufferedNodeIterator.hasNext() && status == 0) {
         // 此时说明NewChildBuffer的flushingBuffer已经遍历完毕，需要遍历UpdateChildBuffer的flushingBuffer
         bufferedNodeIterator = container.getUpdatedChildFlushingBuffer().values().iterator();
         status = 1;
@@ -345,10 +344,10 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
-            if(status == 1 && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())){
+            if (status == 1
+                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
               // 此时是处于updatebuffer当中，此时需要判断cacheEntry在updatebuffer的receivingbuffer当中是否有重复点，如果没有再设置为false
-            }
-            else{
+            } else {
               cacheEntry.setVolatile(false);
               memoryStatistics.removeVolatileNode();
             }
