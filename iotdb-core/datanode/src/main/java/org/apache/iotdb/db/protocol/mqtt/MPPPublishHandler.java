@@ -102,84 +102,89 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
-    String clientId = msg.getClientID();
-    if (!clientIdToSessionMap.containsKey(clientId)) {
-      return;
-    }
-    MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
-    ByteBuf payload = msg.getPayload();
-    String topic = msg.getTopicName();
-    String username = msg.getUsername();
-    MqttQoS qos = msg.getQos();
+    try {
+      String clientId = msg.getClientID();
+      if (!clientIdToSessionMap.containsKey(clientId)) {
+        return;
+      }
+      MqttClientSession session = clientIdToSessionMap.get(msg.getClientID());
+      ByteBuf payload = msg.getPayload();
+      String topic = msg.getTopicName();
+      String username = msg.getUsername();
+      MqttQoS qos = msg.getQos();
 
-    LOG.debug(
-        "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-        clientId,
-        username,
-        qos,
-        topic,
-        payload);
+      LOG.debug(
+          "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+          clientId,
+          username,
+          qos,
+          topic,
+          payload);
 
-    List<Message> events = payloadFormat.format(payload);
-    if (events == null) {
-      return;
-    }
-
-    for (Message event : events) {
-      if (event == null) {
-        continue;
+      List<Message> events = payloadFormat.format(payload);
+      if (events == null) {
+        return;
       }
 
-      TSStatus tsStatus = null;
-      try {
-        InsertRowStatement statement = new InsertRowStatement();
-        statement.setDevicePath(
-            DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
-        TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
-        statement.setTime(event.getTimestamp());
-        statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
-        if (event.getDataTypes() == null) {
-          statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
-          statement.setValues(event.getValues().toArray(new Object[0]));
-          statement.setNeedInferType(true);
-        } else {
-          List<TSDataType> dataTypes = event.getDataTypes();
-          List<String> values = event.getValues();
-          Object[] inferredValues = new Object[values.size()];
-          for (int i = 0; i < values.size(); ++i) {
-            inferredValues[i] = CommonUtils.parseValue(dataTypes.get(i), values.get(i));
+      for (Message event : events) {
+        if (event == null) {
+          continue;
+        }
+
+        TSStatus tsStatus = null;
+        try {
+          InsertRowStatement statement = new InsertRowStatement();
+          statement.setDevicePath(
+              DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
+          TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
+          statement.setTime(event.getTimestamp());
+          statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
+          if (event.getDataTypes() == null) {
+            statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
+            statement.setValues(event.getValues().toArray(new Object[0]));
+            statement.setNeedInferType(true);
+          } else {
+            List<TSDataType> dataTypes = event.getDataTypes();
+            List<String> values = event.getValues();
+            Object[] inferredValues = new Object[values.size()];
+            for (int i = 0; i < values.size(); ++i) {
+              inferredValues[i] = CommonUtils.parseValue(dataTypes.get(i), values.get(i));
+            }
+            statement.setDataTypes(dataTypes.toArray(new TSDataType[0]));
+            statement.setValues(inferredValues);
           }
-          statement.setDataTypes(dataTypes.toArray(new TSDataType[0]));
-          statement.setValues(inferredValues);
-        }
-        statement.setAligned(false);
+          statement.setAligned(false);
 
-        tsStatus = AuthorityChecker.checkAuthority(statement, session);
-        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOG.warn(tsStatus.message);
-        } else {
-          long queryId = sessionManager.requestQueryId();
-          ExecutionResult result =
-              Coordinator.getInstance()
-                  .execute(
-                      statement,
-                      queryId,
-                      sessionManager.getSessionInfo(session),
-                      "",
-                      partitionFetcher,
-                      schemaFetcher,
-                      config.getQueryTimeoutThreshold());
-          tsStatus = result.status;
+          tsStatus = AuthorityChecker.checkAuthority(statement, session);
+          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOG.warn(tsStatus.message);
+          } else {
+            long queryId = sessionManager.requestQueryId();
+            ExecutionResult result =
+                Coordinator.getInstance()
+                    .execute(
+                        statement,
+                        queryId,
+                        sessionManager.getSessionInfo(session),
+                        "",
+                        partitionFetcher,
+                        schemaFetcher,
+                        config.getQueryTimeoutThreshold());
+            tsStatus = result.status;
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "meet error when inserting device {}, measurements {}, at time {}, because ",
+              event.getDevice(),
+              event.getMeasurements(),
+              event.getTimestamp(),
+              e);
         }
-      } catch (Exception e) {
-        LOG.warn(
-            "meet error when inserting device {}, measurements {}, at time {}, because ",
-            event.getDevice(),
-            event.getMeasurements(),
-            event.getTimestamp(),
-            e);
+        LOG.debug("event process result: {}", tsStatus);
       }
-      LOG.debug("event process result: {}", tsStatus);
+    } finally {
+      // release the payload of the message
+      super.onPublish(msg);
     }
   }
 
