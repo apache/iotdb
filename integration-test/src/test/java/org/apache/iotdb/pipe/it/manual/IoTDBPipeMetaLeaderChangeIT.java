@@ -58,9 +58,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
           .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-          .setSchemaReplicationFactor(3)
-          .setSeqMemtableFlushIntervalInMs(60000)
-          .setUnseqMemtableFlushIntervalInMs(60000);
+          .setSchemaReplicationFactor(3);
 
       senderEnv.initClusterEnvironment(3, 3, 180);
       receiverEnv.initClusterEnvironment();

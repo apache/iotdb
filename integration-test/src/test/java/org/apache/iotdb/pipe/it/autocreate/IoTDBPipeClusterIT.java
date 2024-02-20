@@ -76,9 +76,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           .setAutoCreateSchemaEnabled(true)
           .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-          .setSeqMemtableFlushIntervalInMs(60000)
-          .setUnseqMemtableFlushIntervalInMs(60000);
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
       receiverEnv
           .getConfig()
@@ -86,9 +84,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           .setAutoCreateSchemaEnabled(true)
           .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
           .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-          .setSeqMemtableFlushIntervalInMs(60000)
-          .setUnseqMemtableFlushIntervalInMs(60000);
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
       senderEnv.initClusterEnvironment(3, 3, 180);
       receiverEnv.initClusterEnvironment(3, 3, 180);
