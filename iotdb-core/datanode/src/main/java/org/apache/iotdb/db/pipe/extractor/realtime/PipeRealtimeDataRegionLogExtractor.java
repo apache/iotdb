@@ -75,8 +75,10 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
-    if (!((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()) {
-      // only loaded tsfile can be extracted by this extractor. Ignore this event.
+    if (!(((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()
+        || event.getTsFileEpoch().getMinTime()
+            > ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime())) {
+      // If the tsFile's data can be represented by insertNodes, ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }
@@ -134,7 +136,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public boolean isNeedListenToTsFile() {
-    // Only listen to loaded tsFiles
+    // Only listen to tsFiles that can't be represented by insertNodes
     return true;
   }
 
