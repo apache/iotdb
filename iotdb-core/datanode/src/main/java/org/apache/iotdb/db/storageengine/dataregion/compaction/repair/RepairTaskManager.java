@@ -63,6 +63,10 @@ public class RepairTaskManager implements IService {
     return repairTaskStatus.get() == RepairTaskStatus.RUNNING || !repairTasks.isEmpty();
   }
 
+  public RepairTaskStatus getRepairTaskStatus() {
+    return repairTaskStatus.get();
+  }
+
   public void markRepairTaskFinish() {
     repairTaskStatus.set(RepairTaskStatus.STOPPED);
   }

@@ -96,9 +96,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
             .collect(Collectors.toList());
     CountDownLatch latch = new CountDownLatch(sourceFiles.size());
     for (TsFileResource sourceFile : sourceFiles) {
-      if (Thread.interrupted()) {
-        throw new InterruptedException();
-      }
+      checkTaskStatusAndMayStop();
       sourceFile.readLock();
       try {
         if (sourceFile.getStatus() != TsFileResourceStatus.NORMAL) {
@@ -107,9 +105,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         }
         RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(sourceFile);
         scanUtil.scanTsFile();
-        if (Thread.interrupted()) {
-          throw new InterruptedException();
-        }
+        checkTaskStatusAndMayStop();
         if (scanUtil.isBrokenFile()) {
           LOGGER.warn("[RepairScheduler] file {} is skipped because it is broken", sourceFile);
           sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
@@ -150,9 +146,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     List<TsFileResource> overlapFiles =
         RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
-      if (Thread.interrupted()) {
-        throw new InterruptedException();
-      }
+      checkTaskStatusAndMayStop();
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
@@ -206,5 +200,12 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         timePartition.getTimePartitionId(),
         progress.incrementRepairedTimePartitionNum(),
         progress.getTotalTimePartitionNum());
+  }
+
+  private void checkTaskStatusAndMayStop() throws InterruptedException {
+    if (Thread.interrupted()
+        || RepairTaskManager.getInstance().getRepairTaskStatus() != RepairTaskStatus.RUNNING) {
+      throw new InterruptedException();
+    }
   }
 }
