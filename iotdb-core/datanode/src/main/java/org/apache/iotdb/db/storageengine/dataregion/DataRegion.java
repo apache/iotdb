@@ -2413,18 +2413,17 @@ public class DataRegion implements IDataRegionForQuery {
     }
     if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
       // the name of this variable is trySubmitCount, because the task submitted to the queue could
-      // be
-      // evicted due to the low priority of the task
-      CompactionScheduler.sharedLockCompactionSelection();
-      try {
-        for (long timePartition : timePartitions) {
+      // be evicted due to the low priority of the task
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.sharedLockCompactionSelection();
+        try {
           trySubmitCount +=
               CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+        } catch (Throwable e) {
+          logger.error("Meet error in compaction schedule.", e);
+        } finally {
+          CompactionScheduler.sharedUnlockCompactionSelection();
         }
-      } catch (Throwable e) {
-        logger.error("Meet error in compaction schedule.", e);
-      } finally {
-        CompactionScheduler.sharedUnlockCompactionSelection();
       }
     }
     if (summary.hasSubmitTask()) {
