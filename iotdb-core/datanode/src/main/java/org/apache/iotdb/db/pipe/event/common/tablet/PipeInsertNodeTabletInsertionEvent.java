@@ -242,7 +242,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean shouldParsePattern() {
-    InsertNode node = getInsertNodeViaCacheIfPossible();
+    final InsertNode node = getInsertNodeViaCacheIfPossible();
     return super.shouldParsePattern()
         && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
   }

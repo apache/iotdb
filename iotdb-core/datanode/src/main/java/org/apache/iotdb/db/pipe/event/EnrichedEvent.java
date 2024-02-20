@@ -209,7 +209,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public boolean shouldParsePatternOrTime() {
-    return shouldParseTime() || shouldParsePattern();
+    return shouldParsePattern() || shouldParseTime();
   }
 
   public boolean shouldParsePattern() {
