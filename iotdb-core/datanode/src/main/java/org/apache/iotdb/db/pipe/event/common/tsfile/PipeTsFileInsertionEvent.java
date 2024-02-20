@@ -182,14 +182,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
-  public boolean shouldParsePatternOrTime() {
+  public boolean shouldParseTimeOrPattern() {
+    boolean shouldParseTimeOrPattern = false;
     try {
-      return super.shouldParsePatternOrTime();
+      shouldParseTimeOrPattern = super.shouldParseTimeOrPattern();
+      return shouldParseTimeOrPattern;
     } finally {
       // Super method will call shouldParsePattern() and then init dataContainer at
       // shouldParsePattern(). If shouldParsePattern() returns false, dataContainer will
       // not be used, so we need to close the resource here.
-      close();
+      if (!shouldParseTimeOrPattern) {
+        close();
+      }
     }
   }
 
