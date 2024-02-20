@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -42,6 +43,7 @@ import java.io.IOException;
  * leader change. If the procedure is still not recovered by the time the last database is created,
  * it will throw an exception which indicates the test to be poorly written.
  */
+@TestOnly
 public class CreateManyDatabasesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
