@@ -173,6 +173,13 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
           filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
+
+      // case 3: for example, pattern is root.a.b.c and device is root.a.b.d
+      // in this case, no data can be matched
+      else {
+        // Parse pattern iff there are measurements filtered out
+        shouldParsePattern = true;
+      }
     }
 
     return filteredDeviceMeasurementsMap;
