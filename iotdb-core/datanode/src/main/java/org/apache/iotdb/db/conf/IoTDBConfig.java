@@ -24,10 +24,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -42,6 +46,7 @@ import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -601,6 +606,12 @@ public class IoTDBConfig {
    * "defaultCluster" will be changed after join cluster
    */
   private String clusterName = "defaultCluster";
+
+  /**
+   * The cluster ID that this DataNode joined in the cluster mode. DataNode will fetch cluster ID
+   * from ConfigNode and cache it here when first time use it.
+   */
+  private String clusterId = "";
 
   /**
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
@@ -3013,6 +3024,24 @@ public class IoTDBConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+  }
+
+  public synchronized String getClusterId() throws LoadConfigurationException {
+    if (clusterId.isEmpty()) {
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TGetClusterIdResp resp = client.getClusterId();
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+          throw new LoadConfigurationException(
+              "Cannot fetch cluster ID from ConfigNode, tsStatus is " + resp.getStatus());
+        }
+        this.clusterId = resp.getClusterId();
+        logger.info("Fetch clusterId from ConfigNode: {}", this.clusterId);
+      } catch (Exception e) {
+        throw new LoadConfigurationException(e);
+      }
+    }
+    return this.clusterId;
   }
 
   public int getDataNodeId() {
