@@ -276,7 +276,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   @Override
-  public Event doSupply() {
+  public Event supply() {
     isStartedToSupply = true;
 
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
