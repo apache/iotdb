@@ -97,7 +97,6 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     CountDownLatch latch = new CountDownLatch(sourceFiles.size());
     for (TsFileResource sourceFile : sourceFiles) {
       if (Thread.interrupted()) {
-        Thread.currentThread().interrupt();
         throw new InterruptedException();
       }
       sourceFile.readLock();
@@ -108,6 +107,9 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         }
         RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(sourceFile);
         scanUtil.scanTsFile();
+        if (Thread.interrupted()) {
+          throw new InterruptedException();
+        }
         if (scanUtil.isBrokenFile()) {
           LOGGER.warn("[RepairScheduler] file {} is skipped because it is broken", sourceFile);
           sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
