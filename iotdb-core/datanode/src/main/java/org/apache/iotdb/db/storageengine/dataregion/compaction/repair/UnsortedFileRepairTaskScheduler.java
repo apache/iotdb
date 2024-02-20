@@ -171,8 +171,8 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       } finally {
         CompactionScheduler.exclusiveUnlockCompactionSelection();
       }
-    } catch (InterruptedException interruptedException) {
-      Thread.currentThread().interrupt();
+    } catch (InterruptedException ignored) {
+      // ignored the InterruptedException and let the task exit
     } catch (Exception e) {
       LOGGER.error("[RepairScheduler] Meet error when execute repair schedule task", e);
     } finally {

@@ -59,8 +59,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
   public Void call() {
     try {
       scanTimePartitionFiles();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (InterruptedException ignored) {
+      // Allow task stop
     }
     return null;
   }
