@@ -31,7 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -254,8 +254,10 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
     // Reject to handshake if the receiver can not take clusterId from config node.
-    final String clusterIdFromConfigNode = PipeAgent.runtime().getClusterIdIfPossible();
-    if (clusterIdFromConfigNode == null) {
+    String clusterId;
+    try {
+      clusterId = IoTDBDescriptor.getInstance().getConfig().getClusterId();
+    } catch (LoadConfigurationException e) {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR,
@@ -276,7 +278,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     }
 
     // Reject to handshake if the receiver and sender are from the same cluster.
-    if (Objects.equals(clusterIdFromConfigNode, clusterIdFromHandshakeRequest)) {
+    if (Objects.equals(clusterId, clusterIdFromHandshakeRequest)) {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR,
