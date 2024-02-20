@@ -544,7 +544,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       if (node.isOpen() && !queue.isOpened()) {
         logger.info("Opened pipe listening queue on schema region {}", id);
         queue.open();
-      } else if (queue.isOpened()) {
+      } else if (!node.isOpen() && queue.isOpened()) {
         logger.info("Closed pipe listening queue on schema region {}", id);
         queue.close();
       }
