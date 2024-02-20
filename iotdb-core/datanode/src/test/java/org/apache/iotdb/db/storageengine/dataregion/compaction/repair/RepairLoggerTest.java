@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -34,14 +33,12 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-public class RepairLoggerTest extends AbstractCompactionTest {
+public class RepairLoggerTest extends AbstractRepairDataTest {
 
   @Before
   public void setUp()
@@ -65,15 +62,10 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L);
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
-    Path tempDirPath = Files.createTempDirectory("");
-    tempDirPath.toFile().deleteOnExit();
-    File logFile =
-        new File(
-            tempDirPath.toString()
-                + File.separator
-                + System.currentTimeMillis()
-                + RepairLogger.repairLogSuffix);
-    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
+    File tempDir = getEmptyRepairDataLogDir();
+    File logFile = null;
+    try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logFile = logger.getLogFile();
       logger.recordRepairedTimePartition(mockRepairTimePartition);
     }
     RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
@@ -101,15 +93,10 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getDataRegionId()).thenReturn("0");
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L, 1L, 2L);
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot()).thenReturn(Collections.emptyList());
-    Path tempDirPath = Files.createTempDirectory("");
-    tempDirPath.toFile().deleteOnExit();
-    File logFile =
-        new File(
-            tempDirPath.toString()
-                + File.separator
-                + System.currentTimeMillis()
-                + RepairLogger.repairLogSuffix);
-    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
+    File tempDir = getEmptyRepairDataLogDir();
+    File logFile = null;
+    try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logFile = logger.getLogFile();
       for (int i = 0; i < 3; i++) {
         logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
         logger.recordCannotRepairFiles(mockRepairTimePartition);
@@ -134,15 +121,10 @@ public class RepairLoggerTest extends AbstractCompactionTest {
     Mockito.when(mockRepairTimePartition.getTimePartitionId()).thenReturn(0L);
     Mockito.when(mockRepairTimePartition.getAllFileSnapshot())
         .thenReturn(Arrays.asList(resource1, resource2));
-    Path tempDirPath = Files.createTempDirectory("");
-    tempDirPath.toFile().deleteOnExit();
-    File logFile =
-        new File(
-            tempDirPath.toString()
-                + File.separator
-                + System.currentTimeMillis()
-                + RepairLogger.repairLogSuffix);
-    try (RepairLogger logger = new RepairLogger(tempDirPath.toFile(), false)) {
+    File tempDir = getEmptyRepairDataLogDir();
+    File logFile = null;
+    try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logFile = logger.getLogFile();
       logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
       logger.recordCannotRepairFiles(mockRepairTimePartition);
     }

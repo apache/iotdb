@@ -240,10 +240,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
         Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
         Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
         for (TsFileResource resource : seqResources) {
-          Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, resource.getStatus());
+          Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
         }
         for (TsFileResource resource : unseqResources) {
-          Assert.assertEquals(TsFileResourceStatus.COMPACTION_CANDIDATE, resource.getStatus());
+          Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
         }
       }
     } finally {

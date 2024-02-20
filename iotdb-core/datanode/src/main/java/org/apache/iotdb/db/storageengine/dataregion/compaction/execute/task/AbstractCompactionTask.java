@@ -64,6 +64,7 @@ import java.util.stream.Collectors;
 public abstract class AbstractCompactionTask {
   protected static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final int maxRetryAllocateResourceTimes = 5;
 
   protected String dataRegionId;
   protected String storageGroupName;
@@ -188,8 +189,8 @@ public abstract class AbstractCompactionTask {
       return false;
     }
     // check task retry times
-    int maxRetryTimes = 5;
-    boolean blockUntilCanExecute = getRetryAllocateResourcesTimes() >= maxRetryTimes;
+    boolean blockUntilCanExecute =
+        getRetryAllocateResourcesTimes() >= maxRetryAllocateResourceTimes;
     long estimatedMemoryCost = getEstimatedMemoryCost();
     try {
       SystemInfo.getInstance()
