@@ -74,7 +74,7 @@ public class IoTDBRepairDataIT {
           String.format("load \"%s\" verify=false", tsfile.getParentFile().getAbsolutePath()));
 
       Assert.assertFalse(validate(statement));
-      statement.execute("REPAIR DATA");
+      statement.execute("START REPAIR DATA");
 
       int waitTimes = 20;
       for (int i = 0; i < waitTimes; i++) {
