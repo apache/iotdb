@@ -240,6 +240,13 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
+  @Override
+  public boolean shouldParsePattern() {
+    final InsertNode node = getInsertNodeViaCacheIfPossible();
+    return super.shouldParsePattern()
+        && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
+  }
+
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, true);

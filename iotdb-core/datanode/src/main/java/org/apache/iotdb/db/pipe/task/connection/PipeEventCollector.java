@@ -78,7 +78,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   private void parseAndCollectEvent(PipeInsertNodeTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParsePatternOrTime()) {
+    if (sourceEvent.shouldParseTimeOrPattern()) {
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
         collectEvent(parsedEvent);
@@ -89,7 +89,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   private void parseAndCollectEvent(PipeRawTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParsePatternOrTime()) {
+    if (sourceEvent.shouldParseTimeOrPattern()) {
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
         collectEvent(parsedEvent);
@@ -107,7 +107,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       return;
     }
 
-    if (!sourceEvent.shouldParsePatternOrTime()) {
+    if (!sourceEvent.shouldParseTimeOrPattern()) {
       collectEvent(sourceEvent);
       return;
     }

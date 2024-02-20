@@ -72,6 +72,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final Map<String, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
+  private boolean shouldParsePattern = false;
+
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
@@ -161,12 +163,22 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               // high cost check comes later
               && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
             filteredMeasurements.add(measurement);
+          } else {
+            // Parse pattern iff there are measurements filtered out
+            shouldParsePattern = true;
           }
         }
 
         if (!filteredMeasurements.isEmpty()) {
           filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
+      }
+
+      // case 3: for example, pattern is root.a.b.c and device is root.a.b.d
+      // in this case, no data can be matched
+      else {
+        // Parse pattern iff there are measurements filtered out
+        shouldParsePattern = true;
       }
     }
 
@@ -252,6 +264,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             return next;
           }
         };
+  }
+
+  public boolean shouldParsePattern() {
+    return shouldParsePattern;
   }
 
   @Override
