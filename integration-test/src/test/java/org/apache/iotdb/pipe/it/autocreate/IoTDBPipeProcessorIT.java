@@ -56,9 +56,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
           .getConfig()
           .getCommonConfig()
           .setAutoCreateSchemaEnabled(true)
-          .setTimestampPrecision("ms")
-          .setSeqMemtableFlushIntervalInMs(60000)
-          .setUnseqMemtableFlushIntervalInMs(60000);
+          .setTimestampPrecision("ms");
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
       senderEnv.initClusterEnvironment();

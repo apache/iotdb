@@ -38,12 +38,7 @@ abstract class AbstractPipeDualAutoIT {
       senderEnv = MultiEnvFactory.getEnv(0);
       receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv
-          .getConfig()
-          .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
-          .setSeqMemtableFlushIntervalInMs(60000)
-          .setUnseqMemtableFlushIntervalInMs(60000);
+      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
       receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
       senderEnv.initClusterEnvironment();
