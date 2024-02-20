@@ -201,11 +201,14 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
   }
 
   private void startTimePartitionScanTasks() throws InterruptedException {
-    for (RepairTimePartition timePartition : allTimePartitionFiles) {
-      RepairTaskManager.getInstance()
-          .submitScanTask(
-              new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress));
+    try {
+      for (RepairTimePartition timePartition : allTimePartitionFiles) {
+        RepairTaskManager.getInstance()
+            .submitScanTask(
+                new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress));
+      }
+    } finally {
+      RepairTaskManager.getInstance().waitRepairTaskFinish();
     }
-    RepairTaskManager.getInstance().waitRepairTaskFinish();
   }
 }

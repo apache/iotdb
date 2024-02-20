@@ -32,9 +32,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +47,7 @@ public class RepairTaskManager implements IService {
   private ExecutorService repairScheduleTaskThreadPool;
   private static final Logger logger = LoggerFactory.getLogger(RepairTaskManager.class);
   private static final RepairTaskManager INSTANCE = new RepairTaskManager();
-  private final Set<Future<Void>> repairTasks = new HashSet<>();
+  private final Set<Future<Void>> repairTasks = ConcurrentHashMap.newKeySet();
 
   /** a repair task is running */
   private final AtomicReference<RepairTaskStatus> repairTaskStatus =
@@ -82,11 +82,11 @@ public class RepairTaskManager implements IService {
   }
 
   @Override
-  public synchronized void start() throws StartupException {
+  public void start() throws StartupException {
     logger.info("Repair schedule task manager started.");
   }
 
-  public void checkReady() {
+  public synchronized void checkReady() {
     if (!init && maxScanTaskNum > 0) {
       initThreadPool();
     }
@@ -117,7 +117,7 @@ public class RepairTaskManager implements IService {
     waitForThreadPoolTerminated();
   }
 
-  public synchronized void abortRepairTask() {
+  public void abortRepairTask() {
     for (Future<Void> repairTask : repairTasks) {
       repairTask.cancel(true);
     }
@@ -138,13 +138,13 @@ public class RepairTaskManager implements IService {
     return ServiceType.REPAIR_DATA_SERVICE;
   }
 
-  public synchronized Future<Void> submitScanTask(RepairTimePartitionScanTask scanTask) {
+  public Future<Void> submitScanTask(RepairTimePartitionScanTask scanTask) {
     Future<Void> future = repairScheduleTaskThreadPool.submit(scanTask);
     repairTasks.add(future);
     return future;
   }
 
-  public synchronized void waitRepairTaskFinish() {
+  public void waitRepairTaskFinish() {
     for (Future<Void> result : repairTasks) {
       try {
         result.get();
