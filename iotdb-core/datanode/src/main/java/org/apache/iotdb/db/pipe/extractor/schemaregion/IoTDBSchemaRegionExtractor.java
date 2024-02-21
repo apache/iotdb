@@ -78,7 +78,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
 
   // This method will return events only after schema region leader gets ready
   @Override
-  public EnrichedEvent supply() throws Exception {
+  public synchronized EnrichedEvent supply() throws Exception {
     if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady() || isClosed.get()) {
       return null;
     }
@@ -99,11 +99,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   }
 
   @Override
-  public void close() throws Exception {
+  public synchronized void close() throws Exception {
+    isClosed.set(true);
     if (!hasBeenStarted.get()) {
       return;
     }
-    isClosed.set(true);
     super.close();
     if (!listenTypes.isEmpty()) {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper has no schema pipe after
