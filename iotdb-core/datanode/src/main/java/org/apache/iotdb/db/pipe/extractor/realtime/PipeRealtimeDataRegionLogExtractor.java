@@ -76,7 +76,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
     if (!(((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()
-        || event.getTsFileEpoch().getMinTime()
+        || event.getTsFileEpoch().getInsertNodeMinTime()
             > ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime())) {
       // If the tsFile's data can be represented by insertNodes, ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
