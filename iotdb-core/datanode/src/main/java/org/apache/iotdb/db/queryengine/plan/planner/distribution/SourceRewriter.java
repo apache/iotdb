@@ -207,7 +207,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           deviceViewNodeList, deviceViewSplits, node, context, analysis);
     }
 
-    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
+    if (deviceViewNodeList.size() == 1
+        || (analysis.isHasSortNode() && !analysis.isDeviceViewSpecialProcess())
+        || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -249,14 +251,23 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       DeviceViewNode node,
       DistributionPlanContext context,
       Analysis analysis) {
+
+    Map<TRegionReplicaSet, DeviceViewNode> regionDeviceViewMap = new HashMap<>();
     for (DeviceViewSplit split : deviceViewSplits) {
-      DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
       if (split.dataPartitions.size() != 1) {
         throw new IllegalStateException(
             "In non-cross data region device-view situation, each device should only have on data partition.");
       }
-      PlanNode childNode =
-          split.buildPlanNodeInRegion(split.dataPartitions.iterator().next(), context.queryContext);
+      TRegionReplicaSet region = split.dataPartitions.iterator().next();
+      DeviceViewNode regionDeviceViewNode =
+          regionDeviceViewMap.computeIfAbsent(
+              region,
+              k -> {
+                DeviceViewNode deviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
+                deviceViewNodeList.add(deviceViewNode);
+                return deviceViewNode;
+              });
+      PlanNode childNode = split.buildPlanNodeInRegion(region, context.queryContext);
       if (analysis.isDeviceViewSpecialProcess()) {
         List<PlanNode> rewriteResult = rewrite(childNode, context);
         if (rewriteResult.size() != 1) {
@@ -267,7 +278,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         childNode = rewriteResult.get(0);
       }
       regionDeviceViewNode.addChildDeviceNode(split.device, childNode);
-      deviceViewNodeList.add(regionDeviceViewNode);
     }
   }
 
