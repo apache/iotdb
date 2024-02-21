@@ -26,10 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -142,6 +145,125 @@ public class AggregationAlignByDeviceTest {
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof DeviceViewNode);
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof HorizontallyConcatNode);
+  }
+
+  /*
+   * IdentitySinkNode-31
+   *   └──MergeSort-28
+   *       ├──DeviceView-12
+   *       │   └──AggregationNode-17
+   *       │       └──FilterNode-16
+   *       │           └──FullOuterTimeJoinNode-15
+   *       │               ├──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       │               └──SeriesScanNode-19:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──ExchangeNode-29: [SourceAddress:192.0.4.1/test.2.0/30]
+   *
+   * IdentitySinkNode-30
+   *   └──DeviceView-20
+   *       └──AggregationNode-25
+   *           └──FilterNode-24
+   *               └──FullOuterTimeJoinNode-23
+   *                   ├──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d55555.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
+  @Test
+  public void orderByDeviceTest2() {
+    // one aggregation measurement, two devices, with filter
+    sql = "select first_value(s1) from root.sg.d22, root.sg.d55555 where s2>1 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FilterNode);
+    assertTrue(
+        firstFiTopNode
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof FullOuterTimeJoinNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof IdentitySinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FilterNode);
+    assertTrue(
+        secondFiRoot
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof FullOuterTimeJoinNode);
+
+    // two aggregation measurement, two devices, with filter
+    sql =
+        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 where s2>1 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FilterNode);
+    assertTrue(
+        firstFiTopNode
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof FullOuterTimeJoinNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof IdentitySinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FilterNode);
+    assertTrue(
+        secondFiRoot
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof FullOuterTimeJoinNode);
   }
 
   @Test

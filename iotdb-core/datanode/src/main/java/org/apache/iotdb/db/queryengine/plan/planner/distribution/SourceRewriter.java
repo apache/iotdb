@@ -171,30 +171,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           "size of devices and its children in DeviceViewNode should be same");
     }
 
-    // If the DeviceView is mixed with Function that need to merge data from different Data Region,
-    // it should be processed by a special logic.
-    // Now the Functions are : all Aggregation Functions and DIFF
-    Map<String, String> outputDeviceToQueriedDevicesMap =
-        analysis.getOutputDeviceToQueriedDevicesMap();
-    if (analysis.isDeviceViewSpecialProcess()) {
-      for (String device : node.getDevices()) {
-        List<TRegionReplicaSet> regionReplicaSets =
-            analysis.useLogicalView()
-                ? analysis.getPartitionInfo(
-                    outputDeviceToQueriedDevicesMap.get(device), context.getPartitionTimeFilter())
-                : analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
-        if (regionReplicaSets.size() > 1) {
-          analysis.existDeviceCrossRegion = true;
-          break;
-        }
-      }
-      return processSpecialDeviceView(node, context);
-    }
-
+    // Step 1: constructs DeviceViewSplits
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
 
-    // Step 1: constructs DeviceViewSplit
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
@@ -202,16 +182,50 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(
-                      outputDeviceToQueriedDevicesMap.get(outputDevice),
+                      analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice),
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
+      if (regionReplicaSets.size() > 1) {
+        // specialProcess and existDeviceCrossRegion, use the old aggregation logic
+        analysis.existDeviceCrossRegion = true;
+        if (analysis.isDeviceViewSpecialProcess()) {
+          return processSpecialDeviceView(node, context);
+        }
+      }
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
+    if (analysis.existDeviceCrossRegion) {
+      constructDeviceViewNodeListWithCrossRegion(
+          deviceViewNodeList, relatedDataRegions, deviceViewSplits, node, context);
+    } else {
+      constructDeviceViewNodeListWithoutCrossRegion(
+          deviceViewNodeList, deviceViewSplits, node, context, analysis);
+    }
+
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
+      return deviceViewNodeList;
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getOutputColumnNames());
+    deviceViewNodeList.forEach(mergeSortNode::addChild);
+    return Collections.singletonList(mergeSortNode);
+  }
+
+  private void constructDeviceViewNodeListWithCrossRegion(
+      List<PlanNode> deviceViewNodeList,
+      Set<TRegionReplicaSet> relatedDataRegions,
+      List<DeviceViewSplit> deviceViewSplits,
+      DeviceViewNode node,
+      DistributionPlanContext context) {
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
       List<String> devices = new ArrayList<>();
       List<PlanNode> children = new ArrayList<>();
@@ -227,20 +241,34 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
       deviceViewNodeList.add(regionDeviceViewNode);
     }
+  }
 
-    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
-      return deviceViewNodeList;
+  private void constructDeviceViewNodeListWithoutCrossRegion(
+      List<PlanNode> deviceViewNodeList,
+      List<DeviceViewSplit> deviceViewSplits,
+      DeviceViewNode node,
+      DistributionPlanContext context,
+      Analysis analysis) {
+    for (DeviceViewSplit split : deviceViewSplits) {
+      DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
+      if (split.dataPartitions.size() != 1) {
+        throw new IllegalStateException(
+            "In non-cross data region device-view situation, each device should only have on data partition.");
+      }
+      PlanNode childNode =
+          split.buildPlanNodeInRegion(split.dataPartitions.iterator().next(), context.queryContext);
+      if (analysis.isDeviceViewSpecialProcess()) {
+        List<PlanNode> rewriteResult = rewrite(childNode, context);
+        if (rewriteResult.size() != 1) {
+          throw new IllegalStateException(
+              "In non-cross data region aggregation device-view situation, "
+                  + "each rewrite child node of DeviceView should only be one.");
+        }
+        childNode = rewriteResult.get(0);
+      }
+      regionDeviceViewNode.addChildDeviceNode(split.device, childNode);
+      deviceViewNodeList.add(regionDeviceViewNode);
     }
-
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getOutputColumnNames());
-    for (PlanNode deviceViewNode : deviceViewNodeList) {
-      mergeSortNode.addChild(deviceViewNode);
-    }
-    return Collections.singletonList(mergeSortNode);
   }
 
   @Override
@@ -268,43 +296,6 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         node.getMergeOrderParameter(),
         node.getOutputColumnNames(),
         node.getDeviceToMeasurementIndexesMap());
-  }
-
-  private static class DeviceViewSplit {
-    protected String device;
-    protected PlanNode root;
-    protected Set<TRegionReplicaSet> dataPartitions;
-
-    protected DeviceViewSplit(
-        String device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
-      this.device = device;
-      this.root = root;
-      this.dataPartitions = new HashSet<>();
-      this.dataPartitions.addAll(dataPartitions);
-    }
-
-    protected PlanNode buildPlanNodeInRegion(
-        TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
-      return buildPlanNodeInRegion(this.root, regionReplicaSet, context);
-    }
-
-    protected boolean needDistributeTo(TRegionReplicaSet regionReplicaSet) {
-      return this.dataPartitions.contains(regionReplicaSet);
-    }
-
-    private PlanNode buildPlanNodeInRegion(
-        PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
-      List<PlanNode> children =
-          root.getChildren().stream()
-              .map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context))
-              .collect(Collectors.toList());
-      PlanNode newRoot = root.cloneWithChildren(children);
-      newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
-      if (newRoot instanceof SourceNode) {
-        ((SourceNode) newRoot).setRegionReplicaSet(regionReplicaSet);
-      }
-      return newRoot;
-    }
   }
 
   @Override
@@ -1484,5 +1475,42 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   public List<PlanNode> visit(PlanNode node, DistributionPlanContext context) {
     return node.accept(this, context);
+  }
+
+  private static class DeviceViewSplit {
+    protected String device;
+    protected PlanNode root;
+    protected Set<TRegionReplicaSet> dataPartitions;
+
+    protected DeviceViewSplit(
+        String device, PlanNode root, List<TRegionReplicaSet> dataPartitions) {
+      this.device = device;
+      this.root = root;
+      this.dataPartitions = new HashSet<>();
+      this.dataPartitions.addAll(dataPartitions);
+    }
+
+    protected PlanNode buildPlanNodeInRegion(
+        TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
+      return buildPlanNodeInRegion(this.root, regionReplicaSet, context);
+    }
+
+    protected boolean needDistributeTo(TRegionReplicaSet regionReplicaSet) {
+      return this.dataPartitions.contains(regionReplicaSet);
+    }
+
+    private PlanNode buildPlanNodeInRegion(
+        PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
+      List<PlanNode> children =
+          root.getChildren().stream()
+              .map(child -> buildPlanNodeInRegion(child, regionReplicaSet, context))
+              .collect(Collectors.toList());
+      PlanNode newRoot = root.cloneWithChildren(children);
+      newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
+      if (newRoot instanceof SourceNode) {
+        ((SourceNode) newRoot).setRegionReplicaSet(regionReplicaSet);
+      }
+      return newRoot;
+    }
   }
 }

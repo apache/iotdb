@@ -415,13 +415,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
-    //
-    if (node instanceof DeviceViewNode
-        && analysis.isDeviceViewSpecialProcess()
-        && !analysis.existDeviceCrossRegion) {
-      return useMergeSortWithDeviceViewAggregation(node, visitedChildren, context, dataRegion);
-    }
-
     // optimize `order by time|expression limit N align by device` query,
     // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
     if (node instanceof TopKNode) {
