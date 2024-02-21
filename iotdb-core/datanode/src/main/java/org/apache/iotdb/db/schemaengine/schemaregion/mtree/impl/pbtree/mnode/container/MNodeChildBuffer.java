@@ -5,13 +5,11 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -20,6 +18,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.AbstractMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Collections.emptySet;
 
@@ -55,7 +54,7 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
   @Override
   public void transferReceivingBufferToFlushingBuffer() {
     if (flushingBuffer == null) {
-      flushingBuffer = new HashMap<>();
+      flushingBuffer = new ConcurrentHashMap<>();
     }
     if (receivingBuffer != null) {
       flushingBuffer.putAll(receivingBuffer);
