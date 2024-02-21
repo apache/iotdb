@@ -415,6 +415,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
+    //
     if (node instanceof DeviceViewNode
         && analysis.isDeviceViewSpecialProcess()
         && !analysis.existDeviceCrossRegion) {
@@ -434,11 +435,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         if (child instanceof SingleDeviceViewNode) {
           ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
         }
-        ExchangeNode exchangeNode =
-            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-        exchangeNode.setChild(child);
-        exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-        context.hasExchangeNode = true;
+        ExchangeNode exchangeNode = genExchangeNode(context, child);
         newNode.addChild(exchangeNode);
       } else {
         newNode.addChild(child);
@@ -498,11 +495,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       TopKNode topKNode = entry.getValue();
 
       if (!dataRegion.equals(topKNodeLocatedRegion)) {
-        ExchangeNode exchangeNode =
-            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-        exchangeNode.setChild(topKNode);
-        exchangeNode.setOutputColumnNames(topKNode.getOutputColumnNames());
-        context.hasExchangeNode = true;
+        ExchangeNode exchangeNode = genExchangeNode(context, topKNode);
         newNode.addChild(exchangeNode);
       } else {
         newNode.addChild(topKNode);
@@ -517,16 +510,17 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       NodeGroupContext context,
       TRegionReplicaSet dataRegion) {
     DeviceViewNode rootDeviceViewNode = (DeviceViewNode) node;
-    Map<TRegionReplicaSet, DeviceViewNode> regionAggMergeNodeMap = new HashMap<>();
     checkArgument(
         visitedChildren.size() == rootDeviceViewNode.getDevices().size(),
         "Each device should only located in one data region.");
+
+    Map<TRegionReplicaSet, DeviceViewNode> regionSubDeviceViewMap = new HashMap<>();
     for (int i = 0; i < visitedChildren.size(); i++) {
       PlanNode child = visitedChildren.get(i);
       String device = rootDeviceViewNode.getDevices().get(i);
       TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
       DeviceViewNode deviceViewNode =
-          regionAggMergeNodeMap.computeIfAbsent(
+          regionSubDeviceViewMap.computeIfAbsent(
               region,
               k -> {
                 DeviceViewNode childDeviceViewNode =
@@ -548,16 +542,12 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             context.queryContext.getQueryId().genPlanNodeId(),
             rootDeviceViewNode.getMergeOrderParameter(),
             rootDeviceViewNode.getOutputColumnNames());
-    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionAggMergeNodeMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionSubDeviceViewMap.entrySet()) {
       TRegionReplicaSet deviceViewNodeLocatedRegion = entry.getKey();
       DeviceViewNode deviceViewNode = entry.getValue();
 
       if (!dataRegion.equals(deviceViewNodeLocatedRegion)) {
-        ExchangeNode exchangeNode =
-            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-        exchangeNode.setChild(deviceViewNode);
-        exchangeNode.setOutputColumnNames(deviceViewNode.getOutputColumnNames());
-        context.hasExchangeNode = true;
+        ExchangeNode exchangeNode = genExchangeNode(context, deviceViewNode);
         mergeSortNode.addChild(exchangeNode);
       } else {
         mergeSortNode.addChild(deviceViewNode);
@@ -569,6 +559,14 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             NodeDistributionType.SAME_WITH_ALL_CHILDREN,
             context.getNodeDistribution(rootDeviceViewNode.getPlanNodeId()).getRegion()));
     return mergeSortNode;
+  }
+
+  private ExchangeNode genExchangeNode(NodeGroupContext context, PlanNode child) {
+    ExchangeNode exchangeNode = new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+    exchangeNode.setChild(child);
+    exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+    context.hasExchangeNode = true;
+    return exchangeNode;
   }
 
   @Override

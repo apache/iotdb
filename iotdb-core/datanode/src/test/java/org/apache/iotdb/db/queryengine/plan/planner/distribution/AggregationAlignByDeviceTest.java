@@ -26,11 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 
 import org.junit.Test;
 
@@ -49,69 +51,175 @@ public class AggregationAlignByDeviceTest {
   DistributionPlanner planner;
   DistributedQueryPlan plan;
   PlanNode firstFiRoot;
+  PlanNode secondFiRoot;
   PlanNode firstFiTopNode;
-  PlanNode mergeSortNode;
+
+  // ================= no scaling situation, i.e., each device only in one data region ===========
 
   /*
-   * IdentitySinkNode-27
-   *   └──LimitNode-22
-   *       └──FilterNode-12
-   *           └──DeviceView-14
-   *               ├──AggregationNode-5
-   *               │   └──FilterNode-4
-   *               │       └──FullOuterTimeJoinNode-3
-   *               │           ├──SeriesScanNode-15:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │           ├──SeriesScanNode-17:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │           └──ExchangeNode-23: [SourceAddress:192.0.2.1/test.2.0/25]
-   *               └──ExchangeNode-24: [SourceAddress:192.0.3.1/test.3.0/26]
+   * IdentitySinkNode-10
+   *   └──MergeSort-7
+   *       ├──DeviceView-5
+   *       │   └──SeriesAggregationScanNode-1:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(first_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──ExchangeNode-8: [SourceAddress:192.0.4.1/test.2.0/9]
    *
-   *  IdentitySinkNode-25
-   *   └──FullOuterTimeJoinNode-19
-   *       ├──SeriesScanNode-16:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesScanNode-18:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *
-   *  IdentitySinkNode-26
-   *   └──AggregationNode-10
-   *       └──FilterNode-9
-   *           └──FullOuterTimeJoinNode-8
-   *               ├──SeriesScanNode-20:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *  IdentitySinkNode-9
+   *   └──DeviceView-6
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d55555.s1, Descriptor: [AggregationDescriptor(first_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
-  public void oneMeasurementOneRegionTest() {
-    // aggregation + order by device, no value filter
+  public void orderByDeviceTest1() {
+    // one aggregation measurement, two devices
+    sql = "select first_value(s1) from root.sg.d22, root.sg.d55555 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof IdentitySinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+
+    // one aggregation measurement, one device
     sql = "select first_value(s1) from root.sg.d22 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     plan = planner.planFragments();
-    assertEquals(3, plan.getInstances().size());
+    assertEquals(1, plan.getInstances().size());
+
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     assertTrue(firstFiRoot instanceof IdentitySinkNode);
-    assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
-    PlanNode filterNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
-    assertTrue(filterNode instanceof FilterNode);
-    assertTrue(filterNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
-    assertTrue(
-        filterNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
-    PlanNode thirdFiRoot = plan.getInstances().get(2).getFragment().getPlanNodeTree();
-    assertTrue(thirdFiRoot instanceof IdentitySinkNode);
-    assertTrue(thirdFiRoot.getChildren().get(0) instanceof AggregationNode);
-    assertTrue(thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
-  }
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SeriesAggregationScanNode);
 
-  @Test
-  public void twoMeasurementMultiRegionTest() {
-    // aggregation + order by device, no value filter
-    sql = "select count(s1), first_value(s2) from root.sg.d1,root.sg.d333 align by device";
+    // two aggregation measurement, two devices
+    sql = "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     plan = planner.planFragments();
-    assertEquals(3, plan.getInstances().size());
+    assertEquals(2, plan.getInstances().size());
+
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    System.out.println("aa");
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof IdentitySinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+
+    // two aggregation measurement, one device
+    sql = "select first_value(s1), count(s2) from root.sg.d22 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof HorizontallyConcatNode);
+  }
+
+  @Test
+  public void orderByTimeTest1() {
+    // one aggregation measurement, two devices
+    sql =
+        "select first_value(s1) from root.sg.d22, root.sg.d55555 order by time desc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof ShuffleSinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0)
+            instanceof SeriesAggregationScanNode);
+
+    // one aggregation measurement, one device
+    sql = "select first_value(s1) from root.sg.d22 order by time desc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SeriesAggregationScanNode);
+
+    // two aggregation measurement, two devices
+    sql =
+        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 order by time desc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof ShuffleSinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+
+    // two aggregation measurement, one device
+    sql = "select first_value(s1), count(s2) from root.sg.d22 order by time desc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof HorizontallyConcatNode);
   }
 }

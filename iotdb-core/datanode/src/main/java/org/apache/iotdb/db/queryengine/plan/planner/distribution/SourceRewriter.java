@@ -171,18 +171,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           "size of devices and its children in DeviceViewNode should be same");
     }
 
-    Map<String, String> outputDeviceToQueriedDevicesMap =
-        analysis.getOutputDeviceToQueriedDevicesMap();
     // If the DeviceView is mixed with Function that need to merge data from different Data Region,
     // it should be processed by a special logic.
     // Now the Functions are : all Aggregation Functions and DIFF
+    Map<String, String> outputDeviceToQueriedDevicesMap =
+        analysis.getOutputDeviceToQueriedDevicesMap();
     if (analysis.isDeviceViewSpecialProcess()) {
       for (String device : node.getDevices()) {
         List<TRegionReplicaSet> regionReplicaSets =
-            !analysis.useLogicalView()
-                ? analysis.getPartitionInfo(device, context.getPartitionTimeFilter())
-                : analysis.getPartitionInfo(
-                    outputDeviceToQueriedDevicesMap.get(device), context.getPartitionTimeFilter());
+            analysis.useLogicalView()
+                ? analysis.getPartitionInfo(
+                    outputDeviceToQueriedDevicesMap.get(device), context.getPartitionTimeFilter())
+                : analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
         if (regionReplicaSets.size() > 1) {
           analysis.existDeviceCrossRegion = true;
           break;
@@ -199,13 +199,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          !analysis.useLogicalView()
+          analysis.useLogicalView()
               ? new ArrayList<>(
-                  analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()))
-              : new ArrayList<>(
                   analysis.getPartitionInfo(
                       outputDeviceToQueriedDevicesMap.get(outputDevice),
-                      context.getPartitionTimeFilter()));
+                      context.getPartitionTimeFilter()))
+              : new ArrayList<>(
+                  analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }

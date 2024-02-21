@@ -826,31 +826,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAggregationMergeSort(
       AggregationMergeSortNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                MergeSortOperator.class.getSimpleName());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
-    context.setCachedDataTypes(dataTypes);
-    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
-
-    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
-    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
-    genSortInformation(
-        node.getOutputColumnNames(),
-        dataTypes,
-        sortItemList,
-        sortItemIndexList,
-        sortItemDataTypeList);
-    return new MergeSortOperator(
-        operatorContext,
-        children,
-        dataTypes,
-        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+    return null;
   }
 
   @Override

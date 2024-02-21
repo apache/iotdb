@@ -459,8 +459,8 @@ public class LogicalPlanBuilder {
         "Each aggregate should correspond to a column of output.");
 
     boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new LinkedHashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new LinkedHashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
     Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
 
@@ -910,7 +910,7 @@ public class LogicalPlanBuilder {
     }
   }
 
-  private MultiChildProcessNode addDeviceViewNode(
+  private DeviceViewNode addDeviceViewNode(
       OrderByParameter orderByParameter,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,

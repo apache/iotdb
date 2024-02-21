@@ -259,8 +259,6 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    */
   @Test
   public void orderByDeviceTest4() {
-    // aggregation + order by device, no value filter
-
     // aggregation + order by device, expression; with value filter
     sql =
         "select count(s1) from root.sg.d1, root.sg.d22 WHERE s2=1 having(count(s1)>1) LIMIT 5 align by device";

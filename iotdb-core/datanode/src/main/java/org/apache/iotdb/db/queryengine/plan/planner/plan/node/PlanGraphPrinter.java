@@ -193,7 +193,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitAggregationMergeSort(
       AggregationMergeSortNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AggMergeSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("AggregationMergeSort-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 
