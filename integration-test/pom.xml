@@ -53,13 +53,6 @@
         <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
         <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
         <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
-        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
-        <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
-        <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
-        <strongConsistencyClusterMode.dataRegionConsensus>Ratis</strongConsistencyClusterMode.dataRegionConsensus>
-        <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
-        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
-        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
         <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
         <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
         <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
@@ -67,6 +60,13 @@
         <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
         <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
         <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
+        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
+        <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
+        <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
+        <strongConsistencyClusterMode.dataRegionConsensus>Ratis</strongConsistencyClusterMode.dataRegionConsensus>
+        <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
+        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
+        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
