@@ -171,7 +171,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
                 pagePointsNum.add(300L);
                 chunkPagePointsNum.add(pagePointsNum);
                 TsFileResource tsFileResource =
-                    CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+                    CompactionFileGeneratorUtils.generateTsFileResource(
+                        true, i + 1, COMPACTION_TEST_SG);
                 CompactionFileGeneratorUtils.writeTsFile(
                     fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                 sourceResources.add(tsFileResource);
@@ -466,7 +467,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
               pagePointsNum.add(300L);
               chunkPagePointsNum.add(pagePointsNum);
               TsFileResource tsFileResource =
-                  CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+                  CompactionFileGeneratorUtils.generateTsFileResource(
+                      true, i + 1, COMPACTION_TEST_SG);
               CompactionFileGeneratorUtils.writeTsFile(
                   fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
               toMergeResources.add(tsFileResource);
@@ -791,7 +793,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
                 pagePointsNum.add(300L);
                 chunkPagePointsNum.add(pagePointsNum);
                 TsFileResource tsFileResource =
-                    CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+                    CompactionFileGeneratorUtils.generateTsFileResource(
+                        true, i + 1, COMPACTION_TEST_SG);
                 CompactionFileGeneratorUtils.writeTsFile(
                     fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                 toMergeResources.add(tsFileResource);
