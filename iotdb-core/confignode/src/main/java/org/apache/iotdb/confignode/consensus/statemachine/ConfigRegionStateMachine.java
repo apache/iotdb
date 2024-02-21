@@ -228,8 +228,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       // Remove Metric after leader change
       configManager.removeMetrics();
 
-      // Deactivate config pipe plan queue
-      ConfigPlanListeningQueue.getInstance().deactivate();
+      // Shutdown leader related service for config pipe
+      ConfigPlanListeningQueue.getInstance().notifyLeaderUnavailable();
     }
   }
 
@@ -251,8 +251,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
-    // Activate config pipe plan queue
-    ConfigPlanListeningQueue.getInstance().activate();
+    // Activate leader related service for config pipe
+    ConfigPlanListeningQueue.getInstance().notifyLeaderReady();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
@@ -286,7 +286,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void stop() {
-    // do nothing
+    // Shutdown leader related service for config pipe
+    ConfigPlanListeningQueue.getInstance().notifyLeaderUnavailable();
   }
 
   @Override

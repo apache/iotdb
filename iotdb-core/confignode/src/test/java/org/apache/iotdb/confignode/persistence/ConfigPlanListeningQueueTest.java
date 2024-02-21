@@ -65,7 +65,7 @@ public class ConfigPlanListeningQueueTest {
   @Test
   public void testSnapshot() throws TException, IOException, AuthException {
     ConfigPlanListeningQueue.getInstance().open();
-    ConfigPlanListeningQueue.getInstance().activate();
+    ConfigPlanListeningQueue.getInstance().notifyLeaderReady();
 
     DatabaseSchemaPlan plan1 =
         new DatabaseSchemaPlan(

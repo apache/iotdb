@@ -211,10 +211,9 @@ public abstract class PipeTaskAgent {
       if (taskMetaInAgent == null) {
         createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
         // We keep the new created task's status consistent with the status recorded in local
-        // agent's
-        // pipe runtime meta. please note that the status recorded in local agent's pipe runtime
-        // meta
-        // is not reliable, but we will have a check later to make sure the status is correct.
+        // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
+        // runtime meta is not reliable, but we will have a check later to make sure the status is
+        // correct.
         if (runtimeMetaInAgent.getStatus().get() == PipeStatus.RUNNING) {
           startPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         }
@@ -229,10 +228,9 @@ public abstract class PipeTaskAgent {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
         // We keep the new created task's status consistent with the status recorded in local
-        // agent's
-        // pipe runtime meta. please note that the status recorded in local agent's pipe runtime
-        // meta
-        // is not reliable, but we will have a check later to make sure the status is correct.
+        // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
+        // runtime meta is not reliable, but we will have a check later to make sure the status is
+        // correct.
         if (runtimeMetaInAgent.getStatus().get() == PipeStatus.RUNNING) {
           startPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         }
@@ -240,9 +238,8 @@ public abstract class PipeTaskAgent {
     }
 
     // 1.2 Iterate over all consensus group ids on local agent's pipe runtime meta, decide if we
-    // need
-    // to drop any task. we do not need to create any new task here because we have already done
-    // that in 1.1.
+    // need to drop any task. we do not need to create any new task here because we have already
+    // done that in 1.1.
     for (final Map.Entry<Integer, PipeTaskMeta> entryInAgent :
         consensusGroupIdToTaskMetaMapInAgent.entrySet()) {
       final int consensusGroupIdInAgent = entryInAgent.getKey();
@@ -329,7 +326,7 @@ public abstract class PipeTaskAgent {
 
   protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
-    // Do nothing if node is removing or removed
+    // Do nothing if the node is removing or removed
     if (isShutdown()) {
       return Collections.emptyList();
     }
