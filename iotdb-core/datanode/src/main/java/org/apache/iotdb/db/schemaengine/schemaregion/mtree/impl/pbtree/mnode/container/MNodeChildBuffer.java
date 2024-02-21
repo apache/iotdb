@@ -1,11 +1,11 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
-import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.AbstractMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Collections.emptySet;
@@ -29,8 +28,7 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
   protected int totalSize = 0; // 总大小 包括flushingBuffer和receivingBuffer，不包括这两个buffer的交集
 
-  private static final IMNodeChildBuffer EMPTY_BUFFER =
-      new MNodeChildBuffer.EmptyBuffer();
+  private static final IMNodeChildBuffer EMPTY_BUFFER = new MNodeChildBuffer.EmptyBuffer();
 
   public static IMNodeChildBuffer emptyMNodeChildBuffer() {
     return EMPTY_BUFFER;
@@ -241,7 +239,6 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
   private static class EmptyBuffer extends AbstractMap<String, ICachedMNode>
       implements IMNodeChildBuffer {
-
 
     @Override
     public Iterator<ICachedMNode> getMNodeChildBufferIterator() {
