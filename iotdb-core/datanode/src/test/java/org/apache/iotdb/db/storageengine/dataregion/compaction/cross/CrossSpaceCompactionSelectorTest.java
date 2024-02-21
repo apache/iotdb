@@ -46,11 +46,9 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
@@ -222,30 +220,27 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
           new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
       queue.put(crossSpaceCompactionTask);
-      CompactionWorker worker = new CompactionWorker(0, queue);
-      CompletableFuture<Object> future =
-          CompletableFuture.supplyAsync(
+      Thread thread =
+          new Thread(
               () -> {
                 try {
                   AbstractCompactionTask task = queue.take();
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
+                  Assert.fail();
+                } catch (InterruptedException ignored) {
                 }
-                Assert.fail();
-                return null;
               });
-      try {
-        future.get(2, TimeUnit.SECONDS);
-      } catch (TimeoutException ignored) {
-        Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
-        Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-        for (TsFileResource resource : seqResources) {
-          Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
-        }
-        for (TsFileResource resource : unseqResources) {
-          Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
-        }
+      thread.start();
+      thread.join(TimeUnit.SECONDS.toMillis(2));
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource resource : seqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
       }
+      for (TsFileResource resource : unseqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
+      }
+      thread.interrupt();
+      thread.join();
     } finally {
       SystemInfo.getInstance().setTotalFileLimitForCompactionTask(oldMaxFileNumForCompaction);
     }

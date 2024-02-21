@@ -628,6 +628,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
+    RepairTaskManager.getInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -674,6 +675,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
+    RepairTaskManager.getInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -732,6 +734,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
+    RepairTaskManager.getInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -799,6 +802,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     // reset the repair status
     seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
 
+    RepairTaskManager.getInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);
@@ -874,6 +878,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         Collections.emptyList(),
         0);
 
+    RepairTaskManager.getInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);

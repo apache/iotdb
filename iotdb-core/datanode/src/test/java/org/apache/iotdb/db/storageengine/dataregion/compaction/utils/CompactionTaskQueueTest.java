@@ -38,7 +38,8 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -92,28 +93,34 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
     queue.put(mockTask2);
     queue.put(mockTask3);
     AtomicInteger outTaskNum = new AtomicInteger(0);
+    List<Thread> threadList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      CompletableFuture.supplyAsync(
-          () -> {
-            AbstractCompactionTask task = null;
-            try {
-              task = queue.take();
-              if (task != null) {
-                Thread.sleep(TimeUnit.SECONDS.toMillis(2));
-                releaseTaskOccupiedResources(task);
-                outTaskNum.incrementAndGet();
-              }
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-            return null;
-          });
+      Thread thread =
+          new Thread(
+              () -> {
+                AbstractCompactionTask task = null;
+                try {
+                  task = queue.take();
+                  if (task != null) {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                    releaseTaskOccupiedResources(task);
+                    outTaskNum.incrementAndGet();
+                  }
+                } catch (InterruptedException ignored) {
+                }
+              });
+      threadList.add(thread);
+      thread.start();
     }
     while (outTaskNum.get() != 3) {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+    for (Thread thread : threadList) {
+      thread.interrupt();
+      thread.join();
+    }
   }
 
   @Test
@@ -128,28 +135,35 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
     queue.put(mockTask2);
     queue.put(mockTask3);
     AtomicInteger outTaskNum = new AtomicInteger(0);
+    List<Thread> threadList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      CompletableFuture.supplyAsync(
-          () -> {
-            AbstractCompactionTask task = null;
-            try {
-              task = queue.take();
-              if (task != null) {
-                Thread.sleep(TimeUnit.SECONDS.toMillis(2));
-                releaseTaskOccupiedResources(task);
-                outTaskNum.incrementAndGet();
-              }
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-            return null;
-          });
+      Thread thread =
+          new Thread(
+              () -> {
+                AbstractCompactionTask task = null;
+                try {
+                  task = queue.take();
+                  if (task != null) {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                    releaseTaskOccupiedResources(task);
+                    outTaskNum.incrementAndGet();
+                  }
+                } catch (InterruptedException ignored) {
+                }
+              });
+      threadList.add(thread);
+      thread.start();
     }
+
     while (outTaskNum.get() != 3) {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+    for (Thread thread : threadList) {
+      thread.interrupt();
+      thread.join();
+    }
   }
 
   @Test
@@ -164,7 +178,8 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
     queue.put(mockTask1);
     queue.put(mockTask3);
     CountDownLatch latch = new CountDownLatch(3);
-    new Thread(
+    Thread thread =
+        new Thread(
             () -> {
               while (!queue.isEmpty()) {
                 try {
@@ -186,8 +201,8 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
                   Assert.fail();
                 }
               }
-            })
-        .start();
+            });
+    thread.start();
     while (latch.getCount() != 2) {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
@@ -195,6 +210,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
     latch.await();
     releaseTaskOccupiedResources(mockTask2);
     releaseTaskOccupiedResources(mockTask1);
+    thread.join();
   }
 
   private AbstractCompactionTask prepareTask(long memCost, int fileNum, long timePartition)
