@@ -67,7 +67,7 @@ public class SchemaNodeListeningQueueTest {
   @Test
   public void testSnapshot() throws TException, IOException, AuthException, IllegalPathException {
     SchemaNodeListeningQueue.getInstance(0).open();
-    SchemaNodeListeningQueue.getInstance(0).activate();
+    SchemaNodeListeningQueue.getInstance(0).notifyLeaderReady();
 
     CreateTimeSeriesNode node1 =
         new CreateTimeSeriesNode(

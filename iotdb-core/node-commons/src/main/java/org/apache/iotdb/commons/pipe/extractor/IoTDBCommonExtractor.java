@@ -110,6 +110,4 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
     }
     hasBeenStarted.set(true);
   }
-
-  protected IoTDBCommonExtractor() {}
 }
