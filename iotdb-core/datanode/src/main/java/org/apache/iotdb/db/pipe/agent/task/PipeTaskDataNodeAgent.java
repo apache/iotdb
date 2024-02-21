@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -131,6 +132,11 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
   @Override
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
+    // Do nothing if the node is removing or removed
+    if (isShutdown()) {
+      return Collections.emptyList();
+    }
+
     List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
     // Clear useless events for listening queues

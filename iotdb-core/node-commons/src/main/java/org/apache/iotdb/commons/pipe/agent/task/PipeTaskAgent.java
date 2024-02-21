@@ -326,7 +326,7 @@ public abstract class PipeTaskAgent {
 
   protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
-    // Do nothing if node is removing or removed
+    // Do nothing if the node is removing or removed
     if (isShutdown()) {
       return Collections.emptyList();
     }

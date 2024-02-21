@@ -70,12 +70,14 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     return leaderReady;
   }
 
-  // The linked list starts serving only after leader gets ready
-  public void activate() {
+  // Leader ready flag has the following effect
+  // 1. The linked list starts serving only after leader gets ready
+  // 2. Config pipe task is only created after leader gets ready
+  public void notifyLeaderReady() {
     leaderReady = true;
   }
 
-  public void deactivate() {
+  public void notifyLeaderUnavailable() {
     leaderReady = false;
   }
 

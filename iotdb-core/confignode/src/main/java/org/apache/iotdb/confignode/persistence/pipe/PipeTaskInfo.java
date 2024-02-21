@@ -776,7 +776,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
-    // Operate tasks only after leader get ready
+    // Operate tasks only after leader gets ready
     if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }

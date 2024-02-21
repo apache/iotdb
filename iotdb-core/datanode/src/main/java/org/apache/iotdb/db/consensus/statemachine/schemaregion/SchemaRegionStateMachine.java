@@ -57,20 +57,26 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {
-    // do nothing
+    // Stop leader related service for schema pipe
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        .notifyLeaderUnavailable();
   }
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
     if (schemaRegion.getSchemaRegionId().equals(groupId)
         && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
-      SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId()).deactivate();
+      // Shutdown leader related service for schema pipe
+      SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+          .notifyLeaderUnavailable();
     }
   }
 
   @Override
   public void notifyLeaderReady() {
-    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId()).activate();
+    // Activate leader related service for schema pipe
+    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        .notifyLeaderReady();
   }
 
   @Override
