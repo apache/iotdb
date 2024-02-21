@@ -81,7 +81,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         // some insert nodes in the tsfile epoch are not captured by pipe
         || tsFileInsertionEvent.getFileStartTime()
             < event.getTsFileEpoch().getInsertNodeMinTime())) {
-      // If the tsFile's data can be represented by insertNodes, ignore this event.
+      // All data in the tsfile epoch has been extracted in tablet mode, so we should
+      // simply ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }

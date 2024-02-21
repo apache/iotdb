@@ -139,17 +139,24 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 case USING_TSFILE:
                   return TsFileEpoch.State.USING_TSFILE;
                 case USING_TABLET:
-                  if (event.getTsFileEpoch().getInsertNodeMinTime()
-                      > ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime()) {
-                    // There may be lost insertion events if their tsFiles
-                    // remain unsealed when the historical extractor extracts them, and this
-                    // condition is equivalent to the epoch's minTime > tsFile's minTime
-                    // because the tsFile is always written sequentially ranged by time
+                  if (((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime()
+                      < event.getTsFileEpoch().getInsertNodeMinTime()) {
+                    // Some insert nodes in the tsfile epoch are not captured by pipe, so we should
+                    // capture the tsfile event to make sure all data in the tsfile epoch can be
+                    // extracted.
+                    //
+                    // The situation can be caused by the following operations:
+                    //  1. PipeA: start historical data extraction with flush
+                    //  2. Data insertion
+                    //  3. PipeB: start realtime data extraction
+                    //  4. PipeB: start historical data extraction without flush
+                    //  5. Data inserted in the step2 is not captured by PipeB, and if its tsfile
+                    //     epoch's state is USING_TABLET, the tsfile event will be ignored, which
+                    //     will cause the data loss in the tsfile epoch.
                     return TsFileEpoch.State.USING_BOTH;
                   } else {
-                    // If the file start time is larger than or equal to its epoch's minTime,
-                    // it implies that the file does not contain information other than extracted
-                    // tablets, simply ignore
+                    // All data in the tsfile epoch has been extracted in tablet mode, so we should
+                    // simply keep the state of the tsfile epoch and discard the tsfile event.
                     return TsFileEpoch.State.USING_TABLET;
                   }
                 case USING_BOTH:
