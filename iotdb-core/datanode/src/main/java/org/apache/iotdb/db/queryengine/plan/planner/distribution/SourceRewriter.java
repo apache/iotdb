@@ -171,20 +171,30 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           "size of devices and its children in DeviceViewNode should be same");
     }
 
+    Map<String, String> outputDeviceToQueriedDevicesMap =
+        analysis.getOutputDeviceToQueriedDevicesMap();
     // If the DeviceView is mixed with Function that need to merge data from different Data Region,
     // it should be processed by a special logic.
     // Now the Functions are : all Aggregation Functions and DIFF
     if (analysis.isDeviceViewSpecialProcess()) {
+      for (String device : node.getDevices()) {
+        List<TRegionReplicaSet> regionReplicaSets =
+            !analysis.useLogicalView()
+                ? analysis.getPartitionInfo(device, context.getPartitionTimeFilter())
+                : analysis.getPartitionInfo(
+                    outputDeviceToQueriedDevicesMap.get(device), context.getPartitionTimeFilter());
+        if (regionReplicaSets.size() > 1) {
+          analysis.existDeviceCrossRegion = true;
+          break;
+        }
+      }
       return processSpecialDeviceView(node, context);
     }
 
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
-
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
 
     // Step 1: constructs DeviceViewSplit
-    Map<String, String> outputDeviceToQueriedDevicesMap =
-        analysis.getOutputDeviceToQueriedDevicesMap();
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
@@ -236,20 +246,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitAggregationMergeSort(
       AggregationMergeSortNode node, DistributionPlanContext context) {
-    // TODO what's the meaning of newRoot
-    AggregationMergeSortNode newRoot =
-        new AggregationMergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getOutputColumnNames(),
-            node.getDeviceToMeasurementIndexesMap());
-    for (int i = 0; i < node.getChildren().size(); i++) {
-      List<PlanNode> rewroteNode = rewrite(node.getChildren().get(i), context);
-      for (PlanNode planNode : rewroteNode) {
-        newRoot.addChild(planNode);
-      }
-    }
-    return Collections.singletonList(newRoot);
+    return null;
   }
 
   private List<PlanNode> processSpecialDeviceView(
@@ -1449,14 +1446,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       source
           .getAggregationDescriptorList()
           .forEach(
-              d -> {
+              descriptor -> {
                 if (isSingle) {
-                  d.setStep(AggregationStep.SINGLE);
+                  descriptor.setStep(AggregationStep.SINGLE);
                 } else {
                   eachSeriesOneRegion[0] = false;
-                  d.setStep(AggregationStep.PARTIAL);
+                  descriptor.setStep(AggregationStep.PARTIAL);
                   LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                      d, context.queryContext.getTypeProvider());
+                      descriptor, context.queryContext.getTypeProvider());
                 }
               });
     }

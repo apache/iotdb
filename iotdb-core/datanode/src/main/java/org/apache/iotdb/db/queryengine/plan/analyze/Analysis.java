@@ -171,7 +171,10 @@ public class Analysis {
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
+  // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
   private boolean deviceViewSpecialProcess;
+
+  public boolean existDeviceCrossRegion;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)

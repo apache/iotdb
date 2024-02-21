@@ -30,9 +30,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class AggregationMergeSortNode extends MultiChildProcessNode {
@@ -41,49 +39,30 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   private final List<String> outputColumns;
 
-  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
-  // not 0 because device is the first column
-  // TODO if this variable can be simplified?
-  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
-
   public AggregationMergeSortNode(
-      PlanNodeId id,
-      OrderByParameter mergeOrderParameter,
-      List<String> outputColumns,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+      PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
   public AggregationMergeSortNode(
       PlanNodeId id,
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
-      List<String> outputColumns,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+      List<String> outputColumns) {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
   public OrderByParameter getMergeOrderParameter() {
     return mergeOrderParameter;
   }
 
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
-  }
-
   @Override
   public PlanNode clone() {
-    return new AggregationMergeSortNode(
-        getPlanNodeId(),
-        getMergeOrderParameter(),
-        outputColumns,
-        getDeviceToMeasurementIndexesMap());
+    return new AggregationMergeSortNode(getPlanNodeId(), getMergeOrderParameter(), outputColumns);
   }
 
   @Override
@@ -92,8 +71,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrderParameter(),
-        outputColumns,
-        getDeviceToMeasurementIndexesMap());
+        outputColumns);
   }
 
   @Override
@@ -114,14 +92,6 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
-    ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), byteBuffer);
-    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
-      for (Integer index : entry.getValue()) {
-        ReadWriteIOUtils.write(index, byteBuffer);
-      }
-    }
   }
 
   @Override
@@ -131,14 +101,6 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     ReadWriteIOUtils.write(outputColumns.size(), stream);
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, stream);
-    }
-    ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
-    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue().size(), stream);
-      for (Integer index : entry.getValue()) {
-        ReadWriteIOUtils.write(index, stream);
-      }
     }
   }
 
@@ -150,22 +112,8 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
-    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
-    while (mapSize > 0) {
-      String deviceName = ReadWriteIOUtils.readString(byteBuffer);
-      int listSize = ReadWriteIOUtils.readInt(byteBuffer);
-      List<Integer> indexes = new ArrayList<>(listSize);
-      while (listSize > 0) {
-        indexes.add(ReadWriteIOUtils.readInt(byteBuffer));
-        listSize--;
-      }
-      deviceToMeasurementIndexesMap.put(deviceName, indexes);
-      mapSize--;
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(
-        planNodeId, orderByParameter, outputColumns, deviceToMeasurementIndexesMap);
+    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns);
   }
 
   @Override

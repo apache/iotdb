@@ -71,6 +71,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
@@ -116,13 +117,14 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     NodeDistribution nodeDistribution =
         new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
     PlanNode newNode = node.clone();
-    nodeDistribution.region = calculateSchemaRegionByChildren(node.getChildren(), context);
+    nodeDistribution.setRegion(calculateSchemaRegionByChildren(node.getChildren(), context));
     context.putNodeDistribution(newNode.getPlanNodeId(), nodeDistribution);
     node.getChildren()
         .forEach(
             child -> {
-              if (!nodeDistribution.region.equals(
-                  context.getNodeDistribution(child.getPlanNodeId()).region)) {
+              if (!nodeDistribution
+                  .getRegion()
+                  .equals(context.getNodeDistribution(child.getPlanNodeId()).getRegion())) {
                 ExchangeNode exchangeNode =
                     new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
                 exchangeNode.setChild(child);
@@ -272,7 +274,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       // else we set the selected mostlyUsedDataRegion to this node
       dataRegion =
           isChildrenDistributionSame
-              ? context.getNodeDistribution(leftChild.getPlanNodeId()).region
+              ? context.getNodeDistribution(leftChild.getPlanNodeId()).getRegion()
               : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
@@ -291,7 +293,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
     // parent.
-    if (!dataRegion.equals(context.getNodeDistribution(leftChild.getPlanNodeId()).region)) {
+    if (!dataRegion.equals(context.getNodeDistribution(leftChild.getPlanNodeId()).getRegion())) {
       if (leftChild instanceof SingleDeviceViewNode) {
         ((SingleDeviceViewNode) leftChild).setCacheOutputColumnNames(true);
       }
@@ -305,7 +307,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       newNode.setLeftChild(leftChild);
     }
 
-    if (!dataRegion.equals(context.getNodeDistribution(rightChild.getPlanNodeId()).region)) {
+    if (!dataRegion.equals(context.getNodeDistribution(rightChild.getPlanNodeId()).getRegion())) {
       if (rightChild instanceof SingleDeviceViewNode) {
         ((SingleDeviceViewNode) rightChild).setCacheOutputColumnNames(true);
       }
@@ -397,7 +399,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       // else we set the selected mostlyUsedDataRegion to this node
       dataRegion =
           isChildrenDistributionSame
-              ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).region
+              ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).getRegion()
               : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
@@ -413,8 +415,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
-    if (node instanceof AggregationMergeSortNode) {
-      return processAggMergeSortNode(node, visitedChildren, context, newNode, dataRegion);
+    if (node instanceof DeviceViewNode
+        && analysis.isDeviceViewSpecialProcess()
+        && !analysis.existDeviceCrossRegion) {
+      return useMergeSortWithDeviceViewAggregation(node, visitedChildren, context, dataRegion);
     }
 
     // optimize `order by time|expression limit N align by device` query,
@@ -426,7 +430,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
     // parent.
     for (PlanNode child : visitedChildren) {
-      if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
+      if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).getRegion())) {
         if (child instanceof SingleDeviceViewNode) {
           ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
         }
@@ -470,7 +474,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     TopKNode rootNode = (TopKNode) node;
     Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
     for (PlanNode child : visitedChildren) {
-      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
       regionTopKNodeMap
           .computeIfAbsent(
               region,
@@ -507,17 +511,20 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return newNode;
   }
 
-  /** TODO 1. The impl of this method is not clear 2. The main FI may not need DeviceViewNode */
-  private PlanNode processAggMergeSortNode(
+  private PlanNode useMergeSortWithDeviceViewAggregation(
       MultiChildProcessNode node,
       List<PlanNode> visitedChildren,
       NodeGroupContext context,
-      MultiChildProcessNode newNode,
       TRegionReplicaSet dataRegion) {
-    AggregationMergeSortNode aggMergeSortNode = (AggregationMergeSortNode) node;
+    DeviceViewNode rootDeviceViewNode = (DeviceViewNode) node;
     Map<TRegionReplicaSet, DeviceViewNode> regionAggMergeNodeMap = new HashMap<>();
-    for (PlanNode child : visitedChildren) {
-      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+    checkArgument(
+        visitedChildren.size() == rootDeviceViewNode.getDevices().size(),
+        "Each device should only located in one data region.");
+    for (int i = 0; i < visitedChildren.size(); i++) {
+      PlanNode child = visitedChildren.get(i);
+      String device = rootDeviceViewNode.getDevices().get(i);
+      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
       DeviceViewNode deviceViewNode =
           regionAggMergeNodeMap.computeIfAbsent(
               region,
@@ -525,21 +532,22 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                 DeviceViewNode childDeviceViewNode =
                     new DeviceViewNode(
                         context.queryContext.getQueryId().genPlanNodeId(),
-                        aggMergeSortNode.getMergeOrderParameter(),
-                        aggMergeSortNode.getOutputColumnNames(),
-                        new HashMap<>());
+                        rootDeviceViewNode.getMergeOrderParameter(),
+                        rootDeviceViewNode.getOutputColumnNames(),
+                        rootDeviceViewNode.getDeviceToMeasurementIndexesMap());
                 context.putNodeDistribution(
                     childDeviceViewNode.getPlanNodeId(),
                     new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
                 return childDeviceViewNode;
               });
-      String device = getChildNodeDevice(child);
-      deviceViewNode
-          .getDeviceToMeasurementIndexesMap()
-          .put(device, aggMergeSortNode.getDeviceToMeasurementIndexesMap().get(device));
       deviceViewNode.addChildDeviceNode(device, child);
     }
 
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            rootDeviceViewNode.getMergeOrderParameter(),
+            rootDeviceViewNode.getOutputColumnNames());
     for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionAggMergeNodeMap.entrySet()) {
       TRegionReplicaSet deviceViewNodeLocatedRegion = entry.getKey();
       DeviceViewNode deviceViewNode = entry.getValue();
@@ -550,28 +558,17 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         exchangeNode.setChild(deviceViewNode);
         exchangeNode.setOutputColumnNames(deviceViewNode.getOutputColumnNames());
         context.hasExchangeNode = true;
-        newNode.addChild(exchangeNode);
+        mergeSortNode.addChild(exchangeNode);
       } else {
-        newNode.addChild(deviceViewNode);
+        mergeSortNode.addChild(deviceViewNode);
       }
     }
-    return newNode;
-  }
-
-  private String getChildNodeDevice(PlanNode child) {
-    String device;
-    if (child instanceof SeriesAggregationScanNode) {
-      device = ((SeriesAggregationScanNode) child).getSeriesPath().getDevice();
-    } else if (child instanceof AlignedSeriesAggregationScanNode) {
-      device = ((AlignedSeriesAggregationScanNode) child).getAlignedPath().getDevice();
-    } else if (child instanceof HorizontallyConcatNode) {
-      device = ((SeriesAggregationScanNode) child.getChildren().get(0)).getSeriesPath().getDevice();
-    } else {
-      // TODO can be other Node?
-      throw new UnsupportedOperationException(
-          String.format("Unsupported child node of AggMergeSortNode, node: %s", child.getClass()));
-    }
-    return device;
+    context.putNodeDistribution(
+        mergeSortNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_ALL_CHILDREN,
+            context.getNodeDistribution(rootDeviceViewNode.getPlanNodeId()).getRegion()));
+    return mergeSortNode;
   }
 
   @Override
@@ -584,7 +581,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     PlanNode newNode = node.clone();
     PlanNode child = visit(node.getChildren().get(0), context);
     newNode.addChild(child);
-    TRegionReplicaSet dataRegion = context.getNodeDistribution(child.getPlanNodeId()).region;
+    TRegionReplicaSet dataRegion = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
     context.putNodeDistribution(
         newNode.getPlanNodeId(),
         new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, dataRegion));
@@ -601,9 +598,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                 Collectors.groupingBy(
                     child -> {
                       TRegionReplicaSet region =
-                          context.getNodeDistribution(child.getPlanNodeId()).region;
+                          context.getNodeDistribution(child.getPlanNodeId()).getRegion();
                       if (region == null
-                          && context.getNodeDistribution(child.getPlanNodeId()).type
+                          && context.getNodeDistribution(child.getPlanNodeId()).getType()
                               == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
                         return calculateSchemaRegionByChildren(child.getChildren(), context);
                       }
@@ -649,7 +646,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   private TRegionReplicaSet calculateSchemaRegionByChildren(
       List<PlanNode> children, NodeGroupContext context) {
     // We always make the schemaRegion of MetaMergeNode to be the same as its first child.
-    return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
+    return context.getNodeDistribution(children.get(0).getPlanNodeId()).getRegion();
   }
 
   private boolean nodeDistributionIsSame(List<PlanNode> children, NodeGroupContext context) {
@@ -657,7 +654,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     NodeDistribution first = context.getNodeDistribution(children.get(0).getPlanNodeId());
     for (int i = 1; i < children.size(); i++) {
       NodeDistribution next = context.getNodeDistribution(children.get(i).getPlanNodeId());
-      if (first.region == null || !first.region.equals(next.region)) {
+      if (first.getRegion() == null || !first.getRegion().equals(next.getRegion())) {
         return false;
       }
     }

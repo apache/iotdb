@@ -55,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -830,24 +829,13 @@ public class LogicalPlanBuilder {
           -1);
       this.root = mergeSortNode;
     } else {
-      // order by based on device, use DeviceViewNode
-      if (queryStatement.isAggregationQuery()) {
-        this.root =
-            addAggMergeSortNode(
-                orderByParameter,
-                outputColumnNames,
-                deviceNameToSourceNodesMap,
-                deviceToMeasurementIndexesMap,
-                -1);
-      } else {
-        this.root =
-            addDeviceViewNode(
-                orderByParameter,
-                outputColumnNames,
-                deviceToMeasurementIndexesMap,
-                deviceNameToSourceNodesMap,
-                -1);
-      }
+      this.root =
+          addDeviceViewNode(
+              orderByParameter,
+              outputColumnNames,
+              deviceToMeasurementIndexesMap,
+              deviceNameToSourceNodesMap,
+              -1);
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
@@ -947,33 +935,6 @@ public class LogicalPlanBuilder {
       }
     }
     return deviceViewNode;
-  }
-
-  private MultiChildProcessNode addAggMergeSortNode(
-      OrderByParameter orderByParameter,
-      List<String> outputColumnNames,
-      Map<String, PlanNode> deviceNameToSourceNodesMap,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      long valueFilterLimit) {
-    AggregationMergeSortNode aggMergeSortNode =
-        new AggregationMergeSortNode(
-            context.getQueryId().genPlanNodeId(),
-            orderByParameter,
-            outputColumnNames,
-            deviceToMeasurementIndexesMap);
-
-    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      PlanNode subPlan = entry.getValue();
-      if (valueFilterLimit > 0) {
-        // TODO test this situation
-        LimitNode limitNode =
-            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
-        aggMergeSortNode.addChild(limitNode);
-      } else {
-        aggMergeSortNode.addChild(subPlan);
-      }
-    }
-    return aggMergeSortNode;
   }
 
   public LogicalPlanBuilder planGroupByLevel(
