@@ -5,6 +5,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,6 +19,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.AbstractMap;
+
+import static java.util.Collections.emptySet;
 
 public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
@@ -26,10 +30,11 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
   protected int totalSize = 0; // 总大小 包括flushingBuffer和receivingBuffer，不包括这两个buffer的交集
 
-  private static final IMNodeContainer<ICachedMNode> EMPTY_BUFFER = new MNodeChildBuffer.EmptyBuffer();
+  private static final IMNodeChildBuffer EMPTY_BUFFER =
+      new MNodeChildBuffer.EmptyBuffer();
 
-  public static IMNodeContainer<ICachedMNode> emptyMNodeChildBuffer() {
-      return EMPTY_BUFFER;
+  public static IMNodeChildBuffer emptyMNodeChildBuffer() {
+    return EMPTY_BUFFER;
   }
 
   @Override
@@ -186,8 +191,8 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
       List<ICachedMNode> list = new ArrayList<>();
       // 下面需要进行归并排序，将两个buffer当中的数据合并去重
       // 先分别获取两个buffer的values
-      receivingBufferList = new ArrayList<>(receivingBuffer.values());
-      flushingBufferList = new ArrayList<>(flushingBuffer.values());
+      receivingBufferList = new ArrayList<>(getReceivingBuffer().values());
+      flushingBufferList = new ArrayList<>(getFlushingBuffer().values());
       // 两个分别进行排序
       receivingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
       flushingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
@@ -235,7 +240,10 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
     }
   }
 
-  private static class EmptyBuffer extends AbstractMap<String,ICachedMNode> implements IMNodeChildBuffer {
+  private static class EmptyBuffer extends AbstractMap<String, ICachedMNode>
+      implements IMNodeChildBuffer {
+
+
     @Override
     public Iterator<ICachedMNode> getMNodeChildBufferIterator() {
       return Collections.emptyIterator();
@@ -261,9 +269,47 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
       return null;
     }
 
+    @Nonnull
     @Override
     public Set<Entry<String, ICachedMNode>> entrySet() {
+      return emptySet();
+    }
+
+    @Override
+    public int size() {
+      return 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return true;
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+      return false;
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+      return false;
+    }
+
+    @Override
+    public ICachedMNode get(Object key) {
       return null;
+    }
+
+    @Nonnull
+    @Override
+    public Set<String> keySet() {
+      return emptySet();
+    }
+
+    @Nonnull
+    @Override
+    public Collection<ICachedMNode> values() {
+      return emptySet();
     }
   }
 }

@@ -29,7 +29,7 @@ public class MNodeUpdateChildBuffer extends MNodeChildBuffer {
       if (receivingBuffer == null) {
         receivingBuffer = new ConcurrentHashMap<>();
       }
-      if (!flushingBuffer.containsKey(key)) {
+      if (flushingBuffer == null || !flushingBuffer.containsKey(key)) {
         totalSize++;
       }
       result = receivingBuffer.put(key, value);
@@ -43,7 +43,7 @@ public class MNodeUpdateChildBuffer extends MNodeChildBuffer {
       receivingBuffer = new ConcurrentHashMap<>();
     }
     for (Entry<? extends String, ? extends ICachedMNode> entry : m.entrySet()) {
-      if (!flushingBuffer.containsKey(entry.getKey())) {
+      if (flushingBuffer == null || !flushingBuffer.containsKey(entry.getKey())) {
         totalSize++;
       }
       receivingBuffer.put(entry.getKey(), entry.getValue());
@@ -56,7 +56,7 @@ public class MNodeUpdateChildBuffer extends MNodeChildBuffer {
       return null;
     }
     ICachedMNode result = flushingBuffer.remove(key);
-    if (result != null && !receivingBuffer.containsKey(key)) {
+    if (result != null && (receivingBuffer == null || !receivingBuffer.containsKey(key))) {
       totalSize--;
     }
     return result;

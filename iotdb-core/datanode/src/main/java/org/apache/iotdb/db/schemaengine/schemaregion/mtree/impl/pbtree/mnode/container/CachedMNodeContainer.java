@@ -38,6 +38,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Collections.emptySet;
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.MNodeChildBuffer.emptyMNodeChildBuffer;
 
 public class CachedMNodeContainer implements ICachedMNodeContainer {
 
@@ -127,7 +128,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   @Nullable
   @Override
   public synchronized ICachedMNode putIfAbsent(String key, ICachedMNode value) {
-
     ICachedMNode node = internalGet(key);
     if (node == null) {
       if (newChildBuffer == null) {
@@ -135,7 +135,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
       }
       node = newChildBuffer.put(key, value);
     }
-
     return node;
   }
 
@@ -264,60 +263,34 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public Map<String, ICachedMNode> getNewChildBuffer() {
-    return newChildBuffer == null ? Collections.emptyMap() : newChildBuffer;
+  public IMNodeChildBuffer getNewChildBuffer() {
+    return newChildBuffer == null ? emptyMNodeChildBuffer() : newChildBuffer;
   }
 
-//  public IMNodeChildBuffer getNewChildBuffer() {
-//    return newChildBuffer == null ? IMNodeChildBuffer.emptyMNodeChildBuffer() : newChildBuffer;
-//  }
-
   @Override
-  public Map<String, ICachedMNode> getUpdatedChildBuffer() {
-    return updatedChildBuffer == null ? Collections.emptyMap() : updatedChildBuffer;
+  public IMNodeChildBuffer getUpdatedChildBuffer() {
+    return updatedChildBuffer == null ? emptyMNodeChildBuffer() : updatedChildBuffer;
   }
 
   @Override
   public Map<String, ICachedMNode> getNewChildFlushingBuffer() {
-    if (newChildBuffer == null) {
-      return Collections.emptyMap();
-    } else {
-      return newChildBuffer.getFlushingBuffer() == null
-          ? Collections.emptyMap()
-          : newChildBuffer.getFlushingBuffer();
-    }
+    return getNewChildBuffer().getFlushingBuffer();
   }
 
   @Override
   public Map<String, ICachedMNode> getUpdatedChildFlushingBuffer() {
-    if (updatedChildBuffer == null) {
-      return Collections.emptyMap();
-    } else {
-      return updatedChildBuffer.getFlushingBuffer() == null
-          ? Collections.emptyMap()
-          : updatedChildBuffer.getFlushingBuffer();
-    }
+    return getUpdatedChildBuffer().getFlushingBuffer();
   }
 
   @Override
   public Map<String, ICachedMNode> getUpdatedChildReceivingBuffer() {
-    if (updatedChildBuffer == null) {
-      return Collections.emptyMap();
-    } else {
-      return updatedChildBuffer.getReceivingBuffer() == null
-          ? Collections.emptyMap()
-          : updatedChildBuffer.getReceivingBuffer();
-    }
+    return getUpdatedChildBuffer().getReceivingBuffer();
   }
 
   @Override
   public void transferAllBufferReceivingToFlushing() {
-    if (newChildBuffer != null) {
-      newChildBuffer.transferReceivingBufferToFlushingBuffer();
-    }
-    if (updatedChildBuffer != null) {
-      updatedChildBuffer.transferReceivingBufferToFlushingBuffer();
-    }
+    getNewChildBuffer().transferReceivingBufferToFlushingBuffer();
+    getUpdatedChildBuffer().transferReceivingBufferToFlushingBuffer();
   }
 
   @Override
@@ -361,10 +334,9 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void moveMNodeToCache(String name) {
-    ICachedMNode node =
-        newChildBuffer == null ? null : newChildBuffer.removeFromFlushingBuffer(name);
+    ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
     if (node == null) {
-      node = updatedChildBuffer == null ? null : updatedChildBuffer.removeFromFlushingBuffer(name);
+      node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
     }
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
@@ -429,11 +401,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = newChildBuffer == null? null:newChildBuffer.getMNodeChildBufferIterator();
+          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
           status = 1;
           return true;
         case 1:
-          iterator = updatedChildBuffer == null? null:updatedChildBuffer.getMNodeChildBufferIterator();
+          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
           status = 2;
           return true;
         default:
@@ -444,14 +416,10 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private class BufferIterator implements Iterator<ICachedMNode> {
     Iterator<ICachedMNode> iterator;
-    Iterator<ICachedMNode> newBufferIterator;
-    Iterator<ICachedMNode> updateBufferIterator;
     byte status = 0;
 
     BufferIterator() {
-      newBufferIterator = newChildBuffer == null? null:newChildBuffer.getMNodeChildBufferIterator();
-      updateBufferIterator = updatedChildBuffer == null? null:updatedChildBuffer.getMNodeChildBufferIterator();
-      iterator = newBufferIterator;
+      iterator = getNewChildBuffer().getMNodeChildBufferIterator();
     }
 
     @Override
@@ -474,7 +442,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
     private boolean changeStatus() {
       if (status == 0) {
-        iterator = updateBufferIterator;
+        iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
         status = 1;
         return true;
       }
