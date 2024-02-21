@@ -358,8 +358,14 @@ public abstract class PipeTaskAgent {
           dropPipe(metaInAgent.getStaticMeta().getPipeName());
         }
       } catch (Exception e) {
-        // Do not record the error messages for the pipes don't exist on coordinator.
+        // Report the exception message for CN to sense the failure of meta sync
+        final String errorMessage =
+            String.format(
+                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
         LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+        exceptionMessages.add(
+            new TPushPipeMetaRespExceptionMessage(
+                pipeName, errorMessage, System.currentTimeMillis()));
       }
     }
 
