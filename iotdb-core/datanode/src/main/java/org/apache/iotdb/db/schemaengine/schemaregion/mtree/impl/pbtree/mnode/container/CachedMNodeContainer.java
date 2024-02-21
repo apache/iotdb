@@ -268,6 +268,10 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return newChildBuffer == null ? Collections.emptyMap() : newChildBuffer;
   }
 
+//  public IMNodeChildBuffer getNewChildBuffer() {
+//    return newChildBuffer == null ? IMNodeChildBuffer.emptyMNodeChildBuffer() : newChildBuffer;
+//  }
+
   @Override
   public Map<String, ICachedMNode> getUpdatedChildBuffer() {
     return updatedChildBuffer == null ? Collections.emptyMap() : updatedChildBuffer;
@@ -425,11 +429,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = newChildBuffer.getMNodeChildBufferIterator();
+          iterator = newChildBuffer == null? null:newChildBuffer.getMNodeChildBufferIterator();
           status = 1;
           return true;
         case 1:
-          iterator = updatedChildBuffer.getMNodeChildBufferIterator();
+          iterator = updatedChildBuffer == null? null:updatedChildBuffer.getMNodeChildBufferIterator();
           status = 2;
           return true;
         default:
@@ -445,8 +449,8 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     byte status = 0;
 
     BufferIterator() {
-      newBufferIterator = newChildBuffer.getMNodeChildBufferIterator();
-      updateBufferIterator = updatedChildBuffer.getMNodeChildBufferIterator();
+      newBufferIterator = newChildBuffer == null? null:newChildBuffer.getMNodeChildBufferIterator();
+      updateBufferIterator = updatedChildBuffer == null? null:updatedChildBuffer.getMNodeChildBufferIterator();
       iterator = newBufferIterator;
     }
 

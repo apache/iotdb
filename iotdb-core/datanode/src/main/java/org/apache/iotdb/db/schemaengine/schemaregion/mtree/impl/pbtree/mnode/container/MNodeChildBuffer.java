@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
+import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import javax.annotation.Nonnull;
@@ -24,6 +25,12 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
   protected Map<String, ICachedMNode> receivingBuffer; // 接受新到来的buffer，存储新创建或者修改后的数据节点
 
   protected int totalSize = 0; // 总大小 包括flushingBuffer和receivingBuffer，不包括这两个buffer的交集
+
+  private static final IMNodeContainer<ICachedMNode> EMPTY_BUFFER = new MNodeChildBuffer.EmptyBuffer();
+
+  public static IMNodeContainer<ICachedMNode> emptyMNodeChildBuffer() {
+      return EMPTY_BUFFER;
+  }
 
   @Override
   public Iterator<ICachedMNode> getMNodeChildBufferIterator() {
@@ -225,6 +232,38 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
         throw new NoSuchElementException();
       }
       return tryGetNext();
+    }
+  }
+
+  private static class EmptyBuffer extends AbstractMap<String,ICachedMNode> implements IMNodeChildBuffer {
+    @Override
+    public Iterator<ICachedMNode> getMNodeChildBufferIterator() {
+      return Collections.emptyIterator();
+    }
+
+    @Override
+    public Map<String, ICachedMNode> getFlushingBuffer() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    public Map<String, ICachedMNode> getReceivingBuffer() {
+      return Collections.emptyMap();
+    }
+
+    @Override
+    public void transferReceivingBufferToFlushingBuffer() {
+      // Do nothing
+    }
+
+    @Override
+    public ICachedMNode removeFromFlushingBuffer(Object key) {
+      return null;
+    }
+
+    @Override
+    public Set<Entry<String, ICachedMNode>> entrySet() {
+      return null;
     }
   }
 }
