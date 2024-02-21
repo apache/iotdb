@@ -399,6 +399,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
       if (expression instanceof FunctionExpression) {
         FunctionExpression functionExpression = (FunctionExpression) expression;
+        // Disable statistics optimization of UDAF for now
+        if (functionExpression.isExternalAggregationFunctionExpression()) {
+          return true;
+        }
+
         if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
           String alignedDeviceId = "";
           for (Expression countTimeExpression : sourceTransformExpressions) {

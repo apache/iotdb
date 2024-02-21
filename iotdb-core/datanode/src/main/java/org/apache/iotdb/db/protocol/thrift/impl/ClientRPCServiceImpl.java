@@ -107,6 +107,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -667,10 +668,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     scanOptionsBuilder.withAllSensors(Collections.singleton(measurement));
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
 
+    String aggregationName = SchemaUtils.getBuiltinAggregationName(aggregationType);
     Aggregator aggregator =
         new Aggregator(
             AccumulatorFactory.createAccumulator(
-                aggregationType, Collections.singletonList(dataType), null, null, true),
+                aggregationName,
+                aggregationType,
+                Collections.singletonList(dataType),
+                null,
+                null,
+                true,
+                true),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
 
