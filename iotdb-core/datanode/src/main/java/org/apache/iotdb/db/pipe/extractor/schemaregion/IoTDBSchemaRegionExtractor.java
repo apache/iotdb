@@ -107,7 +107,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
     super.close();
     if (!listenTypes.isEmpty()) {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper has no schema pipe after
-      // one sync
+      // one successful sync
       referenceCountMap.compute(regionId, (id, count) -> Objects.nonNull(count) ? count - 1 : 0);
     }
   }

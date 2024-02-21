@@ -56,6 +56,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -168,28 +169,28 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       newFirstIndexMap.forEach(
           (schemaId, index) -> SchemaNodeListeningQueue.getInstance(schemaId).removeBefore(index));
 
-      // Close queues of no sending pipe because there may be no pipeTasks originally for
-      // listening queues
-      SchemaEngine.getInstance()
-          .getAllSchemaRegionIds()
-          .forEach(
-              schemaRegionId -> {
-                int id = schemaRegionId.getId();
-                if (!newFirstIndexMap.containsKey(id)
-                    && SchemaNodeListeningQueue.getInstance(id).isLeaderReady()
-                    && SchemaNodeListeningQueue.getInstance(id).isOpened()) {
-                  try {
-                    SchemaRegionConsensusImpl.getInstance()
-                        .write(
-                            schemaRegionId, new OperateSchemaQueueNode(new PlanNodeId(""), false));
-                  } catch (ConsensusException e) {
-                    LOGGER.warn(
-                        "Failed to close listening queue for schemaRegion {}, because {}",
-                        schemaRegionId,
-                        e.getMessage());
+      // Close queues of no sending PipeMetas if sync is successful
+      if (exceptionMessages.isEmpty()) {
+        SchemaEngine.getInstance()
+            .getAllSchemaRegionIds()
+            .forEach(
+                schemaRegionId -> {
+                  int id = schemaRegionId.getId();
+                  if (!newFirstIndexMap.containsKey(id)
+                      && SchemaNodeListeningQueue.getInstance(id).isLeaderReady()
+                      && SchemaNodeListeningQueue.getInstance(id).isOpened()) {
+                    try {
+                      SchemaRegionConsensusImpl.getInstance()
+                          .write(
+                              schemaRegionId,
+                              new OperateSchemaQueueNode(new PlanNodeId(""), false));
+                    } catch (ConsensusException e) {
+                      throw new PipeException(
+                          "Failed to close listening queue for schemaRegion " + schemaRegionId, e);
+                    }
                   }
-                }
-              });
+                });
+      }
     } catch (Exception e) {
       final String errorMessage =
           String.format("Failed to handle pipe meta changes because %s", e.getMessage());

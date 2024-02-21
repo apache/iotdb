@@ -182,16 +182,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSeqMemtableFlushIntervalInMs(long seqMemtableFlushIntervalInMs) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setUnseqMemtableFlushIntervalInMs(long unseqMemtableFlushIntervalInMs) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     return this;
