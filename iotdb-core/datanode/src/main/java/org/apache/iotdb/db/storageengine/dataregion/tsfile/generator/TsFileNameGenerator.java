@@ -65,13 +65,16 @@ public class TsFileNameGenerator {
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
       throws DiskSpaceInsufficientException {
-    String tsFileDir =
-        generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
-    fsFactory.getFile(tsFileDir).mkdirs();
-    return tsFileDir
-        + File.separator
-        + generateNewTsFileName(
-            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
+    return generateNewTsFilePathWithMkdir(
+        sequence,
+        logicalStorageGroup,
+        virtualStorageGroup,
+        timePartitionId,
+        time,
+        version,
+        innerSpaceCompactionCount,
+        crossSpaceCompactionCount,
+        TsFileConstant.TSFILE_SUFFIX);
   }
 
   public static String generateNewTsFilePathWithMkdir(
@@ -113,14 +116,8 @@ public class TsFileNameGenerator {
 
   public static String generateNewTsFileName(
       long time, long version, int innerSpaceCompactionCount, int crossSpaceCompactionCount) {
-    return time
-        + IoTDBConstant.FILE_NAME_SEPARATOR
-        + version
-        + IoTDBConstant.FILE_NAME_SEPARATOR
-        + innerSpaceCompactionCount
-        + IoTDBConstant.FILE_NAME_SEPARATOR
-        + crossSpaceCompactionCount
-        + TsFileConstant.TSFILE_SUFFIX;
+    return generateNewTsFileName(
+        time, version, innerSpaceCompactionCount, crossSpaceCompactionCount, TSFILE_SUFFIX);
   }
 
   public static String generateNewTsFileName(
