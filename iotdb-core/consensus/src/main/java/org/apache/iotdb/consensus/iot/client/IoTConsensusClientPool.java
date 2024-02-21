@@ -65,7 +65,6 @@ public class IoTConsensusClientPool {
                           config.getRpc().isPrintLogWhenThriftClientEncounterException())
                       .build()),
               new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
-                  .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
@@ -105,7 +104,6 @@ public class IoTConsensusClientPool {
                       .build(),
                   ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
-                  .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
                   .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());

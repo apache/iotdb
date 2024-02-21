@@ -18,7 +18,6 @@ public class RPCConfig {
   private int selectorNumOfClientManager;
   private int connectionTimeoutInMs;
   private int thriftMaxFrameSize;
-  private int coreClientNumForEachNode;
   private int maxClientNumForEachNode;
   private TEndPoint clientRPCEndPoint;
 
@@ -31,7 +30,6 @@ public class RPCConfig {
       int selectorNumOfClientManager,
       int connectionTimeoutInMs,
       int thriftMaxFrameSize,
-      int coreClientNumForEachNode,
       int maxClientNumForEachNode,
       TEndPoint clientRPCEndPoint) {
     this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -42,7 +40,6 @@ public class RPCConfig {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
     this.maxClientNumForEachNode = maxClientNumForEachNode;
     this.clientRPCEndPoint = clientRPCEndPoint;
   }
@@ -93,8 +90,6 @@ public class RPCConfig {
     private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
     private int thriftMaxFrameSize = 536870912;
 
-    private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
-
     private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
     private TEndPoint clientRPCEndPoint;
 
@@ -139,11 +134,6 @@ public class RPCConfig {
       return this;
     }
 
-    public RPCConfig.Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-      this.coreClientNumForEachNode = coreClientNumForEachNode;
-      return this;
-    }
-
     public RPCConfig.Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
       this.maxClientNumForEachNode = maxClientNumForEachNode;
       return this;
@@ -164,18 +154,9 @@ public class RPCConfig {
           selectorNumOfClientManager,
           connectionTimeoutInMs,
           thriftMaxFrameSize,
-          coreClientNumForEachNode,
           maxClientNumForEachNode,
           clientRPCEndPoint);
     }
-  }
-
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   public int getMaxClientNumForEachNode() {

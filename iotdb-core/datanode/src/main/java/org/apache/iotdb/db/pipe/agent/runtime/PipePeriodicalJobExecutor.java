@@ -50,6 +50,7 @@ public class PipePeriodicalJobExecutor {
 
   private static final long MIN_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+
   private long rounds;
   private Future<?> executorFuture;
 
@@ -113,5 +114,9 @@ public class PipePeriodicalJobExecutor {
   public synchronized void clear() {
     periodicalJobs.clear();
     LOGGER.info("All pipe periodical jobs are cleared successfully.");
+  }
+
+  public static long getMinIntervalSeconds() {
+    return MIN_INTERVAL_SECONDS;
   }
 }

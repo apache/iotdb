@@ -59,6 +59,8 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
+  private int acquiredLockNum;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -153,6 +155,14 @@ public class MPPQueryContext {
 
   public String getSql() {
     return sql;
+  }
+
+  public int getAcquiredLockNum() {
+    return acquiredLockNum;
+  }
+
+  public void addAcquiredLockNum() {
+    acquiredLockNum++;
   }
 
   public void generateGlobalTimeFilter(Analysis analysis) {

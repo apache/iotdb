@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.ThriftUtils;
+import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -135,6 +136,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
       } finally {
+        // friendly for gc, clear the plan node tree, for some queries select all devices, it will
+        // release lots of memory
+        instance.getFragment().clearUselessField();
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }
@@ -296,8 +300,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
+  private void dispatchRemoteHelper(FragmentInstance instance, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException, TException, ClientManagerException,
+          RatisReadUnavailableException {
     try (SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
@@ -312,9 +317,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
             logger.warn(sendFragmentInstanceResp.message);
-            throw new FragmentInstanceDispatchException(
-                RpcUtils.getStatus(
-                    TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+            if (sendFragmentInstanceResp.isSetNeedRetry()
+                && sendFragmentInstanceResp.isNeedRetry()) {
+              throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
+            } else {
+              throw new FragmentInstanceDispatchException(
+                  RpcUtils.getStatus(
+                      TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+            }
           }
           break;
         case WRITE:
@@ -355,18 +365,35 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
                   String.format("unknown read type [%s]", instance.getType())));
       }
-    } catch (ClientManagerException | TException e) {
+    }
+  }
+
+  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException {
+
+    try {
+      dispatchRemoteHelper(instance, endPoint);
+    } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       logger.warn(
-          "can't connect to node {}, error msg is {}.",
+          "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage("can't connect to node " + endPoint);
-      // If the DataNode cannot be connected, its endPoint will be put into black list
-      // so that the following retry will avoid dispatching instance towards this DataNode.
-      queryContext.addFailedEndPoint(endPoint);
-      throw new FragmentInstanceDispatchException(status);
+      // we just retry once to clear stale connection for a restart node.
+      try {
+        dispatchRemoteHelper(instance, endPoint);
+      } catch (ClientManagerException | TException | RatisReadUnavailableException e1) {
+        logger.warn(
+            "can't execute request on node  {} in second try, error msg is {}.",
+            endPoint,
+            ExceptionUtils.getRootCause(e1).toString());
+        TSStatus status = new TSStatus();
+        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+        status.setMessage("can't connect to node " + endPoint);
+        // If the DataNode cannot be connected, its endPoint will be put into black list
+        // so that the following retry will avoid dispatching instance towards this DataNode.
+        queryContext.addFailedEndPoint(endPoint);
+        throw new FragmentInstanceDispatchException(status);
+      }
     }
   }
 
@@ -407,18 +434,17 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
         TSStatus status = writeResult.getStatus();
         if (!writeResult.isAccepted()) {
-          if (status == null
-              || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          // DO NOT LOG READ_ONLY ERROR
+          if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            instance.getExecutorType().updatePreferredLocation(status.getRedirectNode());
+          } else if (writeResult.getStatus().getCode()
+              != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
             logger.warn(
                 "write locally failed. TSStatus: {}, message: {}",
-                status,
+                writeResult.getStatus(),
                 writeResult.getMessage());
-          } else {
-            // status code == REDIRECTION_RECOMMEND
-            instance.getExecutorType().updatePreferredLocation(status.getRedirectNode());
           }
-
-          if (status == null) {
+          if (writeResult.getStatus() == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {

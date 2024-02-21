@@ -138,6 +138,11 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
     return store.recordTraverserStatistics();
   }
 
+  @Override
+  public void recordTraverserMetric(long costTime) {
+    store.recordTraverserMetric(costTime);
+  }
+
   public void unlockRead() {
     store.stampedReadUnlock(readLockStamp);
   }

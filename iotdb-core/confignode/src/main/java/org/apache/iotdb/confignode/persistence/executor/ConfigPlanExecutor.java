@@ -76,6 +76,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -286,15 +287,20 @@ public class ConfigPlanExecutor {
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
       throws UnknownPhysicalPlanTypeException {
+    TSStatus status;
     switch (physicalPlan.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) physicalPlan);
       case UpdateDataNodeConfiguration:
-        return nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
+        status = nodeInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        return partitionInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
       case CreateDatabase:
-        TSStatus status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+        status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
@@ -414,6 +420,8 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
       case DropPipeV2:
         return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
+      case AlterPipeV2:
+        return pipeInfo.getPipeTaskInfo().alterPipe((AlterPipePlanV2) physicalPlan);
       case PipeHandleLeaderChange:
         return pipeInfo
             .getPipeTaskInfo()

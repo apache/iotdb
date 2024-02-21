@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -790,6 +791,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus repairData() {
+    return configManager.repairData();
+  }
+
+  @Override
   public TSStatus loadConfiguration() {
     return configManager.loadConfiguration();
   }
@@ -833,7 +839,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
-    resp.setTimestamp(System.currentTimeMillis());
+    resp.setTimestamp(heartbeatReq.getTimestamp());
     return resp;
   }
 
@@ -915,6 +921,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.createPipe(req);
+  }
+
+  @Override
+  public TSStatus alterPipe(TAlterPipeReq req) {
+    return configManager.alterPipe(req);
   }
 
   @Override

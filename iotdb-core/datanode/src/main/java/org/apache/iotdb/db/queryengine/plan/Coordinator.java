@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -52,6 +53,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+
+import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -132,11 +135,12 @@ public class Coordinator {
       long timeOut) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && sql.length() > 0) {
+      if (sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
-      MPPQueryContext queryContext =
+      queryContext =
           new MPPQueryContext(
               sql,
               globalQueryId,
@@ -158,7 +162,17 @@ public class Coordinator {
         queryContext.setTimeOut(Long.MAX_VALUE);
       }
       execution.start();
-      return execution.getStatus();
+      ExecutionResult result = execution.getStatus();
+      if (!execution.isQuery() && result.status != null && needRetry(result.status)) {
+        // if it's write request and the result status needs to retry
+        result.status.setNeedRetry(true);
+      }
+      return result;
+    } finally {
+      int lockNums = queryContext.getAcquiredLockNum();
+      if (queryContext != null && lockNums > 0) {
+        for (int i = 0; i < lockNums; i++) DataNodeSchemaCache.getInstance().releaseInsertLock();
+      }
     }
   }
 

@@ -102,4 +102,6 @@ public interface IMTreeStore<N extends IMNode<N>> {
   boolean createSnapshot(File snapshotDir);
 
   ReleaseFlushMonitor.RecordNode recordTraverserStatistics();
+
+  void recordTraverserMetric(long costTime);
 }

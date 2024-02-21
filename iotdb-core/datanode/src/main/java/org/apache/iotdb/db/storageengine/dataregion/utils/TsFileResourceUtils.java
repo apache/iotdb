@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -340,49 +339,50 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourcesHasNoOverlap(List<TsFileResource> resources) {
-    try {
-      // deviceID -> <TsFileResource, last end time>
-      Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
-      for (TsFileResource resource : resources) {
-        DeviceTimeIndex timeIndex;
-        if (resource.getTimeIndexType() != 1) {
-          // if time index is not device time index, then deserialize it from resource file
+    // deviceID -> <TsFileResource, last end time>
+    Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      DeviceTimeIndex timeIndex;
+      if (resource.getTimeIndexType() != 1) {
+        // if time index is not device time index, then deserialize it from resource file
+        try {
           timeIndex = resource.buildDeviceTimeIndex();
-        } else {
-          timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        } catch (IOException e) {
+          // skip such files
+          continue;
         }
-        if (timeIndex == null) {
+      } else {
+        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+      }
+      if (timeIndex == null) {
+        return false;
+      }
+      Set<String> devices = timeIndex.getDevices();
+      for (String device : devices) {
+        long currentStartTime = timeIndex.getStartTime(device);
+        long currentEndTime = timeIndex.getEndTime(device);
+        Pair<TsFileResource, Long> lastDeviceInfo =
+            lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
+        long lastEndTime = lastDeviceInfo.right;
+        if (lastEndTime >= currentStartTime) {
+          logger.error(
+              "Device {} is overlapped between {} and {}, "
+                  + "end time in {} is {}, start time in {} is {}",
+              device,
+              lastDeviceInfo.left,
+              resource,
+              lastDeviceInfo.left,
+              lastEndTime,
+              resource,
+              currentStartTime);
           return false;
         }
-        Set<String> devices = timeIndex.getDevices();
-        for (String device : devices) {
-          long currentStartTime = timeIndex.getStartTime(device);
-          long currentEndTime = timeIndex.getEndTime(device);
-          Pair<TsFileResource, Long> lastDeviceInfo =
-              lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
-          long lastEndTime = lastDeviceInfo.right;
-          if (lastEndTime >= currentStartTime) {
-            logger.error(
-                "Device {} is overlapped between {} and {}, "
-                    + "end time in {} is {}, start time in {} is {}",
-                device,
-                lastDeviceInfo.left,
-                resource,
-                lastDeviceInfo.left,
-                lastEndTime,
-                resource,
-                currentStartTime);
-            return false;
-          }
-          lastDeviceInfo.left = resource;
-          lastDeviceInfo.right = currentEndTime;
-          lastEndTimeMap.put(device, lastDeviceInfo);
-        }
+        lastDeviceInfo.left = resource;
+        lastDeviceInfo.right = currentEndTime;
+        lastEndTimeMap.put(device, lastDeviceInfo);
       }
-      return true;
-    } catch (IOException e) {
-      return true;
     }
+    return true;
   }
 
   public static void updateTsFileResource(
@@ -422,7 +422,6 @@ public class TsFileResourceUtils {
       }
     }
     resource.setStatus(TsFileResourceStatus.NORMAL);
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
     return resource;
   }
 }

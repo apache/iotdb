@@ -22,14 +22,25 @@ package org.apache.iotdb.db.pipe.task.connection;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeEventCollector implements EventCollector, AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
@@ -39,6 +50,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
+
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int dataRegionId) {
     this.pendingQueue = pendingQueue;
     this.dataRegionId = dataRegionId;
@@ -47,6 +60,68 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   @Override
   public synchronized void collect(Event event) {
+    try {
+      if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+        parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
+      } else if (event instanceof PipeRawTabletInsertionEvent) {
+        parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
+      } else if (event instanceof PipeTsFileInsertionEvent) {
+        parseAndCollectEvent((PipeTsFileInsertionEvent) event);
+      } else {
+        collectEvent(event);
+      }
+    } catch (Exception e) {
+      throw new PipeException("Error occurred when collecting events from processor.", e);
+    }
+  }
+
+  private void parseAndCollectEvent(PipeInsertNodeTabletInsertionEvent sourceEvent) {
+    if (sourceEvent.shouldParsePatternOrTime()) {
+      final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
+      if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+        collectEvent(parsedEvent);
+      }
+    } else {
+      collectEvent(sourceEvent);
+    }
+  }
+
+  private void parseAndCollectEvent(PipeRawTabletInsertionEvent sourceEvent) {
+    if (sourceEvent.shouldParsePatternOrTime()) {
+      final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
+      if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+        collectEvent(parsedEvent);
+      }
+    } else {
+      collectEvent(sourceEvent);
+    }
+  }
+
+  private void parseAndCollectEvent(PipeTsFileInsertionEvent sourceEvent) throws Exception {
+    if (!sourceEvent.waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          sourceEvent.getTsFile());
+      return;
+    }
+
+    if (!sourceEvent.shouldParsePatternOrTime()) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
+    try {
+      for (final TabletInsertionEvent parsedEvent : sourceEvent.toTabletInsertionEvents()) {
+        collectEvent(parsedEvent);
+      }
+    } finally {
+      sourceEvent.close();
+    }
+  }
+
+  private void collectEvent(Event event) {
+    collectInvocationCount.incrementAndGet();
+
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
 
@@ -80,6 +155,14 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     if (!pendingQueue.waitedOffer(event)) {
       bufferQueue.offer(event);
     }
+  }
+
+  public void resetCollectInvocationCount() {
+    collectInvocationCount.set(0);
+  }
+
+  public boolean hasNoCollectInvocationAfterReset() {
+    return collectInvocationCount.get() == 0;
   }
 
   public boolean isBufferQueueEmpty() {
@@ -117,6 +200,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         });
     bufferQueue.clear();
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getTabletInsertionEventCount() {
     return bufferQueue.getTabletInsertionEventCount();

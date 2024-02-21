@@ -46,8 +46,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowA
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryOperator;
@@ -150,12 +150,14 @@ public class OperatorMemoryTest {
               scanOptionsBuilder.build());
 
       assertEquals(
-          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L,
           seriesScanOperator.calculateMaxPeekMemory());
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxReturnSize());
-      assertEquals(0, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+      assertEquals(
+          TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 2L,
+          seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -194,12 +196,13 @@ public class OperatorMemoryTest {
               Ordering.ASC,
               SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath),
               false,
-              null);
+              null,
+              -1);
 
       long maxPeekMemory =
           Math.max(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
       long maxReturnMemory =
           Math.min(
               TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
@@ -458,13 +461,13 @@ public class OperatorMemoryTest {
     expectedMaxPeekMemory =
         Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
 
-    RowBasedTimeJoinOperator rowBasedTimeJoinOperator =
-        new RowBasedTimeJoinOperator(
+    FullOuterTimeJoinOperator fullOuterTimeJoinOperator =
+        new FullOuterTimeJoinOperator(
             Mockito.mock(OperatorContext.class), children, Ordering.ASC, dataTypeList, null, null);
 
-    assertEquals(expectedMaxPeekMemory, rowBasedTimeJoinOperator.calculateMaxPeekMemory());
-    assertEquals(expectedMaxReturnSize, rowBasedTimeJoinOperator.calculateMaxReturnSize());
-    assertEquals(3 * 64 * 1024L, rowBasedTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(expectedMaxPeekMemory, fullOuterTimeJoinOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, fullOuterTimeJoinOperator.calculateMaxReturnSize());
+    assertEquals(3 * 64 * 1024L, fullOuterTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -1001,7 +1004,8 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      long cachedRawDataSize =
+          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1033,7 +1037,7 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1076,7 +1080,7 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1116,7 +1120,7 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1154,7 +1158,7 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
 
       assertEquals(
           expectedMaxReturnSize + cachedRawDataSize,
@@ -1195,9 +1199,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1250,9 +1254,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1323,9 +1327,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),
@@ -1403,9 +1407,9 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
-                        measurementPath.getSeriesType(),
+                        Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
                         Collections.emptyMap(),
                         true),

@@ -25,10 +25,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
 
@@ -39,23 +37,16 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   protected TsFileResource targetResource;
 
-  protected long targetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-
-  protected long targetPagePointNum =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     this.targetResource = targetFileResource;
     this.fileWriter =
         new CompactionTsFileWriter(
             targetFileResource.getTsFile(),
-            enableMemoryControl,
             sizeForFileWriter,
             targetResource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
@@ -92,8 +83,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
-      throws IOException;
+  public abstract void write(TsBlock tsBlock, int subTaskId) throws IOException;
 
   @Override
   public void endFile() throws IOException {

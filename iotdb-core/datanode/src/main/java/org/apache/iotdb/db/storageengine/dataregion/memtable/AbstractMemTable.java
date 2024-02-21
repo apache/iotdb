@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -64,12 +65,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
-
-  /**
-   * The initial value is true because we want to calculate the text data size when recover
-   * memTable.
-   */
-  protected boolean disableMemControl = true;
 
   private boolean shouldFlush = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
@@ -97,10 +92,20 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final long createdTime = System.currentTimeMillis();
 
+  /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
+  private long updateTime = createdTime;
+  /**
+   * check whether this memTable has been updated since last timed flush check, update updateTime
+   * when changed
+   */
+  private long lastTotalPointsNum = totalPointsNum;
+
   private String database;
   private String dataRegionId;
 
   private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
+
+  private final AtomicBoolean isTotallyGeneratedByPipe = new AtomicBoolean(true);
 
   protected AbstractMemTable() {
     this.database = null;
@@ -194,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
         dataTypes.add(schema.getType());
       }
     }
-    memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
+    memSize += MemUtils.getRowRecordSize(dataTypes, values);
     write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
 
     int pointsInserted =
@@ -241,7 +246,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
+    memSize += MemUtils.getAlignedRowRecordSize(dataTypes, values);
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
     int pointsInserted =
         insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();
@@ -265,7 +270,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       writeTabletNode(insertTabletNode, start, end);
-      memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
+      memSize += MemUtils.getTabletSize(insertTabletNode, start, end);
       int pointsInserted =
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
@@ -291,7 +296,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       writeAlignedTablet(insertTabletNode, start, end);
-      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end, disableMemControl);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletNode, start, end);
       int pointsInserted =
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
@@ -586,6 +591,16 @@ public abstract class AbstractMemTable implements IMemTable {
     return createdTime;
   }
 
+  /** Check whether updated since last get method */
+  @Override
+  public long getUpdateTime() {
+    if (lastTotalPointsNum != totalPointsNum) {
+      lastTotalPointsNum = totalPointsNum;
+      updateTime = System.currentTimeMillis();
+    }
+    return updateTime;
+  }
+
   @Override
   public FlushStatus getFlushStatus() {
     return flushStatus;
@@ -708,5 +723,15 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
+  }
+
+  @Override
+  public void markAsNotGeneratedByPipe() {
+    this.isTotallyGeneratedByPipe.set(false);
+  }
+
+  @Override
+  public boolean isTotallyGeneratedByPipe() {
+    return this.isTotallyGeneratedByPipe.get();
   }
 }

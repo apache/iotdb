@@ -168,6 +168,8 @@ public interface IMemTable extends WALEntryValue {
 
   long getCreatedTime();
 
+  long getUpdateTime();
+
   FlushStatus getFlushStatus();
 
   void setFlushStatus(FlushStatus flushStatus);
@@ -179,4 +181,8 @@ public interface IMemTable extends WALEntryValue {
   String getDataRegionId();
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
+
+  void markAsNotGeneratedByPipe();
+
+  boolean isTotallyGeneratedByPipe();
 }

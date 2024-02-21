@@ -53,7 +53,7 @@ public class PipePluginDataNodeAgent {
     pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
 
     dataRegionPluginAgent = new PipeDataRegionPluginAgent(pipePluginMetaKeeper);
-    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent();
+    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent(null);
 
     lock = new ReentrantLock();
   }
@@ -209,7 +209,22 @@ public class PipePluginDataNodeAgent {
       throws Exception {
     dataRegionPluginAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
-    schemaRegionPluginAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+    // FIXME: Currently we comment out the following code to avoid instantiating
+    // `IoTDBMetaConnector` and `IoTDBMetaExtractor`.
+    // schemaRegionPluginAgent.validate(pipeName, extractorAttributes, processorAttributes,
+    // connectorAttributes);
+  }
+
+  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
+    dataRegionPluginAgent.validateExtractor(extractorAttributes);
+  }
+
+  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
+    dataRegionPluginAgent.validateProcessor(processorAttributes);
+  }
+
+  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
+      throws Exception {
+    dataRegionPluginAgent.validateConnector(pipeName, connectorAttributes);
   }
 }

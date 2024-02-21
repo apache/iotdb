@@ -116,6 +116,7 @@ struct TSendFragmentInstanceReq {
 struct TSendFragmentInstanceResp {
   1: required bool accepted
   2: optional string message
+  3: optional bool needRetry
 }
 
 struct TSendSinglePlanNodeReq {
@@ -323,6 +324,7 @@ struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
+    4: optional binary progressIndex
 }
 
 struct TLoadResp{
@@ -666,6 +668,8 @@ service IDataNodeRPCService {
   common.TSStatus flush(common.TFlushReq req)
 
   common.TSStatus settle(common.TSettleReq req)
+
+  common.TSStatus repairData()
 
   common.TSStatus clearCache()
 

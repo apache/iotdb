@@ -36,6 +36,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -55,6 +57,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -203,6 +206,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -304,7 +308,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-    // TODO
+    resp.setNeedRetry(executionResult.isNeedRetry());
     return resp;
   }
 
@@ -403,12 +407,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
+    final ProgressIndex progressIndex;
+    if (req.isSetProgressIndex()) {
+      progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
+    } else {
+      // fallback to use local generated progress index for compatibility
+      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      LOGGER.info(
+          "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
+    }
+
     return createTLoadResp(
         StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType],
                 req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
+                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
+                progressIndex));
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {
@@ -512,11 +527,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
+    cache.takeDeleteLock();
     cache.takeWriteLock();
     try {
       cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
+      cache.releaseDeleteLock();
     }
     return RpcUtils.SUCCESS_STATUS;
   }
@@ -1266,7 +1283,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         LOGGER.warn(
-            "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
+            "The available disk space is : {}, "
+                + "the total disk space is : {}, "
+                + "and the remaining disk usage ratio: {} is "
+                + "less than disk_spec_warning_threshold: {}, set system to readonly!",
+            RamUsageEstimator.humanReadableUnits((long) availableDisk),
+            RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
@@ -1295,6 +1317,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus repairData() throws TException {
+    if (!storageEngine.isAllSgReady()) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "not all sg is ready");
+    }
+    IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+    if (!iotdbConfig.isEnableSeqSpaceCompaction() || !iotdbConfig.isEnableUnseqSpaceCompaction()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "cannot start repair task because inner space compaction is not enabled");
+    }
+    try {
+      if (storageEngine.repairData()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+      }
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override

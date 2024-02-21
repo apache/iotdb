@@ -50,5 +50,11 @@ public class SessionConfig {
 
   public static final Version DEFAULT_VERSION = Version.V_1_0;
 
+  public static final boolean DEFAULT_ENABLE_AUTO_FETCH = true;
+
+  public static final int MAX_RETRY_COUNT = 60;
+
+  public static final long RETRY_INTERVAL_IN_MS = 500;
+
   private SessionConfig() {}
 }

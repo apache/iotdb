@@ -154,9 +154,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       LOGGER.error("Failed to create role dir {}", roleDirPath);
     }
 
-    FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
-    BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
-    try {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       byte[] strBuffer = role.getName().getBytes(STRING_ENCODING);
       IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
       outputStream.write(strBuffer);
@@ -167,12 +166,13 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         IOUtils.writePathPrivilege(
             outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
-    } catch (Exception e) {
-      throw new IOException(e);
-    } finally {
+      // handle outputstream's exception in saveRole locally.
       outputStream.flush();
       fileOutputStream.getFD().sync();
-      outputStream.close();
+    } catch (Exception e) {
+      LOGGER.warn("meet error when save role: {}", role.getName());
+      throw new IOException(e);
+    } finally {
       encodingBufferLocal.remove();
     }
 

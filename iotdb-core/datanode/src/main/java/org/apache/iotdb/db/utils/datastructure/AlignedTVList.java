@@ -189,7 +189,7 @@ public abstract class AlignedTVList extends TVList {
               columnValue != null
                   ? getBinarySize((Binary) columnValue)
                   : getBinarySize(Binary.EMPTY_VALUE);
-          if (memoryBinaryChunkSize[i] >= targetChunkSize) {
+          if (memoryBinaryChunkSize[i] >= TARGET_CHUNK_SIZE) {
             reachMaxChunkSizeFlag = true;
           }
           break;
@@ -767,7 +767,7 @@ public abstract class AlignedTVList extends TVList {
             memoryBinaryChunkSize[i] +=
                 arrayT[elementIndex + i1] != null ? getBinarySize(arrayT[elementIndex + i1]) : 0;
           }
-          if (memoryBinaryChunkSize[i] > targetChunkSize) {
+          if (memoryBinaryChunkSize[i] > TARGET_CHUNK_SIZE) {
             reachMaxChunkSizeFlag = true;
           }
           break;
@@ -915,11 +915,13 @@ public abstract class AlignedTVList extends TVList {
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
       // skip empty row
-      if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+      if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
-      while (nextRowIndex < rowCount && rowBitMap != null && rowBitMap.isMarked(nextRowIndex)) {
+      while (nextRowIndex < rowCount
+          && rowBitMap != null
+          && rowBitMap.isMarked(getValueIndex(nextRowIndex))) {
         nextRowIndex++;
       }
       if (nextRowIndex == rowCount || getTime(sortedRowIndex) != getTime(nextRowIndex)) {

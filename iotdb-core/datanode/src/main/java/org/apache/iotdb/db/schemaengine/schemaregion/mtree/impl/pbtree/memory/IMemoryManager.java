@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class implemented the cache management, involving the cache status management on per MNode
@@ -78,7 +79,7 @@ public interface IMemoryManager {
 
   void remove(ICachedMNode node);
 
-  boolean evict();
+  boolean evict(AtomicLong releaseNodeNum, AtomicLong releaseMemorySize);
 
   void pinMNode(ICachedMNode node) throws MNodeNotPinnedException;
 

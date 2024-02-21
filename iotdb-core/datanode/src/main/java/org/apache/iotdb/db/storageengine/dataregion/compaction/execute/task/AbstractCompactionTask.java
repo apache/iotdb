@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
@@ -133,8 +135,20 @@ public abstract class AbstractCompactionTask {
 
   public void handleTaskCleanup() {}
 
-  protected void printLogWhenException(Logger logger, Exception e) {
-    if (e instanceof InterruptedException) {
+  protected void handleException(Logger logger, Exception e) {
+    if (e instanceof CompactionLastTimeCheckFailedException
+        || e instanceof CompactionValidationFailedException) {
+      logger.error(
+          "{}-{} [Compaction] Meet errors {}: {}.",
+          getCompactionTaskType(),
+          storageGroupName,
+          dataRegionId,
+          e.getMessage());
+      // these exceptions generally caused by unsorted data, mark all source files as NEED_TO_REPAIR
+      for (TsFileResource resource : getAllSourceTsFiles()) {
+        resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+      }
+    } else if (e instanceof InterruptedException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
@@ -385,7 +399,7 @@ public abstract class AbstractCompactionTask {
     CompactionTaskType taskType = getCompactionTaskType();
     boolean needToValidateTsFileCorrectness = taskType != CompactionTaskType.INSERTION;
     boolean needToValidatePartitionSeqSpaceOverlap =
-        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ;
+        !targetFiles.isEmpty() && targetFiles.get(0).isSeq();
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {

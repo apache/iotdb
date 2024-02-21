@@ -53,7 +53,7 @@ ddlStatement
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
     // Pipe Task
-    | createPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
@@ -78,7 +78,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | explain
+    : | flush | clearCache | settle | repairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
@@ -214,7 +214,8 @@ devicesWhereClause
     ;
 
 templateEqualExpression
-    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=identifier
+    : TEMPLATE (OPERATOR_SEQ | OPERATOR_NEQ)  templateName=STRING_LITERAL
+    | TEMPLATE operator_is operator_not? null_literal
     ;
 
 deviceContainsExpression
@@ -558,6 +559,26 @@ connectorAttributesClause
 
 connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+    ;
+
+alterPipe
+    : ALTER PIPE pipeName=identifier
+        alterProcessorAttributesClause?
+        alterConnectorAttributesClause?
+    ;
+
+alterProcessorAttributesClause
+    : (MODIFY | REPLACE) PROCESSOR
+        LR_BRACKET
+        (processorAttributeClause COMMA)* processorAttributeClause?
+        RR_BRACKET
+    ;
+
+alterConnectorAttributesClause
+    : (MODIFY | REPLACE) (CONNECTOR | SINK)
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
     ;
 
 dropPipe
@@ -912,16 +933,6 @@ usernameWithRoot
  * 5. Utility Statements
  */
 
-// Merge
-merge
-    : MERGE (ON (LOCAL | CLUSTER))?
-    ;
-
-// Full Merge
-fullMerge
-    : FULL MERGE (ON (LOCAL | CLUSTER))?
-    ;
-
 // Flush
 flush
     : FLUSH prefixPath? (COMMA prefixPath)* boolean_literal? (ON (LOCAL | CLUSTER))?
@@ -935,6 +946,11 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
+// Repair Data
+repairData
+    : REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain

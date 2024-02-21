@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
@@ -136,7 +136,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -192,7 +191,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -248,7 +246,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -309,7 +306,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -374,7 +370,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -440,7 +435,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
 
     WindowParameter windowParameter = new TimeWindowParameter(true);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -509,7 +503,6 @@ public class RawDataAggregationOperatorTest {
         new GroupByTimeParameter(0, 600, new TimeDuration(0, 100), new TimeDuration(0, 100), false);
 
     WindowParameter windowParameter = new TimeWindowParameter(false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
             aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
@@ -583,7 +576,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 10000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -649,7 +641,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -710,7 +701,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, false, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -761,7 +751,6 @@ public class RawDataAggregationOperatorTest {
 
     WindowParameter windowParameter =
         new VariationWindowParameter(TSDataType.INT32, 0, true, true, 5000);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -813,7 +802,6 @@ public class RawDataAggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
 
@@ -879,7 +867,6 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter = new SessionWindowParameter(2, false);
-
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
     int count = 0;
@@ -936,7 +923,7 @@ public class RawDataAggregationOperatorTest {
     PlanNodeId planNodeId2 = new PlanNodeId("2");
     driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
     driverContext.addOperatorContext(
-        3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
+        3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
     driverContext.addOperatorContext(
         4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
     driverContext
@@ -974,8 +961,8 @@ public class RawDataAggregationOperatorTest {
             scanOptionsBuilder.build());
     seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
-    RowBasedTimeJoinOperator timeJoinOperator =
-        new RowBasedTimeJoinOperator(
+    FullOuterTimeJoinOperator timeJoinOperator =
+        new FullOuterTimeJoinOperator(
             driverContext.getOperatorContexts().get(2),
             Arrays.asList(seriesScanOperator1, seriesScanOperator2),
             Ordering.ASC,
@@ -987,7 +974,7 @@ public class RawDataAggregationOperatorTest {
 
     List<Aggregator> aggregators = new ArrayList<>();
     List<Accumulator> accumulators =
-        AccumulatorFactory.createAccumulators(
+        AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

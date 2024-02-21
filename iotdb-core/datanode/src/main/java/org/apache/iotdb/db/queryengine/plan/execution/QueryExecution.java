@@ -233,6 +233,9 @@ public class QueryExecution implements IQueryExecution {
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
 
+    // friendly for gc
+    logicalPlan.clearUselessMemory();
+
     // set partial insert error message
     // When some columns in one insert failed, other column will continue executing insertion.
     // The error message should be return to client, therefore we need to set it after the insertion

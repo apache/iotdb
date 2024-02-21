@@ -42,6 +42,7 @@ public abstract class PlanNode implements IConsensusRequest {
 
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
+  protected static final int TWO_CHILDREN = 2;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
   protected PlanNodeId id;

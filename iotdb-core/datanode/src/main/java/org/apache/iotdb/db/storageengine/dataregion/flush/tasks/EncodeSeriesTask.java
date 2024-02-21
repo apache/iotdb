@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
  */
 public class EncodeSeriesTask implements Task {
 
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private IDeviceID deviceId;
   private String seriesId;
   private FlushDeviceContext deviceContext;
@@ -72,6 +73,7 @@ public class EncodeSeriesTask implements Task {
     chunkWriter.clearPageWriter();
 
     long subTaskTime = System.currentTimeMillis() - starTime;
+    WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
     allContext
         .getWritingMetrics()
         .recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);

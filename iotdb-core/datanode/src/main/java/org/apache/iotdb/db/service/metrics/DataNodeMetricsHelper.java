@@ -28,18 +28,19 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
-import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
@@ -85,6 +86,9 @@ public class DataNodeMetricsHelper {
 
     // bind pipe related metrics
     MetricService.getInstance().addMetricSet(PipeDataNodeMetrics.getInstance());
+
+    // bind load tsfile memory related metrics
+    MetricService.getInstance().addMetricSet(LoadTsFileMemMetricSet.getInstance());
   }
 
   private static void initSystemMetrics() {

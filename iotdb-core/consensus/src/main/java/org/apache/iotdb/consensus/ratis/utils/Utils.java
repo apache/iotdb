@@ -301,7 +301,9 @@ public class Utils {
     RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
         properties, config.getLog().getSegmentCacheSizeMax());
     RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
-    RaftServerConfigKeys.Log.setWriteBufferSize(properties, config.getLog().getWriteBufferSize());
+    final SizeInBytes writeBufferSize =
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8);
+    RaftServerConfigKeys.Log.setWriteBufferSize(properties, writeBufferSize);
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
@@ -319,6 +321,7 @@ public class Utils {
         properties, config.getLeaderLogAppender().isInstallSnapshotEnabled());
 
     GrpcConfigKeys.Server.setHeartbeatChannel(properties, true);
+    GrpcConfigKeys.Server.setLogMessageBatchDuration(properties, TimeDuration.ONE_MINUTE);
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMin(
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
@@ -331,6 +334,7 @@ public class Utils {
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
         properties, config.getUtils().getSleepDeviationThresholdMs());
+    RaftServerConfigKeys.setCloseThreshold(properties, config.getUtils().getCloseThresholdMs());
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);

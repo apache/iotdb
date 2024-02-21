@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
-import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 
 import org.slf4j.Logger;
@@ -64,10 +64,10 @@ public class SystemInfo {
 
   private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
 
-  private ExecutorService flushTaskSubmitThreadPool =
+  private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private double FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
-  private double REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
+  private double FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
+  private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -97,10 +97,9 @@ public class SystemInfo {
     }
     reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
-    if (totalStorageGroupMemCost < FLUSH_THERSHOLD) {
+    if (totalStorageGroupMemCost < FLUSH_THRESHOLD) {
       return true;
-    } else if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
-        && totalStorageGroupMemCost < REJECT_THERSHOLD) {
+    } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "The total database mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
@@ -113,7 +112,7 @@ public class SystemInfo {
           dataRegionInfo.getDataRegion().getDatabaseName(),
           delta,
           totalStorageGroupMemCost,
-          REJECT_THERSHOLD);
+          REJECT_THRESHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
         if (totalStorageGroupMemCost < memorySizeForMemtable) {
@@ -149,8 +148,8 @@ public class SystemInfo {
       reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     }
 
-    if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
-        && totalStorageGroupMemCost < REJECT_THERSHOLD) {
+    if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
+        && totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
           dataRegionInfo.getDataRegion().getDatabaseName(),
@@ -165,7 +164,7 @@ public class SystemInfo {
       }
       logCurrentTotalSGMemory();
       rejected = false;
-    } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
+    } else if (totalStorageGroupMemCost >= REJECT_THRESHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
           dataRegionInfo.getDataRegion().getDatabaseName(),
@@ -259,9 +258,6 @@ public class SystemInfo {
 
   public synchronized void resetCompactionMemoryCost(
       CompactionTaskType taskType, long compactionMemoryCost) {
-    if (!config.isEnableCompactionMemControl()) {
-      return;
-    }
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
     switch (taskType) {
       case INNER_SEQ:
@@ -283,11 +279,7 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    if (config.isEnableMemControl()) {
-      return memorySizeForCompaction;
-    } else {
-      return Long.MAX_VALUE;
-    }
+    return memorySizeForCompaction;
   }
 
   public void allocateWriteMemory() {
@@ -296,8 +288,10 @@ public class SystemInfo {
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
-    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
+    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
+    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
   }
 
   @TestOnly
@@ -347,7 +341,7 @@ public class SystemInfo {
    */
   private boolean chooseMemTablesToMarkFlush(TsFileProcessor currentTsFileProcessor) {
     // If invoke flush by replaying logs, do not flush now!
-    if (reportedStorageGroupMemCostMap.size() == 0) {
+    if (reportedStorageGroupMemCostMap.isEmpty()) {
       return false;
     }
     PriorityQueue<TsFileProcessor> allTsFileProcessors =
@@ -359,7 +353,7 @@ public class SystemInfo {
     boolean isCurrentTsFileProcessorSelected = false;
     long memCost = 0;
     long activeMemSize = totalStorageGroupMemCost - flushingMemTablesCost;
-    while (activeMemSize - memCost > FLUSH_THERSHOLD) {
+    while (activeMemSize - memCost > FLUSH_THRESHOLD) {
       if (allTsFileProcessors.isEmpty()
           || allTsFileProcessors.peek().getWorkMemTableRamCost() == 0) {
         return false;
@@ -367,10 +361,7 @@ public class SystemInfo {
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(
-          () -> {
-            selectedTsFileProcessor.submitAFlushTask();
-          });
+      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }
@@ -405,19 +396,23 @@ public class SystemInfo {
 
     private InstanceHolder() {}
 
-    private static SystemInfo instance = new SystemInfo();
+    private static final SystemInfo instance = new SystemInfo();
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable -= estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
+    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
+    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable += estimatedTemporaryMemSize;
-    FLUSH_THERSHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THERSHOLD = memorySizeForMemtable * config.getRejectProportion();
+    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
+    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
   }
 
   public long getTotalMemTableSize() {
@@ -425,14 +420,10 @@ public class SystemInfo {
   }
 
   public double getFlushThershold() {
-    return FLUSH_THERSHOLD;
+    return FLUSH_THRESHOLD;
   }
 
   public double getRejectThershold() {
-    return REJECT_THERSHOLD;
-  }
-
-  public int flushingMemTableNum() {
-    return FlushManager.getInstance().getNumberOfWorkingTasks();
+    return REJECT_THRESHOLD;
   }
 }

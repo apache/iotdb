@@ -616,7 +616,7 @@ public class NodeManager {
       }
 
       // Check whether the remove ConfigNode is leader
-      TConfigNodeLocation leader = getConsensusManager().getLeader();
+      TConfigNodeLocation leader = getConsensusManager().getLeaderLocation();
       if (leader == null) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
             .setMessage(
@@ -693,6 +693,15 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> repairData() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.REPAIR_DATA, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

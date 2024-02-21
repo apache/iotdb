@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.type.ExitType;
+import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -92,11 +94,13 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static long timeout = -1;
 
+  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+
   @SuppressWarnings({
     "squid:S3776",
     "squid:S2093"
   }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
-  /** main function of export csv tool. */
+  /* main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -106,14 +110,14 @@ public class ExportCsv extends AbstractCsvTool {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      IoTPrinter.println("Too few params input, please check the following hint.");
+      ioTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      IoTPrinter.println(e.getMessage());
+      ioTPrinter.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -138,9 +142,14 @@ public class ExportCsv extends AbstractCsvTool {
         String sql;
 
         if (sqlFile == null) {
-          LineReader lineReader = JlineUtils.getLineReader(username, host, port);
+          LineReader lineReader =
+              JlineUtils.getLineReader(
+                  new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
+                  username,
+                  host,
+                  port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
-          IoTPrinter.println(sql);
+          ioTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             dumpResult(values[i], i);
@@ -153,16 +162,16 @@ public class ExportCsv extends AbstractCsvTool {
       }
 
     } catch (IOException e) {
-      IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
+      ioTPrinter.println("Failed to operate on file, because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (ArgsErrorException e) {
-      IoTPrinter.println("Invalid args: " + e.getMessage());
+      ioTPrinter.println("Invalid args: " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      IoTPrinter.println("Connect failed because " + e.getMessage());
+      ioTPrinter.println("Connect failed because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (TException e) {
-      IoTPrinter.println(
+      ioTPrinter.println(
           "Can not get the timestamp precision from server because " + e.getMessage());
       exitCode = CODE_ERROR;
     } finally {
@@ -171,7 +180,7 @@ public class ExportCsv extends AbstractCsvTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          IoTPrinter.println(
+          ioTPrinter.println(
               "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
@@ -347,9 +356,9 @@ public class ExportCsv extends AbstractCsvTool {
       }
       writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       sessionDataSet.closeOperationHandle();
-      IoTPrinter.println("Export completely!");
+      ioTPrinter.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
-      IoTPrinter.println("Cannot dump result because: " + e.getMessage());
+      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
     }
   }
 

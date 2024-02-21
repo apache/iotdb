@@ -26,19 +26,22 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnect
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -62,7 +65,9 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
@@ -192,11 +197,23 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      if (!send(
-          socket,
-          PipeTransferHandshakeReq.toTransferHandshakeBytes(
-              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-        throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
+      final HashMap<String, String> params = new HashMap<>();
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+          PipeAgent.runtime().getClusterIdIfPossible());
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))
+          && !send(
+              socket,
+              PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+        throw new PipeConnectionException(
+            "Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
@@ -238,16 +255,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
-      }
-      return;
-    }
-
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -285,17 +292,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      try {
-        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-          transfer(event);
-        }
-      } finally {
-        tsFileInsertionEvent.close();
-      }
-      return;
-    }
-
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -322,12 +318,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final byte[] bytes =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+        Objects.isNull(insertNode)
             ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(insertNode);
 
     if (!send(socket, bytes)) {
       throw new PipeException(

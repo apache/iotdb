@@ -72,7 +72,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   @Override
   public void onComplete(TDataNodeHeartbeatResp heartbeatResp) {
-    long receiveTime = System.currentTimeMillis();
+    long receiveTime = System.nanoTime();
 
     // Update NodeCache
     loadCache.cacheDataNodeHeartbeatSample(

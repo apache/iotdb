@@ -31,10 +31,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -218,6 +221,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -294,6 +298,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -375,6 +380,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -455,6 +461,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -489,6 +496,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -529,6 +537,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -572,6 +581,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(20, queryDataSource.getUnseqResources().size());
@@ -661,6 +671,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -749,6 +760,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -837,6 +849,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
@@ -847,6 +860,41 @@ public class DataRegionTest {
 
     config.setEnableSeparateData(defaultEnableDiscard);
     COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
+  }
+
+  @Test
+  public void testInsertUnSequenceRows()
+      throws IllegalPathException, WriteProcessRejectException, QueryProcessException,
+          DataRegionException {
+    int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
+    config.setAvgSeriesPointNumberThreshold(2);
+    DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.Rows");
+    long[] time = new long[] {3, 4, 1, 2};
+    List<Integer> indexList = new ArrayList<>();
+    List<InsertRowNode> nodes = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      TSRecord record = new TSRecord(time[i], "root.Rows");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(i)));
+      nodes.add(buildInsertRowNodeByTSRecord(record));
+      indexList.add(i);
+    }
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
+    dataRegion1.insert(insertRowsNode);
+    dataRegion1.syncCloseAllWorkingTsFileProcessors();
+    QueryDataSource queryDataSource =
+        dataRegion1.query(
+            Collections.singletonList(new PartialPath("root.Rows", measurementId)),
+            "root.Rows",
+            context,
+            null,
+            null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    dataRegion1.syncDeleteDataFiles();
+    config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
   }
 
   @Test
@@ -874,6 +922,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath("root.ln22", measurementId)),
             "root.ln22",
             context,
+            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -900,12 +949,9 @@ public class DataRegionTest {
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     boolean originEnableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    boolean originEnableInsertionCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
     long finishedCompactionTaskNumWhenTestStart =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     for (int j = 21; j <= 30; j++) {
@@ -949,6 +995,7 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
+            null,
             null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -964,9 +1011,6 @@ public class DataRegionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(originEnableCrossSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableInsertionCrossSpaceCompaction(originEnableInsertionCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
@@ -1055,6 +1099,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the sequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushSeqMemTable();
 
     // wait until memtable flush task is done
@@ -1110,6 +1156,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the unsequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushUnseqMemTable();
 
     // wait until memtable flush task is done

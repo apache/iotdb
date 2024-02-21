@@ -33,6 +33,8 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String SINK_IOTDB_IP_KEY = "sink.ip";
+  public static final String CONNECTOR_IOTDB_HOST_KEY = "connector.host";
+  public static final String SINK_IOTDB_HOST_KEY = "sink.host";
   public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
   public static final String SINK_IOTDB_PORT_KEY = "sink.port";
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
@@ -100,6 +102,10 @@ public class PipeConnectorConstant {
       CommonDescriptor.getInstance().getConfDir() != null
           ? CommonDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
           : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
+
+  public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
+  public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
+  public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

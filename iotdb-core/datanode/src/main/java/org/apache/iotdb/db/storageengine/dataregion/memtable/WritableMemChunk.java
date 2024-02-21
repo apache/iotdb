@@ -337,7 +337,7 @@ public class WritableMemChunk implements IWritableMemChunk {
             MemUtils.getRecordSize(
                 tsDataType,
                 tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
-                CONFIG.isEnableMemControl());
+                true);
         CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }

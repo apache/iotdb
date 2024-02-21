@@ -296,10 +296,10 @@ public class SimpleConsensusTest {
     assertNotNull(response5);
     assertEquals(1, response5.getCode());
 
-    // test new EmptyStateMachine(), should return 0;
+    // test new EmptyStateMachine(), should return 200;
     TSStatus response6 = consensusImpl.write(configId, entry1);
     assertNotNull(response6);
-    assertEquals(0, response6.getCode());
+    assertEquals(200, response6.getCode());
 
     // test ByteBufferConsensusRequest, should return 0;
     TSStatus response7 = consensusImpl.write(dataRegionId, entry2);

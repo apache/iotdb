@@ -41,7 +41,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PredicateUtils {
 
@@ -342,6 +345,24 @@ public class PredicateUtils {
     } else {
       return new LogicAndExpression(
           conjuncts.get(0), constructRightDeepTreeWithAnd(conjuncts.subList(1, conjuncts.size())));
+    }
+  }
+
+  public static Expression removeDuplicateConjunct(Expression predicate) {
+    if (predicate == null) {
+      return null;
+    }
+    Set<Expression> conjuncts = new HashSet<>();
+    extractConjuncts(predicate, conjuncts);
+    return combineConjuncts(new ArrayList<>(conjuncts));
+  }
+
+  private static void extractConjuncts(Expression predicate, Set<Expression> conjuncts) {
+    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
+      extractConjuncts(((BinaryExpression) predicate).getLeftExpression(), conjuncts);
+      extractConjuncts(((BinaryExpression) predicate).getRightExpression(), conjuncts);
+    } else {
+      conjuncts.add(predicate);
     }
   }
 }

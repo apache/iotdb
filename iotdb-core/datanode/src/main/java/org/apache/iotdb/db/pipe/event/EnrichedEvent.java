@@ -41,28 +41,35 @@ public abstract class EnrichedEvent implements Event {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
 
-  private final AtomicInteger referenceCount;
+  protected final AtomicInteger referenceCount;
 
   protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  private String committerKey;
+  protected String committerKey;
   public static final long NO_COMMIT_ID = -1;
-  private long commitId = NO_COMMIT_ID;
+  protected long commitId = NO_COMMIT_ID;
 
-  private final String pattern;
+  protected final String pattern;
+
+  protected final long startTime;
+  protected final long endTime;
 
   protected boolean isPatternParsed;
-  protected boolean isTimeParsed = true;
+  protected boolean isTimeParsed;
 
-  private boolean shouldReportOnCommit = false;
+  protected boolean shouldReportOnCommit = false;
 
-  protected EnrichedEvent(String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected EnrichedEvent(
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     referenceCount = new AtomicInteger(0);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
+    this.startTime = startTime;
+    this.endTime = endTime;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
   /**
@@ -168,6 +175,10 @@ public abstract class EnrichedEvent implements Event {
     return pipeName;
   }
 
+  public final PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
+
   /**
    * Get the pattern of this event.
    *
@@ -175,6 +186,14 @@ public abstract class EnrichedEvent implements Event {
    */
   public final String getPattern() {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
+  }
+
+  public final long getStartTime() {
+    return startTime;
+  }
+
+  public final long getEndTime() {
+    return endTime;
   }
 
   /**
@@ -185,12 +204,20 @@ public abstract class EnrichedEvent implements Event {
     isPatternParsed = true;
   }
 
+  public void skipParsingTime() {
+    isTimeParsed = true;
+  }
+
   public boolean shouldParsePatternOrTime() {
     return !isPatternParsed || !isTimeParsed;
   }
 
+  public boolean shouldParseTime() {
+    return !isTimeParsed;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern);
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
@@ -201,6 +228,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract boolean isGeneratedByPipe();
+
+  public abstract boolean isEventTimeOverlappedWithTimeRange();
 
   public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
     this.committerKey = committerKey;
@@ -219,5 +248,36 @@ public abstract class EnrichedEvent implements Event {
     if (shouldReportOnCommit) {
       reportProgress();
     }
+  }
+
+  @Override
+  public String toString() {
+    return "EnrichedEvent{"
+        + "referenceCount="
+        + referenceCount.get()
+        + ", pipeName='"
+        + pipeName
+        + '\''
+        + ", pipeTaskMeta="
+        + pipeTaskMeta
+        + ", committerKey='"
+        + committerKey
+        + '\''
+        + ", commitId="
+        + commitId
+        + ", pattern='"
+        + pattern
+        + '\''
+        + ", startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", isPatternParsed="
+        + isPatternParsed
+        + ", isTimeParsed="
+        + isTimeParsed
+        + ", shouldReportOnCommit="
+        + shouldReportOnCommit
+        + '}';
   }
 }

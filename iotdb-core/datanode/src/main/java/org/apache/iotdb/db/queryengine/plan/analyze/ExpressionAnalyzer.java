@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormali
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceSubTreeWithViewVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
@@ -61,6 +62,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class ExpressionAnalyzer {
@@ -173,7 +175,7 @@ public class ExpressionAnalyzer {
       return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
     } else if (expression instanceof FunctionExpression) {
       List<Expression> inputExpressions = expression.getExpressions();
-      if (expression.isBuiltInAggregationFunctionExpression()) {
+      if (expression.isAggregationFunctionExpression()) {
         for (Expression inputExpression : inputExpressions) {
           if (identifyOutputColumnType(inputExpression, false)
               == ResultColumn.ColumnType.AGGREGATION) {
@@ -424,8 +426,13 @@ public class ExpressionAnalyzer {
 
   public static Expression replaceRawPathWithGroupedPath(
       Expression expression,
-      GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
-    return new ReplaceRawPathWithGroupedPathVisitor().process(expression, rawPathToGroupedPathMap);
+      GroupByLevelHelper.RawPathToGroupedPathMap rawPathToGroupedPathMap,
+      UnaryOperator<PartialPath> pathTransformer) {
+    return new ReplaceRawPathWithGroupedPathVisitor()
+        .process(
+            expression,
+            new ReplaceRawPathWithGroupedPathVisitor.Context(
+                rawPathToGroupedPathMap, pathTransformer));
   }
 
   /**
@@ -469,6 +476,10 @@ public class ExpressionAnalyzer {
     return new CollectSourceExpressionsVisitor().process(expression, null);
   }
 
+  public static Expression replaceSubTreeWithView(Expression expression, Analysis analysis) {
+    return new ReplaceSubTreeWithViewVisitor().process(expression, analysis);
+  }
+
   /**
    * Search for built-in aggregate functions subexpressions.
    *
@@ -498,7 +509,7 @@ public class ExpressionAnalyzer {
     return new LowercaseNormalizeVisitor().process(expression, null);
   }
 
-  /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
+  /** Check for arithmetic expression, logical expression, UDTF. Returns true if it exists. */
   public static boolean checkIsNeedTransform(Expression expression) {
     if (expression instanceof TernaryExpression) {
       return true;
@@ -507,7 +518,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof UnaryExpression) {
       return true;
     } else if (expression instanceof FunctionExpression) {
-      return !expression.isBuiltInAggregationFunctionExpression();
+      return !expression.isAggregationFunctionExpression();
     } else if (expression instanceof TimeSeriesOperand) {
       return false;
     } else if (expression instanceof ConstantOperand) {

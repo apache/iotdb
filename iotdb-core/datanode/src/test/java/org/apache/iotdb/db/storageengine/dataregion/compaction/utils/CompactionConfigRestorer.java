@@ -58,9 +58,6 @@ public class CompactionConfigRestorer {
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
 
-  private boolean oldEnableCompactionMemControl =
-      IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl();
-
   public CompactionConfigRestorer() {}
 
   public void restoreCompactionConfig() {
@@ -86,6 +83,5 @@ public class CompactionConfigRestorer {
     config.setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
     config.setInnerUnseqCompactionPerformer(oldInnerUnseqPerformer);
     config.setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
-    config.setEnableCompactionMemControl(oldEnableCompactionMemControl);
   }
 }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -103,6 +104,9 @@ public class TsFileResource {
 
   protected AtomicReference<TsFileResourceStatus> atomicStatus =
       new AtomicReference<>(TsFileResourceStatus.UNCLOSED);
+
+  /** used for check whether this file has internal unsorted data in compaction selection */
+  private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -296,6 +300,10 @@ public class TsFileResource {
     return getModFile().exists();
   }
 
+  public boolean compactionModFileExists() {
+    return getCompactionModFile().exists();
+  }
+
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
@@ -400,17 +408,23 @@ public class TsFileResource {
 
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
-      ReadWriteIOUtils.readByte(inputStream);
-      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
-        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+    try {
+      if (!resourceFileExists()) {
+        throw new IOException("resource file not found");
       }
-      return (DeviceTimeIndex) timeIndexFromResourceFile;
-    } catch (Exception e) {
-      throw new IOException(
-          "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      try (InputStream inputStream =
+          FSFactoryProducer.getFSFactory()
+              .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
+        ReadWriteIOUtils.readByte(inputStream);
+        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+        }
+        return (DeviceTimeIndex) timeIndexFromResourceFile;
+      } catch (Exception e) {
+        throw new IOException(
+            "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
+      }
     } finally {
       readUnlock();
     }
@@ -646,6 +660,14 @@ public class TsFileResource {
       default:
         return false;
     }
+  }
+
+  public TsFileRepairStatus getTsFileRepairStatus() {
+    return this.tsFileRepairStatus;
+  }
+
+  public void setTsFileRepairStatus(TsFileRepairStatus fileRepairStatus) {
+    this.tsFileRepairStatus = fileRepairStatus;
   }
 
   public void forceMarkDeleted() {

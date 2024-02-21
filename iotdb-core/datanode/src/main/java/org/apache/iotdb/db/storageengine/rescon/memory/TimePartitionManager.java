@@ -22,14 +22,17 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -53,13 +56,16 @@ public class TimePartitionManager {
               timePartitionInfoMap.computeIfAbsent(
                   timePartitionInfo.dataRegionId, k -> new TreeMap<>());
 
-      Map.Entry<Long, TimePartitionInfo> entry =
-          timePartitionInfoMapForRegion.floorEntry(timePartitionInfo.partitionId);
-      if (entry != null) {
-        entry.getValue().isLatestPartition = false;
-      }
-
       timePartitionInfoMapForRegion.put(timePartitionInfo.partitionId, timePartitionInfo);
+
+      // We need to ensure that the following method is called before
+      // PipeInsertionDataNodeListener.listenToInsertNode.
+      PipeTimePartitionListener.getInstance()
+          .listenToTimePartitionGrow(
+              timePartitionInfo.dataRegionId.toString(),
+              new Pair<>(
+                  timePartitionInfoMapForRegion.firstKey(),
+                  timePartitionInfoMapForRegion.lastKey()));
     }
   }
 
@@ -80,7 +86,7 @@ public class TimePartitionManager {
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
         if (memCost > timePartitionInfoMemoryThreshold) {
-          evictOldPartition();
+          degradeLastFlushTime();
         }
       }
     }
@@ -98,7 +104,7 @@ public class TimePartitionManager {
     }
   }
 
-  private void evictOldPartition() {
+  private void degradeLastFlushTime() {
     TreeSet<TimePartitionInfo> treeSet = new TreeSet<>(TimePartitionInfo::comparePriority);
     synchronized (timePartitionInfoMap) {
       for (Map.Entry<DataRegionId, Map<Long, TimePartitionInfo>> entry :
@@ -111,13 +117,13 @@ public class TimePartitionManager {
         if (timePartitionInfo == null) {
           return;
         }
-        memCost -= timePartitionInfo.memSize;
+        memCost -= timePartitionInfo.memSize + Long.BYTES;
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
-          dataRegion.releaseFlushTimeMap(timePartitionInfo.partitionId);
+          dataRegion.degradeFlushTimeMap(timePartitionInfo.partitionId);
           logger.info(
-              "[{}]evict LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
+              "[{}]degrade LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
               timePartitionInfo.dataRegionId,
               timePartitionInfo.partitionId,
               timePartitionInfo.memSize,
@@ -130,20 +136,7 @@ public class TimePartitionManager {
     }
   }
 
-  public void removePartition(DataRegionId dataRegionId, long partitionId) {
-    synchronized (timePartitionInfoMap) {
-      Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
-          timePartitionInfoMap.get(dataRegionId);
-      if (timePartitionInfoMapForDataRegion != null) {
-        TimePartitionInfo timePartitionInfo = timePartitionInfoMapForDataRegion.get(partitionId);
-        if (timePartitionInfo != null) {
-          timePartitionInfoMapForDataRegion.remove(partitionId);
-          memCost -= timePartitionInfo.memSize;
-        }
-      }
-    }
-  }
-
+  @TestOnly
   public TimePartitionInfo getTimePartitionInfo(DataRegionId dataRegionId, long timePartitionId) {
     synchronized (timePartitionInfoMap) {
       Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
@@ -175,5 +168,22 @@ public class TimePartitionManager {
     private InstanceHolder() {}
 
     private static TimePartitionManager instance = new TimePartitionManager();
+  }
+
+  //////////////////////////// APIs provided for pipe engine ////////////////////////////
+
+  public Pair<Long, Long> getTimePartitionIdBound(DataRegionId dataRegionId) {
+    synchronized (timePartitionInfoMap) {
+      Map<Long, TimePartitionInfo> timePartitionInfoMapForDataRegion =
+          timePartitionInfoMap.get(dataRegionId);
+      if (Objects.nonNull(timePartitionInfoMapForDataRegion)
+          && !timePartitionInfoMapForDataRegion.isEmpty()
+          && timePartitionInfoMapForDataRegion instanceof TreeMap) {
+        return new Pair<>(
+            ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMapForDataRegion).firstKey(),
+            ((TreeMap<Long, TimePartitionInfo>) timePartitionInfoMapForDataRegion).lastKey());
+      }
+    }
+    return null;
   }
 }

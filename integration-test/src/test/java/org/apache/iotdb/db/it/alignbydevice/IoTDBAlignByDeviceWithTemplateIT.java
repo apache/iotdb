@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -71,7 +72,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
 
   @Test
   public void selectWildcardNoFilterTest() {
-    // 1. original
+    // 1. order by device
     String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     String[] retArray =
         new String[] {
@@ -148,7 +149,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         expectedHeader,
         retArray);
 
-    // 2. limit + offset
+    // 2. order by device + limit/offset
     expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     retArray =
         new String[] {
@@ -164,7 +165,36 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     resultSetEqualTest(
         "SELECT * FROM root.sg2.** OFFSET 1 LIMIT 2 ALIGN BY DEVICE;", expectedHeader, retArray);
 
-    // 3. order by time + limit
+    // 3. order by time
+    retArray =
+        new String[] {
+          "5,root.sg1.d4,5555,5555.5,false,",
+          "4,root.sg1.d3,44,444.4,true,",
+          "2,root.sg1.d1,2,2.2,false,",
+          "2,root.sg1.d2,22,22.2,false,",
+          "1,root.sg1.d1,1,1.1,false,",
+          "1,root.sg1.d2,11,11.1,false,",
+          "1,root.sg1.d3,null,111.1,true,",
+          "1,root.sg1.d4,1111,1111.1,true,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** ORDER BY TIME DESC ALIGN BY DEVICE;", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "5,root.sg2.d4,5555,5555.5,false,",
+          "4,root.sg2.d3,44,444.4,true,",
+          "2,root.sg2.d1,2,2.2,false,",
+          "2,root.sg2.d2,22,22.2,false,",
+          "1,root.sg2.d1,1,1.1,false,",
+          "1,root.sg2.d2,11,11.1,false,",
+          "1,root.sg2.d3,null,111.1,true,",
+          "1,root.sg2.d4,1111,1111.1,true,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** ORDER BY TIME DESC ALIGN BY DEVICE;", expectedHeader, retArray);
+
+    // 4. order by time + limit/offset
     retArray =
         new String[] {
           "5,root.sg1.d4,5555,5555.5,false,", "4,root.sg1.d3,44,444.4,true,",
@@ -187,8 +217,8 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   }
 
   @Test
-  public void selectMeasurementTestNoFilterTest() {
-    // 1. original
+  public void selectMeasurementNoFilterTest() {
+    // 1. order by device
     String[] expectedHeader = new String[] {"Time,Device,s3,s1"};
     String[] retArray =
         new String[] {
@@ -220,7 +250,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     resultSetEqualTest(
         "SELECT s3,s1,s_null FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
 
-    // 2. limit + offset
+    // 2. order by device + limit/offset
     retArray =
         new String[] {
           "2,root.sg1.d1,2,2.2,", "1,root.sg1.d2,11,11.1,",
@@ -239,7 +269,40 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         expectedHeader,
         retArray);
 
-    // 3. order by time + limit
+    // 3. order by time
+    retArray =
+        new String[] {
+          "5,root.sg1.d4,5555,5555.5,",
+          "4,root.sg1.d3,44,444.4,",
+          "2,root.sg1.d1,2,2.2,",
+          "2,root.sg1.d2,22,22.2,",
+          "1,root.sg1.d1,1,1.1,",
+          "1,root.sg1.d2,11,11.1,",
+          "1,root.sg1.d3,null,111.1,",
+          "1,root.sg1.d4,1111,1111.1,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s1 FROM root.sg1.** ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "5,root.sg2.d4,5555,5555.5,",
+          "4,root.sg2.d3,44,444.4,",
+          "2,root.sg2.d1,2,2.2,",
+          "2,root.sg2.d2,22,22.2,",
+          "1,root.sg2.d1,1,1.1,",
+          "1,root.sg2.d2,11,11.1,",
+          "1,root.sg2.d3,null,111.1,",
+          "1,root.sg2.d4,1111,1111.1,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s1 FROM root.sg2.** ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 4. order by time + limit/offset
     retArray =
         new String[] {
           "5,root.sg1.d4,5555,5555.5,", "4,root.sg1.d3,44,444.4,",
@@ -262,7 +325,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   }
 
   @Test
-  public void selectWildcardWithFilterTest() {
+  public void selectWildcardWithFilterOrderByTimeTest() {
     // 1. order by time + time filter
     String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     String[] retArray =
@@ -313,13 +376,116 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 3. order by time + value filter: s_null > 1
     retArray = new String[] {};
     resultSetEqualTest(
-        "SELECT * FROM root.sg1.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 ORDER BY TIME ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
     resultSetEqualTest(
-        "SELECT * FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 ORDER BY TIME ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,", "2,root.sg1.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,444.4,true,", "2,root.sg2.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
   }
 
   @Test
-  public void selectMeasurementWithFilterTest() {
+  public void selectWildcardWithFilterOrderByDeviceTest() {
+    // 1. order by device + time filter
+    String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d4,1111,1111.1,true,",
+          "1,root.sg1.d3,null,111.1,true,",
+          "4,root.sg1.d3,44,444.4,true,",
+          "1,root.sg1.d2,11,11.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE time < 5 ORDER BY DEVICE DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "1,root.sg2.d4,1111,1111.1,true,",
+          "1,root.sg2.d3,null,111.1,true,",
+          "4,root.sg2.d3,44,444.4,true,",
+          "1,root.sg2.d2,11,11.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE time < 5 ORDER BY DEVICE DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 2. order by device + time filter + value filter
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,", "2,root.sg1.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY DEVICE DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "2,root.sg2.d2,22,22.2,false,", "4,root.sg2.d3,44,444.4,true,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY DEVICE ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 3. order by device + value filter: s_null > 1
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 ORDER BY DEVICE ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 ORDER BY DEVICE ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,", "2,root.sg1.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY DEVICE DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,444.4,true,", "2,root.sg2.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 or "
+            + "(time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) ORDER BY DEVICE DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void selectMeasurementWithFilterOrderByTimeTest() {
     // 1. order by time + time filter
     String[] expectedHeader = new String[] {"Time,Device,s3,s2"};
     String[] retArray =
@@ -370,11 +536,112 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     // 3. order by time + value filter: s_null > 1
     retArray = new String[] {};
     resultSetEqualTest(
-        "SELECT s3,s2 FROM root.sg1.** WHERE s_null > 1 ALIGN BY DEVICE;",
+        "SELECT s3,s2 FROM root.sg1.** WHERE s_null > 1 ORDER BY TIME ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
     resultSetEqualTest(
-        "SELECT s3,s2 FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;",
+        "SELECT s3,s2 FROM root.sg2.** WHERE s_null > 1 ORDER BY TIME ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "2,root.sg1.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY TIME DESC OFFSET 1 LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "2,root.sg2.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY TIME DESC OFFSET 1 LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void selectMeasurementWithFilterOrderByDeviceTest() {
+    // 1. order by device + time filter
+    String[] expectedHeader = new String[] {"Time,Device,s3,s2"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d4,1111,true,",
+          "1,root.sg1.d3,null,true,",
+          "4,root.sg1.d3,44,true,",
+          "1,root.sg1.d2,11,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** WHERE time < 5 ORDER BY DEVICE DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "1,root.sg2.d4,1111,true,",
+          "1,root.sg2.d3,null,true,",
+          "4,root.sg2.d3,44,true,",
+          "1,root.sg2.d2,11,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** WHERE time < 5 ORDER BY DEVICE DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 2. order by device + time filter + value filter
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,true,", "2,root.sg1.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY DEVICE DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,true,", "2,root.sg2.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY DEVICE DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 3. order by device + value filter: s_null > 1
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** WHERE s_null > 1 ORDER BY DEVICE ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** WHERE s_null > 1 ORDER BY DEVICE ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "2,root.sg1.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY DEVICE DESC OFFSET 1 LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "2,root.sg2.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** where s_null > 1 or (time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1) "
+            + "ORDER BY DEVICE DESC OFFSET 1 LIMIT 1 ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
   }
@@ -575,6 +842,21 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         };
     resultSetEqualTest(
         "select count(s1+1) from root.sg1.** align by device;", expectedHeader, retArray);
+    expectedHeader = new String[] {"Device,count(s1 + 1)"};
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,", "root.sg2.d2,2,", "root.sg2.d3,2,", "root.sg2.d4,2,",
+        };
+    resultSetEqualTest(
+        "select count(s1+1) from root.sg2.** align by device;", expectedHeader, retArray);
+
+    assertTestFail(
+        "select s1 from root.sg1.** where s1 align by device;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+
+    assertTestFail(
+        "select s1 from root.sg2.** where s1 align by device;",
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
   }
 
   @Test

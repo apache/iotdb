@@ -44,9 +44,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -82,6 +84,11 @@ public class LocalExecutionPlanContext {
 
   public final DataNodeQueryContext dataNodeQueryContext;
 
+  // null for all time partitions
+  // empty for zero time partitions
+  // use AtomicReference not for thread-safe, just for updating same field in different pipeline
+  private AtomicReference<List<Long>> timePartitions = new AtomicReference<>();
+
   // for data region
   public LocalExecutionPlanContext(
       TypeProvider typeProvider,
@@ -112,6 +119,7 @@ public class LocalExecutionPlanContext {
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
     this.dataNodeQueryContext = parentContext.dataNodeQueryContext;
+    this.timePartitions = parentContext.timePartitions;
   }
 
   // for schema region
@@ -274,5 +282,13 @@ public class LocalExecutionPlanContext {
 
   public Filter getGlobalTimeFilter() {
     return driverContext.getFragmentInstanceContext().getGlobalTimeFilter();
+  }
+
+  public Optional<List<Long>> getTimePartitions() {
+    return Optional.ofNullable(timePartitions.get());
+  }
+
+  public void setTimePartitions(List<Long> timePartitions) {
+    this.timePartitions.set(timePartitions);
   }
 }

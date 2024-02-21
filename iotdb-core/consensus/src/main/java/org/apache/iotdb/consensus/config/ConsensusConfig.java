@@ -62,7 +62,6 @@ public class ConsensusConfig {
             .setRpcMaxConcurrentClientNum(
                 iotConsensusConfig.getRpc().getRpcMaxConcurrentClientNum())
             .setThriftMaxFrameSize(iotConsensusConfig.getRpc().getThriftMaxFrameSize())
-            .setCoreClientNumForEachNode(iotConsensusConfig.getRpc().getCoreClientNumForEachNode())
             .setMaxClientNumForEachNode(iotConsensusConfig.getRpc().getMaxClientNumForEachNode())
             .setClientRPCEndPoint(clientRPCEndPoint)
             .build();

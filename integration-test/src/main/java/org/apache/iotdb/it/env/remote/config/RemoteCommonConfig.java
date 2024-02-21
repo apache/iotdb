@@ -298,4 +298,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
     return this;
   }
+
+  @Override
+  public CommonConfig setWalMode(String walMode) {
+    return this;
+  }
 }

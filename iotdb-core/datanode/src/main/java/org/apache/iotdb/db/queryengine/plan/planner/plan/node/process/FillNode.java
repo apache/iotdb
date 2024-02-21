@@ -109,6 +109,11 @@ public class FillNode extends SingleChildProcessNode {
     return Objects.hash(super.hashCode(), fillDescriptor, scanOrder);
   }
 
+  @Override
+  public String toString() {
+    return "FillNode-" + this.getPlanNodeId();
+  }
+
   public FillDescriptor getFillDescriptor() {
     return fillDescriptor;
   }

@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -47,7 +49,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
@@ -63,7 +66,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,15 +78,23 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
   private final Analysis analysis;
+
+  private static final OrderByParameter TIME_ASC =
+      new OrderByParameter(Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC)));
+
+  private static final OrderByParameter TIME_DESC =
+      new OrderByParameter(Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.DESC)));
 
   public SourceRewriter(Analysis analysis) {
     this.analysis = analysis;
@@ -120,7 +134,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     String device = node.getDevice();
     List<TRegionReplicaSet> regionReplicaSets =
-        analysis.getPartitionInfo(device, context.getPartitionTimeFilter());
+        !analysis.useLogicalView()
+            ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
+            : new ArrayList<>(
+                analysis.getPartitionInfo(
+                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
+                    context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
     for (TRegionReplicaSet tRegionReplicaSet : regionReplicaSets) {
@@ -170,7 +189,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.isAllDevicesInOneTemplate()
+          !analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()))
               : new ArrayList<>(
@@ -199,7 +218,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1 || analysis.isHasSort() || analysis.isUseTopKNode()) {
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -275,7 +294,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public List<PlanNode> visitSort(SortNode node, DistributionPlanContext context) {
 
-    analysis.setHasSort(true);
+    analysis.setHasSortNode(true);
 
     List<PlanNode> children = rewrite(node.getChild(), context);
     if (children.size() == 1) {
@@ -462,17 +481,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
   @Override
   public List<PlanNode> visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-    return processRawSeriesScan(node, context, timeJoinNode);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+    return processRawSeriesScan(node, context, fullOuterTimeJoinNode);
   }
 
   @Override
   public List<PlanNode> visitAlignedSeriesScan(
       AlignedSeriesScanNode node, DistributionPlanContext context) {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-    return processRawSeriesScan(node, context, timeJoinNode);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+    return processRawSeriesScan(node, context, fullOuterTimeJoinNode);
   }
 
   @Override
@@ -683,7 +704,175 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public List<PlanNode> visitTimeJoin(TimeJoinNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitInnerTimeJoin(
+      InnerTimeJoinNode node, DistributionPlanContext context) {
+    // All child nodes should be SourceNode
+    List<SeriesSourceNode> seriesScanNodes = new ArrayList<>(node.getChildren().size());
+    List<List<List<TTimePartitionSlot>>> sourceTimeRangeList = new ArrayList<>();
+    for (PlanNode child : node.getChildren()) {
+      if (!(child instanceof SeriesSourceNode)) {
+        throw new IllegalStateException(
+            "All child nodes of InnerTimeJoinNode should be SeriesSourceNode");
+      }
+      SeriesSourceNode sourceNode = (SeriesSourceNode) child;
+      seriesScanNodes.add(sourceNode);
+      sourceTimeRangeList.add(
+          analysis.getTimePartitionRange(
+              sourceNode.getPartitionPath(), context.getPartitionTimeFilter()));
+    }
+
+    List<List<TTimePartitionSlot>> res = splitTimePartition(sourceTimeRangeList);
+
+    List<PlanNode> children = splitInnerTimeJoinNode(res, node, context, seriesScanNodes);
+
+    if (children.size() == 1) {
+      return children;
+    } else {
+      // add merge sort node for InnerTimeJoinNodes
+      // TODO add new type of Node, just traverse all child nodes sequentially in the future
+      List<String> outputColumnNames = node.getOutputColumnNames();
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrder() == Ordering.ASC ? TIME_ASC : TIME_DESC,
+              outputColumnNames);
+      // set unified outputColumnNames for each child InnerTimeJoinNode
+      children.forEach(
+          child -> ((InnerTimeJoinNode) child).setOutputColumnNames(outputColumnNames));
+
+      mergeSortNode.setChildren(children);
+      return Collections.singletonList(mergeSortNode);
+    }
+  }
+
+  // make it as protected just for UT usage
+  protected static List<List<TTimePartitionSlot>> splitTimePartition(
+      List<List<List<TTimePartitionSlot>>> childTimePartitionList) {
+    if (childTimePartitionList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<List<TTimePartitionSlot>> res = new ArrayList<>(childTimePartitionList.get(0));
+    for (int i = 1, size = childTimePartitionList.size(); i < size && !res.isEmpty(); i++) {
+      res = combineTwoTimePartitionList(res, childTimePartitionList.get(i));
+    }
+    return res;
+  }
+
+  private static List<List<TTimePartitionSlot>> combineTwoTimePartitionList(
+      List<List<TTimePartitionSlot>> left, List<List<TTimePartitionSlot>> right) {
+    int leftIndex = 0;
+    int leftSize = left.size();
+    int rightIndex = 0;
+    int rightSize = right.size();
+
+    List<List<TTimePartitionSlot>> res = new ArrayList<>(Math.max(leftSize, rightSize));
+
+    int previousResIndex = 0;
+    res.add(new ArrayList<>());
+    int leftCurrentListIndex = 0;
+    int rightCurrentListIndex = 0;
+    while (leftIndex < leftSize && rightIndex < rightSize) {
+      List<TTimePartitionSlot> leftCurrentList = left.get(leftIndex);
+      List<TTimePartitionSlot> rightCurrentList = right.get(rightIndex);
+      int leftCurrentListSize = leftCurrentList.size();
+      int rightCurrentListSize = rightCurrentList.size();
+      while (leftCurrentListIndex < leftCurrentListSize
+          && rightCurrentListIndex < rightCurrentListSize) {
+        // only keep time partition in All SeriesSlot
+        if (leftCurrentList.get(leftCurrentListIndex).startTime
+            == rightCurrentList.get(rightCurrentListIndex).startTime) {
+          // new continuous time range
+          if ((leftCurrentListIndex == 0 && leftIndex != 0)
+              || (rightCurrentListIndex == 0 && rightIndex != 0)) {
+            previousResIndex++;
+            res.add(new ArrayList<>());
+          }
+          res.get(previousResIndex).add(leftCurrentList.get(leftCurrentListIndex));
+          leftCurrentListIndex++;
+          rightCurrentListIndex++;
+        } else if (leftCurrentList.get(leftCurrentListIndex).startTime
+            < rightCurrentList.get(rightCurrentListIndex).startTime) {
+          leftCurrentListIndex++;
+        } else {
+          rightCurrentListIndex++;
+        }
+      }
+      if (leftCurrentListIndex == leftCurrentListSize) {
+        leftIndex++;
+        leftCurrentListIndex = 0;
+      }
+      if (rightCurrentListIndex == rightCurrentListSize) {
+        rightIndex++;
+        rightCurrentListIndex = 0;
+      }
+    }
+    return res;
+  }
+
+  private List<PlanNode> splitInnerTimeJoinNode(
+      List<List<TTimePartitionSlot>> continuousTimeRange,
+      InnerTimeJoinNode node,
+      DistributionPlanContext context,
+      List<SeriesSourceNode> seriesScanNodes) {
+    List<PlanNode> subInnerJoinNode = new ArrayList<>(continuousTimeRange.size());
+    for (List<TTimePartitionSlot> oneRegion : continuousTimeRange) {
+      if (!oneRegion.isEmpty()) {
+        // TODO InnerTimeJoinNode's header
+        InnerTimeJoinNode innerTimeJoinNode = (InnerTimeJoinNode) node.clone();
+        innerTimeJoinNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+
+        List<Long> timePartitionIds = convertToTimePartitionIds(oneRegion);
+        innerTimeJoinNode.setTimePartitions(timePartitionIds);
+
+        // region group id -> parent InnerTimeJoinNode
+        Map<Integer, InnerTimeJoinNode> map = new HashMap<>();
+        for (SeriesSourceNode sourceNode : seriesScanNodes) {
+          TRegionReplicaSet dataRegion =
+              analysis.getPartitionInfo(sourceNode.getPartitionPath(), oneRegion.get(0));
+          InnerTimeJoinNode parent =
+              map.computeIfAbsent(
+                  dataRegion.regionId.id,
+                  k -> {
+                    InnerTimeJoinNode value = (InnerTimeJoinNode) node.clone();
+                    value.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                    value.setTimePartitions(timePartitionIds);
+                    return value;
+                  });
+          SeriesSourceNode split = (SeriesSourceNode) sourceNode.clone();
+          split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          split.setRegionReplicaSet(dataRegion);
+          parent.addChild(split);
+        }
+
+        if (map.size() > 1) {
+          map.values().forEach(innerTimeJoinNode::addChild);
+          subInnerJoinNode.add(innerTimeJoinNode);
+        } else {
+          subInnerJoinNode.add(map.values().iterator().next());
+        }
+      }
+    }
+
+    if (subInnerJoinNode.isEmpty()) {
+      for (SeriesSourceNode sourceNode : seriesScanNodes) {
+        sourceNode.setRegionReplicaSet(NOT_ASSIGNED);
+      }
+      return Collections.singletonList(node);
+    }
+    return subInnerJoinNode;
+  }
+
+  private List<Long> convertToTimePartitionIds(List<TTimePartitionSlot> timePartitionSlotList) {
+    List<Long> res = new ArrayList<>(timePartitionSlotList.size());
+    for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+      res.add(TimePartitionUtils.getTimePartitionId(timePartitionSlot.startTime));
+    }
+    return res;
+  }
+
+  @Override
+  public List<PlanNode> visitFullOuterTimeJoin(
+      FullOuterTimeJoinNode node, DistributionPlanContext context) {
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
@@ -693,7 +882,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return Collections.singletonList(processRawMultiChildNode(node, context, true));
   }
 
-  // Only `visitTimeJoin` and `visitLastQuery` invoke this method
+  // Only `visitFullOuterTimeJoin` and `visitLastQuery` invoke this method
   private PlanNode processRawMultiChildNode(
       MultiChildProcessNode node, DistributionPlanContext context, boolean isTimeJoin) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
@@ -703,7 +892,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // and make the new TimeJoinNode as the child of current TimeJoinNode
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
     boolean addParent = false;
-    for (Map.Entry<TRegionReplicaSet, List<SourceNode>> entry : sourceGroup.entrySet()) {
+    // Fields in TRegionReplicaSet may change and this changes the order in the map.
+    // To avoid the order change, use a fixed ordering.
+    List<Entry<TRegionReplicaSet, List<SourceNode>>> sourceGroupList =
+        new ArrayList<>(sourceGroup.entrySet());
+    sourceGroupList.sort(Comparator.comparing(entry -> entry.getKey().getRegionId()));
+    for (Map.Entry<TRegionReplicaSet, List<SourceNode>> entry : sourceGroupList) {
       TRegionReplicaSet region = entry.getKey();
       List<SourceNode> seriesScanNodes = entry.getValue();
       if (seriesScanNodes.size() == 1 && (!context.isForceAddParent() || isTimeJoin)) {
@@ -785,7 +979,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return sourceGroup;
   }
 
-  private boolean containsAggregationSource(TimeJoinNode node) {
+  private boolean containsAggregationSource(FullOuterTimeJoinNode node) {
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesAggregationScanNode
           || child instanceof AlignedSeriesAggregationScanNode) {
@@ -807,7 +1001,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   private List<PlanNode> planAggregationWithTimeJoin(
-      TimeJoinNode root, DistributionPlanContext context) {
+      FullOuterTimeJoinNode root, DistributionPlanContext context) {
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup;
 
     // construct newRoot
@@ -923,15 +1117,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByLevel(root, sourceGroup, context);
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
-    Map<String, Expression> columnNameToExpression = new HashMap<>();
+    Map<String, List<Expression>> columnNameToExpression = new HashMap<>();
     for (CrossSeriesAggregationDescriptor originalDescriptor :
         newRoot.getGroupByLevelDescriptors()) {
-      for (Expression exp : originalDescriptor.getInputExpressions()) {
-        columnNameToExpression.put(exp.getExpressionString(), exp);
-      }
+      columnNameToExpression.putAll(originalDescriptor.getGroupedInputStringToExpressionsMap());
+      // for example, max_by(root.*.x1, root.*.y1), we have "root.*.x1, root.*.y1" =>
+      // [root.*.x1(TimeSeriesOperand), root.*.y1(TimeSeriesOperand)]
       columnNameToExpression.put(
-          originalDescriptor.getOutputExpression().getExpressionString(),
-          originalDescriptor.getOutputExpression());
+          originalDescriptor.getParametersString(), originalDescriptor.getOutputExpressions());
     }
 
     context.setColumnNameToExpression(columnNameToExpression);
@@ -1027,15 +1220,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByLevelNode newRoot = (GroupByLevelNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               GroupByLevelNode parentOfGroup = (GroupByLevelNode) root.clone();
               parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
@@ -1066,9 +1257,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (AggregationDescriptor originalDescriptor : handle.getAggregationDescriptorList()) {
         boolean keep = false;
         for (String childColumn : childrenOutputColumns) {
-          for (Expression exp : originalDescriptor.getInputExpressions()) {
-            if (isAggColumnMatchExpression(childColumn, exp)) {
+          for (String groupedInputExpressionsString :
+              originalDescriptor.getInputExpressionsAsStringList()) {
+            if (isAggColumnMatchExpression(childColumn, groupedInputExpressionsString)) {
               keep = true;
+              break;
             }
           }
         }
@@ -1086,26 +1279,28 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // Check every OutputColumn of GroupByLevelNode and set the Expression of corresponding
       // AggregationDescriptor
       List<CrossSeriesAggregationDescriptor> descriptorList = new ArrayList<>();
-      Map<String, Expression> columnNameToExpression = context.getColumnNameToExpression();
-      Set<Expression> childrenExpressionSet = new HashSet<>();
+      Map<String, List<Expression>> columnNameToExpression = context.getColumnNameToExpression();
+      Map<String, List<Expression>> childrenExpressionMap = new HashMap<>();
       for (String childColumn : childrenOutputColumns) {
-        Expression childExpression =
-            columnNameToExpression.get(
-                childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")")));
-        childrenExpressionSet.add(childExpression);
+        String childInput =
+            childColumn.substring(childColumn.indexOf("(") + 1, childColumn.lastIndexOf(")"));
+        childrenExpressionMap.put(childInput, columnNameToExpression.get(childInput));
       }
 
       for (CrossSeriesAggregationDescriptor originalDescriptor :
           handle.getGroupByLevelDescriptors()) {
         Set<Expression> descriptorExpressions = new HashSet<>();
 
-        if (childrenExpressionSet.contains(originalDescriptor.getOutputExpression())) {
-          descriptorExpressions.add(originalDescriptor.getOutputExpression());
+        if (childrenExpressionMap.containsKey(originalDescriptor.getParametersString())) {
+          descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
         }
 
-        for (Expression exp : originalDescriptor.getInputExpressions()) {
-          if (childrenExpressionSet.contains(exp)) {
-            descriptorExpressions.add(exp);
+        for (String groupedInputExpressionString :
+            originalDescriptor.getGroupedInputExpressionStrings()) {
+          List<Expression> inputExpressions =
+              childrenExpressionMap.get(groupedInputExpressionString);
+          if (inputExpressions != null && !inputExpressions.isEmpty()) {
+            descriptorExpressions.addAll(inputExpressions);
           }
         }
 
@@ -1165,15 +1360,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup,
       DistributionPlanContext context) {
     GroupByTagNode newRoot = (GroupByTagNode) root.clone();
-    final boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
             newRoot.addChild(sourceNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            if (sourceGroup.size() == 1) {
               sourceNodes.forEach(newRoot::addChild);
-              addParent[0] = true;
             } else {
               HorizontallyConcatNode horizontallyConcatNode =
                   new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
@@ -1186,11 +1379,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   // TODO: (xingtanzjr) need to confirm the logic when processing UDF
-  private boolean isAggColumnMatchExpression(String columnName, Expression expression) {
+  private boolean isAggColumnMatchExpression(String columnName, String expression) {
     if (columnName == null) {
       return false;
     }
-    return columnName.contains(expression.getExpressionString());
+    return columnName.contains(expression);
   }
 
   /**

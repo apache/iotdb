@@ -57,7 +57,8 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       List<PartialPath> pathList,
       String singleDeviceId,
       QueryContext context,
-      Filter globalTimeFilter)
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
       throws QueryProcessException {
     return EMPTY_QUERY_DATA_SOURCE;
   }

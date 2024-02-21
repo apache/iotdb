@@ -40,9 +40,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
+import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -59,20 +62,20 @@ public class ExpressionTypeAnalyzer {
   private ExpressionTypeAnalyzer() {}
 
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
-    if (analysis.isAllDevicesInOneTemplate()
-        && (analysis.isOnlyQueryTemplateMeasurements()
-            || expression instanceof TimeSeriesOperand)) {
-      TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
-      return analysis
-          .getDeviceTemplate()
-          .getSchemaMap()
-          .get(seriesOperand.getPath().getMeasurement())
-          .getType();
-    }
-
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression);
+      analyzer.analyze(expression, null);
+
+      addExpressionTypes(analysis, analyzer);
+    }
+    return analysis.getType(expression);
+  }
+
+  public static TSDataType analyzeExpressionForTemplatedQuery(
+      Analysis analysis, Expression expression) {
+    if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
+      ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+      analyzer.analyze(expression, analysis.getDeviceTemplate().getSchemaMap());
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -82,7 +85,7 @@ public class ExpressionTypeAnalyzer {
   public static void analyzeExpression(
       Map<NodeRef<Expression>, TSDataType> types, Expression expression) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression);
+    analyzer.analyze(expression, null);
 
     types.putAll(analyzer.getExpressionTypes());
   }
@@ -91,19 +94,19 @@ public class ExpressionTypeAnalyzer {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
 
-  public TSDataType analyze(Expression expression) {
+  public TSDataType analyze(Expression expression, Map<String, IMeasurementSchema> context) {
     Visitor visitor = new Visitor();
-    return visitor.process(expression, null);
+    return visitor.process(expression, context);
   }
 
   public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
     return expressionTypes;
   }
 
-  private class Visitor extends ExpressionVisitor<TSDataType, Void> {
+  private class Visitor extends ExpressionVisitor<TSDataType, Map<String, IMeasurementSchema>> {
 
     @Override
-    public TSDataType process(Expression expression, Void context) {
+    public TSDataType process(Expression expression, Map<String, IMeasurementSchema> context) {
       // don't double process a expression
       TSDataType dataType = expressionTypes.get(NodeRef.of(expression));
       if (dataType != null) {
@@ -113,53 +116,60 @@ public class ExpressionTypeAnalyzer {
     }
 
     @Override
-    public TSDataType visitExpression(Expression expression, Void context) {
+    public TSDataType visitExpression(
+        Expression expression, Map<String, IMeasurementSchema> context) {
       throw new UnsupportedOperationException(
           "Unsupported expression type: " + expression.getClass().getName());
     }
 
     @Override
-    public TSDataType visitInExpression(InExpression inExpression, Void context) {
-      process(inExpression.getExpression(), null);
+    public TSDataType visitInExpression(
+        InExpression inExpression, Map<String, IMeasurementSchema> context) {
+      process(inExpression.getExpression(), context);
       return setExpressionType(inExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
-      process(isNullExpression.getExpression(), null);
+    public TSDataType visitIsNullExpression(
+        IsNullExpression isNullExpression, Map<String, IMeasurementSchema> context) {
+      process(isNullExpression.getExpression(), context);
       return setExpressionType(isNullExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitLikeExpression(LikeExpression likeExpression, Void context) {
+    public TSDataType visitLikeExpression(
+        LikeExpression likeExpression, Map<String, IMeasurementSchema> context) {
       checkInputExpressionDataType(
           likeExpression.getExpression().getExpressionString(),
-          process(likeExpression.getExpression(), null),
+          process(likeExpression.getExpression(), context),
           TSDataType.TEXT);
       return setExpressionType(likeExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitRegularExpression(RegularExpression regularExpression, Void context) {
+    public TSDataType visitRegularExpression(
+        RegularExpression regularExpression, Map<String, IMeasurementSchema> context) {
       checkInputExpressionDataType(
           regularExpression.getExpression().getExpressionString(),
-          process(regularExpression.getExpression(), null),
+          process(regularExpression.getExpression(), context),
           TSDataType.TEXT);
       return setExpressionType(regularExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
+    public TSDataType visitLogicNotExpression(
+        LogicNotExpression logicNotExpression, Map<String, IMeasurementSchema> context) {
       checkInputExpressionDataType(
           logicNotExpression.getExpression().getExpressionString(),
-          process(logicNotExpression.getExpression(), null),
+          process(logicNotExpression.getExpression(), context),
           TSDataType.BOOLEAN);
       return setExpressionType(logicNotExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitNegationExpression(NegationExpression negationExpression, Void context) {
-      TSDataType inputExpressionType = process(negationExpression.getExpression(), null);
+    public TSDataType visitNegationExpression(
+        NegationExpression negationExpression, Map<String, IMeasurementSchema> context) {
+      TSDataType inputExpressionType = process(negationExpression.getExpression(), context);
       checkInputExpressionDataType(
           negationExpression.getExpression().getExpressionString(),
           inputExpressionType,
@@ -172,17 +182,18 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitArithmeticBinaryExpression(
-        ArithmeticBinaryExpression arithmeticBinaryExpression, Void context) {
+        ArithmeticBinaryExpression arithmeticBinaryExpression,
+        Map<String, IMeasurementSchema> context) {
       checkInputExpressionDataType(
           arithmeticBinaryExpression.getLeftExpression().getExpressionString(),
-          process(arithmeticBinaryExpression.getLeftExpression(), null),
+          process(arithmeticBinaryExpression.getLeftExpression(), context),
           TSDataType.INT32,
           TSDataType.INT64,
           TSDataType.FLOAT,
           TSDataType.DOUBLE);
       checkInputExpressionDataType(
           arithmeticBinaryExpression.getRightExpression().getExpressionString(),
-          process(arithmeticBinaryExpression.getRightExpression(), null),
+          process(arithmeticBinaryExpression.getRightExpression(), context),
           TSDataType.INT32,
           TSDataType.INT64,
           TSDataType.FLOAT,
@@ -192,25 +203,25 @@ public class ExpressionTypeAnalyzer {
 
     @Override
     public TSDataType visitLogicBinaryExpression(
-        LogicBinaryExpression logicBinaryExpression, Void context) {
+        LogicBinaryExpression logicBinaryExpression, Map<String, IMeasurementSchema> context) {
       checkInputExpressionDataType(
           logicBinaryExpression.getLeftExpression().getExpressionString(),
-          process(logicBinaryExpression.getLeftExpression(), null),
+          process(logicBinaryExpression.getLeftExpression(), context),
           TSDataType.BOOLEAN);
       checkInputExpressionDataType(
           logicBinaryExpression.getRightExpression().getExpressionString(),
-          process(logicBinaryExpression.getRightExpression(), null),
+          process(logicBinaryExpression.getRightExpression(), context),
           TSDataType.BOOLEAN);
       return setExpressionType(logicBinaryExpression, TSDataType.BOOLEAN);
     }
 
     @Override
     public TSDataType visitCompareBinaryExpression(
-        CompareBinaryExpression compareBinaryExpression, Void context) {
+        CompareBinaryExpression compareBinaryExpression, Map<String, IMeasurementSchema> context) {
       final TSDataType leftExpressionDataType =
-          process(compareBinaryExpression.getLeftExpression(), null);
+          process(compareBinaryExpression.getLeftExpression(), context);
       final TSDataType rightExpressionDataType =
-          process(compareBinaryExpression.getRightExpression(), null);
+          process(compareBinaryExpression.getRightExpression(), context);
 
       if (leftExpressionDataType != null
           && rightExpressionDataType != null
@@ -254,36 +265,40 @@ public class ExpressionTypeAnalyzer {
     }
 
     @Override
-    public TSDataType visitBetweenExpression(BetweenExpression betweenExpression, Void context) {
-      process(betweenExpression.getFirstExpression(), null);
-      process(betweenExpression.getSecondExpression(), null);
-      process(betweenExpression.getThirdExpression(), null);
+    public TSDataType visitBetweenExpression(
+        BetweenExpression betweenExpression, Map<String, IMeasurementSchema> context) {
+      process(betweenExpression.getFirstExpression(), context);
+      process(betweenExpression.getSecondExpression(), context);
+      process(betweenExpression.getThirdExpression(), context);
       return setExpressionType(betweenExpression, TSDataType.BOOLEAN);
     }
 
     @Override
-    public TSDataType visitFunctionExpression(FunctionExpression functionExpression, Void context) {
+    public TSDataType visitFunctionExpression(
+        FunctionExpression functionExpression, Map<String, IMeasurementSchema> context) {
       List<Expression> inputExpressions = functionExpression.getExpressions();
       for (Expression expression : inputExpressions) {
-        process(expression, null);
+        process(expression, context);
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         return setExpressionType(
             functionExpression,
-            TypeInferenceUtils.getAggrDataType(
+            TypeInferenceUtils.getBuiltinAggregationDataType(
                 functionExpression.getFunctionName(),
-                expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+                getInputExpressionTypeForAggregation(
+                    inputExpressions, functionExpression.getFunctionName())));
       }
-      if (functionExpression.isBuiltInScalarFunction()) {
+      if (functionExpression.isBuiltInScalarFunctionExpression()) {
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
                 functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
-      } else {
+      }
+      if (functionExpression.isExternalAggregationFunctionExpression()) {
         return setExpressionType(
             functionExpression,
-            new UDTFInformationInferrer(functionExpression.getFunctionName())
+            new UDAFInformationInferrer(functionExpression.getFunctionName())
                 .inferOutputType(
                     inputExpressions.stream()
                         .map(Expression::getExpressionString)
@@ -293,31 +308,51 @@ public class ExpressionTypeAnalyzer {
                         .collect(Collectors.toList()),
                     functionExpression.getFunctionAttributes()));
       }
+
+      return setExpressionType(
+          functionExpression,
+          new UDTFInformationInferrer(functionExpression.getFunctionName())
+              .inferOutputType(
+                  inputExpressions.stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  inputExpressions.stream()
+                      .map(f -> expressionTypes.get(NodeRef.of(f)))
+                      .collect(Collectors.toList()),
+                  functionExpression.getFunctionAttributes()));
     }
 
     @Override
-    public TSDataType visitTimeStampOperand(TimestampOperand timestampOperand, Void context) {
+    public TSDataType visitTimeStampOperand(
+        TimestampOperand timestampOperand, Map<String, IMeasurementSchema> context) {
       return setExpressionType(timestampOperand, TSDataType.INT64);
     }
 
     @Override
-    public TSDataType visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
+    public TSDataType visitTimeSeriesOperand(
+        TimeSeriesOperand timeSeriesOperand, Map<String, IMeasurementSchema> context) {
+      if (context != null && (context.containsKey(timeSeriesOperand.getOutputSymbol()))) {
+        return setExpressionType(
+            timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
+      }
       return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
     }
 
     @Override
-    public TSDataType visitConstantOperand(ConstantOperand constantOperand, Void context) {
+    public TSDataType visitConstantOperand(
+        ConstantOperand constantOperand, Map<String, IMeasurementSchema> context) {
       return setExpressionType(constantOperand, constantOperand.getDataType());
     }
 
     @Override
-    public TSDataType visitNullOperand(NullOperand nullOperand, Void context) {
+    public TSDataType visitNullOperand(
+        NullOperand nullOperand, Map<String, IMeasurementSchema> context) {
       return null;
     }
 
     @Override
     public TSDataType visitCaseWhenThenExpression(
-        CaseWhenThenExpression caseWhenThenExpression, Void context) {
+        CaseWhenThenExpression caseWhenThenExpression, Map<String, IMeasurementSchema> context) {
       Set<TSDataType> typeSet = new HashSet<>();
       for (WhenThenExpression whenThenExpression :
           caseWhenThenExpression.getWhenThenExpressions()) {
@@ -348,7 +383,8 @@ public class ExpressionTypeAnalyzer {
     }
 
     @Override
-    public TSDataType visitWhenThenExpression(WhenThenExpression whenThenExpression, Void context) {
+    public TSDataType visitWhenThenExpression(
+        WhenThenExpression whenThenExpression, Map<String, IMeasurementSchema> context) {
       TSDataType whenType = process(whenThenExpression.getWhen(), context);
       if (!whenType.equals(TSDataType.BOOLEAN)) {
         throw new SemanticException(
@@ -376,6 +412,41 @@ public class ExpressionTypeAnalyzer {
           String.format(
               "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
               expressionString, actual.name(), Arrays.toString(expected)));
+    }
+  }
+
+  private TSDataType getInputExpressionTypeForAggregation(
+      List<Expression> inputExpressions, String aggregateFunctionName) {
+    // Some aggregate functions have a fixed output type, while others determine their output type
+    // based on the data type of their input.
+    // Currently, for all aggregate functions without a fixed output type, the output type is
+    // determined by the first input.
+    switch (aggregateFunctionName.toLowerCase()) {
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
+      case SqlConstant.EXTREME:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.COUNT:
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
+      case SqlConstant.COUNT_IF:
+      case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
+      case SqlConstant.COUNT_TIME:
+      case SqlConstant.STDDEV:
+      case SqlConstant.STDDEV_POP:
+      case SqlConstant.STDDEV_SAMP:
+      case SqlConstant.VARIANCE:
+      case SqlConstant.VAR_POP:
+      case SqlConstant.VAR_SAMP:
+      case SqlConstant.MAX_BY:
+        return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + aggregateFunctionName);
     }
   }
 }

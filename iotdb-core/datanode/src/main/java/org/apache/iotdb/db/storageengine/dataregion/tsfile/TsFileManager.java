@@ -57,16 +57,43 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    return getTsFileList(sequence, null);
+  }
+
+  /**
+   * @param sequence true for sequence, false for unsequence
+   * @param timePartitions null for all time partitions, empty for zero time partitions
+   */
+  public List<TsFileResource> getTsFileList(boolean sequence, List<Long> timePartitions) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        allResources.addAll(entry.getValue().getArrayList());
+      if (timePartitions == null) {
+        for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+          allResources.addAll(entry.getValue().getArrayList());
+        }
+      } else {
+        for (Long timePartitionId : timePartitions) {
+          TsFileResourceList tsFileResources = chosenMap.get(timePartitionId);
+          if (tsFileResources != null) {
+            allResources.addAll(tsFileResources.getArrayList());
+          }
+        }
       }
       return allResources;
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public List<TsFileResource> getTsFileListSnapshot(long timePartition, boolean sequence) {
+    readLock();
+    try {
+      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
+      return new ArrayList<>(chosenMap.getOrDefault(timePartition, new TsFileResourceList()));
     } finally {
       readUnlock();
     }
@@ -106,37 +133,6 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
-  }
-
-  public long recoverFlushTimeFromTsFileResource(long partitionId, String devicePath) {
-    long lastFlushTime = Long.MIN_VALUE;
-    writeLock("recoverFlushTimeFromTsFileResource");
-    try {
-      List<TsFileResource> seqTsFileResourceList =
-          sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
-      for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
-        TsFileResource seqResource = seqTsFileResourceList.get(i);
-        if (!seqResource.isClosed()) {
-          continue;
-        }
-        Set<String> deviceSet = seqResource.getDevices();
-        if (deviceSet.contains(devicePath)) {
-          lastFlushTime = seqTsFileResourceList.get(i).getEndTime(devicePath);
-          break;
-        }
-      }
-      List<TsFileResource> unseqTsFileResourceList =
-          unsequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
-      for (TsFileResource resource : unseqTsFileResourceList) {
-        if (resource.definitelyNotContains(devicePath)) {
-          continue;
-        }
-        lastFlushTime = Math.max(lastFlushTime, resource.getEndTime(devicePath));
-      }
-    } finally {
-      writeUnlock();
-    }
-    return lastFlushTime;
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {
@@ -233,8 +229,7 @@ public class TsFileManager {
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources,
-      long timePartition,
-      boolean isTargetSequence)
+      long timePartition)
       throws IOException {
     writeLock("replace");
     try {
@@ -248,24 +243,20 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      if (isTargetSequence) {
-        // seq inner space compaction or cross space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-            sequenceFiles.get(timePartition).keepOrderInsert(resource);
-          }
-        }
-      } else {
-        // unseq inner space compaction
-        for (TsFileResource resource : targetFileResources) {
-          if (!resource.isDeleted()) {
-            TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
-            unsequenceFiles.get(timePartition).keepOrderInsert(resource);
+      for (TsFileResource resource : targetFileResources) {
+        if (!resource.isDeleted()) {
+          TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
+          if (resource.isSeq()) {
+            sequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
+          } else {
+            unsequenceFiles
+                .computeIfAbsent(timePartition, t -> new TsFileResourceList())
+                .keepOrderInsert(resource);
           }
         }
       }
-
     } finally {
       writeUnlock();
     }

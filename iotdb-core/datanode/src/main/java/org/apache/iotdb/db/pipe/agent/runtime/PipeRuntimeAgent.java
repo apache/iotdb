@@ -32,6 +32,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -39,7 +42,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeAgent implements IService {
 
@@ -47,12 +52,13 @@ public class PipeRuntimeAgent implements IService {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-
-  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
-      new PipePeriodicalJobExecutor();
+  private final AtomicReference<String> clusterId = new AtomicReference<>(null);
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
+
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
 
   //////////////////////////// System Service Interface ////////////////////////////
 
@@ -72,6 +78,11 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
+
+    registerPeriodicalJob(
+        "PipeTaskAgent#restartAllStuckPipes",
+        PipeAgent.task()::restartAllStuckPipes,
+        PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
     pipePeriodicalJobExecutor.start();
 
     isShutdown.set(false);
@@ -97,20 +108,42 @@ public class PipeRuntimeAgent implements IService {
     return ServiceType.PIPE_RUNTIME_AGENT;
   }
 
+  public String getClusterIdIfPossible() {
+    if (clusterId.get() == null) {
+      synchronized (clusterId) {
+        if (clusterId.get() == null) {
+          try (final ConfigNodeClient configNodeClient =
+              ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+            clusterId.set(configNodeClient.getClusterId().getClusterId());
+          } catch (Exception e) {
+            LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage(), e);
+          }
+        }
+      }
+    }
+    return clusterId.get();
+  }
+
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
 
   public void assignSimpleProgressIndexIfNeeded(InsertNode insertNode) {
     simpleConsensusProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
-  ////////////////////// Recover ProgressIndex Assigner //////////////////////
+  ////////////////////// Load ProgressIndex Assigner //////////////////////
 
   public void assignProgressIndexForTsFileLoad(TsFileResource tsFileResource) {
-    tsFileResource.setProgressIndex(
-        new RecoverProgressIndex(
-            DATA_NODE_ID,
-            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+    // override the progress index of the tsfile resource, not to update the progress index
+    tsFileResource.setProgressIndex(getNextProgressIndexForTsFileLoad());
   }
+
+  public RecoverProgressIndex getNextProgressIndexForTsFileLoad() {
+    return new RecoverProgressIndex(
+        DATA_NODE_ID,
+        simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery());
+  }
+
+  ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
   public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
@@ -133,7 +166,8 @@ public class PipeRuntimeAgent implements IService {
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeAgent.task().stopAllPipesWithCriticalException();
+      // To avoid deadlock, we use a new thread to stop all pipes.
+      CompletableFuture.runAsync(() -> PipeAgent.task().stopAllPipesWithCriticalException());
     }
   }
 

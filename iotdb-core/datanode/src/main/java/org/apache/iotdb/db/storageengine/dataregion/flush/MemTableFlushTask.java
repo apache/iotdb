@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 import org.apache.iotdb.commons.concurrent.pipeline.Task;
 import org.apache.iotdb.commons.concurrent.pipeline.TaskRunner;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -30,6 +29,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.tasks.FlushContext;
 import org.apache.iotdb.db.storageengine.dataregion.flush.tasks.FlushDeviceContext;
@@ -67,7 +67,7 @@ public class MemTableFlushTask {
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final DynamicThreadGroup sortTasks;
@@ -76,7 +76,10 @@ public class MemTableFlushTask {
 
   private final LinkedBlockingQueue<Task> sortTaskQueue = new LinkedBlockingQueue<>();
   private final LinkedBlockingQueue<Task> encodingTaskQueue = new LinkedBlockingQueue<>();
-  private final LinkedBlockingQueue<Task> ioTaskQueue = new LinkedBlockingQueue<>();
+  private final LinkedBlockingQueue<Task> ioTaskQueue =
+      (SystemInfo.getInstance().isEncodingFasterThanIo())
+          ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
+          : new LinkedBlockingQueue<>();
 
   private String storageGroup;
   private String dataRegionId;
@@ -119,9 +122,7 @@ public class MemTableFlushTask {
             config.getFlushMemTableMaxSubThread());
     this.ioTask =
         new DynamicThreadGroup(taskName, SUB_TASK_POOL_MANAGER::submit, this::newIOThread, 1, 1);
-    this.sortTasks.init();
-    this.encodingTasks.init();
-    this.ioTask.init();
+
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -135,12 +136,6 @@ public class MemTableFlushTask {
         memTable.getSeriesNumber() == 0
             ? 0
             : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
-    LOGGER.info(
-        "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
-        storageGroup,
-        memTable.memSize(),
-        avgSeriesPointsNum,
-        memTable.getSeriesNumber());
     WRITING_METRICS.recordFlushingMemTableStatus(
         storageGroup,
         memTable.memSize(),
@@ -149,7 +144,7 @@ public class MemTableFlushTask {
         avgSeriesPointsNum);
 
     long estimatedTemporaryMemSize = 0L;
-    if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
+    if (SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
           memTable.getSeriesNumber() == 0
               ? 0
@@ -168,6 +163,11 @@ public class MemTableFlushTask {
     deviceIDList.removeIf(
         d -> memTableMap.get(d).count() == 0 || memTableMap.get(d).getMemChunkMap().isEmpty());
     allContext.setDeviceContexts(new ArrayList<>());
+
+    if (deviceIDList.isEmpty()) {
+      LOGGER.info("Nothing to be flushed for {}", memTable);
+      return;
+    }
 
     for (IDeviceID deviceID : deviceIDList) {
       // create a context for each device
@@ -201,6 +201,10 @@ public class MemTableFlushTask {
         sortTaskQueue.put(sortSeriesTask);
       }
     }
+
+    this.sortTasks.init();
+    this.encodingTasks.init();
+    this.ioTask.init();
 
     try {
       ioTask.join();
@@ -244,15 +248,12 @@ public class MemTableFlushTask {
       throw new ExecutionException(e);
     }
 
-    if (config.isEnableMemControl()) {
-      if (estimatedTemporaryMemSize != 0) {
-        SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
-      }
-      SystemInfo.getInstance()
-          .setEncodingFasterThanIo(
-              allContext.getIoTime().get() >= allContext.getEncodingTime().get());
+    if (estimatedTemporaryMemSize != 0) {
+      SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
-
+    SystemInfo.getInstance()
+        .setEncodingFasterThanIo(
+            allContext.getIoTime().get() >= allContext.getEncodingTime().get());
     MetricService.getInstance()
         .timer(
             System.currentTimeMillis() - start,
@@ -261,47 +262,35 @@ public class MemTableFlushTask {
             MetricLevel.CORE,
             Tag.NAME.toString(),
             "flush");
-
-    LOGGER.info(
-        "Database {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
-        storageGroup,
-        memTable,
-        System.currentTimeMillis() - start);
   }
 
-  protected void recordFlushPointsMetric() {
-    if (!storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
-      int lastIndex = storageGroup.lastIndexOf("-");
-      if (lastIndex == -1) {
-        lastIndex = storageGroup.length();
-      }
-      String storageGroupName = storageGroup.substring(0, lastIndex);
-      long currentTime = CommonDateTimeUtils.currentTime();
-      // compute the flush points
-      long writeTime =
-          flushPointsCache.compute(
-              storageGroupName,
-              (storageGroup, lastTime) -> {
-                if (lastTime == null || lastTime != currentTime) {
-                  return currentTime;
-                } else {
-                  return currentTime + 1;
-                }
-              });
-      // record the flush points
-      MetricService.getInstance()
-          .gaugeWithInternalReportAsync(
-              memTable.getTotalPointsNum(),
-              Metric.POINTS.toString(),
-              MetricLevel.CORE,
-              writeTime,
-              Tag.DATABASE.toString(),
-              storageGroup.substring(0, lastIndex),
-              Tag.TYPE.toString(),
-              "flush",
-              Tag.REGION.toString(),
-              dataRegionId);
-    }
+  public static void recordFlushPointsMetricInternal(
+      long totalPointsNum, String storageGroupName, String dataRegionId) {
+    long currentTime = CommonDateTimeUtils.currentTime();
+    // compute the flush points
+    long writeTime =
+        flushPointsCache.compute(
+            storageGroupName,
+            (storageGroup, lastTime) -> {
+              if (lastTime == null || lastTime != currentTime) {
+                return currentTime;
+              } else {
+                return currentTime + 1;
+              }
+            });
+    // record the flush points
+    MetricService.getInstance()
+        .gaugeWithInternalReportAsync(
+            totalPointsNum,
+            Metric.POINTS.toString(),
+            MetricLevel.CORE,
+            writeTime,
+            Tag.DATABASE.toString(),
+            storageGroupName,
+            Tag.TYPE.toString(),
+            "flush",
+            Tag.REGION.toString(),
+            dataRegionId);
   }
 
   private DynamicThread newSortThread() {
@@ -328,7 +317,11 @@ public class MemTableFlushTask {
   }
 
   private void cleanEncodingThread() {
-    recordFlushPointsMetric();
+    DataRegion.getNonSystemDatabaseName(storageGroup)
+        .ifPresent(
+            databaseName ->
+                recordFlushPointsMetricInternal(
+                    memTable.getTotalPointsNum(), databaseName, dataRegionId));
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_ENCODING, allContext.getEncodingTime().get());
   }

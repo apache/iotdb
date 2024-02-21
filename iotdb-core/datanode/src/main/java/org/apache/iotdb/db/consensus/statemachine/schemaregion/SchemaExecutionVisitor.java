@@ -326,7 +326,6 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitActivateTemplate(ActivateTemplateNode node, ISchemaRegion schemaRegion) {
     try {
       Template template = ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
-      node.setAligned(template.isDirectAligned());
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {

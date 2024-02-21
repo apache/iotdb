@@ -33,7 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -145,6 +148,13 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitSort(SortNode node, RewriterContext context) {
+      // Limit/Offset in ORDER BY focus the sorted result, so it should not be pushed down.
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
     public PlanNode visitTransform(TransformNode node, RewriterContext context) {
       Expression[] outputExpressions = node.getOutputExpressions();
       boolean enablePushDown = true;
@@ -165,6 +175,19 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, RewriterContext context) {
+      context.setEnablePushDown(false);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, RewriterContext context) {
+      // TODO we may need to push limit and offset to left child
       context.setEnablePushDown(false);
       return node;
     }

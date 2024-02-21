@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInje
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -92,6 +93,13 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
         rewrittenChildren.add(child.accept(this, context));
       }
       node.setChildren(rewrittenChildren);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, Void context) {
+      node.setLeftChild(node.getLeftChild().accept(this, context));
+      node.setRightChild(node.getRightChild().accept(this, context));
       return node;
     }
 
