@@ -78,8 +78,14 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
-    if (!((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()) {
-      // only loaded tsfile can be extracted by this extractor. Ignore this event.
+    final PipeTsFileInsertionEvent tsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) event.getEvent();
+    if (!(tsFileInsertionEvent.getIsLoaded()
+        // some insert nodes in the tsfile epoch are not captured by pipe
+        || tsFileInsertionEvent.getFileStartTime()
+            < event.getTsFileEpoch().getInsertNodeMinTime())) {
+      // All data in the tsfile epoch has been extracted in tablet mode, so we should
+      // simply ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }
@@ -104,7 +110,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public boolean isNeedListenToTsFile() {
-    // Only listen to loaded tsFiles
+    // Only listen to tsFiles that can't be represented by insertNodes
     return extractData;
   }
 

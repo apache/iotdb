@@ -116,6 +116,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return isLoaded;
   }
 
+  public long getFileStartTime() {
+    return resource.getFileStartTime();
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override

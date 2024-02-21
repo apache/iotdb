@@ -69,9 +69,12 @@ public class TsFileEpochManager {
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
       PipeInsertNodeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
+    final TsFileEpoch epoch =
+        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new);
+    epoch.updateInsertNodeMinTime(node.getMinTime());
     return new PipeRealtimeEvent(
         event,
-        filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),
+        epoch,
         Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
         event.getPattern());
   }

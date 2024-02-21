@@ -723,7 +723,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                               .setExtractorAttributes(extractorAttributes)
                               .setProcessorAttributes(processorAttributes));
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                    successCount.updateAndGet(v -> v + 1);
+                    successCount.incrementAndGet();
                   }
                 } catch (InterruptedException e) {
                   Thread.currentThread().interrupt();
@@ -753,7 +753,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
                   TSStatus status = client.dropPipe("p1");
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                    successCount.updateAndGet(v -> v + 1);
+                    successCount.incrementAndGet();
                   }
                 } catch (InterruptedException e) {
                   Thread.currentThread().interrupt();
@@ -772,6 +772,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       t.join();
     }
 
+    // Assert at least 1 drop operation succeeds
     Assert.assertTrue(successCount.get() >= 1);
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
