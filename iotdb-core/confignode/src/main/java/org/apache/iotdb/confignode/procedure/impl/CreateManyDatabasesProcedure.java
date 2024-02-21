@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
@@ -40,8 +39,7 @@ import java.io.IOException;
 /**
  * This procedure will create numerous databases (perhaps 100), during which the confignode leader
  * should be externally shutdown to test whether the procedure can be correctly recovered after the
- * leader change. If the procedure is still not recovered by the time the last database is created,
- * it will throw an exception which indicates the test to be poorly written.
+ * leader change. The procedure will never finish until it's recovered from another ConfigNode.
  */
 @TestOnly
 public class CreateManyDatabasesProcedure
@@ -49,7 +47,7 @@ public class CreateManyDatabasesProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
   public static final int MAX_STATE = 100;
   public static final String DATABASE_NAME_PREFIX = "root.test_";
-  public static final int SLEEP_INTERVAL = 1000;
+  public static final long SLEEP_FOREVER = 10000000000000L;
   private boolean createFailedOnce = false;
 
   @Override
@@ -57,17 +55,21 @@ public class CreateManyDatabasesProcedure
       throws InterruptedException {
     if (state < MAX_STATE) {
       if (state == MAX_STATE - 1 && !isDeserialized()) {
-        throw new RuntimeException(
-            "This procedure is going to end and still not recovered yet, check your test code");
+        Thread.sleep(SLEEP_FOREVER);
       }
-      createDatabase(configNodeProcedureEnv, state);
+      try {
+        createDatabase(configNodeProcedureEnv, state);
+      } catch (ProcedureException e) {
+        setFailure(e);
+        return Flow.NO_MORE_STATE;
+      }
       setNextState(state + 1);
       return Flow.HAS_MORE_STATE;
     }
     return Flow.NO_MORE_STATE;
   }
 
-  private void createDatabase(ConfigNodeProcedureEnv env, int id) {
+  private void createDatabase(ConfigNodeProcedureEnv env, int id) throws ProcedureException {
     String databaseName = DATABASE_NAME_PREFIX + id;
     TDatabaseSchema databaseSchema = new TDatabaseSchema(databaseName);
     TSStatus status =
@@ -79,13 +81,10 @@ public class CreateManyDatabasesProcedure
       if (!createFailedOnce) {
         createFailedOnce = true;
       } else {
-        throw new RuntimeException("createDatabase fail twice");
+        throw new ProcedureException("createDatabase fail twice");
       }
     } else if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-      throw new RuntimeException("Unexpected fail, tsStatus is " + status);
-    }
-    if (!isDeserialized()) {
-      ProcedureManager.sleepWithoutInterrupt(SLEEP_INTERVAL);
+      throw new ProcedureException("Unexpected fail, tsStatus is " + status);
     }
   }
 

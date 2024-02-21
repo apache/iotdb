@@ -39,18 +39,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 public class IoTDBProcedureIT {
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBProcedureIT.class);
-
-  private static final int testReplicationFactor = 2;
-
-  private static final int testConfigNodeNum = 3, testDataNodeNum = 2;
-
-  private static final long testTimePartitionInterval = 604800000;
 
   @BeforeClass
   public static void setUp() {
@@ -60,7 +55,6 @@ public class IoTDBProcedureIT {
         .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS)
-        //        .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(1);
   }
 
@@ -70,8 +64,8 @@ public class IoTDBProcedureIT {
   }
 
   /**
-   * During CreateManyDatabasesProcedure executing, we expect the procedure will be interrupted only
-   * once. so lets shutdown the leader at the middle of the procedure.
+   * During CreateManyDatabasesProcedure executing, we expect that the procedure will be interrupted
+   * only once. So let us shutdown the leader at the middle of the procedure.
    */
   @Test
   public void stateMachineProcedureRecoverTest() throws Exception {
@@ -100,12 +94,12 @@ public class IoTDBProcedureIT {
     // Check whether the procedure is ongoing, and is still far from finishing
     TShowDatabaseResp resp = leaderClient.showDatabase(req);
     Assert.assertTrue(0 < resp.getDatabaseInfoMap().size());
-    Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE / 2);
+    Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
     leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    Thread.sleep(10000);
+    TimeUnit.SECONDS.sleep(1);
 
     // Final check
     resp = leaderClient.showDatabase(req);
