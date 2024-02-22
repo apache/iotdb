@@ -198,8 +198,13 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
         String lastNode = pathNodes[pathNodes.length - 1];
 
-        if (!lastNode.matches("^(`([^`]|`{2})*+`?)?$")) {
-          Double.parseDouble(lastNode);
+        // Check whether the last node is legal.
+        if (!"".equals(lastNode)) {
+          if (lastNode.startsWith("`") && lastNode.substring(1).replace("``", "").contains("`")) {
+            throw new IllegalArgumentException();
+          } else {
+            Double.parseDouble(lastNode);
+          }
         }
       } catch (Exception ignored) {
         throw new IllegalArgumentException(
