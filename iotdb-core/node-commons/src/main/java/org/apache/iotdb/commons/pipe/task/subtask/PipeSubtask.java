@@ -161,8 +161,4 @@ public abstract class PipeSubtask
   public long getCreationTime() {
     return creationTime;
   }
-
-  public int getRetryCount() {
-    return retryCount.get();
-  }
 }

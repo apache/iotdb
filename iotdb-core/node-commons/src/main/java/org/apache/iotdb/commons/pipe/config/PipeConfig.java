@@ -185,6 +185,32 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }
 
+  /////////////////////////////// Logger ///////////////////////////////
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogNumPerRound();
+  }
+
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeMetaReportMaxLogIntervalRounds();
+  }
+
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogNumPerRound();
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
+  }
+
+  public int getPipeWalPinMaxLogNumPerRound() {
+    return COMMON_CONFIG.getPipeWalPinMaxLogNumPerRound();
+  }
+
+  public int getPipeWalPinMaxLogIntervalRounds() {
+    return COMMON_CONFIG.getPipeWalPinMaxLogIntervalRounds();
+  }
+
   /////////////////////////////// Memory ///////////////////////////////
 
   public boolean getPipeMemoryManagementEnabled() {
@@ -283,6 +309,13 @@ public class PipeConfig {
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
     LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
+
+    LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
+    LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
+    LOGGER.info("PipeTsFilePinMaxLogNumPerRound: {}", getPipeTsFilePinMaxLogNumPerRound());
+    LOGGER.info("PipeTsFilePinMaxLogIntervalRounds: {}", getPipeTsFilePinMaxLogIntervalRounds());
+    LOGGER.info("PipeWalPinMaxLogNumPerRound: {}", getPipeWalPinMaxLogNumPerRound());
+    LOGGER.info("PipeWalPinMaxLogIntervalRounds: {}", getPipeWalPinMaxLogIntervalRounds());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());

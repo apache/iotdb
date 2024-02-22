@@ -17,36 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner.distribution;
+package org.apache.iotdb.db.pipe.resource.log;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.slf4j.Logger;
 
-public class NodeDistribution {
-  private NodeDistributionType type;
-  private TRegionReplicaSet region;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-  public NodeDistribution(NodeDistributionType type, TRegionReplicaSet region) {
-    this.type = type;
-    this.region = region;
-  }
+public class PipeLogManager {
 
-  public NodeDistribution(NodeDistributionType type) {
-    this.type = type;
-  }
+  private final ConcurrentMap<Class<?>, PipeLogStatus> logClass2LogStatusMap =
+      new ConcurrentHashMap<>();
 
-  public NodeDistributionType getType() {
-    return this.type;
-  }
-
-  public void setType(NodeDistributionType type) {
-    this.type = type;
-  }
-
-  public TRegionReplicaSet getRegion() {
-    return this.region;
-  }
-
-  public void setRegion(TRegionReplicaSet region) {
-    this.region = region;
+  public Optional<Logger> schedule(
+      Class<?> logClass, int maxAverageScale, int maxLogInterval, int scale) {
+    return logClass2LogStatusMap
+        .computeIfAbsent(
+            logClass, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
+        .schedule(scale);
   }
 }

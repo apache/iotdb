@@ -125,9 +125,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
 
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -169,8 +168,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -221,8 +219,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -275,8 +272,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -321,10 +317,7 @@ public class AggregationOperatorTest {
     driverContext.addOperatorContext(3, planNodeId3, AggregationOperator.class.getSimpleName());
     driverContext
         .getOperatorContexts()
-        .forEach(
-            operatorContext -> {
-              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
-            });
+        .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
     MeasurementPath measurementPath1 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);

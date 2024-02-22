@@ -189,6 +189,13 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private long pipeStuckRestartIntervalSeconds = 120;
 
+  private int pipeMetaReportMaxLogNumPerRound = 10;
+  private int pipeMetaReportMaxLogIntervalRounds = 36;
+  private int pipeTsFilePinMaxLogNumPerRound = 10;
+  private int pipeTsFilePinMaxLogIntervalRounds = 90;
+  private int pipeWalPinMaxLogNumPerRound = 10;
+  private int pipeWalPinMaxLogIntervalRounds = 90;
+
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
@@ -785,6 +792,54 @@ public class CommonConfig {
 
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
+    this.pipeMetaReportMaxLogNumPerRound = pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public void setPipeMetaReportMaxLogIntervalRounds(int pipeMetaReportMaxLogIntervalRounds) {
+    this.pipeMetaReportMaxLogIntervalRounds = pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return pipeTsFilePinMaxLogNumPerRound;
+  }
+
+  public void setPipeTsFilePinMaxLogNumPerRound(int pipeTsFilePinMaxLogNumPerRound) {
+    this.pipeTsFilePinMaxLogNumPerRound = pipeTsFilePinMaxLogNumPerRound;
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public void setPipeTsFilePinMaxLogIntervalRounds(int pipeTsFilePinMaxLogIntervalRounds) {
+    this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public int getPipeWalPinMaxLogNumPerRound() {
+    return pipeWalPinMaxLogNumPerRound;
+  }
+
+  public void setPipeWalPinMaxLogNumPerRound(int pipeWalPinMaxLogNumPerRound) {
+    this.pipeWalPinMaxLogNumPerRound = pipeWalPinMaxLogNumPerRound;
+  }
+
+  public int getPipeWalPinMaxLogIntervalRounds() {
+    return pipeWalPinMaxLogIntervalRounds;
+  }
+
+  public void setPipeWalPinMaxLogIntervalRounds(int pipeWalPinMaxLogIntervalRounds) {
+    this.pipeWalPinMaxLogIntervalRounds = pipeWalPinMaxLogIntervalRounds;
   }
 
   public boolean getPipeMemoryManagementEnabled() {

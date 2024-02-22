@@ -290,9 +290,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeDropPipeInternal(String pipeName) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Check before drop pipe {}, pipe exists: {}.",
-          pipeName,
-          isPipeExisted(pipeName) ? "true" : "false");
+          "Check before drop pipe {}, pipe exists: {}.", pipeName, isPipeExisted(pipeName));
     }
     // No matter whether the pipe exists, we allow the drop operation executed on all nodes to
     // ensure the consistency.
