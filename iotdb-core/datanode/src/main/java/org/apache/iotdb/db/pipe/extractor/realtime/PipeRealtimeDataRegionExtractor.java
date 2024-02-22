@@ -108,12 +108,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       realtimeDataExtractionStartTime =
           parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_START_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY))
               : Long.MIN_VALUE;
       realtimeDataExtractionEndTime =
           parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_END_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY))
               : Long.MAX_VALUE;
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
