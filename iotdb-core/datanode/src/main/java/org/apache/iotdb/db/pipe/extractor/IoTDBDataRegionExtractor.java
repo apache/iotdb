@@ -200,8 +200,10 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
         // Check whether the last node is legal.
         if (!"".equals(lastNode)) {
-          if (lastNode.startsWith("`") && lastNode.substring(1).replace("``", "").contains("`")) {
-            throw new IllegalArgumentException();
+          if (lastNode.startsWith("`")) {
+            if (lastNode.substring(1).replace("``", "").contains("`")) {
+              throw new IllegalArgumentException();
+            }
           } else {
             Double.parseDouble(lastNode);
           }
