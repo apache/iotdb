@@ -77,7 +77,7 @@ public class CreateManyDatabasesProcedure
             .setDatabase(
                 new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
     if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == status.getCode()) {
-      // first time fail is forgivable, second time fail means mistake
+      // first time fail is forgivable, second time fail means failure
       if (!createFailedOnce) {
         createFailedOnce = true;
       } else {
