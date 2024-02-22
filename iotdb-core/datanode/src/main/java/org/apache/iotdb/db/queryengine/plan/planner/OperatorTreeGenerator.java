@@ -166,7 +166,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -821,12 +820,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     return new DeviceViewOperator(
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
-  }
-
-  @Override
-  public Operator visitAggregationMergeSort(
-      AggregationMergeSortNode node, LocalExecutionPlanContext context) {
-    return null;
   }
 
   @Override

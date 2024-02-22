@@ -189,7 +189,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1) {
         // specialProcess and existDeviceCrossRegion, use the old aggregation logic
-        analysis.existDeviceCrossRegion = true;
+        analysis.setExistDeviceCrossRegion();
         if (analysis.isDeviceViewSpecialProcess()) {
           return processSpecialDeviceView(node, context);
         }
@@ -200,7 +200,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
-    if (analysis.existDeviceCrossRegion) {
+    if (analysis.isExistDeviceCrossRegion()) {
       constructDeviceViewNodeListWithCrossRegion(
           deviceViewNodeList, relatedDataRegions, deviceViewSplits, node, context);
     } else {
@@ -260,7 +260,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (DeviceViewSplit split : deviceViewSplits) {
       if (split.dataPartitions.size() != 1) {
         throw new IllegalStateException(
-            "In non-cross data region device-view situation, each device should only have on data partition.");
+            "In non-cross data region device-view situation, "
+                + "each device should only have on data partition.");
       }
       TRegionReplicaSet region = split.dataPartitions.iterator().next();
       DeviceViewNode regionDeviceViewNode =

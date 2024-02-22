@@ -71,7 +71,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
@@ -495,63 +494,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       }
     }
     return newNode;
-  }
-
-  private PlanNode useMergeSortWithDeviceViewAggregation(
-      MultiChildProcessNode node,
-      List<PlanNode> visitedChildren,
-      NodeGroupContext context,
-      TRegionReplicaSet dataRegion) {
-    DeviceViewNode rootDeviceViewNode = (DeviceViewNode) node;
-    checkArgument(
-        visitedChildren.size() == rootDeviceViewNode.getDevices().size(),
-        "Each device should only located in one data region.");
-
-    Map<TRegionReplicaSet, DeviceViewNode> regionSubDeviceViewMap = new HashMap<>();
-    for (int i = 0; i < visitedChildren.size(); i++) {
-      PlanNode child = visitedChildren.get(i);
-      String device = rootDeviceViewNode.getDevices().get(i);
-      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).getRegion();
-      DeviceViewNode deviceViewNode =
-          regionSubDeviceViewMap.computeIfAbsent(
-              region,
-              k -> {
-                DeviceViewNode childDeviceViewNode =
-                    new DeviceViewNode(
-                        context.queryContext.getQueryId().genPlanNodeId(),
-                        rootDeviceViewNode.getMergeOrderParameter(),
-                        rootDeviceViewNode.getOutputColumnNames(),
-                        rootDeviceViewNode.getDeviceToMeasurementIndexesMap());
-                context.putNodeDistribution(
-                    childDeviceViewNode.getPlanNodeId(),
-                    new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
-                return childDeviceViewNode;
-              });
-      deviceViewNode.addChildDeviceNode(device, child);
-    }
-
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            rootDeviceViewNode.getMergeOrderParameter(),
-            rootDeviceViewNode.getOutputColumnNames());
-    for (Map.Entry<TRegionReplicaSet, DeviceViewNode> entry : regionSubDeviceViewMap.entrySet()) {
-      TRegionReplicaSet deviceViewNodeLocatedRegion = entry.getKey();
-      DeviceViewNode deviceViewNode = entry.getValue();
-
-      if (!dataRegion.equals(deviceViewNodeLocatedRegion)) {
-        ExchangeNode exchangeNode = genExchangeNode(context, deviceViewNode);
-        mergeSortNode.addChild(exchangeNode);
-      } else {
-        mergeSortNode.addChild(deviceViewNode);
-      }
-    }
-    context.putNodeDistribution(
-        mergeSortNode.getPlanNodeId(),
-        new NodeDistribution(
-            NodeDistributionType.SAME_WITH_ALL_CHILDREN,
-            context.getNodeDistribution(rootDeviceViewNode.getPlanNodeId()).getRegion()));
-    return mergeSortNode;
   }
 
   private ExchangeNode genExchangeNode(NodeGroupContext context, PlanNode child) {

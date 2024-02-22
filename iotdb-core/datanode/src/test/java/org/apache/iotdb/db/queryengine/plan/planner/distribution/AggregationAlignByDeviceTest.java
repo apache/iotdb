@@ -65,12 +65,16 @@ public class AggregationAlignByDeviceTest {
    * IdentitySinkNode-10
    *   └──MergeSort-7
    *       ├──DeviceView-5
-   *       │   └──SeriesAggregationScanNode-1:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(first_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       │   └──SeriesAggregationScanNode-1:[SeriesPath: root.sg.d22.s1,
+   *              Descriptor: [AggregationDescriptor(first_value, SINGLE)],
+   *              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *       └──ExchangeNode-8: [SourceAddress:192.0.4.1/test.2.0/9]
    *
    *  IdentitySinkNode-9
    *   └──DeviceView-6
-   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d55555.s1, Descriptor: [AggregationDescriptor(first_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *       └──SeriesAggregationScanNode-2:[SeriesPath: root.sg.d55555.s1,
+   *          Descriptor: [AggregationDescriptor(first_value, SINGLE)],
+   *          DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByDeviceTest1() {
@@ -156,8 +160,10 @@ public class AggregationAlignByDeviceTest {
    *       │   └──AggregationNode-17
    *       │       └──FilterNode-16
    *       │           └──FullOuterTimeJoinNode-15
-   *       │               ├──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *       │               └──SeriesScanNode-19:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       │               ├──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1,
+   *                          DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       │               └──SeriesScanNode-19:[SeriesPath: root.sg.d22.s2,
+   *                          DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *       └──ExchangeNode-29: [SourceAddress:192.0.4.1/test.2.0/30]
    *
    * IdentitySinkNode-30
@@ -165,8 +171,10 @@ public class AggregationAlignByDeviceTest {
    *       └──AggregationNode-25
    *           └──FilterNode-24
    *               └──FullOuterTimeJoinNode-23
-   *                   ├──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d55555.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   ├──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1,
+   *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d55555.s2,
+   *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByDeviceTest2() {
@@ -276,8 +284,13 @@ public class AggregationAlignByDeviceTest {
    *           │   └──TransformNode-25
    *           │       └──DeviceView-11
    *           │           └──HorizontallyConcatNode-17
-   *           │               ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(avg, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *           │               └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           │               ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d22.s1,
+   *                              Descriptor: [AggregationDescriptor(avg, SINGLE)],
+   *                              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           │               └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d22.s2,
+   *                              Descriptor: [AggregationDescriptor(avg, SINGLE),
+   *                              AggregationDescriptor(max_value, SINGLE)],
+   *                              DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *           └──ExchangeNode-30: [SourceAddress:192.0.4.1/test.2.0/31]
    *
    * IdentitySinkNode-31
@@ -285,8 +298,12 @@ public class AggregationAlignByDeviceTest {
    *       └──TransformNode-26
    *           └──DeviceView-18
    *               └──HorizontallyConcatNode-24
-   *                   ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d55555.s1, Descriptor: [AggregationDescriptor(avg, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                   └──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d55555.s2, Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d55555.s1,
+   *                      Descriptor: [AggregationDescriptor(avg, SINGLE)],
+   *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   └──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d55555.s2,
+   *                      Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)],
+   *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByExpressionTest() {
@@ -395,7 +412,8 @@ public class AggregationAlignByDeviceTest {
 
     // two aggregation measurement, two devices
     sql =
-        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 order by time desc align by device";
+        "select first_value(s1), count(s2) from root.sg.d22, root.sg.d55555 "
+            + "order by time desc align by device";
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
