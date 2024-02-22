@@ -177,7 +177,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   private void validatePattern(String pattern) {
     // Prefix match does not support wildcard address
-    if (!pattern.startsWith("root") || pattern.contains("*")) {
+    if (!pattern.startsWith("root") || pattern.contains(".*") || pattern.contains(".**")) {
       throw new IllegalArgumentException(
           "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
     }
@@ -200,10 +200,12 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
         // Check whether the last node is legal.
         if (!"".equals(lastNode)) {
-          if (lastNode.startsWith("`")) {
-            lastNode = lastNode.replace("`", " ").trim().replace("  ", "");
+          if (lastNode.startsWith("`")
+              && lastNode.replace("`", " ").trim().replace("  ", "").contains("`")) {
+            throw new IllegalArgumentException();
+          } else {
+            Double.parseDouble(lastNode);
           }
-          Double.parseDouble(lastNode);
         }
       } catch (Exception ignored) {
         throw new IllegalArgumentException(
