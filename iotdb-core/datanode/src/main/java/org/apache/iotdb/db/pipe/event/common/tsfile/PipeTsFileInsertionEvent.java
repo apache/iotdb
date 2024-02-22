@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -47,7 +47,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
-  boolean withMod;
+  private final boolean isWithMod;
   private File modFile;
 
   private final boolean isLoaded;
@@ -60,9 +60,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
     this(
         resource,
+        false,
         isLoaded,
         isGeneratedByPipe,
-        false,
         null,
         null,
         null,
@@ -72,9 +72,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isWithMod,
       boolean isLoaded,
       boolean isGeneratedByPipe,
-      boolean withMod,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
@@ -85,9 +85,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.resource = resource;
     tsFile = resource.getTsFile();
 
+    final ModificationFile modFile = resource.getModFile();
+    this.isWithMod = isWithMod && modFile.exists();
+    this.modFile = new File(modFile.getFilePath());
+
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
-    this.withMod = withMod;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
@@ -131,7 +134,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return modFile;
   }
 
-  public boolean getIsLoaded() {
+  public boolean isWithMod() {
+    return isWithMod;
+  }
+
+  public boolean isLoaded() {
     return isLoaded;
   }
 
@@ -145,10 +152,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
-      if (withMod && resource.getModFile().exists()) {
-        modFile =
-            PipeResourceManager.tsfile()
-                .increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+      if (isWithMod) {
+        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false);
       }
       return true;
     } catch (Exception e) {
@@ -165,7 +170,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.tsfile().decreaseFileReference(tsFile);
-      if (Objects.nonNull(modFile)) {
+      if (isWithMod) {
         PipeResourceManager.tsfile().decreaseFileReference(modFile);
       }
       return true;
@@ -198,9 +203,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
+        isWithMod,
         isLoaded,
         isGeneratedByPipe,
-        withMod,
         pipeName,
         pipeTaskMeta,
         pattern,

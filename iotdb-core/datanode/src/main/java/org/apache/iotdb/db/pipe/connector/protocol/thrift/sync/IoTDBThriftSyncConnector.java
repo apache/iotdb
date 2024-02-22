@@ -61,7 +61,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -367,8 +366,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer mod file if exists and receiver's version >= 2
-    if (Objects.nonNull(pipeTsFileInsertionEvent.getModFile())
-        && clientManager.getReceiverHandshakeVersion() >= 2) {
+    if (pipeTsFileInsertionEvent.isWithMod() && clientManager.getReceiverHandshakeVersion() >= 2) {
       transferFilePieces(pipeTsFileInsertionEvent.getModFile(), clientAndStatus);
     }
 
