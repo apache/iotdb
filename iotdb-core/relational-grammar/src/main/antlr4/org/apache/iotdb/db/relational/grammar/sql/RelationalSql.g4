@@ -29,6 +29,15 @@ singleStatement
     : statement EOF
     ;
 
+
+standaloneExpression
+    : expression EOF
+    ;
+
+standaloneType
+    : type EOF
+    ;
+
 statement
     // Query Statement
     : queryStatement

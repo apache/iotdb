@@ -29,6 +29,8 @@ import org.apache.iotdb.db.relational.sql.tree.AllRows;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.BetweenPredicate;
+import org.apache.iotdb.db.relational.sql.tree.BinaryLiteral;
+import org.apache.iotdb.db.relational.sql.tree.BooleanLiteral;
 import org.apache.iotdb.db.relational.sql.tree.Cast;
 import org.apache.iotdb.db.relational.sql.tree.CoalesceExpression;
 import org.apache.iotdb.db.relational.sql.tree.ColumnDefinition;
@@ -41,9 +43,11 @@ import org.apache.iotdb.db.relational.sql.tree.CurrentTime;
 import org.apache.iotdb.db.relational.sql.tree.CurrentUser;
 import org.apache.iotdb.db.relational.sql.tree.DataType;
 import org.apache.iotdb.db.relational.sql.tree.DataTypeParameter;
+import org.apache.iotdb.db.relational.sql.tree.DecimalLiteral;
 import org.apache.iotdb.db.relational.sql.tree.Delete;
 import org.apache.iotdb.db.relational.sql.tree.DereferenceExpression;
 import org.apache.iotdb.db.relational.sql.tree.DescribeTable;
+import org.apache.iotdb.db.relational.sql.tree.DoubleLiteral;
 import org.apache.iotdb.db.relational.sql.tree.DropColumn;
 import org.apache.iotdb.db.relational.sql.tree.DropDB;
 import org.apache.iotdb.db.relational.sql.tree.DropIndex;
@@ -70,6 +74,7 @@ import org.apache.iotdb.db.relational.sql.tree.JoinOn;
 import org.apache.iotdb.db.relational.sql.tree.JoinUsing;
 import org.apache.iotdb.db.relational.sql.tree.LikePredicate;
 import org.apache.iotdb.db.relational.sql.tree.Limit;
+import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
 import org.apache.iotdb.db.relational.sql.tree.NaturalJoin;
 import org.apache.iotdb.db.relational.sql.tree.Node;
@@ -77,6 +82,7 @@ import org.apache.iotdb.db.relational.sql.tree.NodeLocation;
 import org.apache.iotdb.db.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullLiteral;
+import org.apache.iotdb.db.relational.sql.tree.NumericParameter;
 import org.apache.iotdb.db.relational.sql.tree.Offset;
 import org.apache.iotdb.db.relational.sql.tree.OrderBy;
 import org.apache.iotdb.db.relational.sql.tree.Parameter;
@@ -105,10 +111,12 @@ import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
 import org.apache.iotdb.db.relational.sql.tree.TableSubquery;
 import org.apache.iotdb.db.relational.sql.tree.Trim;
+import org.apache.iotdb.db.relational.sql.tree.TypeParameter;
 import org.apache.iotdb.db.relational.sql.tree.Union;
 import org.apache.iotdb.db.relational.sql.tree.Update;
 import org.apache.iotdb.db.relational.sql.tree.UpdateAssignment;
 import org.apache.iotdb.db.relational.sql.tree.Use;
+import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.relational.sql.tree.WhenClause;
 import org.apache.iotdb.db.relational.sql.tree.With;
 import org.apache.iotdb.db.relational.sql.tree.WithQuery;
@@ -121,9 +129,13 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
@@ -145,6 +157,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitSingleStatement(RelationalSqlParser.SingleStatementContext ctx) {
     return visit(ctx.statement());
+  }
+
+  @Override
+  public Node visitStandaloneExpression(RelationalSqlParser.StandaloneExpressionContext context) {
+    return visit(context.expression());
+  }
+
+  @Override
+  public Node visitStandaloneType(RelationalSqlParser.StandaloneTypeContext context) {
+    return visit(context.type());
   }
 
   // ******************* statements **********************
@@ -324,6 +346,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
           visit(ctx.updateAssignment(), UpdateAssignment.class));
     }
+  }
+
+  @Override
+  public Node visitUpdateAssignment(RelationalSqlParser.UpdateAssignmentContext ctx) {
+    return new UpdateAssignment(
+        (Identifier) visit(ctx.identifier()), (Expression) visit(ctx.expression()));
   }
 
   @Override
@@ -617,6 +645,32 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitSelectSingle(RelationalSqlParser.SelectSingleContext ctx) {
+    if (ctx.identifier() != null) {
+      return new SingleColumn(
+          getLocation(ctx),
+          (Expression) visit(ctx.expression()),
+          (Identifier) visit(ctx.identifier()));
+    } else {
+      return new SingleColumn(getLocation(ctx), (Expression) visit(ctx.expression()));
+    }
+  }
+
+  @Override
+  public Node visitSelectAll(RelationalSqlParser.SelectAllContext ctx) {
+    List<Identifier> aliases = ImmutableList.of();
+    if (ctx.columnAliases() != null) {
+      aliases = visit(ctx.columnAliases().identifier(), Identifier.class);
+    }
+
+    if (ctx.primaryExpression() != null) {
+      return new AllColumns(getLocation(ctx), (Expression) visit(ctx.primaryExpression()), aliases);
+    } else {
+      return new AllColumns(getLocation(ctx), aliases);
+    }
+  }
+
+  @Override
   public Node visitGroupBy(RelationalSqlParser.GroupByContext ctx) {
     return new GroupBy(
         getLocation(ctx),
@@ -700,12 +754,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInlineTable(RelationalSqlParser.InlineTableContext ctx) {
-    return super.visitInlineTable(ctx);
+    return new Values(getLocation(ctx), visit(ctx.expression(), Expression.class));
   }
 
   @Override
   public Node visitSubquery(RelationalSqlParser.SubqueryContext ctx) {
-    return super.visitSubquery(ctx);
+    return new TableSubquery(getLocation(ctx), (Query) visit(ctx.queryNoWith()));
   }
 
   @Override
@@ -719,6 +773,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         Optional.ofNullable(ctx.nullOrdering)
             .map(AstBuilder::getNullOrderingType)
             .orElse(SortItem.NullOrdering.UNDEFINED));
+  }
+
+  @Override
+  public Node visitUnquotedIdentifier(RelationalSqlParser.UnquotedIdentifierContext ctx) {
+    return new Identifier(getLocation(ctx), ctx.getText(), false);
+  }
+
+  @Override
+  public Node visitQuotedIdentifier(RelationalSqlParser.QuotedIdentifierContext ctx) {
+    String token = ctx.getText();
+    String identifier = token.substring(1, token.length() - 1).replace("\"\"", "\"");
+
+    return new Identifier(getLocation(ctx), identifier, true);
   }
 
   @Override
@@ -776,30 +843,69 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return super.visitKeepExpression(ctx);
   }
 
+  // ***************** boolean expressions ******************
   @Override
-  public Node visitSelectSingle(RelationalSqlParser.SelectSingleContext ctx) {
-    if (ctx.identifier() != null) {
-      return new SingleColumn(
-          getLocation(ctx),
-          (Expression) visit(ctx.expression()),
-          (Identifier) visit(ctx.identifier()));
-    } else {
-      return new SingleColumn(getLocation(ctx), (Expression) visit(ctx.expression()));
-    }
+  public Node visitLogicalNot(RelationalSqlParser.LogicalNotContext ctx) {
+    return new NotExpression(getLocation(ctx), (Expression) visit(ctx.booleanExpression()));
   }
 
   @Override
-  public Node visitSelectAll(RelationalSqlParser.SelectAllContext ctx) {
-    List<Identifier> aliases = ImmutableList.of();
-    if (ctx.columnAliases() != null) {
-      aliases = visit(ctx.columnAliases().identifier(), Identifier.class);
+  public Node visitOr(RelationalSqlParser.OrContext ctx) {
+    List<ParserRuleContext> terms =
+        flatten(
+            ctx,
+            element -> {
+              if (element instanceof RelationalSqlParser.OrContext) {
+                RelationalSqlParser.OrContext or = (RelationalSqlParser.OrContext) element;
+                return Optional.of(or.booleanExpression());
+              }
+
+              return Optional.empty();
+            });
+
+    return new LogicalExpression(
+        getLocation(ctx), LogicalExpression.Operator.OR, visit(terms, Expression.class));
+  }
+
+  @Override
+  public Node visitAnd(RelationalSqlParser.AndContext ctx) {
+    List<ParserRuleContext> terms =
+        flatten(
+            ctx,
+            element -> {
+              if (element instanceof RelationalSqlParser.AndContext) {
+                RelationalSqlParser.AndContext and = (RelationalSqlParser.AndContext) element;
+                return Optional.of(and.booleanExpression());
+              }
+
+              return Optional.empty();
+            });
+
+    return new LogicalExpression(
+        getLocation(ctx), LogicalExpression.Operator.AND, visit(terms, Expression.class));
+  }
+
+  private static List<ParserRuleContext> flatten(
+      ParserRuleContext root,
+      Function<ParserRuleContext, Optional<List<? extends ParserRuleContext>>> extractChildren) {
+    List<ParserRuleContext> result = new ArrayList<>();
+    Deque<ParserRuleContext> pending = new ArrayDeque<>();
+    pending.push(root);
+
+    while (!pending.isEmpty()) {
+      ParserRuleContext next = pending.pop();
+
+      Optional<List<? extends ParserRuleContext>> children = extractChildren.apply(next);
+      if (!children.isPresent()) {
+        result.add(next);
+      } else {
+        for (int i = children.get().size() - 1; i >= 0; i--) {
+          pending.push(children.get().get(i));
+        }
+      }
     }
 
-    if (ctx.primaryExpression() != null) {
-      return new AllColumns(getLocation(ctx), (Expression) visit(ctx.primaryExpression()), aliases);
-    } else {
-      return new AllColumns(getLocation(ctx), aliases);
-    }
+    return result;
   }
 
   // *************** from clause *****************
@@ -892,21 +998,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getComparisonOperator(((TerminalNode) ctx.comparisonOperator().getChild(0)).getSymbol()),
         (Expression) visit(ctx.value),
         (Expression) visit(ctx.right));
-  }
-
-  @Override
-  public Node visitLogicalNot(RelationalSqlParser.LogicalNotContext ctx) {
-    return super.visitLogicalNot(ctx);
-  }
-
-  @Override
-  public Node visitOr(RelationalSqlParser.OrContext ctx) {
-    return super.visitOr(ctx);
-  }
-
-  @Override
-  public Node visitAnd(RelationalSqlParser.AndContext ctx) {
-    return super.visitAnd(ctx);
   }
 
   @Override
@@ -1242,42 +1333,45 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitBasicStringLiteral(RelationalSqlParser.BasicStringLiteralContext ctx) {
-    return super.visitBasicStringLiteral(ctx);
+    return new StringLiteral(getLocation(ctx), unquote(ctx.STRING().getText()));
   }
 
   @Override
   public Node visitUnicodeStringLiteral(RelationalSqlParser.UnicodeStringLiteralContext ctx) {
-    return super.visitUnicodeStringLiteral(ctx);
+    return new StringLiteral(getLocation(ctx), decodeUnicodeLiteral(ctx));
   }
 
   @Override
   public Node visitBinaryLiteral(RelationalSqlParser.BinaryLiteralContext ctx) {
-    return super.visitBinaryLiteral(ctx);
+    String raw = ctx.BINARY_LITERAL().getText();
+    return new BinaryLiteral(getLocation(ctx), unquote(raw.substring(1)));
   }
 
   @Override
-  public Node visitNumericLiteral(RelationalSqlParser.NumericLiteralContext ctx) {
-    return super.visitNumericLiteral(ctx);
+  public Node visitDecimalLiteral(RelationalSqlParser.DecimalLiteralContext ctx) {
+    return new DecimalLiteral(getLocation(ctx), ctx.getText());
+  }
+
+  @Override
+  public Node visitDoubleLiteral(RelationalSqlParser.DoubleLiteralContext ctx) {
+    return new DoubleLiteral(getLocation(ctx), ctx.getText());
+  }
+
+  @Override
+  public Node visitIntegerLiteral(RelationalSqlParser.IntegerLiteralContext ctx) {
+    return new LongLiteral(getLocation(ctx), ctx.getText());
   }
 
   @Override
   public Node visitBooleanLiteral(RelationalSqlParser.BooleanLiteralContext ctx) {
-    return super.visitBooleanLiteral(ctx);
-  }
-
-  @Override
-  public Node visitStringLiteral(RelationalSqlParser.StringLiteralContext ctx) {
-    return super.visitStringLiteral(ctx);
+    return new BooleanLiteral(getLocation(ctx), ctx.getText());
   }
 
   @Override
   public Node visitParameter(RelationalSqlParser.ParameterContext ctx) {
-    return super.visitParameter(ctx);
-  }
-
-  @Override
-  public Node visitTrimsSpecification(RelationalSqlParser.TrimsSpecificationContext ctx) {
-    return super.visitTrimsSpecification(ctx);
+    Parameter parameter = new Parameter(getLocation(ctx), parameterPosition);
+    parameterPosition++;
+    return parameter;
   }
 
   @Override
@@ -1293,16 +1387,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitBooleanValue(RelationalSqlParser.BooleanValueContext ctx) {
-    return super.visitBooleanValue(ctx);
-  }
-
-  @Override
-  public Node visitInterval(RelationalSqlParser.IntervalContext ctx) {
-    return super.visitInterval(ctx);
-  }
-
-  @Override
   public Node visitIntervalField(RelationalSqlParser.IntervalFieldContext ctx) {
     return super.visitIntervalField(ctx);
   }
@@ -1312,6 +1396,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return super.visitTimeDuration(ctx);
   }
 
+  // ***************** arguments *****************
   @Override
   public Node visitGenericType(RelationalSqlParser.GenericTypeContext ctx) {
     List<DataTypeParameter> parameters =
@@ -1325,189 +1410,123 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitTypeParameter(RelationalSqlParser.TypeParameterContext ctx) {
-    return super.visitTypeParameter(ctx);
-  }
+    if (ctx.INTEGER_VALUE() != null) {
+      return new NumericParameter(getLocation(ctx), ctx.getText());
+    }
 
-  @Override
-  public Node visitUpdateAssignment(RelationalSqlParser.UpdateAssignmentContext ctx) {
-    return super.visitUpdateAssignment(ctx);
-  }
-
-  @Override
-  public Node visitReturnStatement(RelationalSqlParser.ReturnStatementContext ctx) {
-    return super.visitReturnStatement(ctx);
-  }
-
-  @Override
-  public Node visitAssignmentStatement(RelationalSqlParser.AssignmentStatementContext ctx) {
-    return super.visitAssignmentStatement(ctx);
-  }
-
-  @Override
-  public Node visitSimpleCaseStatement(RelationalSqlParser.SimpleCaseStatementContext ctx) {
-    return super.visitSimpleCaseStatement(ctx);
-  }
-
-  @Override
-  public Node visitSearchedCaseStatement(RelationalSqlParser.SearchedCaseStatementContext ctx) {
-    return super.visitSearchedCaseStatement(ctx);
-  }
-
-  @Override
-  public Node visitIfStatement(RelationalSqlParser.IfStatementContext ctx) {
-    return super.visitIfStatement(ctx);
-  }
-
-  @Override
-  public Node visitIterateStatement(RelationalSqlParser.IterateStatementContext ctx) {
-    return super.visitIterateStatement(ctx);
-  }
-
-  @Override
-  public Node visitLeaveStatement(RelationalSqlParser.LeaveStatementContext ctx) {
-    return super.visitLeaveStatement(ctx);
-  }
-
-  @Override
-  public Node visitCompoundStatement(RelationalSqlParser.CompoundStatementContext ctx) {
-    return super.visitCompoundStatement(ctx);
-  }
-
-  @Override
-  public Node visitLoopStatement(RelationalSqlParser.LoopStatementContext ctx) {
-    return super.visitLoopStatement(ctx);
-  }
-
-  @Override
-  public Node visitWhileStatement(RelationalSqlParser.WhileStatementContext ctx) {
-    return super.visitWhileStatement(ctx);
-  }
-
-  @Override
-  public Node visitRepeatStatement(RelationalSqlParser.RepeatStatementContext ctx) {
-    return super.visitRepeatStatement(ctx);
-  }
-
-  @Override
-  public Node visitCaseStatementWhenClause(RelationalSqlParser.CaseStatementWhenClauseContext ctx) {
-    return super.visitCaseStatementWhenClause(ctx);
-  }
-
-  @Override
-  public Node visitElseIfClause(RelationalSqlParser.ElseIfClauseContext ctx) {
-    return super.visitElseIfClause(ctx);
-  }
-
-  @Override
-  public Node visitElseClause(RelationalSqlParser.ElseClauseContext ctx) {
-    return super.visitElseClause(ctx);
-  }
-
-  @Override
-  public Node visitVariableDeclaration(RelationalSqlParser.VariableDeclarationContext ctx) {
-    return super.visitVariableDeclaration(ctx);
-  }
-
-  @Override
-  public Node visitSqlStatementList(RelationalSqlParser.SqlStatementListContext ctx) {
-    return super.visitSqlStatementList(ctx);
-  }
-
-  @Override
-  public Node visitPrivilege(RelationalSqlParser.PrivilegeContext ctx) {
-    return super.visitPrivilege(ctx);
-  }
-
-  @Override
-  public Node visitQualifiedName(RelationalSqlParser.QualifiedNameContext ctx) {
-    return super.visitQualifiedName(ctx);
-  }
-
-  @Override
-  public Node visitSpecifiedPrincipal(RelationalSqlParser.SpecifiedPrincipalContext ctx) {
-    return super.visitSpecifiedPrincipal(ctx);
-  }
-
-  @Override
-  public Node visitCurrentUserGrantor(RelationalSqlParser.CurrentUserGrantorContext ctx) {
-    return super.visitCurrentUserGrantor(ctx);
-  }
-
-  @Override
-  public Node visitCurrentRoleGrantor(RelationalSqlParser.CurrentRoleGrantorContext ctx) {
-    return super.visitCurrentRoleGrantor(ctx);
-  }
-
-  @Override
-  public Node visitUnspecifiedPrincipal(RelationalSqlParser.UnspecifiedPrincipalContext ctx) {
-    return super.visitUnspecifiedPrincipal(ctx);
-  }
-
-  @Override
-  public Node visitUserPrincipal(RelationalSqlParser.UserPrincipalContext ctx) {
-    return super.visitUserPrincipal(ctx);
-  }
-
-  @Override
-  public Node visitRolePrincipal(RelationalSqlParser.RolePrincipalContext ctx) {
-    return super.visitRolePrincipal(ctx);
-  }
-
-  @Override
-  public Node visitRoles(RelationalSqlParser.RolesContext ctx) {
-    return super.visitRoles(ctx);
-  }
-
-  @Override
-  public Node visitUnquotedIdentifier(RelationalSqlParser.UnquotedIdentifierContext ctx) {
-    return new Identifier(getLocation(ctx), ctx.getText(), false);
-  }
-
-  @Override
-  public Node visitQuotedIdentifier(RelationalSqlParser.QuotedIdentifierContext ctx) {
-    String token = ctx.getText();
-    String identifier = token.substring(1, token.length() - 1).replace("\"\"", "\"");
-
-    return new Identifier(getLocation(ctx), identifier, true);
-  }
-
-  @Override
-  public Node visitDecimalLiteral(RelationalSqlParser.DecimalLiteralContext ctx) {
-    return super.visitDecimalLiteral(ctx);
-  }
-
-  @Override
-  public Node visitDoubleLiteral(RelationalSqlParser.DoubleLiteralContext ctx) {
-    return super.visitDoubleLiteral(ctx);
-  }
-
-  @Override
-  public Node visitIntegerLiteral(RelationalSqlParser.IntegerLiteralContext ctx) {
-    return super.visitIntegerLiteral(ctx);
-  }
-
-  @Override
-  public Node visitIdentifierUser(RelationalSqlParser.IdentifierUserContext ctx) {
-    return super.visitIdentifierUser(ctx);
-  }
-
-  @Override
-  public Node visitStringUser(RelationalSqlParser.StringUserContext ctx) {
-    return super.visitStringUser(ctx);
-  }
-
-  @Override
-  public Node visitNonReserved(RelationalSqlParser.NonReservedContext ctx) {
-    return super.visitNonReserved(ctx);
+    return new TypeParameter((DataType) visit(ctx.type()));
   }
 
   // ***************** helpers *****************
+
+  private enum UnicodeDecodeState {
+    EMPTY,
+    ESCAPED,
+    UNICODE_SEQUENCE
+  }
+
+  private static String decodeUnicodeLiteral(
+      RelationalSqlParser.UnicodeStringLiteralContext context) {
+    char escape;
+    if (context.UESCAPE() != null) {
+      String escapeString = unquote(context.STRING().getText());
+      check(!escapeString.isEmpty(), "Empty Unicode escape character", context);
+      check(
+          escapeString.length() == 1, "Invalid Unicode escape character: " + escapeString, context);
+      escape = escapeString.charAt(0);
+      check(
+          isValidUnicodeEscape(escape),
+          "Invalid Unicode escape character: " + escapeString,
+          context);
+    } else {
+      escape = '\\';
+    }
+
+    String rawContent = unquote(context.UNICODE_STRING().getText().substring(2));
+    StringBuilder unicodeStringBuilder = new StringBuilder();
+    StringBuilder escapedCharacterBuilder = new StringBuilder();
+    int charactersNeeded = 0;
+    UnicodeDecodeState state = UnicodeDecodeState.EMPTY;
+    for (int i = 0; i < rawContent.length(); i++) {
+      char ch = rawContent.charAt(i);
+      switch (state) {
+        case EMPTY:
+          if (ch == escape) {
+            state = UnicodeDecodeState.ESCAPED;
+          } else {
+            unicodeStringBuilder.append(ch);
+          }
+          break;
+        case ESCAPED:
+          if (ch == escape) {
+            unicodeStringBuilder.append(escape);
+            state = UnicodeDecodeState.EMPTY;
+          } else if (ch == '+') {
+            state = UnicodeDecodeState.UNICODE_SEQUENCE;
+            charactersNeeded = 6;
+          } else if (isHexDigit(ch)) {
+            state = UnicodeDecodeState.UNICODE_SEQUENCE;
+            charactersNeeded = 4;
+            escapedCharacterBuilder.append(ch);
+          } else {
+            throw parseError("Invalid hexadecimal digit: " + ch, context);
+          }
+          break;
+        case UNICODE_SEQUENCE:
+          check(isHexDigit(ch), "Incomplete escape sequence: " + escapedCharacterBuilder, context);
+          escapedCharacterBuilder.append(ch);
+          if (charactersNeeded == escapedCharacterBuilder.length()) {
+            String currentEscapedCode = escapedCharacterBuilder.toString();
+            escapedCharacterBuilder.setLength(0);
+            int codePoint = Integer.parseInt(currentEscapedCode, 16);
+            check(
+                Character.isValidCodePoint(codePoint),
+                "Invalid escaped character: " + currentEscapedCode,
+                context);
+            if (Character.isSupplementaryCodePoint(codePoint)) {
+              unicodeStringBuilder.appendCodePoint(codePoint);
+            } else {
+              char currentCodePoint = (char) codePoint;
+              if (Character.isSurrogate(currentCodePoint)) {
+                throw parseError(
+                    String.format(
+                        "Invalid escaped character: %s. Escaped character is a surrogate. Use '\\+123456' instead.",
+                        currentEscapedCode),
+                    context);
+              }
+              unicodeStringBuilder.append(currentCodePoint);
+            }
+            state = UnicodeDecodeState.EMPTY;
+            charactersNeeded = -1;
+          } else {
+            check(
+                charactersNeeded > escapedCharacterBuilder.length(),
+                "Unexpected escape sequence length: " + escapedCharacterBuilder.length(),
+                context);
+          }
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+    }
+
+    check(
+        state == UnicodeDecodeState.EMPTY,
+        "Incomplete escape sequence: " + escapedCharacterBuilder.toString(),
+        context);
+    return unicodeStringBuilder.toString();
+  }
+
   private <T> Optional<T> visitIfPresent(ParserRuleContext context, Class<T> clazz) {
     return Optional.ofNullable(context).map(this::visit).map(clazz::cast);
   }
 
   private <T> List<T> visit(List<? extends ParserRuleContext> contexts, Class<T> clazz) {
     return contexts.stream().map(this::visit).map(clazz::cast).collect(toList());
+  }
+
+  private static String unquote(String value) {
+    return value.substring(1, value.length() - 1).replace("''", "'");
   }
 
   private QualifiedName getQualifiedName(RelationalSqlParser.QualifiedNameContext context) {
