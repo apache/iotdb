@@ -29,25 +29,25 @@ import static java.util.Objects.requireNonNull;
 
 public class AddColumn extends Statement {
 
-  private final Identifier name;
+  private final QualifiedName tableName;
   private final ColumnDefinition column;
 
-  public AddColumn(Identifier name, ColumnDefinition column) {
+  public AddColumn(QualifiedName tableName, ColumnDefinition column) {
     super(null);
 
-    this.name = requireNonNull(name, "name is null");
+    this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
   }
 
-  public AddColumn(NodeLocation location, Identifier name, ColumnDefinition column) {
+  public AddColumn(NodeLocation location, QualifiedName tableName, ColumnDefinition column) {
     super(requireNonNull(location, "location is null"));
 
-    this.name = requireNonNull(name, "name is null");
+    this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
   }
 
-  public Identifier getName() {
-    return name;
+  public QualifiedName getTableName() {
+    return tableName;
   }
 
   public ColumnDefinition getColumn() {
@@ -66,7 +66,7 @@ public class AddColumn extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, column);
+    return Objects.hash(tableName, column);
   }
 
   @Override
@@ -78,11 +78,11 @@ public class AddColumn extends Statement {
       return false;
     }
     AddColumn o = (AddColumn) obj;
-    return Objects.equals(name, o.name) && Objects.equals(column, o.column);
+    return Objects.equals(tableName, o.tableName) && Objects.equals(column, o.column);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("name", name).add("column", column).toString();
+    return toStringHelper(this).add("name", tableName).add("column", column).toString();
   }
 }

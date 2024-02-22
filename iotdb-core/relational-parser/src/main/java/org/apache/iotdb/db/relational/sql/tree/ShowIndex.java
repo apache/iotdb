@@ -27,34 +27,26 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropDB extends Statement {
+public class ShowIndex extends Statement {
+  private final QualifiedName tableName;
 
-  private final Identifier dbName;
-  private final boolean exists;
-
-  public DropDB(Identifier catalogName, boolean exists) {
+  public ShowIndex(QualifiedName tableName) {
     super(null);
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.tableName = requireNonNull(tableName, "tableName is null");
   }
 
-  public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
+  public ShowIndex(NodeLocation location, QualifiedName tableName) {
     super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.tableName = requireNonNull(tableName, "tableName is null");
   }
 
-  public Identifier getDbName() {
-    return dbName;
-  }
-
-  public boolean isExists() {
-    return exists;
+  public QualifiedName getTableName() {
+    return tableName;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDropDB(this, context);
+    return visitor.visitShowIndex(this, context);
   }
 
   @Override
@@ -63,24 +55,24 @@ public class DropDB extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DropDB o = (DropDB) obj;
-    return Objects.equals(dbName, o.dbName) && (exists == o.exists);
+    ShowIndex showIndex = (ShowIndex) o;
+    return Objects.equals(tableName, showIndex.tableName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dbName, exists);
+    return Objects.hash(tableName);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("catalogName", dbName).add("exists", exists).toString();
+    return toStringHelper(this).add("tableName", tableName).toString();
   }
 }

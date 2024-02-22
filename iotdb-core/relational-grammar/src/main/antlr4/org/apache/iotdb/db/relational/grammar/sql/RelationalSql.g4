@@ -130,14 +130,7 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier type columnCategory? charsetName?
-    ;
-
-columnCategory
-    : ID
-    | ATTRIBUTE
-    | TIME
-    | MEASUREMENT
+    : identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
     ;
 
 charsetName
@@ -413,7 +406,7 @@ querySpecification
     ;
 
 groupBy
-    : groupingElement (',' groupingElement)*
+    : setQuantifier? groupingElement (',' groupingElement)*
     ;
 
 groupingElement
@@ -586,11 +579,6 @@ identifierOrString
     | string
     ;
 
-timeZoneSpecifier
-    : TIME ZONE interval  #timeZoneInterval
-    | TIME ZONE string    #timeZoneString
-    ;
-
 comparisonOperator
     : EQ | NEQ | LT | LTE | GT | GTE
     ;
@@ -625,30 +613,6 @@ typeParameter
 
 whenClause
     : WHEN condition=expression THEN result=expression
-    ;
-
-rowPattern
-    : patternPrimary patternQuantifier?                 #quantifiedPrimary
-    | rowPattern rowPattern                             #patternConcatenation
-    | rowPattern '|' rowPattern                         #patternAlternation
-    ;
-
-patternPrimary
-    : identifier                                        #patternVariable
-    | '(' ')'                                           #emptyPattern
-    | PERMUTE '(' rowPattern (',' rowPattern)* ')'      #patternPermutation
-    | '(' rowPattern ')'                                #groupedPattern
-    | '^'                                               #partitionStartAnchor
-    | '$'                                               #partitionEndAnchor
-    | '{-' rowPattern '-}'                              #excludedPattern
-    ;
-
-patternQuantifier
-    : ASTERISK (reluctant=QUESTION_MARK)?                                                       #zeroOrMoreQuantifier
-    | PLUS (reluctant=QUESTION_MARK)?                                                           #oneOrMoreQuantifier
-    | QUESTION_MARK (reluctant=QUESTION_MARK)?                                                  #zeroOrOneQuantifier
-    | '{' exactly=INTEGER_VALUE '}' (reluctant=QUESTION_MARK)?                                  #rangeQuantifier
-    | '{' (atLeast=INTEGER_VALUE)? ',' (atMost=INTEGER_VALUE)? '}' (reluctant=QUESTION_MARK)?   #rangeQuantifier
     ;
 
 updateAssignment

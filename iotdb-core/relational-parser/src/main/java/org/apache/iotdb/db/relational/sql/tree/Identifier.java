@@ -56,6 +56,14 @@ public class Identifier extends Expression {
         delimited || isValidIdentifier(value), "value contains illegal characters: %s", value);
   }
 
+  public Identifier(NodeLocation location, String value) {
+    super(requireNonNull(location, "location is null"));
+    this.value = requireNonNull(value, "value is null");
+    this.delimited = !isValidIdentifier(value);
+
+    checkArgument(!value.isEmpty(), "value is empty");
+  }
+
   public Identifier(String value, boolean delimited) {
     super(null);
     this.value = requireNonNull(value, "value is null");

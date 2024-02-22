@@ -59,6 +59,12 @@ public class AllColumns extends SelectItem {
     this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
   }
 
+  public AllColumns(NodeLocation location, List<Identifier> aliases) {
+    super(requireNonNull(location, "location is null"));
+    this.target = null;
+    this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+  }
+
   public List<Identifier> getAliases() {
     return aliases;
   }

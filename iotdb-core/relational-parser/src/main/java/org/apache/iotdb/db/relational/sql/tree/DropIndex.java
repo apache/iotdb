@@ -27,34 +27,35 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropDB extends Statement {
+public class DropIndex extends Statement {
 
-  private final Identifier dbName;
-  private final boolean exists;
+  private final QualifiedName tableName;
 
-  public DropDB(Identifier catalogName, boolean exists) {
+  private final Identifier indexName;
+
+  public DropIndex(QualifiedName tableName, Identifier indexName) {
     super(null);
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.tableName = requireNonNull(tableName, "tableName is null");
+    this.indexName = requireNonNull(indexName, "indexName is null");
   }
 
-  public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
+  public DropIndex(NodeLocation location, QualifiedName tableName, Identifier indexName) {
     super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.tableName = requireNonNull(tableName, "tableName is null");
+    this.indexName = requireNonNull(indexName, "indexName is null");
   }
 
-  public Identifier getDbName() {
-    return dbName;
+  public QualifiedName getTableName() {
+    return tableName;
   }
 
-  public boolean isExists() {
-    return exists;
+  public Identifier getIndexName() {
+    return indexName;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDropDB(this, context);
+    return visitor.visitDropIndex(this, context);
   }
 
   @Override
@@ -63,24 +64,25 @@ public class DropDB extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DropDB o = (DropDB) obj;
-    return Objects.equals(dbName, o.dbName) && (exists == o.exists);
+    DropIndex dropIndex = (DropIndex) o;
+    return Objects.equals(tableName, dropIndex.tableName)
+        && Objects.equals(indexName, dropIndex.indexName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dbName, exists);
+    return Objects.hash(tableName, indexName);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("catalogName", dbName).add("exists", exists).toString();
+    return toStringHelper(this).add("tableName", tableName).add("indexName", indexName).toString();
   }
 }

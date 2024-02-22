@@ -24,63 +24,63 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropDB extends Statement {
+/** NULLIF(V1,V2): CASE WHEN V1=V2 THEN NULL ELSE V1 END */
+public class NullIfExpression extends Expression {
+  private final Expression first;
+  private final Expression second;
 
-  private final Identifier dbName;
-  private final boolean exists;
-
-  public DropDB(Identifier catalogName, boolean exists) {
+  public NullIfExpression(Expression first, Expression second) {
     super(null);
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.first = requireNonNull(first, "first is null");
+    this.second = requireNonNull(first, "second is null");
   }
 
-  public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
+  public NullIfExpression(NodeLocation location, Expression first, Expression second) {
     super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
+    this.first = requireNonNull(first, "first is null");
+    this.second = requireNonNull(first, "second is null");
   }
 
-  public Identifier getDbName() {
-    return dbName;
+  public Expression getFirst() {
+    return first;
   }
 
-  public boolean isExists() {
-    return exists;
+  public Expression getSecond() {
+    return second;
   }
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDropDB(this, context);
+    return visitor.visitNullIfExpression(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of();
+    return ImmutableList.of(first, second);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DropDB o = (DropDB) obj;
-    return Objects.equals(dbName, o.dbName) && (exists == o.exists);
+
+    NullIfExpression that = (NullIfExpression) o;
+    return Objects.equals(first, that.first) && Objects.equals(second, that.second);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dbName, exists);
+    return Objects.hash(first, second);
   }
 
   @Override
-  public String toString() {
-    return toStringHelper(this).add("catalogName", dbName).add("exists", exists).toString();
+  public boolean shallowEquals(Node other) {
+    return sameClass(this, other);
   }
 }

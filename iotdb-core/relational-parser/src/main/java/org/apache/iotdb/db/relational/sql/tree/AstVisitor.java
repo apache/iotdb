@@ -207,6 +207,10 @@ public abstract class AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
+  protected R visitNullIfExpression(NullIfExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
   protected R visitNullLiteral(NullLiteral node, C context) {
     return visitLiteral(node, context);
   }
@@ -348,6 +352,18 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitAddColumn(AddColumn node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreateIndex(CreateIndex node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropIndex(DropIndex node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowIndex(ShowIndex node, C context) {
     return visitStatement(node, context);
   }
 
