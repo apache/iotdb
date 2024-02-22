@@ -175,14 +175,8 @@ public class ProcedureManager {
 
   @TestOnly
   public TSStatus createManyDatabases() {
-    long id = this.executor.submitProcedure(new CreateManyDatabasesProcedure());
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean success = waitingProcedureFinished(Collections.singletonList(id), procedureStatus);
-    if (success) {
-      return StatusUtils.OK;
-    } else {
-      return RpcUtils.getStatus(procedureStatus);
-    }
+    this.executor.submitProcedure(new CreateManyDatabasesProcedure());
+    return StatusUtils.OK;
   }
 
   public TSStatus deleteDatabases(ArrayList<TDatabaseSchema> deleteSgSchemaList) {

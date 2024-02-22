@@ -28,12 +28,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,11 +51,13 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBProcedureIT {
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBProcedureIT.class);
 
-  @BeforeClass
-  public static void setUp() {
+  @Before
+  public void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -60,8 +67,8 @@ public class IoTDBProcedureIT {
         .setDataReplicationFactor(1);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
