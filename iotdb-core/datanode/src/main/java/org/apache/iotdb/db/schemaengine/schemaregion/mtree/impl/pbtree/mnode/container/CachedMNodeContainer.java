@@ -249,12 +249,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public Iterator<ICachedMNode> getChildrenIterator() {
-    return new CachedMNodeContainerIterator();
+    return new CachedMNodeContainerIterator((byte) 0);
   }
 
   @Override
   public Iterator<ICachedMNode> getChildrenBufferIterator() {
-    return new BufferIterator();
+    return new CachedMNodeContainerIterator((byte) 1);
   }
 
   @Override
@@ -374,10 +374,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   private class CachedMNodeContainerIterator implements Iterator<ICachedMNode> {
 
     Iterator<ICachedMNode> iterator;
-    byte status = 0;
+    byte status;
 
-    CachedMNodeContainerIterator() {
-      iterator = getChildCache().values().iterator();
+    CachedMNodeContainerIterator(byte _status) {
+      status = _status;
+      changeStatus();
     }
 
     @Override
@@ -401,52 +402,20 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
+          iterator = getChildCache().values().iterator();
           status = 1;
           return true;
         case 1:
-          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
+          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
           status = 2;
+          return true;
+        case 2:
+          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
+          status = 3;
           return true;
         default:
           return false;
       }
-    }
-  }
-
-  private class BufferIterator implements Iterator<ICachedMNode> {
-    Iterator<ICachedMNode> iterator;
-    byte status = 0;
-
-    BufferIterator() {
-      iterator = getNewChildBuffer().getMNodeChildBufferIterator();
-    }
-
-    @Override
-    public boolean hasNext() {
-      if (iterator.hasNext()) {
-        return true;
-      }
-      while (!iterator.hasNext()) {
-        if (!changeStatus()) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    @Override
-    public ICachedMNode next() {
-      return iterator.next();
-    }
-
-    private boolean changeStatus() {
-      if (status == 0) {
-        iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
-        status = 1;
-        return true;
-      }
-      return false;
     }
   }
 

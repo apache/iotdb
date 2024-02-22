@@ -27,13 +27,19 @@ import java.util.Map;
 
 public interface IMNodeChildBuffer extends IMNodeContainer<ICachedMNode> {
 
+  // get the iterator of the whole Buffer which is make a merge sort of the ReceivingBuffer and the
+  // FlushingBuffer
   Iterator<ICachedMNode> getMNodeChildBufferIterator();
 
+  // only get the FlushingBuffer
   Map<String, ICachedMNode> getFlushingBuffer();
 
+  // only get the ReceivingBuffer
   Map<String, ICachedMNode> getReceivingBuffer();
 
+  // Before flushing, use this to transfer ReceivingBuffer to FlushingBuffer
   void transferReceivingBufferToFlushingBuffer();
 
+  // After flushing, use this to clear the flushed node
   ICachedMNode removeFromFlushingBuffer(Object key);
 }

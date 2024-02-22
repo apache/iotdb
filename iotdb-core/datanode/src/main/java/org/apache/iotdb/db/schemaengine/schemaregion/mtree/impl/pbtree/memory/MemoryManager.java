@@ -324,7 +324,8 @@ public class MemoryManager implements IMemoryManager {
       ICachedMNode node;
       CacheEntry cacheEntry;
       if (!bufferedNodeIterator.hasNext() && status == 0) {
-        // 此时说明NewChildBuffer的flushingBuffer已经遍历完毕，需要遍历UpdateChildBuffer的flushingBuffer
+        // flushingBuffer of NewChildBuffer has been traversed, and the flushingBuffer of
+        // UpdateChildBuffer needs to be traversed.
         bufferedNodeIterator = container.getUpdatedChildFlushingBuffer().values().iterator();
         status = 1;
       }
@@ -346,12 +347,13 @@ public class MemoryManager implements IMemoryManager {
           synchronized (cacheEntry) {
             if (status == 1
                 && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
-              // 此时是处于updatebuffer当中，此时需要判断cacheEntry在updatebuffer的receivingbuffer当中是否有重复点，如果没有再设置为false
+              // In Updatebuffer it is necessary to judge whether the cacheEntry has duplicate
+              // points in the receivingbuffer of Updatebuffer. If not, set it to false.
             } else {
               cacheEntry.setVolatile(false);
               memoryStatistics.removeVolatileNode();
+              container.moveMNodeToCache(node.getName());
             }
-            container.moveMNodeToCache(node.getName());
 
             if (cacheEntry.hasVolatileDescendant()
                 && getCachedMNodeContainer(node).hasChildrenInBuffer()) {

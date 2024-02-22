@@ -42,10 +42,11 @@ import static java.util.Collections.emptySet;
 
 public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
-  protected Map<String, ICachedMNode> flushingBuffer; // 刷盘buffer，存储旧的数据节点
-  protected Map<String, ICachedMNode> receivingBuffer; // 接受新到来的buffer，存储新创建或者修改后的数据节点
+  protected Map<String, ICachedMNode> flushingBuffer; // Store old data nodes for disk flushing
+  protected Map<String, ICachedMNode> receivingBuffer; // Store newly created or modified data nodes
 
-  protected int totalSize = 0; // 总大小 包括flushingBuffer和receivingBuffer，不包括这两个buffer的交集
+  protected int totalSize =
+      0; // The total size is the union size of flushingBuffer and receivingBuffer.
 
   private static final IMNodeChildBuffer EMPTY_BUFFER = new MNodeChildBuffer.EmptyBuffer();
 
@@ -126,11 +127,12 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
   @Override
   public synchronized ICachedMNode remove(Object key) {
-    // 这里recevingBuffer和flushingBuffer当中存在部分重复key，所以删除的时候需要考虑
+    // There are some duplicate keys in recevingBuffer and flushingBuffer.
     ICachedMNode result1 = remove(flushingBuffer, key);
     ICachedMNode result2 = remove(receivingBuffer, key);
-    ICachedMNode result =
-        result1 != null ? result1 : result2; // 如果第一个为空，那么就看第二个结果；如果第一个不为空，那么第二个要么为空，要么和第一个一样
+    // If the first one is empty, then look at the second result; if the first one is not empty,
+    // then the second one is either empty or the same as the first one
+    ICachedMNode result = result1 != null ? result1 : result2;
     if (result != null) {
       totalSize--;
     }
@@ -156,7 +158,7 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
   @Override
   public Set<String> keySet() {
     Set<String> result = new TreeSet<>();
-    // 这个是集合结构，如果有重复，set会自动去重
+    // This is a set structure. If there are duplicates, set will automatically remove them.
     result.addAll(keySet(receivingBuffer));
     result.addAll(keySet(flushingBuffer));
     return result;
@@ -183,7 +185,7 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
   @Override
   public Set<Entry<String, ICachedMNode>> entrySet() {
     Set<Entry<String, ICachedMNode>> result = new HashSet<>();
-    // HashSet会自动去重
+    // HashSet will automatically remove duplicates
     result.addAll(entrySet(receivingBuffer));
     result.addAll(entrySet(flushingBuffer));
     return result;
@@ -203,19 +205,17 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
     List<ICachedMNode> receivingBufferList;
 
     MNodeChildBufferIterator() {
-      // 这里需要新建一个临时的List，因为两个Buffer当中存在重复，这里希望采用归并排序，将其合并去重
+      // use merge sort to merge them and remove duplicates.
       List<ICachedMNode> list = new ArrayList<>();
-      // 下面需要进行归并排序，将两个buffer当中的数据合并去重
-      // 先分别获取两个buffer的values
       receivingBufferList = new ArrayList<>(getReceivingBuffer().values());
       flushingBufferList = new ArrayList<>(getFlushingBuffer().values());
-      // 两个分别进行排序
       receivingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
       flushingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
     }
 
     private ICachedMNode tryGetNext() {
-      // 进入这里只有三种情况，分别为，两个都有剩，和两个各自有剩，然后进行逐步归并去重
+      // There are only three situations here, namely, both are left, and each of the two is left,
+      // and then gradually merge and remove duplicates.
       if (receivingIndex < receivingBufferList.size()
           && flushingIndex < flushingBufferList.size()) {
         ICachedMNode node1 = receivingBufferList.get(receivingIndex);
