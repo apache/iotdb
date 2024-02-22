@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
@@ -86,7 +87,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 
-public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
+public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> {
 
   private final Analysis analysis;
 
@@ -207,9 +208,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           deviceViewNodeList, deviceViewSplits, node, context, analysis);
     }
 
-    if (deviceViewNodeList.size() == 1
-        || (analysis.isHasSortNode() && !analysis.isDeviceViewSpecialProcess())
-        || analysis.isUseTopKNode()) {
+    // 1. Only one DeviceViewNode, the is no need to use MergeSortNode.
+    // 2. for DeviceView+SortNode case, the parent of DeviceViewNode will be SortNode, MergeSortNode
+    // will be generated in {@link #visitSort}.
+    // 3. for DeviceView+TopKNode case, there is no need MergeSortNode, TopKNode can output the
+    // sorted result.
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSortNode() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -306,6 +310,37 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         node.getMergeOrderParameter(),
         node.getOutputColumnNames(),
         node.getDeviceToMeasurementIndexesMap());
+  }
+
+  @Override
+  public List<PlanNode> visitTransform(TransformNode node, DistributionPlanContext context) {
+    List<PlanNode> children = rewrite(node.getChild(), context);
+    if (children.size() == 1) {
+      node.setChild(children.get(0));
+      return Collections.singletonList(node);
+    }
+
+    // for some query such as `select avg(s1)+avg(s2) from root.** where count(s3)>1 align by
+    // device`,
+    // the children of TransformNode may be N(N>1) DeviceViewNodes, so need return N TransformNodes
+    return children.stream()
+        .map(
+            child -> {
+              TransformNode transformNode = cloneTransformNodeWithOutChild(node, context);
+              transformNode.addChild(child);
+              return transformNode;
+            })
+        .collect(Collectors.toList());
+  }
+
+  private TransformNode cloneTransformNodeWithOutChild(
+      TransformNode node, DistributionPlanContext context) {
+    return new TransformNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getOutputExpressions(),
+        node.isKeepNull(),
+        node.getZoneId(),
+        node.getScanOrder());
   }
 
   @Override

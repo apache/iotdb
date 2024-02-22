@@ -32,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
@@ -264,6 +266,90 @@ public class AggregationAlignByDeviceTest {
                 .getChildren()
                 .get(0)
             instanceof FullOuterTimeJoinNode);
+  }
+
+  /*
+   * IdentitySinkNode-32
+   *   └──TransformNode-10
+   *       └──MergeSort-27
+   *           ├──SortNode-28
+   *           │   └──TransformNode-25
+   *           │       └──DeviceView-11
+   *           │           └──HorizontallyConcatNode-17
+   *           │               ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(avg, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           │               └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           └──ExchangeNode-30: [SourceAddress:192.0.4.1/test.2.0/31]
+   *
+   * IdentitySinkNode-31
+   *   └──SortNode-29
+   *       └──TransformNode-26
+   *           └──DeviceView-18
+   *               └──HorizontallyConcatNode-24
+   *                   ├──SeriesAggregationScanNode-22:[SeriesPath: root.sg.d55555.s1, Descriptor: [AggregationDescriptor(avg, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                   └──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d55555.s2, Descriptor: [AggregationDescriptor(avg, SINGLE), AggregationDescriptor(max_value, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
+  @Test
+  public void orderByExpressionTest() {
+    sql =
+        "select avg(s1)+avg(s2) from root.sg.d22, root.sg.d55555 order by max_value(s2) align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TransformNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof SortNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TransformNode);
+    assertTrue(
+        firstFiTopNode
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof DeviceViewNode);
+    assertTrue(
+        firstFiTopNode
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof HorizontallyConcatNode);
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    assertTrue(secondFiRoot instanceof IdentitySinkNode);
+    assertTrue(secondFiRoot.getChildren().get(0) instanceof SortNode);
+    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof TransformNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof DeviceViewNode);
+    assertTrue(
+        secondFiRoot
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof HorizontallyConcatNode);
   }
 
   @Test
