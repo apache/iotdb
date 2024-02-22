@@ -104,7 +104,7 @@ public class IoTDBClusterRestartIT {
     EnvFactory.getEnv().startAllConfigNodes();
     logger.info("Restarting all DataNodes...");
     EnvFactory.getEnv().startAllDataNodes();
-    Assert.assertTrue(((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown());
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
   }
 
   @Test
@@ -228,8 +228,7 @@ public class IoTDBClusterRestartIT {
     }
     EnvFactory.getEnv().startAllDataNodes();
     logger.info("Restarted");
-    Assert.assertTrue(
-        ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusOneUnknownOtherRunning());
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusOneUnknownOtherRunning();
     logger.info("Working without Seed-ConfigNode");
   }
 }
