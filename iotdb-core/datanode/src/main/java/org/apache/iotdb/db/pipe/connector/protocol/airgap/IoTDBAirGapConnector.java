@@ -94,6 +94,9 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
+  // The air gap connector does not use clientManager thus we put handshake version here
+  protected int receiverHandshakeVersion = 2;
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
@@ -207,18 +210,23 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
       // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
-      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))
-          && !send(
-              socket,
-              PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
-                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-        throw new PipeConnectionException(
-            "Handshake error with target server ip: " + ip + ", port: " + port);
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
+        receiverHandshakeVersion = 1;
+        if (!send(
+            socket,
+            PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+          throw new PipeConnectionException(
+              "Handshake error with target server ip: " + ip + ", port: " + port);
+        }
       } else {
-        isSocketAlive.set(i, true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
-        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
+        // To avoid previous V2 failure stemming from connection failure
+        // Try transfer mods from now on
+        receiverHandshakeVersion = 2;
       }
+      isSocketAlive.set(i, true);
+      socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+      LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
     }
 
     for (int i = 0; i < sockets.size(); i++) {
