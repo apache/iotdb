@@ -98,7 +98,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
-  private boolean transferModFile; // Whether to transfer mods in historical mode
+  private boolean shouldTransferModFile; // Whether to transfer mods in historical mode
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -179,7 +179,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 SOURCE_HISTORY_END_TIME_KEY));
       }
 
-      transferModFile =
+      shouldTransferModFile =
           parameters.getBooleanOrDefault(
               Arrays.asList(SOURCE_HISTORY_MODS_ENABLE_KEY, EXTRACTOR_HISTORY_MODS_ENABLE_KEY),
               EXTRACTOR_HISTORY_MODS_ENABLE_DEFAULT_VALUE);
@@ -384,7 +384,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource, transferModFile);
+                PipeResourceManager.tsfile().pinTsFileResource(resource, shouldTransferModFile);
               } catch (IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
@@ -458,7 +458,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             false,
             false,
-            transferModFile,
+            shouldTransferModFile,
             pipeName,
             pipeTaskMeta,
             pattern,
