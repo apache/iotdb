@@ -340,7 +340,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         context.queryContext.getQueryId().genPlanNodeId(),
         node.getOutputExpressions(),
         node.isKeepNull(),
-        node.getZoneId(),
         node.getScanOrder());
   }
 
