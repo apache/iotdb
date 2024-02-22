@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseState
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
@@ -68,8 +70,17 @@ public class IoTDBProcedureIT {
    * only once. So let us shutdown the leader at the middle of the procedure.
    */
   @Test
-  public void stateMachineProcedureRecoverTest() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment(3, 1);
+  public void procedureRecoverAtAnotherConfigNodeTest() throws Exception {
+    recoverTest(3, false);
+  }
+
+  @Test
+  public void procedureRecoverAtTheSameConfigNodeTest() throws Exception {
+    recoverTest(1, true);
+  }
+
+  private void recoverTest(int configNodeNum, boolean needReopenLeader) throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(configNodeNum, 1);
 
     // prepare expectedDatabases
     Set<String> expectedDatabases = new HashSet<>();
@@ -96,17 +107,25 @@ public class IoTDBProcedureIT {
     Assert.assertTrue(0 < resp.getDatabaseInfoMap().size());
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
-    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
-    leaderClient =
+    final int oldLeaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+    EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).stop();
+    if (needReopenLeader) {
+      EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).start();
+    }
+    SyncConfigNodeIServiceClient newLeaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    TimeUnit.SECONDS.sleep(1);
-
-    // Final check
-    resp = leaderClient.showDatabase(req);
-    Assert.assertEquals(MAX_STATE, resp.getDatabaseInfoMap().size());
-    resp.getDatabaseInfoMap()
-        .keySet()
-        .forEach(databaseName -> expectedDatabases.remove(databaseName));
-    Assert.assertEquals(0, expectedDatabases.size());
+    Callable<Boolean> finalCheck =
+        () -> {
+          TShowDatabaseResp resp1 = newLeaderClient.showDatabase(req);
+          if (MAX_STATE != resp1.getDatabaseInfoMap().size()) {
+            return false;
+          }
+          resp1
+              .getDatabaseInfoMap()
+              .keySet()
+              .forEach(databaseName -> expectedDatabases.remove(databaseName));
+          return expectedDatabases.isEmpty();
+        };
+    Awaitility.await().atMost(5, TimeUnit.SECONDS).until(finalCheck);
   }
 }

@@ -47,7 +47,7 @@ public class CreateManyDatabasesProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
   public static final int MAX_STATE = 100;
   public static final String DATABASE_NAME_PREFIX = "root.test_";
-  public static final long SLEEP_FOREVER = 10000000000000L;
+  public static final long SLEEP_FOREVER = Long.MAX_VALUE;
   private boolean createFailedOnce = false;
 
   @Override
