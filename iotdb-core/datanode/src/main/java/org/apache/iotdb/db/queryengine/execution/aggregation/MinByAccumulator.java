@@ -21,28 +21,28 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class MaxByAccumulator extends MaxMinByBaseAccumulator {
-  protected MaxByAccumulator(TSDataType xDataType, TSDataType yDataType) {
+public class MinByAccumulator extends MaxMinByBaseAccumulator {
+  protected MinByAccumulator(TSDataType xDataType, TSDataType yDataType) {
     super(xDataType, yDataType);
   }
 
   @Override
   protected boolean check(int yValue, int yExtremeValue) {
-    return yValue > yExtremeValue;
+    return yValue < yExtremeValue;
   }
 
   @Override
   protected boolean check(long yValue, long yExtremeValue) {
-    return yValue > yExtremeValue;
+    return yValue < yExtremeValue;
   }
 
   @Override
   protected boolean check(float yValue, float yExtremeValue) {
-    return yValue > yExtremeValue;
+    return yValue < yExtremeValue;
   }
 
   @Override
   protected boolean check(double yValue, double yExtremeValue) {
-    return yValue > yExtremeValue;
+    return yValue < yExtremeValue;
   }
 }

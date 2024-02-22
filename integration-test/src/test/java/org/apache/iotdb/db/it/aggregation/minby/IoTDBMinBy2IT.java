@@ -17,32 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.aggregation;
+package org.apache.iotdb.db.it.aggregation.minby;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.it.env.EnvFactory;
 
-public class MaxByAccumulator extends MaxMinByBaseAccumulator {
-  protected MaxByAccumulator(TSDataType xDataType, TSDataType yDataType) {
-    super(xDataType, yDataType);
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+
+public class IoTDBMinBy2IT extends IoTDBMinByIT {
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
+    EnvFactory.getEnv().initClusterEnvironment();
+    prepareData(NON_ALIGNED_DATASET);
   }
 
-  @Override
-  protected boolean check(int yValue, int yExtremeValue) {
-    return yValue > yExtremeValue;
-  }
-
-  @Override
-  protected boolean check(long yValue, long yExtremeValue) {
-    return yValue > yExtremeValue;
-  }
-
-  @Override
-  protected boolean check(float yValue, float yExtremeValue) {
-    return yValue > yExtremeValue;
-  }
-
-  @Override
-  protected boolean check(double yValue, double yExtremeValue) {
-    return yValue > yExtremeValue;
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
