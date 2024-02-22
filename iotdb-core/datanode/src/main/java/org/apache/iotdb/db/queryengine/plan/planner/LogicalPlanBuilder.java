@@ -850,7 +850,6 @@ public class LogicalPlanBuilder {
           -1);
       this.root = mergeSortNode;
     } else {
-      // order by based on device, use DeviceViewNode
       this.root =
           addDeviceViewNode(
               orderByParameter,
