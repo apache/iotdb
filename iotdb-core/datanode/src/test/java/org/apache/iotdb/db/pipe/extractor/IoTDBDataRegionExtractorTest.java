@@ -80,6 +80,9 @@ public class IoTDBDataRegionExtractorTest {
     Assert.assertEquals(
         testIoTDBDataRegionExtractorWithPattern("root.1``2").getClass(),
         IllegalArgumentException.class);
+    Assert.assertEquals(
+        testIoTDBDataRegionExtractorWithPattern("root.a.*").getClass(),
+        IllegalArgumentException.class);
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.ab."));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a#b"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.一二三"));
