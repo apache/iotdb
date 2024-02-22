@@ -78,10 +78,16 @@ public class IoTDBDataRegionExtractorTest {
         testIoTDBDataRegionExtractorWithPattern("root.`1`2`").getClass(),
         IllegalArgumentException.class);
     Assert.assertEquals(
+        testIoTDBDataRegionExtractorWithPattern("root.``11").getClass(),
+        IllegalArgumentException.class);
+    Assert.assertEquals(
         testIoTDBDataRegionExtractorWithPattern("root.1``2").getClass(),
         IllegalArgumentException.class);
     Assert.assertEquals(
         testIoTDBDataRegionExtractorWithPattern("root.a.*").getClass(),
+        IllegalArgumentException.class);
+    Assert.assertEquals(
+        testIoTDBDataRegionExtractorWithPattern("root.a*.a").getClass(),
         IllegalArgumentException.class);
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.ab."));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a#b"));
@@ -94,6 +100,7 @@ public class IoTDBDataRegionExtractorTest {
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`a-b`"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`1``2```"));
+    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`1->"));
   }
 
   public Exception testIoTDBDataRegionExtractorWithPattern(String pattern) {
