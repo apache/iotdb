@@ -361,7 +361,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer mod file if exists
-    if (pipeTsFileInsertionEvent.isWithMod()) {
+    if (pipeTsFileInsertionEvent.isWithMod() && receiverHandshakeVersion >= 2) {
       transferFilePieces(pipeTsFileInsertionEvent.getModFile(), socket);
     }
 
