@@ -1018,24 +1018,24 @@ public class IoTDBAlignedSeriesQueryIT {
   public void selectAllAlignedWithLimitOffsetTest() {
 
     String[] retArray =
-            new String[] {
-                    "14,14.0,14,14,null,null",
-                    "15,15.0,15,15,null,null",
-                    "16,16.0,16,16,null,null",
-                    "17,17.0,17,17,null,null",
-                    "18,18.0,18,18,null,null",
-            };
+        new String[] {
+          "14,14.0,14,14,null,null",
+          "15,15.0,15,15,null,null",
+          "16,16.0,16,16,null,null",
+          "17,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null",
+        };
 
     String[] columnNames = {
-            "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-                   statement.executeQuery(
-                           "select * from root.sg1.d1 where time >= 9 and time <= 33 offset 5 limit 5")) {
+          statement.executeQuery(
+              "select * from root.sg1.d1 where time >= 9 and time <= 33 offset 5 limit 5")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
