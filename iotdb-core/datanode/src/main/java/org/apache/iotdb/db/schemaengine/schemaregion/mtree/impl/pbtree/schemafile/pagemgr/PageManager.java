@@ -626,6 +626,11 @@ public abstract class PageManager implements IPageManager {
     cxt.markDirty(page);
   }
 
+  @Override
+  public PagePool getPagePool() {
+    return pagePool;
+  }
+
   // endregion
 
   // region Inner Utilities

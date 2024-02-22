@@ -28,6 +28,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontro
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.MemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.page.PageLifecycleManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 
@@ -91,6 +92,8 @@ public class PBTreeFactory {
     regionStatistics.setMemoryManager(memoryManager);
 
     ReleaseFlushMonitor releaseFlushMonitor = ReleaseFlushMonitor.getInstance();
+    PageLifecycleManager.getInstance()
+        .registerPagePool(schemaRegionId, schemaFile.getPageManager().getPagePool());
     CachedMTreeStore cachedMTreeStore =
         new CachedMTreeStore(
             schemaRegionId,

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.Lock
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemoryStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.page.PageLifecycleManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.iterator.CachedTraverserIterator;
@@ -556,6 +557,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
       }
       file = null;
+      PageLifecycleManager.getInstance().removePagePool(schemaRegionId);
     } finally {
       lockManager.globalWriteUnlock();
     }
