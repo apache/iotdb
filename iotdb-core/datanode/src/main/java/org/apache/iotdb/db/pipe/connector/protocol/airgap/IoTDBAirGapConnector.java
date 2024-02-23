@@ -96,7 +96,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private long currentClientIndex = 0;
 
   // The air gap connector does not use clientManager thus we put handshake version here
-  protected PipeRequestType receiverHandshakeVersion = PipeRequestType.HANDSHAKE_V2;
+  private PipeRequestType receiverHandshakeVersion = PipeRequestType.HANDSHAKE_V2;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
