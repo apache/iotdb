@@ -31,6 +31,10 @@ path
     | suffixPath EOF
     ;
 
+prefixPatternPath
+    : ROOT (DOT nodeNameWithoutWildcard)* (DOT prefixNodeNameSlice?)? EOF
+    ;
+
 prefixPath
     : ROOT (DOT nodeName)*
     ;
@@ -48,6 +52,11 @@ nodeName
 
 nodeNameWithoutWildcard
     : identifier
+    ;
+
+prefixNodeNameSlice
+    : LEFT_QUOTED_ID
+    | nodeNameSlice
     ;
 
 nodeNameSlice

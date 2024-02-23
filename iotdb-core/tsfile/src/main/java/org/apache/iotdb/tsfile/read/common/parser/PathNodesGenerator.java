@@ -47,7 +47,7 @@ public class PathNodesGenerator {
     }
   }
 
-  /** throw exception if path is illegal. */
+  /** Throw exception if path is illegal. */
   public static void checkPath(String path) throws PathParseException {
     try {
       invokeParser(path);
@@ -56,7 +56,26 @@ public class PathNodesGenerator {
     }
   }
 
+  /**
+   * This method is for pipe to check prefix pattern. A valid prefix path shall be a possible prefix
+   * for a full path without wildcard. E.g: root.12, root.`1``*
+   *
+   * @param path the pattern to check
+   * @throws PathParseException if the pattern is illegal.
+   */
+  public static void checkPrefixPatternPath(String path) throws PathParseException {
+    try {
+      invokeParser(path, true);
+    } catch (ParseCancellationException e) {
+      throw new PathParseException(path);
+    }
+  }
+
   private static String[] invokeParser(String path) {
+    return invokeParser(path, false);
+  }
+
+  private static String[] invokeParser(String path, boolean isPrefixPattern) {
 
     CharStream charStream1 = CharStreams.fromString(path);
 
@@ -74,7 +93,7 @@ public class PathNodesGenerator {
     ParseTree tree;
     try {
       // STAGE 1: try with simpler/faster SLL(*)
-      tree = pathParser1.path();
+      tree = isPrefixPattern ? pathParser1.prefixPatternPath() : pathParser1.path();
       // if we get here, there was no syntax error and SLL(*) was enough; there is no need to try
       // full LL(*)
     } catch (Exception ex) {
@@ -92,7 +111,7 @@ public class PathNodesGenerator {
       pathParser2.addErrorListener(PathParseError.INSTANCE);
 
       // STAGE 2: parser with full LL(*)
-      tree = pathParser2.path();
+      tree = isPrefixPattern ? pathParser2.prefixPatternPath() : pathParser2.path();
       // if we get here, it's LL not SLL
     }
     return pathVisitor.visit(tree);

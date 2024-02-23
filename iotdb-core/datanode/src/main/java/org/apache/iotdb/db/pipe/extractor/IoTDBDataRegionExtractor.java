@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionTsFileExtractor;
@@ -41,8 +39,9 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -176,42 +175,11 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   }
 
   private void validatePattern(String pattern) {
-    // Prefix match does not support wildcard address
-    if (!pattern.startsWith("root") || pattern.contains("*.") || pattern.contains(".*")) {
-      throw new IllegalArgumentException(
-          "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
-    }
-
     try {
-      PathUtils.isLegalPath(pattern);
-    } catch (IllegalPathException e) {
-      try {
-        if ("root".equals(pattern) || "root.".equals(pattern)) {
-          return;
-        }
-
-        // Split the pattern to nodes.
-        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
-
-        // Check whether the pattern without last node is legal.
-        PathUtils.splitPathToDetachedNodes(
-            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
-        String lastNode = pathNodes[pathNodes.length - 1];
-
-        // Check whether the last node is legal.
-        if (!"".equals(lastNode)) {
-          if (lastNode.startsWith("`")) {
-            if (lastNode.substring(1).replace("``", "").contains("`")) {
-              throw new IllegalArgumentException();
-            }
-          } else {
-            Double.parseDouble(lastNode);
-          }
-        }
-      } catch (Exception ignored) {
-        throw new IllegalArgumentException(
-            "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
-      }
+      PathNodesGenerator.checkPrefixPatternPath(pattern);
+    } catch (PathParseException e) {
+      throw new IllegalArgumentException(
+          "The prefix path `extractor.pattern` or `source.pattern` is illegal.");
     }
   }
 

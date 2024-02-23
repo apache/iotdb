@@ -150,7 +150,9 @@ QUOTED_ID
     : BQUOTA_STRING
     ;
 
-
+LEFT_QUOTED_ID
+    : LEFT_HALF_BQUOTA_STRING
+    ;
 
 fragment NAME_CHAR
     : 'A'..'Z'
@@ -180,6 +182,10 @@ fragment SQUOTA_STRING
 
 fragment BQUOTA_STRING
     : '`' ( '``' | ~('`') )* '`'
+    ;
+
+fragment LEFT_HALF_BQUOTA_STRING
+    : '`' ( '``' | ~('`') )*
     ;
 
 // Characters and write it this way for case sensitivity
