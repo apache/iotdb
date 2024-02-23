@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.Capability130;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
@@ -60,7 +61,7 @@ public class IoTDBStartCheck {
   private boolean isFirstStart = false;
 
   private final File propertiesFile;
-  private final File oldPropertiesFile;
+  @Capability130 private final File oldPropertiesFile;
   private final File tmpPropertiesFile;
 
   private final Properties properties = new Properties();
@@ -235,6 +236,7 @@ public class IoTDBStartCheck {
    *
    * @throws IOException If copy fail or delete fail
    */
+  @Capability130
   public void checkOldSystemConfig() throws IOException {
     if (oldPropertiesFile.exists()) {
       FileUtils.copyFile(oldPropertiesFile, propertiesFile);
