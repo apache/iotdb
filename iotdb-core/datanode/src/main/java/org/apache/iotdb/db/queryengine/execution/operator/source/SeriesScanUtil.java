@@ -501,21 +501,16 @@ public class SeriesScanUtil {
     unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
     unpackAllOverlappedChunkMetadataToPageReaders(endpointTime, false);
 
-    Statistics firstPageStatistics = firstPageReader.getStatistics();
-    if (!seqPageReaders.isEmpty()
-        && orderUtils.isOverlapped(firstPageStatistics, seqPageReaders.get(0).getStatistics())) {
-      return true;
-    }
-    if (!unSeqPageReaders.isEmpty()
-        && orderUtils.isOverlapped(firstPageStatistics, unSeqPageReaders.peek().getStatistics())) {
-      return true;
-    }
-    if (mergeReader.hasNextTimeValuePair()) {
-      long currentMergeReaderTime = mergeReader.currentTimeValuePair().getTimestamp();
-      return orderUtils.isOverlapped(currentMergeReaderTime, firstPageStatistics)
-          || orderUtils.isExcessEndpoint(firstPageStatistics, currentMergeReaderTime);
-    }
-    return false;
+    return (!seqPageReaders.isEmpty()
+            && orderUtils.isOverlapped(
+                firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics()))
+        || (!unSeqPageReaders.isEmpty()
+                && orderUtils.isOverlapped(
+                    firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
+            || (mergeReader.hasNextTimeValuePair()
+                && orderUtils.isOverlapped(
+                    mergeReader.currentTimeValuePair().getTimestamp(),
+                    firstPageReader.getStatistics())));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
@@ -1268,8 +1263,6 @@ public class SeriesScanUtil {
 
     boolean isExcessEndpoint(long time, long endpointTime);
 
-    boolean isExcessEndpoint(Statistics<? extends Object> statistics, long endpointTime);
-
     /** Return true if taking first page reader from seq readers */
     boolean isTakeSeqAsFirst(
         Statistics<? extends Object> seqStatistics, Statistics<? extends Object> unseqStatistics);
@@ -1345,11 +1338,6 @@ public class SeriesScanUtil {
     @Override
     public boolean isExcessEndpoint(long time, long endpointTime) {
       return time < endpointTime;
-    }
-
-    @Override
-    public boolean isExcessEndpoint(Statistics<?> statistics, long endpointTime) {
-      return statistics.getEndTime() < endpointTime;
     }
 
     @Override
@@ -1473,11 +1461,6 @@ public class SeriesScanUtil {
     @Override
     public boolean isExcessEndpoint(long time, long endpointTime) {
       return time > endpointTime;
-    }
-
-    @Override
-    public boolean isExcessEndpoint(Statistics<?> statistics, long endpointTime) {
-      return statistics.getStartTime() > endpointTime;
     }
 
     @Override
