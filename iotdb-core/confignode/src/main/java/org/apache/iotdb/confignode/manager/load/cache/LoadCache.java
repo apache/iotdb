@@ -65,7 +65,7 @@ public class LoadCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadCache.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final long WAIT_LEADER_INTERVAL = 50;
   private static final long LEADER_ELECTION_WAITING_TIMEOUT =
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
@@ -545,10 +545,13 @@ public class LoadCache {
     LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
     while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
+      LOGGER.info(
+          "[RegionElection] containsKey: {}",
+          regionRouteCacheMap.containsKey(regionGroupIds.get(0)));
       regionGroupIds.forEach(
           regionGroupId -> {
             if (!regionRouteCacheMap.containsKey(regionGroupId)
-                || regionRouteCacheMap.get(regionGroupId).isRegionGroupUnready()) {
+                || regionRouteCacheMap.get(regionGroupId).isRegionGroupUnready(true)) {
               allRegionLeaderElected.set(false);
             }
           });
@@ -557,7 +560,7 @@ public class LoadCache {
         return;
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(HEARTBEAT_INTERVAL);
+        TimeUnit.MILLISECONDS.sleep(WAIT_LEADER_INTERVAL);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Interrupt when wait for leader election", e);

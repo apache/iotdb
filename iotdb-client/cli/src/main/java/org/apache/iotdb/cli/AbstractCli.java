@@ -32,6 +32,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -48,6 +50,7 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class AbstractCli {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractCli.class);
 
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
@@ -596,6 +599,8 @@ public abstract class AbstractCli {
         }
       } else {
         ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
+        long costTime = System.currentTimeMillis() - startTime;
+        logger.info("INSERT_FIRST: execute successfully, costTime: {}ms", costTime);
       }
     } catch (Exception e) {
       ctx.getPrinter().println("Msg: " + e);
