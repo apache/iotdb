@@ -779,8 +779,8 @@ public class DateTimeUtils {
   public static TimeDuration constructTimeDuration(String duration) {
     duration = duration.toLowerCase();
     String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    int temp = 0;
-    int monthDuration = 0;
+    long temp = 0;
+    long monthDuration = 0;
     long nonMonthDuration = 0;
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
@@ -809,6 +809,6 @@ public class DateTimeUtils {
         temp = 0;
       }
     }
-    return new TimeDuration(monthDuration, nonMonthDuration);
+    return new TimeDuration((int) monthDuration, nonMonthDuration);
   }
 }

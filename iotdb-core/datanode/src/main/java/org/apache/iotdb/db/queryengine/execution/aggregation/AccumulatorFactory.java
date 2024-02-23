@@ -67,6 +67,7 @@ public class AccumulatorFactory {
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {
     switch (aggregationType) {
       case MAX_BY:
+      case MIN_BY:
         return true;
       default:
         return false;
@@ -79,6 +80,9 @@ public class AccumulatorFactory {
       case MAX_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case MIN_BY:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

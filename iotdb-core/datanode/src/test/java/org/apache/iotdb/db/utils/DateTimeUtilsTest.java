@@ -261,5 +261,8 @@ public class DateTimeUtilsTest {
     timeDuration = DateTimeUtils.constructTimeDuration("1y1mo");
     Assert.assertEquals(13, timeDuration.monthDuration);
     Assert.assertEquals(0, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("10000000000ms");
+    Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
   }
 }

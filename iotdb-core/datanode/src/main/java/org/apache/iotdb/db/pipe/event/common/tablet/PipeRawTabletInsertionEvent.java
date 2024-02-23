@@ -186,7 +186,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public Tablet convertToTablet() {
-    if (!shouldParsePatternOrTime()) {
+    if (!shouldParseTimeOrPattern()) {
       return tablet;
     }
 
@@ -206,7 +206,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
-    return !shouldParsePatternOrTime() && tablet.rowSize == 0;
+    return !shouldParseTimeOrPattern() && tablet.rowSize == 0;
   }
 
   /////////////////////////// Object ///////////////////////////

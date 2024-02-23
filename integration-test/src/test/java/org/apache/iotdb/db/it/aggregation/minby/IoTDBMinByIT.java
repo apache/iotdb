@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.aggregation.maxby;
+package org.apache.iotdb.db.it.aggregation.minby;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -41,13 +41,13 @@ import java.util.Map;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxBy;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minBy;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBMaxByIT {
+public class IoTDBMinByIT {
   protected static final String[] NON_ALIGNED_DATASET =
       new String[] {
         "CREATE DATABASE root.db",
@@ -68,9 +68,9 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(1, 1, 1, 1, 1, true, \"1\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(2, 2, 2, 2, 2, false, \"2\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(3, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(2, 2, 2, 2, 2, true, \"4\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(3, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(4, 4, 4, 4, 4, false, \"4\")",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(2, 3, 3, 3, 3, true, \"4\")",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(3, 2, 2, 2, 2, false, \"3\")",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(4, 1, 1, 1, 1, false, \"4\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(8, 3, 3, 3, 3, false, \"3\")",
         "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(8, 8, 8, 8, 8, false, \"4\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(12, 3, 3, 3, 3, false, \"3\")",
@@ -96,13 +96,13 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(1, 1, 1, 1, 1, true, \"1\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(2, 2, 2, 2, 2, false, \"2\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(3, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(2, 2, 2, 2, 2, true, \"4\")",
-        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(3, 3, 3, 3, 3, false, \"3\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(2, 3, 3, 3, 3, true, \"4\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(3, 2, 2, 2, 2, false, \"3\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(4, 1, 1, 1, 1, false, \"1\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(12, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(12, 9, 9, 9, 9, false, \"1\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(12, 0, 0, 0, 0, false, \"1\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(13, 4, 4, 4, 4, false, \"4\")",
-        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(13, 9, 9, 9, 9, false, \"1\")",
+        "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(13, 0, 0, 0, 0, false, \"1\")",
         "flush"
       };
 
@@ -126,7 +126,7 @@ public class IoTDBMaxByIT {
         Statement statement = connection.createStatement()) {
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x1, y5) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x1, y5) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -135,7 +135,7 @@ public class IoTDBMaxByIT {
       }
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x1, y6) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x1, y6) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -144,7 +144,7 @@ public class IoTDBMaxByIT {
       }
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x5, y5) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x5, y5) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -153,7 +153,7 @@ public class IoTDBMaxByIT {
       }
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x5, y6) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x5, y6) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -162,7 +162,7 @@ public class IoTDBMaxByIT {
       }
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x6, y5) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x6, y5) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -171,7 +171,7 @@ public class IoTDBMaxByIT {
       }
       try {
         try (ResultSet resultSet =
-            statement.executeQuery("SELECT max_by(x6, y6) FROM root.db.d1")) {
+            statement.executeQuery("SELECT min_by(x6, y6) FROM root.db.d1")) {
           resultSet.next();
           fail();
         }
@@ -198,7 +198,7 @@ public class IoTDBMaxByIT {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 3",
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 3",
                 y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray);
@@ -223,7 +223,7 @@ public class IoTDBMaxByIT {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 4",
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 4",
                 y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray);
@@ -248,7 +248,7 @@ public class IoTDBMaxByIT {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s) from root.db.d1 where time <= 3",
+                "select min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s) from root.db.d1 where time <= 3",
                 y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray);
@@ -258,7 +258,7 @@ public class IoTDBMaxByIT {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s),max_by(time,%s) from root.db.d1 where time <= 4",
+                "select min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s),min_by(time,%s) from root.db.d1 where time <= 4",
                 y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray1);
@@ -275,18 +275,18 @@ public class IoTDBMaxByIT {
         Statement statement = connection.createStatement()) {
       String[] expectedHeader =
           new String[] {
-            "max_by(root.db.d1.x1 + 1 - 3, -cos(sin(root.db.d1.y2 / 10)))",
-            "max_by(root.db.d1.x2 * 2 / 3, -cos(sin(root.db.d1.y2 / 10)))",
-            "max_by(floor(root.db.d1.x3), -cos(sin(root.db.d1.y2 / 10)))",
-            "max_by(ceil(root.db.d1.x4), -cos(sin(root.db.d1.y2 / 10)))",
-            "max_by(root.db.d1.x5, -cos(sin(root.db.d1.y2 / 10)))",
-            "max_by(REPLACE(root.db.d1.x6, '3', '4'), -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(root.db.d1.x1 + 1 - 3, -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(root.db.d1.x2 * 2 / 3, -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(floor(root.db.d1.x3), -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(ceil(root.db.d1.x4), -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(root.db.d1.x5, -cos(sin(root.db.d1.y2 / 10)))",
+            "min_by(REPLACE(root.db.d1.x6, '3', '4'), -cos(sin(root.db.d1.y2 / 10)))",
           };
       String[] retArray = new String[] {"1.0,2.0,3.0,3.0,false,4,"};
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
-              "select max_by(x1 + 1 - 3,%s),max_by(x2 * 2 / 3,%s),max_by(floor(x3),%s),max_by(ceil(x4),%s),max_by(x5,%s),max_by(replace(x6, '3', '4'),%s) from root.db.d1 where time <= 3",
+              "select min_by(x1 + 1 - 3,%s),min_by(x2 * 2 / 3,%s),min_by(floor(x3),%s),min_by(ceil(x4),%s),min_by(x5,%s),min_by(replace(x6, '3', '4'),%s) from root.db.d1 where time <= 3",
               y, y, y, y, y, y),
           expectedHeader,
           retArray);
@@ -303,12 +303,12 @@ public class IoTDBMaxByIT {
       String[] expectedHeader =
           new String[] {
             DEVICE,
-            "max_by(x1 + 1 - 3, -cos(sin(y2 / 10)))",
-            "max_by(x2 * 2 / 3, -cos(sin(y2 / 10)))",
-            "max_by(floor(x3), -cos(sin(y2 / 10)))",
-            "max_by(ceil(x4), -cos(sin(y2 / 10)))",
-            "max_by(x5, -cos(sin(y2 / 10)))",
-            "max_by(REPLACE(x6, '3', '4'), -cos(sin(y2 / 10)))",
+            "min_by(x1 + 1 - 3, -cos(sin(y2 / 10)))",
+            "min_by(x2 * 2 / 3, -cos(sin(y2 / 10)))",
+            "min_by(floor(x3), -cos(sin(y2 / 10)))",
+            "min_by(ceil(x4), -cos(sin(y2 / 10)))",
+            "min_by(x5, -cos(sin(y2 / 10)))",
+            "min_by(REPLACE(x6, '3', '4'), -cos(sin(y2 / 10)))",
           };
       String[] retArray =
           new String[] {
@@ -317,7 +317,7 @@ public class IoTDBMaxByIT {
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
-              "select max_by(x1 + 1 - 3,%s),max_by(x2 * 2 / 3,%s),max_by(floor(x3),%s),max_by(ceil(x4),%s),max_by(x5,%s),max_by(replace(x6, '3', '4'),%s) from root.db.** where time <= 3 align by device",
+              "select min_by(x1 + 1 - 3,%s),min_by(x2 * 2 / 3,%s),min_by(floor(x3),%s),min_by(ceil(x4),%s),min_by(x5,%s),min_by(replace(x6, '3', '4'),%s) from root.db.** where time <= 3 align by device",
               y, y, y, y, y, y),
           expectedHeader,
           retArray);
@@ -334,12 +334,12 @@ public class IoTDBMaxByIT {
       String[] expectedHeader =
           new String[] {
             TIMESTAMP_STR,
-            "max_by(root.db.d1.x1, root.db.d1.y2)",
-            "max_by(root.db.d1.x2, root.db.d1.y2)",
-            "max_by(root.db.d1.x3, root.db.d1.y2)",
-            "max_by(root.db.d1.x4, root.db.d1.y2)",
-            "max_by(root.db.d1.x5, root.db.d1.y2)",
-            "max_by(root.db.d1.x6, root.db.d1.y2)",
+            "min_by(root.db.d1.x1, root.db.d1.y2)",
+            "min_by(root.db.d1.x2, root.db.d1.y2)",
+            "min_by(root.db.d1.x3, root.db.d1.y2)",
+            "min_by(root.db.d1.x4, root.db.d1.y2)",
+            "min_by(root.db.d1.x5, root.db.d1.y2)",
+            "min_by(root.db.d1.x6, root.db.d1.y2)",
           };
       String y = "y2";
       // order by time ASC
@@ -349,7 +349,7 @@ public class IoTDBMaxByIT {
           };
       resultSetEqualTest(
           String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms) ",
+              "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms) ",
               y, y, y, y, y, y),
           expectedHeader,
           retArray1);
@@ -364,7 +364,7 @@ public class IoTDBMaxByIT {
           };
       resultSetEqualTest(
           String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,14),4ms) order by time desc",
+              "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 group by ([0,14),4ms) order by time desc",
               y, y, y, y, y, y),
           expectedHeader,
           retArray2);
@@ -391,16 +391,16 @@ public class IoTDBMaxByIT {
         String[] expectedHeader =
             new String[] {
               TIMESTAMP_STR,
-              String.format("max_by(root.db.d1.x1, root.db.d1.%s)", y),
-              String.format("max_by(root.db.d1.x2, root.db.d1.%s)", y),
-              String.format("max_by(root.db.d1.x3, root.db.d1.%s)", y),
-              String.format("max_by(root.db.d1.x4, root.db.d1.%s)", y),
-              String.format("max_by(root.db.d1.x5, root.db.d1.%s)", y),
-              String.format("max_by(root.db.d1.x6, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x1, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x2, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x3, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x4, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x5, root.db.d1.%s)", y),
+              String.format("min_by(root.db.d1.x6, root.db.d1.%s)", y),
             };
         resultSetEqualTest(
             String.format(
-                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms,2ms) ",
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 10 group by ([0,9),4ms,2ms) ",
                 y, y, y, y, y, y),
             expectedHeader,
             retArray);
@@ -418,18 +418,18 @@ public class IoTDBMaxByIT {
       String[] expectedHeader =
           new String[] {
             TIMESTAMP_STR,
-            "max_by(root.db.d1.x1, root.db.d1.y2)",
-            "max_by(root.db.d1.x2, root.db.d1.y2)",
-            "max_by(root.db.d1.x3, root.db.d1.y2)",
-            "max_by(root.db.d1.x4, root.db.d1.y2)",
-            "max_by(root.db.d1.x5, root.db.d1.y2)",
-            "max_by(root.db.d1.x6, root.db.d1.y2)",
+            "min_by(root.db.d1.x1, root.db.d1.y2)",
+            "min_by(root.db.d1.x2, root.db.d1.y2)",
+            "min_by(root.db.d1.x3, root.db.d1.y2)",
+            "min_by(root.db.d1.x4, root.db.d1.y2)",
+            "min_by(root.db.d1.x5, root.db.d1.y2)",
+            "min_by(root.db.d1.x6, root.db.d1.y2)",
           };
       String[] retArray = new String[] {"8,3,3,3.0,3.0,false,3,"};
       String y = "y2";
       resultSetEqualTest(
           String.format(
-              "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.d1 group by ([0,9),4ms) having max_by(time, %s) > 4",
+              "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 group by ([0,9),4ms) having min_by(time, %s) > 4",
               y, y, y, y, y, y, y),
           expectedHeader,
           retArray);
@@ -448,16 +448,16 @@ public class IoTDBMaxByIT {
       for (String y : yArray) {
         String[] expectedHeader =
             new String[] {
-              String.format("max_by(root.*.*.x1, root.*.*.%s)", y),
-              String.format("max_by(root.*.*.x2, root.*.*.%s)", y),
-              String.format("max_by(root.*.*.x3, root.*.*.%s)", y),
-              String.format("max_by(root.*.*.x4, root.*.*.%s)", y),
-              String.format("max_by(root.*.*.x5, root.*.*.%s)", y),
-              String.format("max_by(root.*.*.x6, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x1, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x2, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x3, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x4, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x5, root.*.*.%s)", y),
+              String.format("min_by(root.*.*.x6, root.*.*.%s)", y),
             };
         resultSetEqualTest(
             String.format(
-                "select max_by(x1,%s),max_by(x2,%s),max_by(x3,%s),max_by(x4,%s),max_by(x5,%s),max_by(x6,%s) from root.db.** group by level = 0",
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.** group by level = 0",
                 y, y, y, y, y, y),
             expectedHeader,
             retArray);
@@ -478,7 +478,7 @@ public class IoTDBMaxByIT {
               res.put(
                   y,
                   Arrays.stream(xInput)
-                      .map(x -> maxBy("Time".equals(x) ? x : device + "." + x, device + "." + y))
+                      .map(x -> minBy("Time".equals(x) ? x : device + "." + x, device + "." + y))
                       .toArray(String[]::new));
             });
     return res;

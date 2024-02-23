@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -643,7 +644,9 @@ public class SeriesScanUtil {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      TsBlock res = cachedTsBlock;
+      TsBlock res =
+          applyPushDownFilterAndLimitOffset(
+              cachedTsBlock, scanOptions.getPushDownFilter(), paginationController);
       cachedTsBlock = null;
 
       // cached tsblock has handled by pagination controller & push down filter, return directly
@@ -670,6 +673,15 @@ public class SeriesScanUtil {
 
       return tsBlock;
     }
+  }
+
+  private TsBlock applyPushDownFilterAndLimitOffset(
+      TsBlock tsBlock, Filter pushDownFilter, PaginationController paginationController) {
+    if (pushDownFilter == null) {
+      return paginationController.applyTsBlock(tsBlock);
+    }
+    return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+        tsBlock, new TsBlockBuilder(getTsDataTypeList()), pushDownFilter, paginationController);
   }
 
   private void filterFirstPageReader() {
@@ -708,7 +720,6 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean hasNextOverlappedPage() throws IOException {
     long startTime = System.nanoTime();
-    Filter pushDownFilter = scanOptions.getPushDownFilter();
     try {
       if (hasCachedNextOverlappedPage) {
         return true;
@@ -810,9 +821,7 @@ public class SeriesScanUtil {
 
             // get the latest first point in mergeReader
             timeValuePair = mergeReader.nextTimeValuePair();
-            if (processFilterAndPagination(timeValuePair, pushDownFilter, builder)) {
-              break;
-            }
+            addTimeValuePairToResult(timeValuePair, builder);
           }
           hasCachedNextOverlappedPage = !builder.isEmpty();
           cachedTsBlock = builder.build();
@@ -873,25 +882,6 @@ public class SeriesScanUtil {
      * put all currently directly overlapped unseq page reader to merge reader
      */
     unpackAllOverlappedUnseqPageReadersToMergeReader(currentPageEndpointTime);
-  }
-
-  private boolean processFilterAndPagination(
-      TimeValuePair timeValuePair, Filter pushDownFilter, TsBlockBuilder builder) {
-    if (pushDownFilter != null
-        && !pushDownFilter.satisfyRow(timeValuePair.getTimestamp(), timeValuePair.getValues())) {
-      return false;
-    }
-    if (paginationController.hasCurOffset()) {
-      paginationController.consumeOffset();
-      return false;
-    }
-    if (paginationController.hasCurLimit()) {
-      addTimeValuePairToResult(timeValuePair, builder);
-      paginationController.consumeLimit();
-      return false;
-    } else {
-      return true;
-    }
   }
 
   private void addTimeValuePairToResult(TimeValuePair timeValuePair, TsBlockBuilder builder) {

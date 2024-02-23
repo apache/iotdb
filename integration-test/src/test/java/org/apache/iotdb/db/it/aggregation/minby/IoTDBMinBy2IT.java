@@ -15,20 +15,27 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.db.it.aggregation.minby;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.apache.iotdb.it.env.EnvFactory;
 
-/**
- * TestOnly implies that the class or method should only be used in the tests, otherwise its
- * functionality is not guaranteed and may interfere with the normal code.
- */
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
-@Retention(RetentionPolicy.SOURCE)
-public @interface TestOnly {}
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+
+public class IoTDBMinBy2IT extends IoTDBMinByIT {
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
+    EnvFactory.getEnv().initClusterEnvironment();
+    prepareData(NON_ALIGNED_DATASET);
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+}

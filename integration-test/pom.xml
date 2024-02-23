@@ -29,13 +29,6 @@
     <artifactId>integration-test</artifactId>
     <name>IoTDB: Integration-Test</name>
     <properties>
-        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
-        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
-        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
-        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
-        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
-        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
-        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
         <integrationTest.excludedGroups/>
         <integrationTest.forkCount>1</integrationTest.forkCount>
         <integrationTest.includedGroups/>
@@ -60,6 +53,13 @@
         <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
         <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
         <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
+        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
+        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
+        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
+        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
+        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
+        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
+        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
         <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
         <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
         <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
