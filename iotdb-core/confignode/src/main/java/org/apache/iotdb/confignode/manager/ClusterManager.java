@@ -60,7 +60,7 @@ public class ClusterManager {
     while (clusterInfo.getClusterId() == null
         && System.currentTimeMillis() - startTime < maxWaitTime) {
       try {
-        Thread.sleep(1000);
+        Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
