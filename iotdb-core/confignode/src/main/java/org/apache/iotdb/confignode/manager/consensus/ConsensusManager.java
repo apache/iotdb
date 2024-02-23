@@ -386,14 +386,11 @@ public class ConsensusManager {
     } else {
       result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       if (isLeader()) {
-        boolean isCurLeaderReady = false;
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
           if (isLeaderReady()) {
-            result.setMessage(
-                "The current ConfigNode is leader and ready, please try again later.");
-            isCurLeaderReady = true;
-            break;
+            result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            return result;
           }
           try {
             Thread.sleep(RETRY_WAIT_TIME_MS);
@@ -402,10 +399,8 @@ public class ConsensusManager {
             LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
           }
         }
-        if (!isCurLeaderReady) {
-          result.setMessage(
-              "The current ConfigNode is leader but not ready yet, please try again later.");
-        }
+        result.setMessage(
+            "The current ConfigNode is leader but not ready yet, please try again later.");
       } else {
         result.setMessage(
             "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
