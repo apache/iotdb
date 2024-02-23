@@ -14,7 +14,7 @@ import java.util.Arrays;
 
 import static java.lang.Math.abs;
 
-public class REGERFloatEachTimeTest {
+public class REGERPruneTest {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -2205,14 +2205,17 @@ public class REGERFloatEachTimeTest {
     }
 
 
-    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size,
-                                         int encode_pos, byte[] cur_byte, int[] block_sort,long[] time_list) {
+    private static int REGERBlockEncoder(long[] data, int i, int block_size, int supply_length, int[] third_value, int segment_size, int encode_pos, byte[] cur_byte, int[] block_sort) {
 
 
         long min_time = (long) getTime(data[i * block_size]) << 32;
         long[] ts_block;
         long[] ts_block_value;
         long[] ts_block_partition;
+        int max_time_spread = Integer.MIN_VALUE;
+        int min_time_spread = Integer.MAX_VALUE;
+        int max_value_spread = Integer.MIN_VALUE;
+        int min_value_spread = Integer.MAX_VALUE;
 
         if (supply_length == 0) {
             ts_block = new long[block_size];
@@ -2222,8 +2225,22 @@ public class REGERFloatEachTimeTest {
             for (int j = 0; j < block_size; j++) {
                 long tmp_j = data[j + i * block_size] - min_time;
                 ts_block[j] = tmp_j;
-                ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
 
+                int cur_time = getTime(tmp_j);
+                int cur_value = getValue(tmp_j);
+                ts_block_value[j] = combine2Int(cur_value, cur_time);
+                if(cur_time>max_time_spread){
+                    max_time_spread = cur_time;
+                }
+                if(cur_time<min_time_spread){
+                    min_time_spread = cur_time;
+                }
+                if(cur_value>max_value_spread){
+                    max_value_spread = cur_value;
+                }
+                if(cur_value<min_value_spread){
+                    min_value_spread = cur_value;
+                }
             }
 
         } else {
@@ -2234,12 +2251,40 @@ public class REGERFloatEachTimeTest {
             for (int j = 0; j < end; j++) {
                 long tmp_j = data[j + i * block_size] - min_time;
                 ts_block[j] = tmp_j;
-                ts_block_value[j] = combine2Int(getValue(tmp_j), getTime(tmp_j));
+
+                int cur_time = getTime(tmp_j);
+                int cur_value = getValue(tmp_j);
+                ts_block_value[j] = combine2Int(cur_value, cur_time);
+                if(cur_time>max_time_spread){
+                    max_time_spread = cur_time;
+                }
+                if(cur_time<min_time_spread){
+                    min_time_spread = cur_time;
+                }
+                if(cur_value>max_value_spread){
+                    max_value_spread = cur_value;
+                }
+                if(cur_value<min_value_spread){
+                    min_value_spread = cur_value;
+                }
 
             }
             for (int j = end; j < supply_length; j++) {
                 ts_block[j] = 0;
                 ts_block_value[j] = 0;
+
+                if(0>max_time_spread){
+                    max_time_spread = 0;
+                }
+                if(0<min_time_spread){
+                    min_time_spread = 0;
+                }
+                if(0>max_value_spread){
+                    max_value_spread = 0;
+                }
+                if(0<min_value_spread){
+                    min_value_spread = 0;
+                }
             }
             block_size = supply_length;
         }
@@ -2252,16 +2297,12 @@ public class REGERFloatEachTimeTest {
         int[] partition_length = new int[5]; // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         float[] theta_partition = new float[4];
 
-        long start_time = System.nanoTime();
         trainParameter(ts_block, block_size, theta_time);
 
         long[] ts_block_delta_time = getEncodeBitsRegressionNoTrain(ts_block, block_size, time_length, theta_time, segment_size);
-        long end_time = System.nanoTime();
-        time_list[0] += (end_time-start_time);
+        block_sort[i] = 0;
 
-        // --------------------------------------
-
-        long start_partition = System.nanoTime();
+        long[] ts_block_delta_partition;
         int pos_ts_block_partition = 0;
         if (third_value.length > 0) {
             for(int j=block_size-1;j>=0;j--){
@@ -2287,27 +2328,29 @@ public class REGERFloatEachTimeTest {
                     pos_ts_block_partition++;
                 }
             }
+            trainParameter(ts_block_partition, block_size, theta_partition);
+            ts_block_delta_partition = getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition, segment_size);
 
+//            if(partition_length[0] >= time_length[0]){
+//                partition_length[0] = Integer.MAX_VALUE;
+//            }
+        }else{
+            partition_length[0] = Integer.MAX_VALUE;
         }
 
-        trainParameter(ts_block_partition, block_size, theta_partition);
-        long[] ts_block_delta_partition = getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, partition_length, theta_partition, segment_size);
-        long end_partition = System.nanoTime();
-        time_list[2] += (end_partition-start_partition);
-        // --------------------------------------
-        long start_value = System.nanoTime();
-        Arrays.sort(ts_block_value);
-        trainParameter(ts_block_value, block_size, theta_reorder);
-        long[] ts_block_delta_reorder = getEncodeBitsRegressionNoTrain(ts_block_value, block_size, reorder_length, theta_reorder, segment_size);
-        long end_value = System.nanoTime();
-        time_list[1] += (end_value-start_value);
+        int spread_time = max_time_spread - min_time_spread;
+        int spread_value = max_value_spread - min_value_spread;
+        long[] ts_block_delta_reorder;
+        if(spread_value>spread_time){
+            Arrays.sort(ts_block_value);
+            trainParameter(ts_block_value, block_size, theta_reorder);
+            ts_block_delta_reorder = getEncodeBitsRegressionNoTrain(ts_block_value, block_size, reorder_length, theta_reorder, segment_size);
+        }else{
+            reorder_length[0] = Integer.MAX_VALUE;
+        }
 
-        // -----------------------------
-        long start_other = System.nanoTime();
-        ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
-        long end_other = System.nanoTime();
-        time_list[3] += (end_other-start_other);
 
+//        ReorderingTimeSeries(ts_block_value, reorder_length,  theta_reorder, segment_size);
 
         int segment_n = (block_size - 1) / segment_size;
         long[] bit_width_segments = new long[segment_n];
@@ -2345,7 +2388,7 @@ public class REGERFloatEachTimeTest {
 
     }
 
-    public static int ReorderingRegressionEncoder(long[] data, int block_size, int[] third_value, int segment_size, byte[] encoded_result, long[] time_list) {
+    public static int ReorderingRegressionEncoder(long[] data, int block_size, int[] third_value, int segment_size, byte[] encoded_result) {
         block_size++;
 //    ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.length;
@@ -2369,7 +2412,7 @@ public class REGERFloatEachTimeTest {
 //        for (int i = 44; i < 45; i++) {
         for (int i = 0; i < block_num; i++) {
 //            System.out.println(i);
-            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result, block_sort,time_list);
+            encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, encode_pos, encoded_result, block_sort);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -2386,7 +2429,7 @@ public class REGERFloatEachTimeTest {
             } else {
                 supple_length = segment_size + 1 - remaining_length % segment_size;
             }
-            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result, block_sort,time_list);
+            encode_pos = REGERBlockEncoder(data, block_num, block_size, supple_length + remaining_length, third_value, segment_size, encode_pos, encoded_result, block_sort);
 
         }
         encodeSort(block_sort,encode_pos_block_sort,encoded_result);
@@ -2673,7 +2716,7 @@ public class REGERFloatEachTimeTest {
     public void REGER() throws IOException {
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_sort_each_time";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_prune";
         int pack_size = 16;
         int block_size = 512;
 
@@ -2749,8 +2792,8 @@ public class REGERFloatEachTimeTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i <12; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -2767,10 +2810,6 @@ public class REGERFloatEachTimeTest {
                     "Points",
                     "Compressed Size",
                     "Compression Ratio",
-                    "Time Sort",
-                    "Value Sort",
-                    "Partition Sort",
-                    "Other Sort"
             };
             writer.writeRecord(head); // write header to output file
 
@@ -2818,18 +2857,10 @@ public class REGERFloatEachTimeTest {
                 int repeatTime2 = 100;
                 long s = System.nanoTime();
                 int length = 0;
-
-                long[] time_list = new long[4];
-
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result,time_list);
+                    length = ReorderingRegressionEncoder(data2_arr, dataset_block_size.get(file_i), dataset_third.get(file_i), pack_size, encoded_result);
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
-                time_list[0]/=repeatTime2;
-                time_list[1]/=repeatTime2;
-                time_list[2]/=repeatTime2;
-                time_list[3]/=repeatTime2;
-
                 compressed_size += length;
                 double ratioTmp = compressed_size / (double) (data.size() * Integer.BYTES * 2);
                 ratio += ratioTmp;
@@ -2842,16 +2873,15 @@ public class REGERFloatEachTimeTest {
 
                 String[] record = {
                         f.toString(),
-                        "REGER",
+                        "REGER (prune)",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data.size()),
                         String.valueOf(compressed_size),
                         String.valueOf(ratio),
-                        String.valueOf(time_list[0]),
-                        String.valueOf(time_list[1]),
-                        String.valueOf(time_list[2]),
-                        String.valueOf(time_list[3])
+//                        String.valueOf(best_order[0]),
+//                        String.valueOf(best_order[1]),
+//                        String.valueOf(best_order[2])
                 };
                 writer.writeRecord(record);
 //                System.out.println(Arrays.toString(best_order));
@@ -2862,6 +2892,5 @@ public class REGERFloatEachTimeTest {
             writer.close();
         }
     }
-
 
 }
