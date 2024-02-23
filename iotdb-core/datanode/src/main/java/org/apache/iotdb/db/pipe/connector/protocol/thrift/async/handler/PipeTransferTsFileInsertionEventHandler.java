@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -75,7 +76,10 @@ public class PipeTransferTsFileInsertionEventHandler
     tsFile = event.getTsFile();
     modFile = event.getModFile();
     currentFile =
-        Objects.nonNull(modFile) && connector.getReceiverHandshakeVersion() >= 2 ? modFile : tsFile;
+        Objects.nonNull(modFile)
+                && connector.getReceiverHandshakeType() != PipeRequestType.HANDSHAKE_V1
+            ? modFile
+            : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];

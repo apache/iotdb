@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
@@ -166,7 +167,7 @@ public class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager imple
             endPoint.getIp(),
             endPoint.getPort(),
             resp.getStatus());
-        receiverHandshakeVersion = 1;
+        receiverHandshakeType = PipeRequestType.HANDSHAKE_V1;
         resp =
             clientAndStatus
                 .getLeft()

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 
 import java.util.List;
 
@@ -32,14 +33,14 @@ public abstract class IoTDBThriftClientManager {
   protected final boolean useLeaderCache;
   protected static final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
-  protected int receiverHandshakeVersion = 2;
+  protected PipeRequestType receiverHandshakeType = PipeRequestType.HANDSHAKE_V2;
 
   protected IoTDBThriftClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
   }
 
-  public int getReceiverHandshakeVersion() {
-    return receiverHandshakeVersion;
+  public PipeRequestType getReceiverHandshakeType() {
+    return receiverHandshakeType;
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -95,7 +96,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private long currentClientIndex = 0;
 
   // The air gap connector does not use clientManager thus we put handshake version here
-  protected int receiverHandshakeVersion = 2;
+  protected PipeRequestType receiverHandshakeVersion = PipeRequestType.HANDSHAKE_V2;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -211,7 +212,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
       // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
       if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
-        receiverHandshakeVersion = 1;
+        receiverHandshakeVersion = PipeRequestType.HANDSHAKE_V1;
         if (!send(
             socket,
             PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
@@ -222,7 +223,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       } else {
         // To avoid previous V2 failure stemming from connection failure
         // Try transfer mods from now on
-        receiverHandshakeVersion = 2;
+        receiverHandshakeVersion = PipeRequestType.HANDSHAKE_V2;
       }
       isSocketAlive.set(i, true);
       socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
@@ -361,7 +362,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer mod file if exists
-    if (pipeTsFileInsertionEvent.isWithMod() && receiverHandshakeVersion >= 2) {
+    if (pipeTsFileInsertionEvent.isWithMod()
+        && receiverHandshakeVersion != PipeRequestType.HANDSHAKE_V1) {
       transferFilePieces(pipeTsFileInsertionEvent.getModFile(), socket);
     }
 
