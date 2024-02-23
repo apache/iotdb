@@ -345,15 +345,26 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
-            if (status == 1) {
-              if (!container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
-                cacheEntry.setVolatile(false);
-                memoryStatistics.removeVolatileNode();
-                container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+            if (status == 1
+                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
+              if (cacheEntry.hasVolatileDescendant()
+                  && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+                // these two factor judgement is not redundant because the #hasVolatileDescendant is
+                // on a higher priority than #container.hasChildren
+
+                // nodes with volatile children should be treated as root of volatile subtree and
+                // return for flush
+                nextSubtree = node;
+                unlockImmediately = false;
               }
+              return;
+            }
+
+            cacheEntry.setVolatile(false);
+            memoryStatistics.removeVolatileNode();
+            if (status == 1) {
+              container.moveMNodeFromUpdateChildBufferToCache(node.getName());
             } else {
-              cacheEntry.setVolatile(false);
-              memoryStatistics.removeVolatileNode();
               container.moveMNodeFromNewChildBufferToCache(node.getName());
             }
 
@@ -363,8 +374,7 @@ public class MemoryManager implements IMemoryManager {
               // on a higher priority than #container.hasChildren
 
               // nodes with volatile children should be treated as root of volatile subtree and
-              // return
-              // for flush
+              // return for flush
               nextSubtree = node;
               unlockImmediately = false;
               return;
