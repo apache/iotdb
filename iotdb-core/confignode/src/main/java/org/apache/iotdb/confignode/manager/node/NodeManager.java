@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -257,8 +258,20 @@ public class NodeManager {
    *     TSStatusCode#SUCCESS_STATUS} when register success.
    */
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
-    int dataNodeId = nodeInfo.generateNextNodeId();
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    if (clusterId == null) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+              .setMessage("clusterId has not generated"));
+      return resp;
+    }
 
+    int dataNodeId = nodeInfo.generateNextNodeId();
     RegisterDataNodePlan registerDataNodePlan =
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
@@ -292,17 +305,29 @@ public class NodeManager {
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();
 
-    DataNodeRegisterResp resp = new DataNodeRegisterResp();
-
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setConfigNodeList(getRegisteredConfigNodes());
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }
 
   public TDataNodeRestartResp updateDataNodeIfNecessary(TDataNodeRestartReq req) {
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    TDataNodeRestartResp resp = new TDataNodeRestartResp();
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    if (clusterId == null) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+              .setMessage("clusterId has not generated"));
+      return resp;
+    }
+
     int nodeId = req.getDataNodeConfiguration().getLocation().getDataNodeId();
     TDataNodeConfiguration dataNodeConfiguration = getRegisteredDataNode(nodeId);
     if (!req.getDataNodeConfiguration().equals(dataNodeConfiguration)) {
@@ -327,10 +352,8 @@ public class NodeManager {
       }
     }
 
-    TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setConfigNodeList(getRegisteredConfigNodes());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }
 

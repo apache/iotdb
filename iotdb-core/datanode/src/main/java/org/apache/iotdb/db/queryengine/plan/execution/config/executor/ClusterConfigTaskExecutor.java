@@ -96,7 +96,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
@@ -1179,12 +1178,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showClusterId() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try {
-      ShowClusterIdTask.buildTSBlock(
-          IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
-    } catch (LoadConfigurationException e) {
-      future.setException(e);
-    }
+    ShowClusterIdTask.buildTSBlock(
+        IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
     return future;
   }
 

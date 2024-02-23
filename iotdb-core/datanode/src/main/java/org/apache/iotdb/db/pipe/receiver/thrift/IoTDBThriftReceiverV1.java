@@ -31,7 +31,6 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -254,17 +253,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
     // Reject to handshake if the receiver can not take clusterId from config node.
-    String clusterId;
-    try {
-      clusterId = IoTDBDescriptor.getInstance().getConfig().getClusterId();
-    } catch (LoadConfigurationException e) {
-      final TSStatus status =
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR,
-              "Receiver can not get clusterId from config node.");
-      LOGGER.warn("Handshake failed, response status = {}.", status);
-      return new TPipeTransferResp(status);
-    }
+    String clusterId = IoTDBDescriptor.getInstance().getConfig().getClusterId();
 
     // Reject to handshake if the request does not contain sender's clusterId.
     final String clusterIdFromHandshakeRequest =
