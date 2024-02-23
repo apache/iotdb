@@ -52,9 +52,10 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private static final Logger LOG = LoggerFactory.getLogger(Procedure.class);
   public static final long NO_PROC_ID = -1;
   public static final long NO_TIMEOUT = -1;
-  // The isDeserialized of a newly created procedure is false.
-  // When a leader switch or ConfigNode restart occurs during the execution of the procedure,
-  // isDeserialized becomes true.
+  /**
+   * The isDeserialized of a newly created procedure is false. When a leader switch or ConfigNode
+   * restart occurs during the execution of the procedure, isDeserialized becomes true.
+   */
   private boolean isDeserialized = false;
 
   private long parentProcId = NO_PROC_ID;
