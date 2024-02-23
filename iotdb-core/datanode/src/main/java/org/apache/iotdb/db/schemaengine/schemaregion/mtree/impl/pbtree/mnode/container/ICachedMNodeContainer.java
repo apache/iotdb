@@ -64,7 +64,9 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   void updateMNode(String name);
 
-  void moveMNodeToCache(String name);
+  void moveMNodeFromNewChildBufferToCache(String name);
+
+  void moveMNodeFromUpdateChildBufferToCache(String name);
 
   void evictMNode(String name);
 

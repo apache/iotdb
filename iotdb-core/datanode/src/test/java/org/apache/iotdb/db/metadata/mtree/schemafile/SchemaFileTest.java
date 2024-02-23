@@ -505,7 +505,8 @@ public class SchemaFileTest {
     root.getChildren().clear();
     root.addChild(getMeasurementNode(root, "aa0", "updatedupdatednode"));
     ICachedMNodeContainer.getCachedMNodeContainer(root).transferAllBufferReceivingToFlushing();
-    ICachedMNodeContainer.getCachedMNodeContainer(root).moveMNodeToCache("aa0");
+    ICachedMNodeContainer.getCachedMNodeContainer(root).moveMNodeFromNewChildBufferToCache("aa0");
+
     ICachedMNodeContainer.getCachedMNodeContainer(root).updateMNode("aa0");
 
     writeMNodeInTest(sf, root);
@@ -527,7 +528,7 @@ public class SchemaFileTest {
 
     ent1.addChild(getMeasurementNode(ent1, "m1", "m1aaaaaa"));
     ICachedMNodeContainer.getCachedMNodeContainer(ent1).transferAllBufferReceivingToFlushing();
-    ICachedMNodeContainer.getCachedMNodeContainer(ent1).moveMNodeToCache("m1");
+    ICachedMNodeContainer.getCachedMNodeContainer(ent1).moveMNodeFromNewChildBufferToCache("m1");
     ICachedMNodeContainer.getCachedMNodeContainer(ent1).updateMNode("m1");
 
     Assert.assertEquals(
@@ -1042,14 +1043,16 @@ public class SchemaFileTest {
     ICachedMNodeContainer.getCachedMNodeContainer(par).remove(child.getName());
     ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(child);
     ICachedMNodeContainer.getCachedMNodeContainer(par).transferAllBufferReceivingToFlushing();
-    ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(child.getName());
+    ICachedMNodeContainer.getCachedMNodeContainer(par)
+        .moveMNodeFromNewChildBufferToCache(child.getName());
     ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(child.getName());
   }
 
   static void moveToUpdateBuffer(ICachedMNode par, String childName) {
     ICachedMNodeContainer.getCachedMNodeContainer(par).appendMNode(par.getChild(childName));
     ICachedMNodeContainer.getCachedMNodeContainer(par).transferAllBufferReceivingToFlushing();
-    ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(childName);
+    ICachedMNodeContainer.getCachedMNodeContainer(par)
+        .moveMNodeFromNewChildBufferToCache(childName);
     ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(childName);
   }
 
@@ -1057,7 +1060,7 @@ public class SchemaFileTest {
     List<String> childNames =
         par.getChildren().values().stream().map(IMNode::getName).collect(Collectors.toList());
     for (String name : childNames) {
-      ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(name);
+      ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeFromNewChildBufferToCache(name);
       ICachedMNodeContainer.getCachedMNodeContainer(par).updateMNode(name);
     }
   }
@@ -1066,7 +1069,7 @@ public class SchemaFileTest {
     List<String> childNames =
         par.getChildren().values().stream().map(IMNode::getName).collect(Collectors.toList());
     for (String name : childNames) {
-      ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeToCache(name);
+      ICachedMNodeContainer.getCachedMNodeContainer(par).moveMNodeFromNewChildBufferToCache(name);
     }
   }
 

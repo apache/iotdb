@@ -115,8 +115,9 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
   @Override
   public synchronized ICachedMNode get(Object key) {
     ICachedMNode result = get(receivingBuffer, key);
-    if (result != null) return result;
-    else {
+    if (result != null) {
+      return result;
+    } else {
       return get(flushingBuffer, key);
     }
   }

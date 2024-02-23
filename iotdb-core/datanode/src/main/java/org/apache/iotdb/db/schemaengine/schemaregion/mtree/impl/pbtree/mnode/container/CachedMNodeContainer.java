@@ -333,11 +333,17 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized void moveMNodeToCache(String name) {
+  public synchronized void moveMNodeFromNewChildBufferToCache(String name) {
     ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
-    if (node == null) {
-      node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
+    if (childCache == null) {
+      childCache = new ConcurrentHashMap<>();
     }
+    childCache.put(name, node);
+  }
+
+  @Override
+  public synchronized void moveMNodeFromUpdateChildBufferToCache(String name) {
+    ICachedMNode node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
@@ -376,8 +382,8 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     Iterator<ICachedMNode> iterator;
     byte status;
 
-    CachedMNodeContainerIterator(byte _status) {
-      status = _status;
+    CachedMNodeContainerIterator(byte status) {
+      this.status = status;
       changeStatus();
     }
 

@@ -31,10 +31,10 @@ public interface IMNodeChildBuffer extends IMNodeContainer<ICachedMNode> {
   // FlushingBuffer
   Iterator<ICachedMNode> getMNodeChildBufferIterator();
 
-  // only get the FlushingBuffer
+  // only get the FlushingBuffer,  there shall not be write operation on the returned map instance.
   Map<String, ICachedMNode> getFlushingBuffer();
 
-  // only get the ReceivingBuffer
+  // only get the ReceivingBuffer, there shall not be write operation on the returned map instance.
   Map<String, ICachedMNode> getReceivingBuffer();
 
   // Before flushing, use this to transfer ReceivingBuffer to FlushingBuffer

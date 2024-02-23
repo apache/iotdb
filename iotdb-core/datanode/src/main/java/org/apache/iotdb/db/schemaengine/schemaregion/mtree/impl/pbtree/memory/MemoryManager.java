@@ -345,14 +345,16 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
-            if (status == 1
-                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
-              // In Updatebuffer it is necessary to judge whether the cacheEntry has duplicate
-              // points in the receivingbuffer of Updatebuffer. If not, set it to false.
+            if (status == 1) {
+              if (!container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
+                cacheEntry.setVolatile(false);
+                memoryStatistics.removeVolatileNode();
+                container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+              }
             } else {
               cacheEntry.setVolatile(false);
               memoryStatistics.removeVolatileNode();
-              container.moveMNodeToCache(node.getName());
+              container.moveMNodeFromNewChildBufferToCache(node.getName());
             }
 
             if (cacheEntry.hasVolatileDescendant()
