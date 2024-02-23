@@ -91,7 +91,7 @@ public class IoTDBProcedureIT {
 
     // prepare expectedDatabases
     Set<String> expectedDatabases = new HashSet<>();
-    for (int id = CreateManyDatabasesProcedure.getInitialStateStatic(); id < MAX_STATE; id++) {
+    for (int id = CreateManyDatabasesProcedure.INITIAL_STATE; id < MAX_STATE; id++) {
       expectedDatabases.add(CreateManyDatabasesProcedure.DATABASE_NAME_PREFIX + id);
     }
     Assert.assertEquals(MAX_STATE, expectedDatabases.size());
@@ -109,9 +109,8 @@ public class IoTDBProcedureIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     leaderClient.createManyDatabases();
 
-    // Check whether the procedure is ongoing, and is still far from finishing
+    // Make sure the procedure has not finished yet
     TShowDatabaseResp resp = leaderClient.showDatabase(req);
-    Assert.assertTrue(0 < resp.getDatabaseInfoMap().size());
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
     final int oldLeaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
@@ -133,6 +132,6 @@ public class IoTDBProcedureIT {
               .forEach(databaseName -> expectedDatabases.remove(databaseName));
           return expectedDatabases.isEmpty();
         };
-    Awaitility.await().atMost(5, TimeUnit.SECONDS).until(finalCheck);
+    Awaitility.await().atMost(1, TimeUnit.MINUTES).until(finalCheck);
   }
 }

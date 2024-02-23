@@ -45,6 +45,7 @@ import java.io.IOException;
 public class CreateManyDatabasesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateManyDatabasesProcedure.class);
+  public static final int INITIAL_STATE = 0;
   public static final int MAX_STATE = 100;
   public static final String DATABASE_NAME_PREFIX = "root.test_";
   public static final long SLEEP_FOREVER = Long.MAX_VALUE;
@@ -104,11 +105,7 @@ public class CreateManyDatabasesProcedure
 
   @Override
   protected Integer getInitialState() {
-    return getInitialStateStatic();
-  }
-
-  public static Integer getInitialStateStatic() {
-    return 0;
+    return INITIAL_STATE;
   }
 
   @Override
