@@ -59,6 +59,8 @@ public class MockSchemaFile implements ISchemaFile {
             null,
             storageGroupPath.getTailNode(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    ICachedMNodeContainer container = getCachedMNodeContainer(storageGroupMNode.getAsMNode());
+    container.transferAllBufferReceivingToFlushing();
     writeMNode(storageGroupMNode.getAsMNode());
     return cloneMNode(storageGroupMNode.getAsMNode());
   }
@@ -111,8 +113,8 @@ public class MockSchemaFile implements ISchemaFile {
       address = allocateSegment();
       container.setSegmentAddress(address);
     }
-    write(address, container.getUpdatedChildBuffer());
-    write(address, container.getNewChildBuffer());
+    write(address, container.getUpdatedChildFlushingBuffer());
+    write(address, container.getNewChildFlushingBuffer());
   }
 
   private void write(long address, Map<String, ICachedMNode> nodeMap) {
