@@ -86,7 +86,7 @@ public class IoTDBProcedureIT {
     recoverTest(1, true);
   }
 
-  private void recoverTest(int configNodeNum, boolean needReopenLeader) throws Exception {
+  private void recoverTest(int configNodeNum, boolean needRestartLeader) throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, 1);
 
     // prepare expectedDatabases
@@ -95,6 +95,10 @@ public class IoTDBProcedureIT {
       expectedDatabases.add(CreateManyDatabasesProcedure.DATABASE_NAME_PREFIX + id);
     }
     Assert.assertEquals(MAX_STATE, expectedDatabases.size());
+
+    SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    leaderClient.createManyDatabases();
 
     // prepare req
     final TGetDatabaseReq req =
@@ -105,17 +109,13 @@ public class IoTDBProcedureIT {
                     .getNodes()),
             SchemaConstant.ALL_MATCH_SCOPE.serialize());
 
-    SyncConfigNodeIServiceClient leaderClient =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    leaderClient.createManyDatabases();
-
     // Make sure the procedure has not finished yet
     TShowDatabaseResp resp = leaderClient.showDatabase(req);
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
     final int oldLeaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
     EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).stop();
-    if (needReopenLeader) {
+    if (needRestartLeader) {
       EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).start();
     }
     SyncConfigNodeIServiceClient newLeaderClient =

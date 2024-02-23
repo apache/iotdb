@@ -43,7 +43,7 @@ public class ProcedureInfo {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureInfo.class);
 
-  public static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
+  private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
   private final String procedureWalDir =
