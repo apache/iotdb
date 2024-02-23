@@ -65,9 +65,11 @@ public class ConsensusManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
   private static final int SEED_CONFIG_NODE_ID = 0;
+  private static final long MAX_WAIT_READY_TIME_MS = 2000;
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
       new ConfigRegionId(CONF.getConfigRegionId());
+
 
   private final IManager configManager;
   private IConsensus consensusImpl;
@@ -382,8 +384,26 @@ public class ConsensusManager {
     } else {
       result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       if (isLeader()) {
-        result.setMessage(
-            "The current ConfigNode is leader but not ready yet, please try again later.");
+        boolean isCurLeaderReady = false;
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+          if (isLeaderReady()) {
+            result.setMessage(
+                    "The current ConfigNode is leader and ready, please try again later.");
+            isCurLeaderReady = true;
+            break;
+          }
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+          }
+        }
+        if (!isCurLeaderReady){
+          result.setMessage(
+                  "The current ConfigNode is leader but not ready yet, please try again later.");
+        }
       } else {
         result.setMessage(
             "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
