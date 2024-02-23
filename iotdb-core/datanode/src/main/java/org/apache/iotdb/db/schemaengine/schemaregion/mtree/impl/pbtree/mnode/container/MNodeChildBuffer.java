@@ -207,7 +207,6 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
 
     MNodeChildBufferIterator() {
       // use merge sort to merge them and remove duplicates.
-      List<ICachedMNode> list = new ArrayList<>();
       receivingBufferList = new ArrayList<>(getReceivingBuffer().values());
       flushingBufferList = new ArrayList<>(getFlushingBuffer().values());
       receivingBufferList.sort(Comparator.comparing(ICachedMNode::getName));

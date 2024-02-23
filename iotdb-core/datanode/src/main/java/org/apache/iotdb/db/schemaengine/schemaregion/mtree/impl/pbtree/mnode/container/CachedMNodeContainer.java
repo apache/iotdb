@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -249,12 +250,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public Iterator<ICachedMNode> getChildrenIterator() {
-    return new CachedMNodeContainerIterator((byte) 0);
+    return new CachedMNodeContainerIterator();
   }
 
   @Override
   public Iterator<ICachedMNode> getChildrenBufferIterator() {
-    return new CachedMNodeContainerIterator((byte) 1);
+    return new BufferIterator();
   }
 
   @Override
@@ -380,11 +381,10 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   private class CachedMNodeContainerIterator implements Iterator<ICachedMNode> {
 
     Iterator<ICachedMNode> iterator;
-    byte status;
+    byte status = 0;
 
-    CachedMNodeContainerIterator(byte status) {
-      this.status = status;
-      changeStatus();
+    CachedMNodeContainerIterator() {
+      iterator = getChildCache().values().iterator();
     }
 
     @Override
@@ -408,20 +408,83 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = getChildCache().values().iterator();
+          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
           status = 1;
           return true;
         case 1:
-          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
-          status = 2;
-          return true;
-        case 2:
           iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
-          status = 3;
+          status = 2;
           return true;
         default:
           return false;
       }
+    }
+  }
+
+  private class BufferIterator implements Iterator<ICachedMNode> {
+    Iterator<ICachedMNode> newChildBufferIterator;
+    Iterator<ICachedMNode> updateChildBufferIterator;
+
+    ICachedMNode newChildBufferHeader;
+    ICachedMNode updateChildBufferHeader;
+
+    BufferIterator() {
+      newChildBufferIterator = getNewChildBuffer().getMNodeChildBufferIterator();
+      updateChildBufferIterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
+      newChildBufferHeader =
+          newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
+      updateChildBufferHeader =
+          updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return newChildBufferHeader != null || updateChildBufferHeader != null;
+    }
+
+    @Override
+    public ICachedMNode next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      return tryGeyNext();
+    }
+
+    private ICachedMNode tryGeyNext() {
+      if (newChildBufferHeader != null && updateChildBufferHeader != null) {
+        if (newChildBufferHeader.getName().compareTo(updateChildBufferHeader.getName()) < 0) {
+          ICachedMNode ansMNode = newChildBufferHeader;
+          newChildBufferHeader =
+              newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
+          return ansMNode;
+        } else if (newChildBufferHeader.getName().compareTo(updateChildBufferHeader.getName())
+            > 0) {
+          ICachedMNode ansMNode = updateChildBufferHeader;
+          updateChildBufferHeader =
+              updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
+          return ansMNode;
+        } else {
+          ICachedMNode ansMNode = updateChildBufferHeader;
+          newChildBufferHeader =
+              newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
+          updateChildBufferHeader =
+              updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
+          return ansMNode;
+        }
+      }
+      if (newChildBufferHeader != null) {
+        ICachedMNode ansMNode = newChildBufferHeader;
+        newChildBufferHeader =
+            newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
+        return ansMNode;
+      }
+      if (updateChildBufferHeader != null) {
+        ICachedMNode ansMNode = updateChildBufferHeader;
+        updateChildBufferHeader =
+            updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
+        return ansMNode;
+      }
+      throw new NoSuchElementException();
     }
   }
 

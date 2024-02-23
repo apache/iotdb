@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -648,10 +649,11 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   private class CachedMNodeIterator implements IMNodeIterator<ICachedMNode> {
     ICachedMNode parent;
-    Iterator<ICachedMNode> iterator;
+    Iterator<ICachedMNode> diskIterator;
     Iterator<ICachedMNode> bufferIterator;
-    boolean isIteratingDisk;
     ICachedMNode nextNode;
+    ICachedMNode diskHeader;
+    ICachedMNode bufferHeader;
 
     boolean needLock;
     boolean isLocked;
@@ -670,14 +672,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
         bufferIterator = container.getChildrenBufferIterator();
-        if (!container.isVolatile()) {
-          this.iterator = file.getChildren(parent);
-          isIteratingDisk = true;
-        } else {
-          iterator = bufferIterator;
-          isIteratingDisk = false;
-        }
-
+        bufferHeader = bufferIterator.hasNext() ? bufferIterator.next() : null;
+        diskIterator =
+            !container.isVolatile() ? file.getChildren(parent) : Collections.emptyIterator();
+        diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
       } catch (Throwable e) {
         lockManager.stampedReadUnlock(parent, readLockStamp);
         if (needLock) {
@@ -714,53 +712,46 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       return result;
     }
 
-    private void readNext() throws MetadataException {
-      ICachedMNode node = null;
-      if (isIteratingDisk) {
-        ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
-        if (iterator.hasNext()) {
-          node = iterator.next();
-          while (container.hasChildInBuffer(node.getName())) {
-            if (iterator.hasNext()) {
-              node = iterator.next();
-            } else {
-              node = null;
-              break;
-            }
-          }
+    private void catchDiskMNode() {
+      nextNode = diskHeader;
+      diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
+      ICachedMNode nodeInMem = parent.getChild(nextNode.getName());
+      if (nodeInMem != null) {
+        try {
+          memoryManager.updateCacheStatusAfterMemoryRead(nodeInMem);
+          nextNode = nodeInMem;
+        } catch (MNodeNotCachedException e) {
+          nextNode = loadChildFromDiskToParent(parent, nextNode);
         }
-        if (node != null) {
-          ICachedMNode nodeInMem = parent.getChild(node.getName());
-          if (nodeInMem != null) {
-            // this branch means the node load from disk is in cache, thus use the instance in
-            // cache
-            try {
-              memoryManager.updateCacheStatusAfterMemoryRead(nodeInMem);
-              node = nodeInMem;
-            } catch (MNodeNotCachedException e) {
-              node = loadChildFromDiskToParent(parent, node);
-            }
-          } else {
-            node = loadChildFromDiskToParent(parent, node);
-          }
-          nextNode = node;
-          return;
-        } else {
-          startIteratingBuffer();
-        }
+      } else {
+        nextNode = loadChildFromDiskToParent(parent, nextNode);
       }
-
-      if (iterator.hasNext()) {
-        node = iterator.next();
-        // node in buffer won't be evicted during Iteration
-        memoryManager.updateCacheStatusAfterMemoryRead(node);
-      }
-      nextNode = node;
     }
 
-    private void startIteratingBuffer() {
-      iterator = bufferIterator;
-      isIteratingDisk = false;
+    private void catchBufferMNode() throws MNodeNotCachedException {
+      nextNode = bufferHeader;
+      memoryManager.updateCacheStatusAfterMemoryRead(nextNode);
+      bufferHeader = bufferIterator.hasNext() ? bufferIterator.next() : null;
+    }
+
+    private void readNext() throws MetadataException {
+
+      if (diskHeader != null && bufferHeader != null) { // 内存磁盘都有
+        if (diskHeader.getName().compareTo(bufferHeader.getName()) < 0) { // 拿磁盘
+          catchDiskMNode();
+        } else if (diskHeader.getName().compareTo(bufferHeader.getName()) > 0) { // 拿内存
+          catchBufferMNode();
+        } else { // 拿内存的同时扔掉磁盘的
+          catchBufferMNode();
+          diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
+        }
+      } else if (diskHeader == null && bufferHeader != null) { // 磁盘没有，内存有，拿内存
+        catchBufferMNode();
+      } else if (bufferHeader == null && diskHeader != null) { // 磁盘有，内存没有，拿磁盘
+        catchDiskMNode();
+      } else { // 磁盘和内存都没有
+        nextNode = null;
+      }
     }
 
     @Override
