@@ -93,6 +93,7 @@ public class IoTDBDataRegionExtractorTest {
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a#b"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.一二三"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`a-b`"));
+    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`*.*"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`1``2``"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`1->"));
