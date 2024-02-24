@@ -74,6 +74,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -417,6 +418,17 @@ public class SessionConnection {
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
+
+    if (execResp.queryResult != null) {
+      for (int i = 0; i < execResp.queryResult.size(); i++) {
+        ByteBuffer oldBuffer = execResp.queryResult.get(i);
+        ByteBuffer newBuffer = ByteBuffer.allocate(oldBuffer.remaining());
+        oldBuffer.get(newBuffer.array());
+        newBuffer.flip();
+        execResp.queryResult.set(i, newBuffer);
+      }
+    }
+
     return new SessionDataSet(
         sql,
         execResp.getColumns(),
