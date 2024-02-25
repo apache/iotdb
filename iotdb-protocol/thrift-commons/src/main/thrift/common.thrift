@@ -199,5 +199,6 @@ enum TAggregationType {
   VAR_POP,
   VAR_SAMP,
   MAX_BY,
+  MIN_BY,
   UDAF
 }

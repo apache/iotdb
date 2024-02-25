@@ -294,17 +294,6 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
   @Test
   public void testSkipMergeReaderByGlobalTimeFilter() throws IllegalPathException, IOException {
     SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gtEq(60), null);
-    checkFile1AndFile2AndMergeReaderSkipped(seriesScanUtil);
-  }
-
-  @Test
-  public void testSkipMergeReaderByPushDownFilter() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(60));
-    checkFile1AndFile2AndMergeReaderSkipped(seriesScanUtil);
-  }
-
-  private void checkFile1AndFile2AndMergeReaderSkipped(SeriesScanUtil seriesScanUtil)
-      throws IOException {
     checkFile1AndFile2AndFile3Chunk1Skipped(seriesScanUtil);
 
     // (File 3 - Chunk 1) merge (File 4 - Chunk 1) skipped
@@ -312,6 +301,26 @@ public class SeriesScanPredicatePushDownTest extends AbstractSeriesScanTest {
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     Assert.assertTrue(seriesScanUtil.canUseCurrentPageStatistics());
     TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(10, tsBlock.getPositionCount());
+    Assert.assertEquals(60, tsBlock.getTimeByIndex(0));
+  }
+
+  @Test
+  public void testSkipMergeReaderByPushDownFilter() throws IllegalPathException, IOException {
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(TimeFilterApi.gt(0), ValueFilterApi.gtEq(60));
+
+    checkFile1AndFile2AndFile3Chunk1Skipped(seriesScanUtil);
+
+    // (File 3 - Chunk 1) merge (File 4 - Chunk 1)
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.canUseCurrentPageStatistics());
+    TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
+
+    // File 4 - Chunk 2
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    Assert.assertTrue(seriesScanUtil.canUseCurrentPageStatistics());
+    tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
     Assert.assertEquals(60, tsBlock.getTimeByIndex(0));
   }
