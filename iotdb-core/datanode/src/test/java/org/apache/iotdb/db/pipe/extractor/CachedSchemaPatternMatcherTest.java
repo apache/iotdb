@@ -24,7 +24,10 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
+import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -53,7 +56,7 @@ public class CachedSchemaPatternMatcherTest {
 
   @Before
   public void setUp() {
-    matcher = new CachedSchemaPatternMatcher();
+    matcher = new PrefixPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     extractors = new ArrayList<>();
   }
@@ -127,12 +130,17 @@ public class CachedSchemaPatternMatcherTest {
       for (int j = 0; j < deviceNum; j++) {
         PipeRealtimeEvent event =
             new PipeRealtimeEvent(
-                null, null, Collections.singletonMap("root." + i, measurements), "root");
+                null,
+                null,
+                Collections.singletonMap("root." + i, measurements),
+                new PipePattern("root", PipePatternFormat.PREFIX));
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, "root");
+      PipeRealtimeEvent event =
+          new PipeRealtimeEvent(
+              null, null, deviceMap, new PipePattern("root", PipePatternFormat.PREFIX));
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);

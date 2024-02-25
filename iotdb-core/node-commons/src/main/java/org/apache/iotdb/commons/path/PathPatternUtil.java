@@ -40,6 +40,10 @@ public class PathPatternUtil {
     return MULTI_LEVEL_PATH_WILDCARD.equals(node);
   }
 
+  public static boolean isWildcard(String node) {
+    return MULTI_LEVEL_PATH_WILDCARD.equals(node) || ONE_LEVEL_PATH_WILDCARD.equals(node);
+  }
+
   /**
    * Determine if a node pattern matches a node name.
    *

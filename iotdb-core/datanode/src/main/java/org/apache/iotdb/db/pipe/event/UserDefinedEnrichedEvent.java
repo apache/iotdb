@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.UserDefinedEvent;
 
@@ -41,7 +42,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
     super(
         enrichedEvent.getPipeName(),
         enrichedEvent.getPipeTaskMeta(),
-        enrichedEvent.getPattern(),
+        new PipePattern(enrichedEvent.getPattern(), enrichedEvent.getPatternFormat()),
         enrichedEvent.getStartTime(),
         enrichedEvent.getEndTime());
     this.userDefinedEvent = userDefinedEvent;
@@ -69,7 +70,11 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return enrichedEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
         pipeName, pipeTaskMeta, pattern, startTime, endTime);
   }

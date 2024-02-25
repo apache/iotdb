@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -80,7 +81,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
@@ -145,7 +146,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         progressIndex,
@@ -199,7 +204,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -212,7 +217,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -230,7 +235,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
@@ -243,8 +248,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean shouldParsePattern() {
     final InsertNode node = getInsertNodeViaCacheIfPossible();
-    return super.shouldParsePattern()
-        && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
+    return Objects.nonNull(pipePattern)
+        && super.shouldParsePattern()
+        && (Objects.isNull(node)
+            || !node.getDevicePath().getFullPath().startsWith(pipePattern.getPattern()));
   }
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {

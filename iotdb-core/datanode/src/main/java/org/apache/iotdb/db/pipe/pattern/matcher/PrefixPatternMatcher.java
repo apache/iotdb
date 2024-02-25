@@ -17,77 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor.realtime.matcher;
+package org.apache.iotdb.db.pipe.pattern.matcher;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
-
-  private final ReentrantReadWriteLock lock;
-
-  private final Set<PipeRealtimeDataRegionExtractor> extractors;
-  private final Cache<String, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
-
-  public CachedSchemaPatternMatcher() {
-    this.lock = new ReentrantReadWriteLock();
-    // Should be thread-safe because the extractors will be returned by {@link #match} and
-    // iterated by {@link #assignToExtractor}, at the same time the extractors may be added or
-    // removed by {@link #register} and {@link #deregister}.
-    this.extractors = new CopyOnWriteArraySet<>();
-    this.deviceToExtractorsCache =
-        Caffeine.newBuilder()
-            .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
-            .build();
-  }
-
-  @Override
-  public void register(PipeRealtimeDataRegionExtractor extractor) {
-    lock.writeLock().lock();
-    try {
-      extractors.add(extractor);
-      deviceToExtractorsCache.invalidateAll();
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public void deregister(PipeRealtimeDataRegionExtractor extractor) {
-    lock.writeLock().lock();
-    try {
-      extractors.remove(extractor);
-      deviceToExtractorsCache.invalidateAll();
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public int getRegisterCount() {
-    lock.readLock().lock();
-    try {
-      return extractors.size();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
+public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
 
   @Override
   public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event) {
@@ -181,7 +122,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     return matchedExtractors;
   }
 
-  private Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
+  @Override
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
@@ -199,17 +141,5 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
 
     return filteredExtractors;
-  }
-
-  @Override
-  public void clear() {
-    lock.writeLock().lock();
-    try {
-      extractors.clear();
-      deviceToExtractorsCache.invalidateAll();
-      deviceToExtractorsCache.cleanUp();
-    } finally {
-      lock.writeLock().unlock();
-    }
   }
 }

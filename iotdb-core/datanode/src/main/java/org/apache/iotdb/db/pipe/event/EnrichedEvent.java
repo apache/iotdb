@@ -22,9 +22,10 @@ package org.apache.iotdb.db.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -50,7 +51,7 @@ public abstract class EnrichedEvent implements Event {
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
 
-  protected final String pattern;
+  protected final PipePattern pipePattern;
 
   protected final long startTime;
   protected final long endTime;
@@ -61,14 +62,18 @@ public abstract class EnrichedEvent implements Event {
   protected boolean shouldReportOnCommit = false;
 
   protected EnrichedEvent(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pipePattern,
+      long startTime,
+      long endTime) {
     referenceCount = new AtomicInteger(0);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pattern = pattern;
+    this.pipePattern = pipePattern != null ? pipePattern : new PipePattern(null);
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isPatternParsed = this.pipePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
@@ -180,12 +185,18 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Get the pattern of this event.
+   * Get the pattern string of this event.
    *
    * @return the pattern
    */
   public final String getPattern() {
-    return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
+    return pipePattern.getPattern() == null
+        ? pipePattern.getFormat().getDefaultPattern()
+        : pipePattern.getPattern();
+  }
+
+  public final PipePatternFormat getPatternFormat() {
+    return pipePattern.getFormat();
   }
 
   public final long getStartTime() {
@@ -221,7 +232,11 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime);
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
@@ -268,7 +283,7 @@ public abstract class EnrichedEvent implements Event {
         + "', commitId="
         + commitId
         + ", pattern='"
-        + pattern
+        + pipePattern
         + "', startTime="
         + startTime
         + ", endTime="
@@ -293,7 +308,7 @@ public abstract class EnrichedEvent implements Event {
         + "', commitId="
         + commitId
         + ", pattern='"
-        + pattern
+        + pipePattern
         + "', startTime="
         + startTime
         + ", endTime="

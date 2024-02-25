@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
@@ -52,8 +53,10 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
@@ -67,6 +70,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected PipeTaskMeta pipeTaskMeta;
 
   protected String pattern;
+  protected PipePatternFormat patternFormat;
   private boolean isDbNameCoveredByPattern = false;
 
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
@@ -142,15 +146,23 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
+    patternFormat =
+        PipePatternFormat.valueOf(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
+                PipePatternFormat.getDefaultFormat().toString()));
+
     pattern =
         parameters.getStringOrDefault(
             Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-            PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+            patternFormat.getDefaultPattern());
+
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (databaseName != null
+      if (patternFormat.equals(PipePatternFormat.PREFIX)
+          && databaseName != null
           && pattern.length() <= databaseName.length()
           && databaseName.startsWith(pattern)) {
         isDbNameCoveredByPattern = true;
@@ -268,6 +280,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final String getPattern() {
     return pattern;
+  }
+
+  public final PipePatternFormat getPatternFormat() {
+    return patternFormat;
   }
 
   public final long getRealtimeDataExtractionStartTime() {

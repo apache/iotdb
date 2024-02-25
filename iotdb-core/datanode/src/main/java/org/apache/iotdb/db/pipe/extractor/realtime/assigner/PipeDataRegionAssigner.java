@@ -23,9 +23,10 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipeDataRegionMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
 
 public class PipeDataRegionAssigner {
 
@@ -42,7 +43,7 @@ public class PipeDataRegionAssigner {
   }
 
   public PipeDataRegionAssigner(String dataRegionId) {
-    this.matcher = new CachedSchemaPatternMatcher();
+    this.matcher = new PrefixPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
@@ -71,7 +72,7 @@ public class PipeDataRegionAssigner {
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeName(),
                       extractor.getPipeTaskMeta(),
-                      extractor.getPattern(),
+                      new PipePattern(extractor.getPattern(), extractor.getPatternFormat()),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
 

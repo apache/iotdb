@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -237,13 +239,17 @@ public class PipeTabletInsertionEventTest {
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
     Assert.assertFalse(isAligned2);
 
-    PipeRawTabletInsertionEvent event3 = new PipeRawTabletInsertionEvent(tablet1, false, pattern);
+    PipeRawTabletInsertionEvent event3 =
+        new PipeRawTabletInsertionEvent(
+            tablet1, false, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertFalse(isAligned3);
 
-    PipeRawTabletInsertionEvent event4 = new PipeRawTabletInsertionEvent(tablet2, false, pattern);
+    PipeRawTabletInsertionEvent event4 =
+        new PipeRawTabletInsertionEvent(
+            tablet2, false, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
@@ -266,13 +272,15 @@ public class PipeTabletInsertionEventTest {
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
     Assert.assertTrue(isAligned2);
 
-    PipeRawTabletInsertionEvent event3 = new PipeRawTabletInsertionEvent(tablet1, true, pattern);
+    PipeRawTabletInsertionEvent event3 =
+        new PipeRawTabletInsertionEvent(tablet1, true, new PipePattern(pattern));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertTrue(isAligned3);
 
-    PipeRawTabletInsertionEvent event4 = new PipeRawTabletInsertionEvent(tablet2, true, pattern);
+    PipeRawTabletInsertionEvent event4 =
+        new PipeRawTabletInsertionEvent(tablet2, true, new PipePattern(pattern));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
@@ -286,7 +294,7 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
-            pattern);
+            new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet1 = container1.convertToTablet();
     Assert.assertEquals(0, tablet1.rowSize);
     boolean isAligned1 = container1.isAligned();
@@ -297,7 +305,7 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
-            pattern);
+            new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet2 = container2.convertToTablet();
     Assert.assertEquals(1, tablet2.rowSize);
     boolean isAligned2 = container2.isAligned();
@@ -308,7 +316,7 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
-            pattern);
+            new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet3 = container3.convertToTablet();
     Assert.assertEquals(3, tablet3.rowSize);
     boolean isAligned3 = container3.isAligned();
@@ -319,7 +327,7 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,
-            pattern);
+            new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet4 = container4.convertToTablet();
     Assert.assertEquals(0, tablet4.rowSize);
     boolean isAligned4 = container4.isAligned();
