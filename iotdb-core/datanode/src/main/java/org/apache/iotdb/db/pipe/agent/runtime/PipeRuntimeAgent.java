@@ -105,7 +105,7 @@ public class PipeRuntimeAgent implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.PIPE_RUNTIME_AGENT;
+    return ServiceType.PIPE_RUNTIME_DATA_NODE_AGENT;
   }
 
   public String getClusterIdIfPossible() {
