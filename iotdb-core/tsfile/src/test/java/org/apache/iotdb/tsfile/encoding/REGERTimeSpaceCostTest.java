@@ -2783,8 +2783,8 @@ public class REGERTimeSpaceCostTest {
 
 
                 inputStream.close();
-                ArrayList<Integer> result2 = new ArrayList<>();
-                splitTimeStamp3(data, result2);
+//                ArrayList<Integer> result2 = new ArrayList<>();
+//                splitTimeStamp3(data, result2);
 
                 long[] data2_arr = new long[data.size()];
 
@@ -2816,7 +2816,7 @@ public class REGERTimeSpaceCostTest {
 
                 String[] record = {
                         f.toString(),
-                        "REGER-Time",
+                        "After-Reorder-Time",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data.size()),

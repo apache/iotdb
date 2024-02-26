@@ -1686,8 +1686,10 @@ public class RegerPFloatTest {
     output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
     output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    int[] file_list = {1,8};
+    for (int file_i : file_list){
+//    for (int file_i = 12; file_i < 13; file_i++) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -1735,8 +1737,8 @@ public class RegerPFloatTest {
             data.add(tmp);
           }
           inputStream.close();
-          ArrayList<Integer> result2 = new ArrayList<>();
-          splitTimeStamp3(data, result2);
+//          ArrayList<Integer> result2 = new ArrayList<>();
+//          splitTimeStamp3(data, result2);
           int[][] data2_arr = new int[data.size()][2];
           int min_time = data.get(0).get(0);
           for (int i = 0; i < data.size(); i++) {

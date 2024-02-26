@@ -2659,7 +2659,7 @@ public class REGERFloatTest {
     public void REGER() throws IOException {
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_float";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger";
         int pack_size = 16;
         int block_size = 512;
 
@@ -2735,7 +2735,8 @@ public class REGERFloatTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-
+        int[] file_list = {1,8};
+//        for (int file_i : file_list){
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -2783,8 +2784,8 @@ public class REGERFloatTest {
 
 
                 inputStream.close();
-                ArrayList<Integer> result2 = new ArrayList<>();
-                splitTimeStamp3(data, result2);
+//                ArrayList<Integer> result2 = new ArrayList<>();
+//                splitTimeStamp3(data, result2);
 
                 long[] data2_arr = new long[data.size()];
 
@@ -3098,9 +3099,9 @@ public class REGERFloatTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-//        int[] file_lists = {5,6,8,10};
-//        for (int file_i : file_lists) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        int[] file_lists = {1,8};
+        for (int file_i : file_lists) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 12; file_i < 14; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3145,8 +3146,8 @@ public class REGERFloatTest {
                     int value_tmp = Integer.parseInt(loader.getValues()[1]);
                     data.add(combine2Int(time_tmp, value_tmp));
                 }
-                ArrayList<Integer> result2 = new ArrayList<>();
-                splitTimeStamp3(data, result2);
+//                ArrayList<Integer> result2 = new ArrayList<>();
+//                splitTimeStamp3(data, result2);
 
 
                 long[] data2_arr = new long[data.size()];
@@ -3162,7 +3163,7 @@ public class REGERFloatTest {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 1;
+                    int repeatTime2 = 100;
                     long s = System.nanoTime();
                     int length = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
@@ -3482,8 +3483,10 @@ public class REGERFloatTest {
         output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
         output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 12; file_i < 14; file_i++) {
+        int[] file_list = {1,8};
+        for (int file_i : file_list){
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 12; file_i < 13; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3528,7 +3531,7 @@ public class REGERFloatTest {
                     data.add(combine2Int(time_tmp, value_tmp));
                 }
                 ArrayList<Integer> result2 = new ArrayList<>();
-                splitTimeStamp3(data, result2);
+//                splitTimeStamp3(data, result2);
 
 
                 long[] data2_arr = new long[data.size()];

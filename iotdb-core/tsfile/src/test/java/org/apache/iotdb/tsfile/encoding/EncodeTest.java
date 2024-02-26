@@ -69,6 +69,7 @@ public class EncodeTest {
     output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
     output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
+//    for (int file_i = 8; file_i < 9; file_i++) {
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
