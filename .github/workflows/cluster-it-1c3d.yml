@@ -62,7 +62,6 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
           -am -PClusterIT
       - name: Upload Artifact
