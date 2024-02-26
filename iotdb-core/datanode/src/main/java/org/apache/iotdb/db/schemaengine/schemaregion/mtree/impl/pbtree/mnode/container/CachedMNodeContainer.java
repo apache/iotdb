@@ -251,7 +251,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public Iterator<ICachedMNode> getChildrenIterator() {
-    return new CachedMNodeContainerIterator();
+    return new CachedMNodeContainerIterator((byte) 0);
   }
 
   @Override
@@ -382,10 +382,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   private class CachedMNodeContainerIterator implements Iterator<ICachedMNode> {
 
     Iterator<ICachedMNode> iterator;
-    byte status = 0;
+    byte status;
 
-    CachedMNodeContainerIterator() {
-      iterator = getChildCache().values().iterator();
+    CachedMNodeContainerIterator(byte status) {
+      this.status = status;
+      changeStatus();
     }
 
     @Override
@@ -415,6 +416,10 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         case 1:
           iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
           status = 2;
+          return true;
+        case 2:
+          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
+          status = 3;
           return true;
         default:
           return false;
