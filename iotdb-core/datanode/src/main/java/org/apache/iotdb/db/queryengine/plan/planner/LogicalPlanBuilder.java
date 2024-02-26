@@ -1172,12 +1172,13 @@ public class LogicalPlanBuilder {
       Expression filterExpression,
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
-      Ordering scanOrder) {
+      Ordering scanOrder,
+      boolean fromWhere) {
     if (filterExpression == null || selectExpressions.isEmpty()) {
       return this;
     }
 
-    this.root =
+    FilterNode filterNode =
         new FilterNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
@@ -1185,6 +1186,10 @@ public class LogicalPlanBuilder {
             filterExpression,
             isGroupByTime,
             scanOrder);
+    if (fromWhere) {
+      context.setFromWhere(filterNode);
+    }
+    this.root = filterNode;
     updateTypeProvider(selectExpressions);
     return this;
   }
@@ -1255,7 +1260,8 @@ public class LogicalPlanBuilder {
     }
 
     if (havingExpression != null) {
-      return planFilterAndTransform(havingExpression, outputExpressions, isGroupByTime, scanOrder);
+      return planFilterAndTransform(
+          havingExpression, outputExpressions, isGroupByTime, scanOrder, false);
     } else {
       return planTransform(outputExpressions, isGroupByTime, scanOrder);
     }
@@ -1268,7 +1274,7 @@ public class LogicalPlanBuilder {
       Ordering scanOrder) {
     if (whereExpression != null) {
       return planFilterAndTransform(
-          whereExpression, sourceTransformExpressions, isGroupByTime, scanOrder);
+          whereExpression, sourceTransformExpressions, isGroupByTime, scanOrder, true);
     } else {
       return planTransform(sourceTransformExpressions, isGroupByTime, scanOrder);
     }
@@ -1526,7 +1532,8 @@ public class LogicalPlanBuilder {
                   analysis.getWhereExpression(),
                   analysis.getSourceExpressions(),
                   false,
-                  Ordering.ASC)
+                  Ordering.ASC,
+                  true)
               .planSort(analysis.getMergeOrderParameter())
               .getRoot();
     } else {
@@ -1545,7 +1552,8 @@ public class LogicalPlanBuilder {
                           analysis.getWhereExpression(),
                           analysis.getSourceExpressions(),
                           false,
-                          Ordering.ASC)
+                          Ordering.ASC,
+                          true)
                       .planSort(analysis.getMergeOrderParameter())
                       .getRoot()));
       outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());

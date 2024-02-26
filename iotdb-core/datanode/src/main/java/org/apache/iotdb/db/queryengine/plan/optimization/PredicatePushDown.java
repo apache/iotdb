@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -65,10 +66,7 @@ public class PredicatePushDown implements PlanOptimizer {
     return plan.accept(
         new Rewriter(),
         new RewriterContext(
-            context.getQueryId(),
-            queryStatement.isAlignByDevice(),
-            analysis.isAllDevicesInOneTemplate(),
-            context.getTypeProvider().getTemplatedInfo()));
+            context, queryStatement.isAlignByDevice(), analysis.isAllDevicesInOneTemplate()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -97,7 +95,7 @@ public class PredicatePushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      if (fromHaving(node.getPredicate())) {
+      if (!context.isFromWhere(node)) {
         return visitSingleChildProcess(node, context);
       }
 
@@ -111,11 +109,6 @@ public class PredicatePushDown implements PlanOptimizer {
         return rewrittenChild;
       }
       return node;
-    }
-
-    private boolean fromHaving(Expression predicate) {
-      List<Expression> aggregations = ExpressionAnalyzer.searchAggregationExpressions(predicate);
-      return aggregations != null && !aggregations.isEmpty();
     }
 
     @Override
@@ -365,6 +358,7 @@ public class PredicatePushDown implements PlanOptimizer {
     private final boolean isAlignByDevice;
     private final boolean isBuildPlanUseTemplate;
     private final TemplatedInfo templatedInfo;
+    private final Function<FilterNode, Boolean> fromWhere;
 
     private FilterNode pushDownFilterNode;
 
@@ -372,14 +366,12 @@ public class PredicatePushDown implements PlanOptimizer {
     private boolean enablePushDownUseTemplate = false;
 
     private RewriterContext(
-        QueryId queryId,
-        boolean isAlignByDevice,
-        boolean isBuildPlanUseTemplate,
-        TemplatedInfo templatedInfo) {
-      this.queryId = queryId;
+        MPPQueryContext context, boolean isAlignByDevice, boolean isBuildPlanUseTemplate) {
+      this.queryId = context.getQueryId();
       this.isAlignByDevice = isAlignByDevice;
       this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
-      this.templatedInfo = templatedInfo;
+      this.templatedInfo = context.getTypeProvider().getTemplatedInfo();
+      this.fromWhere = context::fromWhere;
     }
 
     public PlanNodeId genPlanNodeId() {
@@ -396,6 +388,10 @@ public class PredicatePushDown implements PlanOptimizer {
 
     public TemplatedInfo getTemplatedInfo() {
       return templatedInfo;
+    }
+
+    public boolean isFromWhere(FilterNode filterNode) {
+      return Boolean.TRUE.equals(fromWhere.apply(filterNode));
     }
 
     public FilterNode getPushDownFilterNode() {
