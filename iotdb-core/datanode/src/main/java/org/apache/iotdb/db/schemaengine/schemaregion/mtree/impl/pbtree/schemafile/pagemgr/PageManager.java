@@ -179,7 +179,8 @@ public abstract class PageManager implements IPageManager {
     String alias;
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet()
+            .stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       // check and pre-allocate
@@ -248,7 +249,7 @@ public abstract class PageManager implements IPageManager {
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
                   ICachedMNodeContainer.getCachedMNodeContainer(node)
-                      .getNewChildBuffer()
+                      .getNewChildFlushingBuffer()
                       .entrySet()
                       .size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize, cxt);
@@ -283,7 +284,9 @@ public abstract class PageManager implements IPageManager {
     ByteBuffer childBuffer;
     long res; // result of update
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
+        ICachedMNodeContainer.getCachedMNodeContainer(node)
+            .getUpdatedChildFlushingBuffer()
+            .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       childBuffer = RecordUtils.node2Buffer(child);

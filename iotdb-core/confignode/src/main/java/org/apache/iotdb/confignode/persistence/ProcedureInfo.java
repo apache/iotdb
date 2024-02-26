@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProce
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureWAL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,6 +43,8 @@ public class ProcedureInfo {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureInfo.class);
 
+  private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
+
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
   private final String procedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
@@ -51,7 +52,7 @@ public class ProcedureInfo {
 
   public void load(List<Procedure> procedureList) {
     try (Stream<Path> s = Files.list(Paths.get(procedureWalDir))) {
-      s.filter(path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
+      s.filter(path -> path.getFileName().toString().endsWith(PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
                   Long.compareUnsigned(
@@ -74,7 +75,7 @@ public class ProcedureInfo {
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure procedure = updateProcedurePlan.getProcedure();
     long procId = procedure.getProcId();
-    Path path = Paths.get(procedureWalDir, procId + ProcedureStore.PROCEDURE_WAL_SUFFIX);
+    Path path = Paths.get(procedureWalDir, procId + PROCEDURE_WAL_SUFFIX);
     ProcedureWAL procedureWAL =
         procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
     try {

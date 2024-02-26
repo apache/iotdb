@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedC
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
@@ -202,7 +203,9 @@ public enum PlanNodeType {
 
   INNER_TIME_JOIN((short) 87),
   LEFT_OUTER_TIME_JOIN((short) 88),
-  OPERATE_SCHEMA_QUEUE_REFERENCE((short) 89),
+  AGG_MERGE_SORT((short) 89),
+
+  OPERATE_SCHEMA_QUEUE_REFERENCE((short) 90),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -429,6 +432,8 @@ public enum PlanNodeType {
       case 88:
         return LeftOuterTimeJoinNode.deserialize(buffer);
       case 89:
+        return AggregationMergeSortNode.deserialize(buffer);
+      case 90:
         return OperateSchemaQueueNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
