@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.pattern.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -27,6 +29,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -72,6 +76,76 @@ public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatche
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  @Override
+  public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event) {
+    final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
+
+    lock.readLock().lock();
+    try {
+      if (extractors.isEmpty()) {
+        return matchedExtractors;
+      }
+
+      // HeartbeatEvent will be assigned to all extractors
+      if (event.getEvent() instanceof PipeHeartbeatEvent) {
+        return extractors;
+      }
+
+      for (final Map.Entry<String, String[]> entry : event.getSchemaInfo().entrySet()) {
+        final String device = entry.getKey();
+        final String[] measurements = entry.getValue();
+
+        // 1. try to get matched extractors from cache, if not success, match them by device
+        final Set<PipeRealtimeDataRegionExtractor> extractorsFilteredByDevice =
+            deviceToExtractorsCache.get(device, this::filterExtractorsByDevice);
+        // this would not happen
+        if (extractorsFilteredByDevice == null) {
+          LOGGER.warn("Match result NPE when handle device {}", device);
+          continue;
+        }
+
+        // 2. filter matched candidate extractors by measurements
+        if (measurements.length == 0) {
+          // We can't get all measurements efficiently here,
+          // so we just ASSUME the extractor matches and do more checks later.
+          matchedExtractors.addAll(extractorsFilteredByDevice);
+        } else {
+          // `measurements` is not empty (only in case of tablet event). match extractors by
+          // measurements.
+          extractorsFilteredByDevice.forEach(
+              extractor -> {
+                final String pattern = extractor.getPattern();
+                if (patternCoverDevice(pattern, device)) {
+                  matchedExtractors.add(extractor);
+                } else {
+                  for (final String measurement : measurements) {
+                    // Ignore null measurement for partial insert
+                    if (measurement == null) {
+                      continue;
+                    }
+
+                    if (patternMatchMeasurement(pattern, device, measurement)) {
+                      matchedExtractors.add(extractor);
+                      // There would be no more matched extractors because the measurements are
+                      // unique
+                      break;
+                    }
+                  }
+                }
+              });
+        }
+
+        if (matchedExtractors.size() == extractors.size()) {
+          break;
+        }
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
+
+    return matchedExtractors;
   }
 
   @Override
