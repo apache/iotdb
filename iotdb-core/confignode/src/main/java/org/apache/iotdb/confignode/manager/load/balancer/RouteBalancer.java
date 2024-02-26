@@ -119,11 +119,12 @@ public class RouteBalancer {
   }
 
   /**
-   * Balance cluster RegionGroup leader distribution through configured algorithm
+   * Balance cluster RegionGroup leader distribution through configured algorithm TODO: @YongzaoDan,
+   * increase scheduling delay
    *
    * @return Map<RegionGroupId, Pair<old leader index, new leader index>>
    */
-  public Map<TConsensusGroupId, Pair<Integer, Integer>> balanceRegionLeader() {
+  public synchronized Map<TConsensusGroupId, Pair<Integer, Integer>> balanceRegionLeader() {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         new ConcurrentHashMap<>();
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
@@ -237,11 +238,12 @@ public class RouteBalancer {
   }
 
   /**
-   * Balance cluster RegionGroup route priority through configured algorithm
+   * Balance cluster RegionGroup route priority through configured algorithm TODO: @YongzaoDan,
+   * increase scheduling delay
    *
    * @return Map<RegionGroupId, Pair<old route priority, new route priority>>
    */
-  public Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+  public synchronized Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
       balanceRegionPriority() {
 
     Map<TConsensusGroupId, TRegionReplicaSet> currentPriorityMap =
