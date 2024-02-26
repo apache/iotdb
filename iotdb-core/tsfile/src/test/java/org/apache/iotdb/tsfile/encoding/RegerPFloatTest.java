@@ -77,7 +77,6 @@ public class RegerPFloatTest {
     return newArray;
   }
 
-
   public static void pack8Values(
       int[][] values, int index, int offset, int width, int encode_pos, byte[] encoded_result) {
     int bufIdx = 0;
@@ -126,7 +125,6 @@ public class RegerPFloatTest {
     //        return encode_pos;
   }
 
-
   public static int bitPacking(
       int[][] numbers,
       int index,
@@ -144,7 +142,6 @@ public class RegerPFloatTest {
     return encode_pos;
   }
 
-
   public static void float2bytes(float f, int pos_encode, byte[] encode_result) {
     int fbit = Float.floatToIntBits(f);
     byte[] b = new byte[4];
@@ -161,7 +158,6 @@ public class RegerPFloatTest {
       encode_result[len - i - 1 + pos_encode] = temp;
     }
   }
-
 
   public static int part(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
     ArrayList<Integer> tmp = arr.get(low);
@@ -265,12 +261,12 @@ public class RegerPFloatTest {
     result.add(t0);
   }
 
-  public static void terminate(int[][] ts_block, float[] coefficient, int p){
+  public static void terminate(int[][] ts_block, float[] coefficient, int p) {
     int length = ts_block.length;
     assert length > p;
     int size = length - p;
 
-    RealMatrix matrix = new Array2DRowRealMatrix(size, p+1);
+    RealMatrix matrix = new Array2DRowRealMatrix(size, p + 1);
     RealVector vector = new ArrayRealVector(size);
 
     for (int i = 0; i < size; i++) {
@@ -281,11 +277,10 @@ public class RegerPFloatTest {
       vector.setEntry(i, ts_block[i + p][0]);
     }
 
-
     DecompositionSolver solver = new SingularValueDecomposition(matrix).getSolver();
     RealVector solution1 = solver.solve(vector);
 
-    matrix = new Array2DRowRealMatrix(size, p+1);
+    matrix = new Array2DRowRealMatrix(size, p + 1);
     vector = new ArrayRealVector(size);
 
     for (int i = 0; i < size; i++) {
@@ -296,17 +291,15 @@ public class RegerPFloatTest {
       vector.setEntry(i, ts_block[i + p][1]);
     }
 
-
     DecompositionSolver solver1 = new SingularValueDecomposition(matrix).getSolver();
     RealVector solution2 = solver1.solve(vector);
 
-
     for (int i = 0; i <= p; i++) {
-      coefficient[2 * i] = (float) solution1.getEntry(p-i);
-      coefficient[2 * i + 1] = (float) solution2.getEntry(p-i);
+      coefficient[2 * i] = (float) solution1.getEntry(p - i);
+      coefficient[2 * i + 1] = (float) solution2.getEntry(p - i);
     }
-
   }
+
   public static int[][] segmentBitPacking(
       int[][] ts_block_delta, int block_size, int segment_size) {
 
@@ -362,7 +355,6 @@ public class RegerPFloatTest {
     return isMoveable;
   }
 
-
   private static int getIstarClose(
       int alpha, ArrayList<Integer> j_star_list, int[][] new_length_list, int[] raw_length) {
     int min_i = 0;
@@ -389,11 +381,9 @@ public class RegerPFloatTest {
     int raw_abs_sum = raw_length[0];
     int range = block_size / 32;
 
-
     ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
 
     int j_star = -1;
-
 
     if (alpha == -1) {
       return j_star;
@@ -423,7 +413,7 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      int end_j = Math.min(alpha+range, block_size);
+      int end_j = Math.min(alpha + range, block_size);
       for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
         b = adjustCase3(ts_block, alpha, j, theta, p);
         if (b[0] < raw_abs_sum) {
@@ -439,7 +429,7 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      end_j = Math.min(alpha+range, block_size);
+      end_j = Math.min(alpha + range, block_size);
       for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
@@ -506,7 +496,7 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      int end_j = Math.min(alpha+range, block_size);
+      int end_j = Math.min(alpha + range, block_size);
       for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
@@ -523,7 +513,7 @@ public class RegerPFloatTest {
           pos_new_length_list++;
         }
       }
-      end_j = Math.min(alpha+range, block_size);
+      end_j = Math.min(alpha + range, block_size);
       for (; j < end_j; j++) {
 
         b = adjustCase4(ts_block, alpha, j, theta, p);
@@ -594,7 +584,6 @@ public class RegerPFloatTest {
         }
       }
 
-
       for (j = alpha + 2; j < alpha + p && j < end_j; j++) {
 
         b = adjustCase3(ts_block, alpha, j, theta, p);
@@ -648,19 +637,18 @@ public class RegerPFloatTest {
     return j_star;
   }
 
-  private static void cloneTsblock(int[][] ts_block,int[][] tmp_ts_block){
-    for(int i=0;i<ts_block.length;i++){
+  private static void cloneTsblock(int[][] ts_block, int[][] tmp_ts_block) {
+    for (int i = 0; i < ts_block.length; i++) {
       tmp_ts_block[i][0] = ts_block[i][0];
       tmp_ts_block[i][1] = ts_block[i][1];
     }
   }
+
   private static int[] adjustCase1(int[][] ts_block, int alpha, int j_star, float[] theta, int p) {
     int[][] tmp_ts_block = new int[ts_block.length][2];
-    cloneTsblock(ts_block,tmp_ts_block);
+    cloneTsblock(ts_block, tmp_ts_block);
     int[] delta_index = new int[4];
     int[] delta = new int[4];
-
-
 
     int[] tmp_tv = tmp_ts_block[alpha].clone();
     int[] b = new int[3];
@@ -671,11 +659,10 @@ public class RegerPFloatTest {
     tmp_ts_block[j_star][0] = tmp_tv[0];
     tmp_ts_block[j_star][1] = tmp_tv[1];
     int[][] ts_block_delta;
-    ts_block_delta =deltaTSBlock(tmp_ts_block, delta_index,delta, theta, p);
+    ts_block_delta = deltaTSBlock(tmp_ts_block, delta_index, delta, theta, p);
 
     int timestamp_delta_min = delta[2];
     int value_delta_min = delta[3];
-
 
     int length = 0;
     for (int[] integers : ts_block_delta) {
@@ -691,7 +678,7 @@ public class RegerPFloatTest {
 
   private static int[] adjustCase2(int[][] ts_block, int alpha, int j_star, float[] theta, int p) {
     int[][] tmp_ts_block = new int[ts_block.length][2];
-    cloneTsblock(ts_block,tmp_ts_block);
+    cloneTsblock(ts_block, tmp_ts_block);
     int[] tmp_tv = tmp_ts_block[alpha].clone();
     for (int u = alpha - 1; u >= j_star; u--) {
       tmp_ts_block[u + 1][0] = tmp_ts_block[u][0];
@@ -703,7 +690,7 @@ public class RegerPFloatTest {
     int[] delta_index = new int[4];
     int[] delta = new int[4];
     int[][] ts_block_delta;
-    ts_block_delta =deltaTSBlock(tmp_ts_block, delta_index,delta, theta, p);
+    ts_block_delta = deltaTSBlock(tmp_ts_block, delta_index, delta, theta, p);
 
     int timestamp_delta_min = delta[2];
     int value_delta_min = delta[3];
@@ -721,7 +708,7 @@ public class RegerPFloatTest {
 
   private static int[] adjustCase3(int[][] ts_block, int alpha, int j_star, float[] theta, int p) {
     int[][] tmp_ts_block = new int[ts_block.length][2];
-    cloneTsblock(ts_block,tmp_ts_block);
+    cloneTsblock(ts_block, tmp_ts_block);
     int[] tmp_tv = tmp_ts_block[alpha].clone();
     for (int u = alpha + 1; u < j_star; u++) {
       tmp_ts_block[u - 1][0] = tmp_ts_block[u][0];
@@ -734,7 +721,7 @@ public class RegerPFloatTest {
     int[] delta_index = new int[4];
     int[] delta = new int[4];
     int[][] ts_block_delta;
-    ts_block_delta =deltaTSBlock(tmp_ts_block, delta_index,delta, theta, p);
+    ts_block_delta = deltaTSBlock(tmp_ts_block, delta_index, delta, theta, p);
 
     int timestamp_delta_min = delta[2];
     int value_delta_min = delta[3];
@@ -752,7 +739,7 @@ public class RegerPFloatTest {
 
   private static int[] adjustCase4(int[][] ts_block, int alpha, int j_star, float[] theta, int p) {
     int[][] tmp_ts_block = new int[ts_block.length][2];
-    cloneTsblock(ts_block,tmp_ts_block);
+    cloneTsblock(ts_block, tmp_ts_block);
     int[] tmp_tv = tmp_ts_block[alpha].clone();
     for (int u = alpha + 1; u < j_star; u++) {
       tmp_ts_block[u - 1][0] = tmp_ts_block[u][0];
@@ -765,7 +752,7 @@ public class RegerPFloatTest {
     int[] delta_index = new int[4];
     int[] delta = new int[4];
     int[][] ts_block_delta;
-    ts_block_delta =deltaTSBlock(tmp_ts_block, delta_index,delta, theta, p);
+    ts_block_delta = deltaTSBlock(tmp_ts_block, delta_index, delta, theta, p);
 
     int timestamp_delta_min = delta[2];
     int value_delta_min = delta[3];
@@ -783,7 +770,7 @@ public class RegerPFloatTest {
 
   private static int[] adjustCase5(int[][] ts_block, int alpha, float[] theta, int p) {
     int[][] tmp_ts_block = new int[ts_block.length][2];
-    cloneTsblock(ts_block,tmp_ts_block);
+    cloneTsblock(ts_block, tmp_ts_block);
     int block_size = ts_block.length;
     int[] tmp_tv = tmp_ts_block[alpha].clone();
     for (int u = alpha + 1; u < block_size; u++) {
@@ -795,7 +782,7 @@ public class RegerPFloatTest {
     int[] delta_index = new int[4];
     int[] delta = new int[4];
     int[][] ts_block_delta;
-    ts_block_delta =deltaTSBlock(tmp_ts_block, delta_index,delta, theta, p);
+    ts_block_delta = deltaTSBlock(tmp_ts_block, delta_index, delta, theta, p);
 
     int timestamp_delta_min = delta[2];
     int value_delta_min = delta[3];
@@ -810,7 +797,6 @@ public class RegerPFloatTest {
     b[2] = value_delta_min;
     return b;
   }
-
 
   public static int encodeRLEBitWidth2Bytes(int[][] bit_width_segments) {
     int encoded_result = 0;
@@ -943,7 +929,6 @@ public class RegerPFloatTest {
       pos_encode++;
       intByte2Bytes(bit_width_time[1], pos_encode, encoded_result);
       pos_encode++;
-
     }
     for (int i = 0; i < pos_value; i++) {
       int[] bit_width_value = run_length_value[i];
@@ -951,7 +936,6 @@ public class RegerPFloatTest {
       pos_encode++;
       intByte2Bytes(bit_width_value[1], pos_encode, encoded_result);
       pos_encode++;
-
     }
 
     return pos_encode;
@@ -982,11 +966,10 @@ public class RegerPFloatTest {
       pos_encode += 4;
     }
 
-    int2Bytes( raw_length[3], pos_encode, encoded_result);
+    int2Bytes(raw_length[3], pos_encode, encoded_result);
     pos_encode += 4;
     int2Bytes(raw_length[4], pos_encode, encoded_result);
     pos_encode += 4;
-
 
     pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
     for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -1015,9 +998,8 @@ public class RegerPFloatTest {
     return pos_encode;
   }
 
-
   public static int[][] getEncodeBitsRegressionNoTrain(
-          int[][] ts_block, int block_size, int[] raw_length, float[] theta, int p) {
+      int[][] ts_block, int block_size, int[] raw_length, float[] theta, int p) {
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int[][] ts_block_delta = new int[ts_block.length][2];
@@ -1093,10 +1075,7 @@ public class RegerPFloatTest {
   }
 
   private static int numberOfEncodeSegment2Bytes(
-      int[][] delta_segments,
-      int[][] bit_width_segments,
-      int segment_size,
-      int p) {
+      int[][] delta_segments, int[][] bit_width_segments, int segment_size, int p) {
     int block_size = delta_segments.length;
     int segment_n = (block_size - p) / segment_size;
     int result = 0;
@@ -1114,11 +1093,8 @@ public class RegerPFloatTest {
     return result;
   }
 
-  public static int[][] deltaTSBlock(int[][] ts_block,
-                                     int[] delta_index,
-                                     int[] delta,
-                                     float[] theta,
-                                     int p){
+  public static int[][] deltaTSBlock(
+      int[][] ts_block, int[] delta_index, int[] delta, float[] theta, int p) {
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int timestamp_delta_min_index = -1;
@@ -1203,24 +1179,20 @@ public class RegerPFloatTest {
   }
 
   public static int[] getIStar(
-      int[][] ts_block,
-      ArrayList<Integer> min_index,
-      int index,
-      float[] theta,
-      int p) {
+      int[][] ts_block, ArrayList<Integer> min_index, int index, float[] theta, int p) {
 
     int[] delta_index = new int[4];
     int[] delta = new int[4];
 
-    deltaTSBlock(ts_block, delta_index,delta, theta, p);
+    deltaTSBlock(ts_block, delta_index, delta, theta, p);
 
     min_index.add(delta_index[2]);
     min_index.add(delta_index[3]);
     int[] alpha_list = new int[2];
-    if(index==0){
+    if (index == 0) {
       alpha_list[0] = delta_index[3];
       alpha_list[1] = delta_index[1];
-    }else{
+    } else {
       alpha_list[0] = delta_index[2];
       alpha_list[1] = delta_index[0];
     }
@@ -1228,21 +1200,20 @@ public class RegerPFloatTest {
   }
 
   public static int[] getIStar(
-          int[][] ts_block, ArrayList<Integer> min_index, float[] theta, int p) {
+      int[][] ts_block, ArrayList<Integer> min_index, float[] theta, int p) {
 
     int[] alpha_list = new int[4];
 
     int[] delta_index = new int[4];
     int[] delta = new int[4];
 
-    deltaTSBlock(ts_block, delta_index,delta, theta, p);
+    deltaTSBlock(ts_block, delta_index, delta, theta, p);
 
     min_index.add(delta_index[2]);
     min_index.add(delta_index[3]);
 
     alpha_list[0] = delta_index[2];
     alpha_list[1] = delta_index[0];
-
 
     int pos_alpha_list = 2;
     if (!containsValue(alpha_list, delta_index[3])) {
@@ -1257,10 +1228,8 @@ public class RegerPFloatTest {
     int[] new_alpha_list = new int[pos_alpha_list];
     System.arraycopy(alpha_list, 0, new_alpha_list, 0, pos_alpha_list);
 
-
     return new_alpha_list;
   }
-
 
   private static int REGERBlockEncoder(
       int[][] data,
@@ -1280,7 +1249,7 @@ public class RegerPFloatTest {
       ts_block = new int[block_size][2];
       ts_block_partition = new int[block_size][2];
       for (int j = 0; j < block_size; j++) {
-        ts_block[j][0] = data[j + i * block_size][0]-min_time;
+        ts_block[j][0] = data[j + i * block_size][0] - min_time;
         ts_block[j][1] = data[j + i * block_size][1];
       }
     } else {
@@ -1288,8 +1257,8 @@ public class RegerPFloatTest {
       ts_block_partition = new int[supply_length][2];
       int end = data.length - i * block_size;
       for (int j = 0; j < end; j++) {
-//        data[j + i * block_size][0] -= min_time;
-        ts_block[j][0] = data[j + i * block_size][0]- min_time;
+        //        data[j + i * block_size][0] -= min_time;
+        ts_block[j][0] = data[j + i * block_size][0] - min_time;
         ts_block[j][1] = data[j + i * block_size][1];
       }
       for (int j = end; j < supply_length; j++) {
@@ -1298,7 +1267,7 @@ public class RegerPFloatTest {
       }
       block_size = supply_length;
     }
-    int2Bytes(min_time,encode_pos,cur_byte);
+    int2Bytes(min_time, encode_pos, cur_byte);
     encode_pos += 4;
 
     int[] reorder_length = new int[5];
@@ -1319,11 +1288,10 @@ public class RegerPFloatTest {
 
     segmentBitPacking(ts_block_delta_time, block_size, segment_size);
 
-
     int pos_ts_block_partition = 0;
     if (third_value.length > 0) {
 
-      for(int j=block_size-1;j>=0;j--){
+      for (int j = block_size - 1; j >= 0; j--) {
         int[] datum = ts_block[j];
         if (datum[1] <= third_value[0]) {
           ts_block_partition[pos_ts_block_partition][0] = datum[0];
@@ -1331,17 +1299,17 @@ public class RegerPFloatTest {
           pos_ts_block_partition++;
         }
       }
-    for (int third_i = 1; third_i <third_value.length ; third_i++) {
-      for(int j=block_size-1;j>=0;j--){
-        int[] datum = ts_block[j];
-        if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
-          ts_block_partition[pos_ts_block_partition][0] = datum[0];
-          ts_block_partition[pos_ts_block_partition][1] = datum[1];
-          pos_ts_block_partition++;
+      for (int third_i = 1; third_i < third_value.length; third_i++) {
+        for (int j = block_size - 1; j >= 0; j--) {
+          int[] datum = ts_block[j];
+          if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
+            ts_block_partition[pos_ts_block_partition][0] = datum[0];
+            ts_block_partition[pos_ts_block_partition][1] = datum[1];
+            pos_ts_block_partition++;
+          }
         }
       }
-    }
-      for(int j=block_size-1;j>=0;j--){
+      for (int j = block_size - 1; j >= 0; j--) {
         int[] datum = ts_block[j];
         if (datum[1] > third_value[third_value.length - 1]) {
           ts_block_partition[pos_ts_block_partition][0] = datum[0];
@@ -1352,10 +1320,8 @@ public class RegerPFloatTest {
     }
     terminate(ts_block_partition, theta, p);
     ts_block_delta =
-        getEncodeBitsRegressionNoTrain(
-            ts_block_partition, block_size, raw_length, theta, p);
+        getEncodeBitsRegressionNoTrain(ts_block_partition, block_size, raw_length, theta, p);
     segmentBitPacking(ts_block_delta, block_size, segment_size);
-
 
     Arrays.sort(
         ts_block,
@@ -1365,10 +1331,8 @@ public class RegerPFloatTest {
         });
     terminate(ts_block, theta_reorder, p);
     ts_block_delta_reorder =
-        getEncodeBitsRegressionNoTrain(
-            ts_block, block_size, reorder_length, theta_reorder, p);
+        getEncodeBitsRegressionNoTrain(ts_block, block_size, reorder_length, theta_reorder, p);
     segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
-
 
     int[] alpha_list;
     int choose = min3(time_length[0], raw_length[0], reorder_length[0]);
@@ -1401,11 +1365,9 @@ public class RegerPFloatTest {
 
     alpha_list = getIStar(ts_block, min_index, index_alpha_list, theta, p);
 
-
     int[] beta_list = new int[alpha_list.length];
     int[][] new_length_list = new int[alpha_list.length][5];
     int pos_new_length_list = 0;
-
 
     for (int j = 0; j < alpha_list.length; j++) {
       int alpha = alpha_list[j];
@@ -1443,8 +1405,7 @@ public class RegerPFloatTest {
             getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, p);
         int[][] bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
         new_length[0] =
-            numberOfEncodeSegment2Bytes(
-                ts_block_delta, bit_width_segments, segment_size, p);
+            numberOfEncodeSegment2Bytes(ts_block_delta, bit_width_segments, segment_size, p);
 
         if (new_length[0] <= raw_length[0]) {
           raw_length = new_length.clone();
@@ -1479,11 +1440,7 @@ public class RegerPFloatTest {
       isMoveable = isMovable(alpha_list, beta_list);
     }
 
-
-
-    ts_block_delta =
-        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, p);
-
+    ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, p);
 
     int segment_n = (block_size - 1) / segment_size;
     int[][] bit_width_segments = new int[segment_n][2];
@@ -1508,18 +1465,15 @@ public class RegerPFloatTest {
       bit_width_segments[segment_i][1] = bit_width_value;
     }
 
-
-
     encode_pos =
         encodeSegment2Bytes(
             ts_block_delta,
             bit_width_segments,
             raw_length,
             segment_size,
-                theta,
+            theta,
             encode_pos,
             cur_byte);
-
 
     return encode_pos;
   }
@@ -1532,7 +1486,7 @@ public class RegerPFloatTest {
       int p,
       byte[] encoded_result) {
 
-      block_size++;
+    block_size++;
 
     int length_all = data.length;
 
@@ -1550,21 +1504,11 @@ public class RegerPFloatTest {
     intByte2Bytes(p, encode_pos, encoded_result);
     encode_pos += 1;
 
-
     for (int i = 0; i < block_num; i++) {
-          encode_pos =
-              REGERBlockEncoder(
-                  data,
-                      i,
-                  block_size,
-                  0,
-                  third_value,
-                  segment_size,
-                      p,
-                  encode_pos,
-                  encoded_result);
-        }
-
+      encode_pos =
+          REGERBlockEncoder(
+              data, i, block_size, 0, third_value, segment_size, p, encode_pos, encoded_result);
+    }
 
     int remaining_length = length_all - block_num * block_size;
     if (remaining_length == 1) {
@@ -1575,7 +1519,7 @@ public class RegerPFloatTest {
     }
     if (remaining_length != 0 && remaining_length != 1) {
 
-      while(p>=segment_size+1){
+      while (p >= segment_size + 1) {
         segment_size *= 2;
       }
 
@@ -1590,19 +1534,18 @@ public class RegerPFloatTest {
       encode_pos =
           REGERBlockEncoder(
               data,
-                  block_num,
+              block_num,
               block_size,
               supple_length + remaining_length,
               third_value,
               segment_size,
-                  p,
+              p,
               encode_pos,
               encoded_result);
     }
 
     return encode_pos;
   }
-
 
   @Test
   public void REGERPFloatVaryP() throws IOException {
@@ -1634,7 +1577,6 @@ public class RegerPFloatTest {
     dataset_name.add("EPM-Education");
     dataset_name.add("FANYP-Sensors");
     dataset_name.add("TRAJET-Transport");
-
 
     int[] dataset_0 = {547, 2816};
     int[] dataset_1 = {1719, 3731};
@@ -1672,27 +1614,25 @@ public class RegerPFloatTest {
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-    output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-    output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+    output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv"); // 1
+    output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv"); // 2
     output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-    output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-    output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-    output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-    output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-    output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-    output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-    output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-    output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+    output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
+    output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv"); // 5
+    output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
+    output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv"); // 7
+    output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv"); // 8
+    output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv"); // 9
+    output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
+    output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
     output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
-
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
       System.out.println(inputPath);
-
 
       File file = new File(inputPath);
       File[] tempList = file.listFiles();
@@ -1716,7 +1656,7 @@ public class RegerPFloatTest {
       int count_csv = 0;
       for (File f : tempList) {
         System.out.println(count_csv);
-        count_csv ++;
+        count_csv++;
         System.out.println(f);
 
         for (int p = 1; p < 10; p++) {
@@ -1762,7 +1702,7 @@ public class RegerPFloatTest {
                     dataset_third.get(file_i),
                     16,
                     p,
-                        encoded_result);
+                    encoded_result);
 
           long e = System.nanoTime();
           encodeTime += ((e - s));
@@ -1787,7 +1727,6 @@ public class RegerPFloatTest {
           writer.writeRecord(record);
           System.out.println(ratio);
         }
-
       }
       writer.close();
     }
