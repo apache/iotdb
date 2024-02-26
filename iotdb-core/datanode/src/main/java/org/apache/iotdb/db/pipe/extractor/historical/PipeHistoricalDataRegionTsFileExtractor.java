@@ -191,9 +191,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     patternFormat =
         PipePatternFormat.valueOf(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
-                PipePatternFormat.getDefaultFormat().toString()));
+            parameters
+                .getStringOrDefault(
+                    Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
+                    PipePatternFormat.getDefaultFormat().toString())
+                .toUpperCase());
 
     pattern =
         parameters.getStringOrDefault(
