@@ -25,13 +25,13 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -117,7 +117,7 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
+  public TabletInsertionDataContainer(InsertNode insertNode, PipePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
@@ -127,7 +127,7 @@ public class TabletInsertionDataContainer {
 
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(InsertRowNode insertRowNode, String pattern) {
+  private void parse(InsertRowNode insertRowNode, PipePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -194,7 +194,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(InsertTabletNode insertTabletNode, String pattern) {
+  private void parse(InsertTabletNode insertTabletNode, PipePattern pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -277,7 +277,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(Tablet tablet, boolean isAligned, String pattern) {
+  private void parse(Tablet tablet, boolean isAligned, PipePattern pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -370,13 +370,15 @@ public class TabletInsertionDataContainer {
 
   private void generateColumnIndexMapper(
       String[] originMeasurementList,
-      String pattern,
+      PipePattern pattern,
       Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
-    if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
+    if (pattern.isRoot()
+        || PipePatternMatcherManager.getInstance()
+            .patternCoverDevice(pattern.getFormat(), pattern.getPattern(), deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
@@ -384,7 +386,8 @@ public class TabletInsertionDataContainer {
 
     // case 2: for example, pattern is root.a.b.c and device is root.a.b
     // in this case, we need to check the full path
-    else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+    else if (PipePatternMatcherManager.getInstance()
+        .patternOverlapWithDevice(pattern.getFormat(), pattern.getPattern(), deviceId)) {
       int filteredCount = 0;
 
       for (int i = 0; i < originColumnSize; i++) {
@@ -395,10 +398,9 @@ public class TabletInsertionDataContainer {
           continue;
         }
 
-        // low cost check comes first
-        if (pattern.length() == deviceId.length() + measurement.length() + 1
-            // high cost check comes later
-            && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+        if (PipePatternMatcherManager.getInstance()
+            .patternMatchMeasurement(
+                pattern.getFormat(), pattern.getPattern(), deviceId, measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
       }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
-import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,9 +47,9 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class CachedSchemaPatternMatcherTest {
+public class PrefixPatternMatcherTest {
 
-  private CachedSchemaPatternMatcher matcher;
+  private PrefixPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionExtractor> extractors;
 

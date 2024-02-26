@@ -226,14 +226,16 @@ public class PipeTabletInsertionEventTest {
   @Test
   public void convertToTabletForTest() {
     TabletInsertionDataContainer container1 =
-        new TabletInsertionDataContainer(insertRowNode, pattern);
+        new TabletInsertionDataContainer(
+            insertRowNode, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet1 = container1.convertToTablet();
     boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertFalse(isAligned1);
 
     TabletInsertionDataContainer container2 =
-        new TabletInsertionDataContainer(insertTabletNode, pattern);
+        new TabletInsertionDataContainer(
+            insertTabletNode, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet2 = container2.convertToTablet();
     boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
@@ -259,14 +261,16 @@ public class PipeTabletInsertionEventTest {
   @Test
   public void convertToAlignedTabletForTest() {
     TabletInsertionDataContainer container1 =
-        new TabletInsertionDataContainer(insertRowNodeAligned, pattern);
+        new TabletInsertionDataContainer(
+            insertRowNodeAligned, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet1 = container1.convertToTablet();
     boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertTrue(isAligned1);
 
     TabletInsertionDataContainer container2 =
-        new TabletInsertionDataContainer(insertTabletNodeAligned, pattern);
+        new TabletInsertionDataContainer(
+            insertTabletNodeAligned, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet2 = container2.convertToTablet();
     boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);

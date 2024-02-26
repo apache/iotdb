@@ -222,7 +222,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         waitForTsFileClose();
         dataContainer =
             new TsFileInsertionDataContainer(
-                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
+                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer;
     } catch (InterruptedException e) {

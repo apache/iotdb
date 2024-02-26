@@ -25,13 +25,9 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.matcher.PipeDataRegionMatcher;
-import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 
 public class PipeDataRegionAssigner {
-
-  /** The matcher is used to match the event with the extractor based on the pattern. */
-  private final PipeDataRegionMatcher matcher;
 
   /** The disruptor is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
@@ -43,7 +39,6 @@ public class PipeDataRegionAssigner {
   }
 
   public PipeDataRegionAssigner(String dataRegionId) {
-    this.matcher = new PrefixPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
@@ -60,7 +55,7 @@ public class PipeDataRegionAssigner {
   }
 
   public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
-    matcher
+    PipePatternMatcherManager.getInstance()
         .match(event)
         .forEach(
             extractor -> {
@@ -90,15 +85,15 @@ public class PipeDataRegionAssigner {
   }
 
   public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {
-    matcher.register(extractor);
+    PipePatternMatcherManager.getInstance().register(extractor);
   }
 
   public void stopAssignTo(PipeRealtimeDataRegionExtractor extractor) {
-    matcher.deregister(extractor);
+    PipePatternMatcherManager.getInstance().deregister(extractor);
   }
 
   public boolean notMoreExtractorNeededToBeAssigned() {
-    return matcher.getRegisterCount() == 0;
+    return PipePatternMatcherManager.getInstance().getRegisterCount() == 0;
   }
 
   /**
@@ -107,7 +102,7 @@ public class PipeDataRegionAssigner {
    */
   public void gc() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-    matcher.clear();
+    PipePatternMatcherManager.getInstance().clear();
     disruptor.clear();
   }
 

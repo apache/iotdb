@@ -81,7 +81,7 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
 
                 // case 1: for example, pattern is root.a.b and device is root.a.b.c
                 // in this case, the extractor can be matched without checking the measurements
-                if (pattern.length() <= device.length()) {
+                if (patternCoverDevice(pattern, device)) {
                   matchedExtractors.add(extractor);
                 }
                 // case 2: for example, pattern is root.a.b.c and device is root.a.b
@@ -96,11 +96,7 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
                     // for example, pattern is root.a.b.c, device is root.a.b and measurement is c
                     // in this case, the extractor can be matched. other cases are not matched.
                     // please note that there should be a . between device and measurement.
-                    if (
-                    // low cost check comes first
-                    pattern.length() == device.length() + measurement.length() + 1
-                        // high cost check comes later
-                        && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+                    if (patternMatchMeasurement(pattern, device, measurement)) {
                       matchedExtractors.add(extractor);
                       // there would be no more matched extractors because the measurements are
                       // unique
@@ -123,19 +119,40 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
+  public boolean patternCoverDevice(String pattern, String device) {
+    // for example, pattern is root.a.b and device is root.a.b.c
+    // in this case, the extractor can be matched without checking the measurements
+    return pattern.length() <= device.length() && device.startsWith(pattern);
+  }
+
+  @Override
+  public boolean patternOverlapWithDevice(String pattern, String device) {
+    return (
+        // for example, pattern is root.a.b and device is root.a.b.c
+        // in this case, the extractor can be matched without checking the measurements
+        pattern.length() <= device.length() && device.startsWith(pattern))
+        // for example, pattern is root.a.b.c and device is root.a.b
+        // in this case, the extractor can be selected as candidate, but the measurements should
+        // be checked further
+        || (pattern.length() > device.length() && pattern.startsWith(device));
+  }
+
+  @Override
+  public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
+    return
+    // low cost check comes first
+    pattern.length() == device.length() + measurement.length() + 1
+        // high cost check comes later
+        && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement);
+  }
+
+  @Override
   protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
       String pattern = extractor.getPattern();
-      if (
-      // for example, pattern is root.a.b and device is root.a.b.c
-      // in this case, the extractor can be matched without checking the measurements
-      (pattern.length() <= device.length() && device.startsWith(pattern))
-          // for example, pattern is root.a.b.c and device is root.a.b
-          // in this case, the extractor can be selected as candidate, but the measurements should
-          // be checked further
-          || (pattern.length() > device.length() && pattern.startsWith(device))) {
+      if (patternOverlapWithDevice(pattern, device)) {
         filteredExtractors.add(extractor);
       }
     }

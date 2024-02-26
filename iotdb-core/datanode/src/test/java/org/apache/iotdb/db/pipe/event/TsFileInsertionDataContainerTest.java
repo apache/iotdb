@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -192,9 +194,17 @@ public class TsFileInsertionDataContainerTest {
     }
 
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(alignedTsFile, "root", startTime, endTime);
+            new TsFileInsertionDataContainer(
+                alignedTsFile,
+                new PipePattern("root", PipePatternFormat.PREFIX),
+                startTime,
+                endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(nonalignedTsFile, "root", startTime, endTime)) {
+            new TsFileInsertionDataContainer(
+                nonalignedTsFile,
+                new PipePattern("root", PipePatternFormat.PREFIX),
+                startTime,
+                endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -340,10 +350,16 @@ public class TsFileInsertionDataContainerTest {
 
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile, oneDeviceInAlignedTsFile.get(), startTime, endTime);
+                alignedTsFile,
+                new PipePattern(oneDeviceInAlignedTsFile.get(), PipePatternFormat.PREFIX),
+                startTime,
+                endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile, oneDeviceInUnalignedTsFile.get(), startTime, endTime); ) {
+                nonalignedTsFile,
+                new PipePattern(oneDeviceInUnalignedTsFile.get(), PipePatternFormat.PREFIX),
+                startTime,
+                endTime); ) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -454,10 +470,16 @@ public class TsFileInsertionDataContainerTest {
 
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile, oneMeasurementInAlignedTsFile.get(), startTime, endTime);
+                alignedTsFile,
+                new PipePattern(oneMeasurementInAlignedTsFile.get(), PipePatternFormat.PREFIX),
+                startTime,
+                endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile, oneMeasurementInUnalignedTsFile.get(), startTime, endTime); ) {
+                nonalignedTsFile,
+                new PipePattern(oneMeasurementInUnalignedTsFile.get(), PipePatternFormat.PREFIX),
+                startTime,
+                endTime); ) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -566,10 +588,16 @@ public class TsFileInsertionDataContainerTest {
 
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile, "not-exist-pattern", startTime, endTime);
+                alignedTsFile,
+                new PipePattern("not-exist-pattern", PipePatternFormat.PREFIX),
+                startTime,
+                endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile, "not-exist-pattern", startTime, endTime); ) {
+                nonalignedTsFile,
+                new PipePattern("not-exist-pattern", PipePatternFormat.PREFIX),
+                startTime,
+                endTime); ) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);

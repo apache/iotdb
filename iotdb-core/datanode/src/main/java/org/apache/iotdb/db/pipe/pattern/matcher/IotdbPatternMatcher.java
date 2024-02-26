@@ -69,29 +69,23 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
           extractorsFilteredByDevice.forEach(
               extractor -> {
                 final String pattern = extractor.getPattern();
-                try {
-                  PartialPath extractorPath = new PartialPath(pattern);
-                  if (extractorPath.endWithWildcard()) {
-                    // Ends with wildcard means the pattern matches all measurements of a device.
-                    matchedExtractors.add(extractor);
-                  } else {
-                    for (final String measurement : measurements) {
-                      // Ignore null measurement for partial insert
-                      if (measurement == null) {
-                        continue;
-                      }
+                if (patternCoverDevice(pattern, device)) {
+                  // Ends with wildcard means the pattern matches all measurements of a device.
+                  matchedExtractors.add(extractor);
+                } else {
+                  for (final String measurement : measurements) {
+                    // Ignore null measurement for partial insert
+                    if (measurement == null) {
+                      continue;
+                    }
 
-                      PartialPath measurementPath = new PartialPath(device, measurement);
-                      if (extractorPath.matchFullPath(measurementPath)) {
-                        matchedExtractors.add(extractor);
-                        // There would be no more matched extractors because the measurements are
-                        // unique
-                        break;
-                      }
+                    if (patternMatchMeasurement(pattern, device, measurement)) {
+                      matchedExtractors.add(extractor);
+                      // There would be no more matched extractors because the measurements are
+                      // unique
+                      break;
                     }
                   }
-                } catch (IllegalPathException e) {
-                  LOGGER.warn("Illegal path exception: ", e);
                 }
               });
         }
@@ -105,6 +99,48 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
     }
 
     return matchedExtractors;
+  }
+
+  @Override
+  public boolean patternCoverDevice(String pattern, String device) {
+    try {
+      PartialPath devicePath = new PartialPath(device);
+      PartialPath patternPath = new PartialPath(pattern);
+      // To cover the device, device should be a prefix of pattern and the last level of pattern
+      // should be * or **.
+      // For example, pattern is root.**.d1.** and device is root.db1.d1, then pattern covers
+      // device.
+      return patternPath.matchPrefixPath(devicePath) && patternPath.endWithWildcard();
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path exception: ", e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean patternOverlapWithDevice(String pattern, String device) {
+    try {
+      PartialPath devicePath = new PartialPath(device);
+      PartialPath patternPath = new PartialPath(pattern);
+      // To overlap with pattern, device should be a prefix of pattern.
+      // For example, pattern is root.**.s1 and device is root.db1.d1, then they overlap.
+      return patternPath.matchPrefixPath(devicePath);
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path exception: ", e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
+    try {
+      PartialPath measurementPath = new PartialPath(device, measurement);
+      PartialPath patternPath = new PartialPath(pattern);
+      return patternPath.matchFullPath(measurementPath);
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path exception: ", e);
+      return false;
+    }
   }
 
   @Override
