@@ -76,12 +76,14 @@ public class RouteBalancer {
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
   private final IManager configManager;
@@ -194,10 +196,6 @@ public class RouteBalancer {
               .forceUpdateRegionLeader(
                   clientHandler.getRequest(i).getRegionId(),
                   clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
-          LOGGER.info(
-              "[forceUpdateRegionLeader], regionId:{}, datanodeId:{}",
-              clientHandler.getRequest(i).getRegionId(),
-              clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
         } else {
           LOGGER.error(
               "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}",

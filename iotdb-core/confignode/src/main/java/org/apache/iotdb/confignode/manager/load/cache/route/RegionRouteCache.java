@@ -102,7 +102,6 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
           leaderId.set(leaderSample.get().getRight());
-          LOGGER.info("[RegionElection], setLeaderId1: {}", leaderSample.get().getRight());
           return true;
         }
         return false;
@@ -121,7 +120,6 @@ public class RegionRouteCache {
    * @param leaderId Leader DataNodeId
    */
   public void forceUpdateRegionLeader(int leaderId) {
-    LOGGER.info("[RegionElection], setLeaderId2: {}", leaderId);
     this.leaderId.set(leaderId);
   }
 

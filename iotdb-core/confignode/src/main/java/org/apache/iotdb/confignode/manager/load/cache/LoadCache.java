@@ -27,8 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
@@ -64,7 +62,6 @@ public class LoadCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadCache.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long WAIT_LEADER_INTERVAL = 50;
   private static final long LEADER_ELECTION_WAITING_TIMEOUT =
       Math.max(
@@ -545,9 +542,6 @@ public class LoadCache {
     LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
     while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
-      LOGGER.info(
-          "[RegionElection] containsKey: {}",
-          regionRouteCacheMap.containsKey(regionGroupIds.get(0)));
       regionGroupIds.forEach(
           regionGroupId -> {
             if (!regionRouteCacheMap.containsKey(regionGroupId)
