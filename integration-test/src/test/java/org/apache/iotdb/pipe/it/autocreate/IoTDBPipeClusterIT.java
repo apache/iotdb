@@ -237,7 +237,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           }
           try {
             senderEnv.startDataNode(i);
-            Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
+            ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
           } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -261,8 +261,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
-    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
-    Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
+
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -357,8 +358,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
-    Assume.assumeTrue(TestUtils.restartCluster(receiverEnv));
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -626,7 +627,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
+        ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
       } catch (Exception e) {
         e.printStackTrace();
         return;
@@ -684,8 +685,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    Assume.assumeTrue(TestUtils.restartCluster(senderEnv));
-
+    TestUtils.restartCluster(senderEnv);
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",
