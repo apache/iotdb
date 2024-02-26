@@ -232,8 +232,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         Thread.sleep(RETRY_INTERVAL_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new TException(
-            "Unexpected interruption when waiting to try to connect to ConfigNode");
+        logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
     }
 
