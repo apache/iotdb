@@ -34,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -180,5 +181,14 @@ public class FileUtils {
       }
     }
     return file;
+  }
+
+  public static void logBreakpoint(String logContent) {
+    LOGGER.info("breakpoint:{}", logContent);
+    try {
+      TimeUnit.SECONDS.sleep(1);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 }
