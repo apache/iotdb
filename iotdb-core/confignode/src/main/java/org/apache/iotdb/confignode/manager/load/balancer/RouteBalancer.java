@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -74,12 +75,14 @@ public class RouteBalancer {
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
-              && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS));
+              && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
-              && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
+              && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+          || ConsensusFactory.SIMPLE_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
   private final IManager configManager;
 
@@ -184,6 +187,24 @@ public class RouteBalancer {
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
       AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNode(clientHandler);
+      for (int i = 0; i < requestId.get(); i++) {
+        if (clientHandler.getResponseMap().get(i).getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          getLoadManager()
+              .forceUpdateRegionLeader(
+                  clientHandler.getRequest(i).getRegionId(),
+                  clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
+          LOGGER.info(
+              "[forceUpdateRegionLeader], regionId:{}, datanodeId:{}",
+              clientHandler.getRequest(i).getRegionId(),
+              clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
+        } else {
+          LOGGER.error(
+              "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}",
+              clientHandler.getRequest(i).getRegionId(),
+              clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
+        }
+      }
     }
     return differentRegionLeaderMap;
   }
@@ -196,6 +217,7 @@ public class RouteBalancer {
       TDataNodeLocation newLeader) {
     switch (consensusProtocolClass) {
       case ConsensusFactory.IOT_CONSENSUS:
+      case ConsensusFactory.SIMPLE_CONSENSUS:
         // For IoTConsensus protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
         getLoadManager().forceUpdateRegionLeader(regionGroupId, newLeader.getDataNodeId());

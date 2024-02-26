@@ -26,10 +26,14 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RegionRouteCache {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouteCache.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -98,6 +102,7 @@ public class RegionRouteCache {
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
           leaderId.set(leaderSample.get().getRight());
+          LOGGER.info("[RegionElection], setLeaderId1: {}", leaderSample.get().getRight());
           return true;
         }
         return false;
@@ -116,6 +121,7 @@ public class RegionRouteCache {
    * @param leaderId Leader DataNodeId
    */
   public void forceUpdateRegionLeader(int leaderId) {
+    LOGGER.info("[RegionElection], setLeaderId2: {}", leaderId);
     this.leaderId.set(leaderId);
   }
 
@@ -126,6 +132,16 @@ public class RegionRouteCache {
    */
   public void forceUpdateRegionPriority(TRegionReplicaSet regionPriority) {
     this.regionPriority.set(regionPriority);
+  }
+
+  public boolean isRegionGroupUnready(boolean isDebug) {
+    if (isDebug) {
+      LOGGER.info(
+          "[RegionElection], isRegionGroupUnready: {}, {}",
+          unReadyLeaderId == leaderId.get(),
+          unReadyRegionPriority.equals(regionPriority.get()));
+    }
+    return unReadyLeaderId == leaderId.get() || unReadyRegionPriority.equals(regionPriority.get());
   }
 
   public boolean isRegionGroupUnready() {

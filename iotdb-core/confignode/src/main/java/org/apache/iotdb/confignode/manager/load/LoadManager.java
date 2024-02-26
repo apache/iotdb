@@ -413,4 +413,10 @@ public class LoadManager {
   public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
     loadCache.removeRegionRouteCache(regionGroupId);
   }
+
+  /** Force balance the region leader. */
+  public void forceBalanceRegionLeader() {
+    routeBalancer.balanceRegionLeader();
+    routeBalancer.balanceRegionPriority();
+  }
 }
