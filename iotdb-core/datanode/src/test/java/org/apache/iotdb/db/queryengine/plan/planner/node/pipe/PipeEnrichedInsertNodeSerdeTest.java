@@ -42,7 +42,8 @@ public class PipeEnrichedInsertNodeSerdeTest {
     pipeEnrichedInsertNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.PIPE_ENRICHED_INSERT.getNodeType(), byteBuffer.getShort());
+    Assert.assertEquals(
+        PlanNodeType.PIPE_ENRICHED_INSERT_DATA.getNodeType(), byteBuffer.getShort());
     Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));

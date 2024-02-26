@@ -26,14 +26,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-public class PipeEnrichedConfigSchemaNodeSerdeTest {
+public class PipeEnrichedNonWritePlanNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     PlanNodeId planNodeId = new PlanNodeId("DeleteTimeSeriesNode");
@@ -42,14 +42,14 @@ public class PipeEnrichedConfigSchemaNodeSerdeTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.d2.*"));
     patternTree.constructTree();
     DeleteTimeSeriesNode deleteTimeSeriesNode = new DeleteTimeSeriesNode(planNodeId, patternTree);
-    PipeEnrichedConfigSchemaNode pipeEnrichedConfigSchemaNode =
-        new PipeEnrichedConfigSchemaNode(deleteTimeSeriesNode);
+    PipeEnrichedNonWritePlanNode pipeEnrichedNonWritePlanNode =
+        new PipeEnrichedNonWritePlanNode(deleteTimeSeriesNode);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    pipeEnrichedConfigSchemaNode.serialize(byteBuffer);
+    pipeEnrichedNonWritePlanNode.serialize(byteBuffer);
     byteBuffer.flip();
 
     PlanNode deserializedNode = PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals(pipeEnrichedConfigSchemaNode, deserializedNode);
+    Assert.assertEquals(pipeEnrichedNonWritePlanNode, deserializedNode);
   }
 }

@@ -51,9 +51,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
@@ -524,20 +524,20 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitPipeEnrichedWriteSchema(
-      PipeEnrichedWriteSchemaNode node, ISchemaRegion schemaRegion) {
-    return node.getWriteSchemaNode().accept(this, schemaRegion);
+  public TSStatus visitPipeEnrichedWritePlanNode(
+      PipeEnrichedWritePlanNode node, ISchemaRegion schemaRegion) {
+    return node.getWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
-  public TSStatus visitPipeEnrichedConfigSchema(
-      PipeEnrichedConfigSchemaNode node, ISchemaRegion schemaRegion) {
-    return node.getConfigSchemaNode().accept(this, schemaRegion);
+  public TSStatus visitPipeEnrichedNonWritePlanNode(
+      PipeEnrichedNonWritePlanNode node, ISchemaRegion schemaRegion) {
+    return node.getNonWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
-  public TSStatus visitOperateSchemaQueueNode(
-      OperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitPipeOperateSchemaQueueNode(
+      PipeOperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
     int id = schemaRegion.getSchemaRegionId().getId();
     SchemaNodeListeningQueue queue = SchemaNodeListeningQueue.getInstance(id);
     try {

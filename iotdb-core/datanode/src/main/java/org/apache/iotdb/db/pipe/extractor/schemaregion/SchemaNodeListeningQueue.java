@@ -27,8 +27,8 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -57,15 +57,15 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
     if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
       PipeWritePlanNodeEvent event;
       switch (node.getType()) {
-        case PIPE_ENRICHED_WRITE_SCHEMA:
+        case PIPE_ENRICHED_WRITE:
           event =
               new PipeWritePlanNodeEvent(
-                  ((PipeEnrichedWriteSchemaNode) node).getWriteSchemaNode(), true);
+                  ((PipeEnrichedWritePlanNode) node).getWritePlanNode(), true);
           break;
-        case PIPE_ENRICHED_CONFIG_SCHEMA:
+        case PIPE_ENRICHED_NON_WRITE:
           event =
               new PipeWritePlanNodeEvent(
-                  ((PipeEnrichedConfigSchemaNode) node).getConfigSchemaNode(), true);
+                  ((PipeEnrichedNonWritePlanNode) node).getNonWritePlanNode(), true);
           break;
         default:
           event = new PipeWritePlanNodeEvent(node, false);

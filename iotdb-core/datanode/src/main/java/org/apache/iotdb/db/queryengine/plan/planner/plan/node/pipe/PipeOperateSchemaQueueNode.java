@@ -35,15 +35,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@link OperateSchemaQueueNode} is for pipe to open or close the {@link SchemaNodeListeningQueue}.
- * It is for written to {@link SchemaRegion} consensus layer to ensure the identity of the {@link
- * SchemaNodeListeningQueue} in all peers.
+ * {@link PipeOperateSchemaQueueNode} is for pipe to open or close the {@link
+ * SchemaNodeListeningQueue}. It is for written to {@link SchemaRegion} consensus layer to ensure
+ * the identity of the {@link SchemaNodeListeningQueue} in all peers.
  */
-public class OperateSchemaQueueNode extends PlanNode {
+public class PipeOperateSchemaQueueNode extends PlanNode {
 
   private final boolean isOpen;
 
-  public OperateSchemaQueueNode(PlanNodeId id, boolean isOpen) {
+  public PipeOperateSchemaQueueNode(PlanNodeId id, boolean isOpen) {
     super(id);
     this.isOpen = isOpen;
   }
@@ -64,7 +64,7 @@ public class OperateSchemaQueueNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new OperateSchemaQueueNode(id, isOpen);
+    return new PipeOperateSchemaQueueNode(id, isOpen);
   }
 
   @Override
@@ -79,25 +79,25 @@ public class OperateSchemaQueueNode extends PlanNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitOperateSchemaQueueNode(this, context);
+    return visitor.visitPipeOperateSchemaQueueNode(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.OPERATE_SCHEMA_QUEUE_REFERENCE.serialize(byteBuffer);
+    PlanNodeType.PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE.serialize(byteBuffer);
     ReadWriteIOUtils.write(isOpen, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.OPERATE_SCHEMA_QUEUE_REFERENCE.serialize(stream);
+    PlanNodeType.PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE.serialize(stream);
     ReadWriteIOUtils.write(isOpen, stream);
   }
 
-  public static OperateSchemaQueueNode deserialize(ByteBuffer byteBuffer) {
+  public static PipeOperateSchemaQueueNode deserialize(ByteBuffer byteBuffer) {
     boolean isOpen = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new OperateSchemaQueueNode(planNodeId, isOpen);
+    return new PipeOperateSchemaQueueNode(planNodeId, isOpen);
   }
 
   @Override
@@ -109,7 +109,7 @@ public class OperateSchemaQueueNode extends PlanNode {
       return false;
     }
 
-    OperateSchemaQueueNode that = (OperateSchemaQueueNode) o;
+    PipeOperateSchemaQueueNode that = (PipeOperateSchemaQueueNode) o;
 
     return Objects.equals(getPlanNodeId(), that.getPlanNodeId())
         && Objects.equals(isOpen, that.isOpen);

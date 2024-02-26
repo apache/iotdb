@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
@@ -34,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeEnrichedWriteSchemaNodeSerdeTest {
+public class PipeEnrichedWritePlanNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws Exception {
     PlanNodeId planNodeId = new PlanNodeId("InternalBatchActivateTemplateNode");
@@ -42,12 +42,12 @@ public class PipeEnrichedWriteSchemaNodeSerdeTest {
     map.put(new PartialPath("root.db.d1.s1"), new Pair<>(1, 2));
     InternalBatchActivateTemplateNode internalBatchActivateTemplateNode =
         new InternalBatchActivateTemplateNode(planNodeId, map);
-    PipeEnrichedWriteSchemaNode pipeEnrichedWriteSchemaNode =
-        new PipeEnrichedWriteSchemaNode(internalBatchActivateTemplateNode);
+    PipeEnrichedWritePlanNode pipeEnrichedWritePlanNode =
+        new PipeEnrichedWritePlanNode(internalBatchActivateTemplateNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    pipeEnrichedWriteSchemaNode.serialize(byteBuffer);
+    pipeEnrichedWritePlanNode.serialize(byteBuffer);
     byteBuffer.flip();
     PlanNode deserializedNode = PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals(pipeEnrichedWriteSchemaNode, deserializedNode);
+    Assert.assertEquals(pipeEnrichedWritePlanNode, deserializedNode);
   }
 }

@@ -72,126 +72,125 @@ import java.util.stream.Collectors;
  *
  * <p>- LogicalView: {@link CreateLogicalViewNode}
  */
-public class PipeEnrichedWriteSchemaNode extends WritePlanNode {
+public class PipeEnrichedWritePlanNode extends WritePlanNode {
 
-  private final WritePlanNode writeSchemaNode;
+  private final WritePlanNode writePlanNode;
 
-  public PipeEnrichedWriteSchemaNode(WritePlanNode schemaWriteNode) {
+  public PipeEnrichedWritePlanNode(WritePlanNode schemaWriteNode) {
     super(schemaWriteNode.getPlanNodeId());
-    this.writeSchemaNode = schemaWriteNode;
+    this.writePlanNode = schemaWriteNode;
   }
 
-  public WritePlanNode getWriteSchemaNode() {
-    return writeSchemaNode;
+  public WritePlanNode getWritePlanNode() {
+    return writePlanNode;
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return writeSchemaNode.isGeneratedByPipe();
+    return writePlanNode.isGeneratedByPipe();
   }
 
   @Override
   public void markAsGeneratedByPipe() {
-    writeSchemaNode.markAsGeneratedByPipe();
+    writePlanNode.markAsGeneratedByPipe();
   }
 
   @Override
   public PlanNodeId getPlanNodeId() {
-    return writeSchemaNode.getPlanNodeId();
+    return writePlanNode.getPlanNodeId();
   }
 
   @Override
   public void setPlanNodeId(PlanNodeId id) {
-    writeSchemaNode.setPlanNodeId(id);
+    writePlanNode.setPlanNodeId(id);
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return writeSchemaNode.getChildren();
+    return writePlanNode.getChildren();
   }
 
   @Override
   public void addChild(PlanNode child) {
-    writeSchemaNode.addChild(child);
+    writePlanNode.addChild(child);
   }
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA;
+    return PlanNodeType.PIPE_ENRICHED_WRITE;
   }
 
   @Override
   public WritePlanNode clone() {
-    return new PipeEnrichedWriteSchemaNode((WritePlanNode) writeSchemaNode.clone());
+    return new PipeEnrichedWritePlanNode((WritePlanNode) writePlanNode.clone());
   }
 
   @Override
   public WritePlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new PipeEnrichedWriteSchemaNode(
-        (WritePlanNode) writeSchemaNode.createSubNode(subNodeId, startIndex, endIndex));
+    return new PipeEnrichedWritePlanNode(
+        (WritePlanNode) writePlanNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return new PipeEnrichedWriteSchemaNode(
-        (WritePlanNode) writeSchemaNode.cloneWithChildren(children));
+    return new PipeEnrichedWritePlanNode((WritePlanNode) writePlanNode.cloneWithChildren(children));
   }
 
   @Override
   public int allowedChildCount() {
-    return writeSchemaNode.allowedChildCount();
+    return writePlanNode.allowedChildCount();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return writeSchemaNode.getOutputColumnNames();
+    return writePlanNode.getOutputColumnNames();
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedWriteSchema(this, context);
+    return visitor.visitPipeEnrichedWritePlanNode(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.serialize(byteBuffer);
-    writeSchemaNode.serialize(byteBuffer);
+    PlanNodeType.PIPE_ENRICHED_WRITE.serialize(byteBuffer);
+    writePlanNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.serialize(stream);
-    writeSchemaNode.serialize(stream);
+    PlanNodeType.PIPE_ENRICHED_WRITE.serialize(stream);
+    writePlanNode.serialize(stream);
   }
 
-  public static PipeEnrichedWriteSchemaNode deserialize(ByteBuffer buffer) {
-    return new PipeEnrichedWriteSchemaNode((WritePlanNode) PlanNodeType.deserialize(buffer));
+  public static PipeEnrichedWritePlanNode deserialize(ByteBuffer buffer) {
+    return new PipeEnrichedWritePlanNode((WritePlanNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof PipeEnrichedWriteSchemaNode
-        && writeSchemaNode.equals(((PipeEnrichedWriteSchemaNode) o).writeSchemaNode);
+    return o instanceof PipeEnrichedWritePlanNode
+        && writePlanNode.equals(((PipeEnrichedWritePlanNode) o).writePlanNode);
   }
 
   @Override
   public int hashCode() {
-    return writeSchemaNode.hashCode();
+    return writePlanNode.hashCode();
   }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return writeSchemaNode.getRegionReplicaSet();
+    return writePlanNode.getRegionReplicaSet();
   }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    return writeSchemaNode.splitByPartition(analysis).stream()
+    return writePlanNode.splitByPartition(analysis).stream()
         .map(
             plan ->
-                plan instanceof PipeEnrichedWriteSchemaNode
+                plan instanceof PipeEnrichedWritePlanNode
                     ? plan
-                    : new PipeEnrichedWriteSchemaNode(plan))
+                    : new PipeEnrichedWritePlanNode(plan))
         .collect(Collectors.toList());
   }
 }

@@ -109,8 +109,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
@@ -619,7 +619,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                      ? new PipeEnrichedConfigSchemaNode(
+                      ? new PipeEnrichedNonWritePlanNode(
                           new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
                       : new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
@@ -745,7 +745,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                      ? new PipeEnrichedConfigSchemaNode(
+                      ? new PipeEnrichedNonWritePlanNode(
                           new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
                       : new DeactivateTemplateNode(new PlanNodeId(""), filteredTemplateSetInfo))
               .getStatus();
@@ -930,7 +930,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                      ? new PipeEnrichedConfigSchemaNode(
+                      ? new PipeEnrichedNonWritePlanNode(
                           new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
                       : new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
@@ -962,7 +962,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                      ? new PipeEnrichedConfigSchemaNode(
+                      ? new PipeEnrichedNonWritePlanNode(
                           new AlterLogicalViewNode(
                               new PlanNodeId(""), schemaRegionRequestMap.get(consensusGroupId)))
                       : new AlterLogicalViewNode(

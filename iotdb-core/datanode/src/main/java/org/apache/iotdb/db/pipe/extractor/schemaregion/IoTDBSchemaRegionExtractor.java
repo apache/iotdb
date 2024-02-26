@@ -27,7 +27,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -71,7 +71,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
       // Try open the queue if it is the first task
       SchemaRegionConsensusImpl.getInstance()
           .write(
-              new SchemaRegionId(regionId), new OperateSchemaQueueNode(new PlanNodeId(""), true));
+              new SchemaRegionId(regionId),
+              new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
     }
     super.start();
   }

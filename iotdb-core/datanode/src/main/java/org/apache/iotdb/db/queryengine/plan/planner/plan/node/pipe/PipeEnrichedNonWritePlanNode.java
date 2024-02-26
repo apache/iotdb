@@ -58,109 +58,109 @@ import java.util.List;
  * <p>Intermediate nodes like {@link ConstructSchemaBlackListNode} will not be included since they
  * will not be collected by pipe.
  */
-public class PipeEnrichedConfigSchemaNode extends PlanNode {
+public class PipeEnrichedNonWritePlanNode extends PlanNode {
 
-  private final PlanNode configSchemaNode;
+  private final PlanNode nonWritePlanNode;
 
-  public PipeEnrichedConfigSchemaNode(PlanNode configSchemaNode) {
-    super(configSchemaNode.getPlanNodeId());
-    this.configSchemaNode = configSchemaNode;
+  public PipeEnrichedNonWritePlanNode(PlanNode nonWritePlanNode) {
+    super(nonWritePlanNode.getPlanNodeId());
+    this.nonWritePlanNode = nonWritePlanNode;
   }
 
-  public PlanNode getConfigSchemaNode() {
-    return configSchemaNode;
+  public PlanNode getNonWritePlanNode() {
+    return nonWritePlanNode;
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return configSchemaNode.isGeneratedByPipe();
+    return nonWritePlanNode.isGeneratedByPipe();
   }
 
   @Override
   public void markAsGeneratedByPipe() {
-    configSchemaNode.markAsGeneratedByPipe();
+    nonWritePlanNode.markAsGeneratedByPipe();
   }
 
   @Override
   public PlanNodeId getPlanNodeId() {
-    return configSchemaNode.getPlanNodeId();
+    return nonWritePlanNode.getPlanNodeId();
   }
 
   @Override
   public void setPlanNodeId(PlanNodeId id) {
-    configSchemaNode.setPlanNodeId(id);
+    nonWritePlanNode.setPlanNodeId(id);
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return configSchemaNode.getChildren();
+    return nonWritePlanNode.getChildren();
   }
 
   @Override
   public void addChild(PlanNode child) {
-    configSchemaNode.addChild(child);
+    nonWritePlanNode.addChild(child);
   }
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA;
+    return PlanNodeType.PIPE_ENRICHED_NON_WRITE;
   }
 
   @Override
   public PlanNode clone() {
-    return new PipeEnrichedConfigSchemaNode(configSchemaNode.clone());
+    return new PipeEnrichedNonWritePlanNode(nonWritePlanNode.clone());
   }
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new PipeEnrichedConfigSchemaNode(
-        configSchemaNode.createSubNode(subNodeId, startIndex, endIndex));
+    return new PipeEnrichedNonWritePlanNode(
+        nonWritePlanNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    return new PipeEnrichedConfigSchemaNode(configSchemaNode.cloneWithChildren(children));
+    return new PipeEnrichedNonWritePlanNode(nonWritePlanNode.cloneWithChildren(children));
   }
 
   @Override
   public int allowedChildCount() {
-    return configSchemaNode.allowedChildCount();
+    return nonWritePlanNode.allowedChildCount();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return configSchemaNode.getOutputColumnNames();
+    return nonWritePlanNode.getOutputColumnNames();
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedConfigSchema(this, context);
+    return visitor.visitPipeEnrichedNonWritePlanNode(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.serialize(byteBuffer);
-    configSchemaNode.serialize(byteBuffer);
+    PlanNodeType.PIPE_ENRICHED_NON_WRITE.serialize(byteBuffer);
+    nonWritePlanNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.serialize(stream);
-    configSchemaNode.serialize(stream);
+    PlanNodeType.PIPE_ENRICHED_NON_WRITE.serialize(stream);
+    nonWritePlanNode.serialize(stream);
   }
 
-  public static PipeEnrichedConfigSchemaNode deserialize(ByteBuffer buffer) {
-    return new PipeEnrichedConfigSchemaNode(PlanNodeType.deserialize(buffer));
+  public static PipeEnrichedNonWritePlanNode deserialize(ByteBuffer buffer) {
+    return new PipeEnrichedNonWritePlanNode(PlanNodeType.deserialize(buffer));
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof PipeEnrichedConfigSchemaNode
-        && configSchemaNode.equals(((PipeEnrichedConfigSchemaNode) o).configSchemaNode);
+    return o instanceof PipeEnrichedNonWritePlanNode
+        && nonWritePlanNode.equals(((PipeEnrichedNonWritePlanNode) o).nonWritePlanNode);
   }
 
   @Override
   public int hashCode() {
-    return configSchemaNode.hashCode();
+    return nonWritePlanNode.hashCode();
   }
 }

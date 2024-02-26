@@ -28,7 +28,7 @@ import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -81,8 +81,8 @@ public class SchemaNodeListeningQueueTest {
             null,
             "alias");
 
-    PipeEnrichedWriteSchemaNode node2 =
-        new PipeEnrichedWriteSchemaNode(
+    PipeEnrichedWritePlanNode node2 =
+        new PipeEnrichedWritePlanNode(
             new ActivateTemplateNode(
                 new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.sg.d1.s1"), 2, 1));
 
@@ -104,8 +104,7 @@ public class SchemaNodeListeningQueueTest {
     Assert.assertEquals(node1, ((PipeWritePlanNodeEvent) event1).getPlanNode());
 
     Event event2 = itr.next(0);
-    Assert.assertEquals(
-        node2.getWriteSchemaNode(), ((PipeWritePlanNodeEvent) event2).getPlanNode());
+    Assert.assertEquals(node2.getWritePlanNode(), ((PipeWritePlanNodeEvent) event2).getPlanNode());
     Assert.assertTrue(((PipeWritePlanNodeEvent) event2).isGeneratedByPipe());
 
     Assert.assertNull(itr.next(0));

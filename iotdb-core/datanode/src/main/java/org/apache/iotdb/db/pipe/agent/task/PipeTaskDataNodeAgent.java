@@ -47,7 +47,7 @@ import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.OperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -189,7 +189,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                       SchemaRegionConsensusImpl.getInstance()
                           .write(
                               schemaRegionId,
-                              new OperateSchemaQueueNode(new PlanNodeId(""), false));
+                              new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
                     } catch (ConsensusException e) {
                       throw new PipeException(
                           "Failed to close listening queue for schemaRegion " + schemaRegionId, e);

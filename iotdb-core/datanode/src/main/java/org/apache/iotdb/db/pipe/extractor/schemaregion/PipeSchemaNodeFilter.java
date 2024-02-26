@@ -87,8 +87,8 @@ public class PipeSchemaNodeFilter {
 
   static boolean shouldBeListenedByQueue(PlanNode node) {
     try {
-      return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE_SCHEMA.getNodeType()
-          || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_CONFIG_SCHEMA.getNodeType()
+      return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE.getNodeType()
+          || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE.getNodeType()
           || NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
     } catch (Exception e) {
       // Some plan nodes may not contain "getType()" implementation

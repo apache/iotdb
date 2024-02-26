@@ -251,7 +251,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
   }
 
   @Override
-  public TriggerFireResult visitPipeEnrichedInsert(
+  public TriggerFireResult visitPipeEnrichedInsertNode(
       PipeEnrichedInsertNode node, TriggerEvent context) {
     return node.getInsertNode().accept(this, context);
   }

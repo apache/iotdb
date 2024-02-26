@@ -208,7 +208,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitPipeEnrichedInsert(PipeEnrichedInsertNode node, DataRegion context) {
+  public TSStatus visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, DataRegion context) {
     node.getInsertNode().markAsGeneratedByPipe();
     return node.getInsertNode().accept(this, context);
   }
@@ -243,7 +243,8 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, DataRegion context) {
+  public TSStatus visitPipeEnrichedDeleteDataNode(
+      PipeEnrichedDeleteDataNode node, DataRegion context) {
     node.getDeleteDataNode().markAsGeneratedByPipe();
     return visitDeleteData((DeleteDataNode) node.getDeleteDataNode(), context);
   }

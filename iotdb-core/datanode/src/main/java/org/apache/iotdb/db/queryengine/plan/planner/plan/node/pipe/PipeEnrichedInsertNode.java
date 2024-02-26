@@ -98,7 +98,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.PIPE_ENRICHED_INSERT;
+    return PlanNodeType.PIPE_ENRICHED_INSERT_DATA;
   }
 
   @Override
@@ -129,7 +129,7 @@ public class PipeEnrichedInsertNode extends InsertNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedInsert(this, context);
+    return visitor.visitPipeEnrichedInsertNode(this, context);
   }
 
   @Override
@@ -225,13 +225,13 @@ public class PipeEnrichedInsertNode extends InsertNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.PIPE_ENRICHED_INSERT.serialize(byteBuffer);
+    PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.PIPE_ENRICHED_INSERT.serialize(stream);
+    PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(stream);
     insertNode.serialize(stream);
   }
 

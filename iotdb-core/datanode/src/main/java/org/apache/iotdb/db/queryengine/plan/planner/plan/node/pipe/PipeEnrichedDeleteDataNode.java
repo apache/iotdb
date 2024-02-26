@@ -126,7 +126,7 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedDeleteData(this, context);
+    return visitor.visitPipeEnrichedDeleteDataNode(this, context);
   }
 
   @Override
