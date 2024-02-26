@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -435,24 +434,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
           getUpdatedChildBuffer().getMNodeChildBufferIterator());
     }
 
-    protected ICachedMNode catchLeft() {
-      ICachedMNode ansMNode = leftHeader;
-      leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
-      return ansMNode;
+    protected int decide() {
+      return 0;
     }
 
-    protected ICachedMNode catchRight() {
-      ICachedMNode ansMNode = rightHeader;
-      rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
-      return ansMNode;
-    }
-
-    protected ICachedMNode catchEqual() {
-      throw new NoSuchElementException();
-    }
-
-    protected int compare() {
-      return leftHeader.getName().compareTo(rightHeader.getName());
+    protected int compare(ICachedMNode left, ICachedMNode right) {
+      return left.getName().compareTo(right.getName());
     }
   }
 

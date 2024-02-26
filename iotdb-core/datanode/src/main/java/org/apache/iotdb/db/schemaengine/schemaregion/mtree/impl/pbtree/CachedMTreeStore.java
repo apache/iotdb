@@ -719,9 +719,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         super(leftIterator, rightIterator);
       }
 
-      protected ICachedMNode catchLeft() {
-        ICachedMNode ansMNode = leftHeader;
-        leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+      protected ICachedMNode onReturnLeft(ICachedMNode ansMNode) {
         ICachedMNode nodeInMem = parent.getChild(ansMNode.getName());
         if (nodeInMem != null) {
           try {
@@ -736,24 +734,21 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         return ansMNode;
       }
 
-      protected ICachedMNode catchRight() {
-        ICachedMNode ansMNode = rightHeader;
+      protected ICachedMNode onReturnRight(ICachedMNode ansMNode) {
         try {
           memoryManager.updateCacheStatusAfterMemoryRead(ansMNode);
         } catch (MNodeNotCachedException e) {
           throw new RuntimeException(e);
         }
-        rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
         return ansMNode;
       }
 
-      protected ICachedMNode catchEqual() {
-        leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
-        return catchRight();
+      protected int decide() {
+        return 1;
       }
 
-      protected int compare() {
-        return leftHeader.getName().compareTo(rightHeader.getName());
+      protected int compare(ICachedMNode left, ICachedMNode right) {
+        return left.getName().compareTo(right.getName());
       }
     }
   }

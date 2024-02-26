@@ -23,11 +23,11 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public abstract class MergeSortIterator<E> implements Iterator<E> {
-  public Iterator<E> leftIterator;
-  public Iterator<E> rightIterator;
+  private Iterator<E> leftIterator;
+  private Iterator<E> rightIterator;
 
-  public E leftHeader;
-  public E rightHeader;
+  private E leftHeader;
+  private E rightHeader;
 
   protected MergeSortIterator(Iterator<E> leftIterator, Iterator<E> rightIterator) {
     this.leftIterator = leftIterator;
@@ -47,15 +47,42 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
     return tryGetNext();
   }
 
+  protected E catchLeft() {
+    E ans = leftHeader;
+    leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+    return ans;
+  }
+
+  protected E catchRight() {
+    E ans = rightHeader;
+    rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
+    return ans;
+  }
+
+  protected E catchEqual(int decide) {
+    switch (decide) {
+      case -1:
+        rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
+        return catchLeft();
+      case 0:
+        throw new NoSuchElementException();
+      case 1:
+        leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+        return catchRight();
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
+
   E tryGetNext() {
     if (leftHeader != null && rightHeader != null) {
-      switch (compare()) {
+      switch (compare(leftHeader, rightHeader)) {
         case -1:
-          return catchLeft();
+          return onReturnLeft(catchLeft());
         case 0:
-          return catchEqual();
+          return onReturnEqual(catchEqual(decide()));
         case 1:
-          return catchRight();
+          return onReturnRight(catchRight());
         default:
           throw new IllegalArgumentException();
       }
@@ -68,11 +95,21 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
     }
   }
 
-  protected abstract E catchLeft();
+  private E onReturnLeft(E left) {
+    return left;
+  }
 
-  protected abstract E catchRight();
+  protected E onReturnRight(E right) {
+    return right;
+  }
 
-  protected abstract E catchEqual();
+  protected E onReturnEqual(E equal) {
+    return equal;
+  }
 
-  protected abstract int compare();
+  protected int decide() {
+    return 1;
+  }
+
+  protected abstract int compare(E left, E right);
 }

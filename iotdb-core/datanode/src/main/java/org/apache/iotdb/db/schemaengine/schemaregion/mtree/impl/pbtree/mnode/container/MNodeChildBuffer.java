@@ -215,27 +215,12 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
       super(getSortedReceivingBuffer(), getSortedFlushingBuffer());
     }
 
-    protected ICachedMNode catchLeft() {
-      ICachedMNode ansMNode = leftHeader;
-      leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
-      return ansMNode;
+    protected int decide() {
+      return -1;
     }
 
-    protected ICachedMNode catchRight() {
-      ICachedMNode ansMNode = rightHeader;
-      rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
-      return ansMNode;
-    }
-
-    protected ICachedMNode catchEqual() {
-      ICachedMNode ansMNode = leftHeader;
-      leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
-      rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
-      return ansMNode;
-    }
-
-    protected int compare() {
-      return leftHeader.getName().compareTo(rightHeader.getName());
+    protected int compare(ICachedMNode left, ICachedMNode right) {
+      return left.getName().compareTo(right.getName());
     }
   }
 
