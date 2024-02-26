@@ -197,6 +197,7 @@ public class RouteBalancer {
                   clientHandler.getRequest(i).getRegionId(),
                   clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
         } else {
+          differentRegionLeaderMap.remove(clientHandler.getRequest(i).getRegionId());
           LOGGER.error(
               "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}",
               clientHandler.getRequest(i).getRegionId(),
@@ -216,7 +217,7 @@ public class RouteBalancer {
     switch (consensusProtocolClass) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.SIMPLE_CONSENSUS:
-        // For IoTConsensus protocol, change RegionRouteMap is enough.
+        // For IoTConsensus or SimpleConsensus protocol, change RegionRouteMap is enough.
         // And the result will be broadcast by Cluster-LoadStatistics-Service soon.
         getLoadManager().forceUpdateRegionLeader(regionGroupId, newLeader.getDataNodeId());
         break;

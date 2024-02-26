@@ -545,7 +545,7 @@ public class LoadCache {
       regionGroupIds.forEach(
           regionGroupId -> {
             if (!regionRouteCacheMap.containsKey(regionGroupId)
-                || regionRouteCacheMap.get(regionGroupId).isRegionGroupUnready(true)) {
+                || regionRouteCacheMap.get(regionGroupId).isRegionGroupUnready()) {
               allRegionLeaderElected.set(false);
             }
           });

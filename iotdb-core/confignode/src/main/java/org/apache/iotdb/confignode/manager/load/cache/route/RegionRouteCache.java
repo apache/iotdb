@@ -120,6 +120,7 @@ public class RegionRouteCache {
    * @param leaderId Leader DataNodeId
    */
   public void forceUpdateRegionLeader(int leaderId) {
+    cacheLeaderSample(new Pair<>(System.currentTimeMillis(), leaderId));
     this.leaderId.set(leaderId);
   }
 
@@ -130,16 +131,6 @@ public class RegionRouteCache {
    */
   public void forceUpdateRegionPriority(TRegionReplicaSet regionPriority) {
     this.regionPriority.set(regionPriority);
-  }
-
-  public boolean isRegionGroupUnready(boolean isDebug) {
-    if (isDebug) {
-      LOGGER.info(
-          "[RegionElection], isRegionGroupUnready: {}, {}",
-          unReadyLeaderId == leaderId.get(),
-          unReadyRegionPriority.equals(regionPriority.get()));
-    }
-    return unReadyLeaderId == leaderId.get() || unReadyRegionPriority.equals(regionPriority.get());
   }
 
   public boolean isRegionGroupUnready() {
