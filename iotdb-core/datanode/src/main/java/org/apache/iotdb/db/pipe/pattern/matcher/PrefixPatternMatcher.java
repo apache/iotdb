@@ -19,13 +19,48 @@
 
 package org.apache.iotdb.db.pipe.pattern.matcher;
 
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.Arrays;
 
 public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
+
+  @Override
+  public boolean patternIsLegal(String pattern) {
+    if (!pattern.startsWith("root")) {
+      return false;
+    }
+
+    try {
+      PathUtils.isLegalPath(pattern);
+    } catch (IllegalPathException e) {
+      try {
+        if ("root".equals(pattern) || "root.".equals(pattern)) {
+          return true;
+        }
+
+        // Split the pattern to nodes.
+        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
+
+        // Check whether the pattern without last node is legal.
+        PathUtils.splitPathToDetachedNodes(
+            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
+        String lastNode = pathNodes[pathNodes.length - 1];
+
+        // Check whether the last node is legal.
+        if (!"".equals(lastNode)) {
+          Double.parseDouble(lastNode);
+        }
+      } catch (Exception ignored) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   @Override
   public boolean patternCoverDevice(String pattern, String device) {
@@ -53,19 +88,5 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
     pattern.length() == device.length() + measurement.length() + 1
         // high cost check comes later
         && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement);
-  }
-
-  @Override
-  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
-    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
-
-    for (PipeRealtimeDataRegionExtractor extractor : extractors) {
-      String pattern = extractor.getPattern();
-      if (patternOverlapWithDevice(pattern, device)) {
-        filteredExtractors.add(extractor);
-      }
-    }
-
-    return filteredExtractors;
   }
 }

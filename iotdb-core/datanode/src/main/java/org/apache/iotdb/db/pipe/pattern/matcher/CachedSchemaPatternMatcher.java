@@ -158,7 +158,18 @@ public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatche
     }
   }
 
-  protected abstract Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device);
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
+    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
+
+    for (PipeRealtimeDataRegionExtractor extractor : extractors) {
+      String pattern = extractor.getPattern();
+      if (patternOverlapWithDevice(pattern, device)) {
+        filteredExtractors.add(extractor);
+      }
+    }
+
+    return filteredExtractors;
+  }
 
   @Override
   public void clear() {

@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionTsFileExtractor;
@@ -32,6 +30,8 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridE
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -42,7 +42,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,14 +99,6 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Check whether the pattern is legal
-    validatePattern(
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE));
-
     // Validate extractor.pattern.format is within valid range
     validator
         .validateAttributeValueRange(
@@ -120,6 +111,25 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             true,
             EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
+
+    // Get the pattern format to check whether the pattern is legal
+    final PipePatternFormat patternFormat =
+        PipePatternFormat.valueOf(
+            validator
+                .getParameters()
+                .getStringOrDefault(
+                    Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
+                    PipePatternFormat.getDefaultFormat().toString())
+                .toUpperCase());
+
+    // Check whether the pattern is legal
+    validatePattern(
+        patternFormat,
+        validator
+            .getParameters()
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+                EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE));
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -192,36 +202,10 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(String pattern) {
-    if (!pattern.startsWith("root")) {
+  private void validatePattern(PipePatternFormat format, String pattern) {
+    if (!PipePatternMatcherManager.getInstance().patternIsLegal(format, pattern)) {
       throw new IllegalArgumentException(
-          "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
-    }
-
-    try {
-      PathUtils.isLegalPath(pattern);
-    } catch (IllegalPathException e) {
-      try {
-        if ("root".equals(pattern) || "root.".equals(pattern)) {
-          return;
-        }
-
-        // Split the pattern to nodes.
-        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
-
-        // Check whether the pattern without last node is legal.
-        PathUtils.splitPathToDetachedNodes(
-            String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
-        String lastNode = pathNodes[pathNodes.length - 1];
-
-        // Check whether the last node is legal.
-        if (!"".equals(lastNode)) {
-          Double.parseDouble(lastNode);
-        }
-      } catch (Exception ignored) {
-        throw new IllegalArgumentException(
-            "The argument `extractor.pattern` or `source.pattern` is an illegal path.");
-      }
+          String.format("Pattern \"%s\" is illegal under format %s.", pattern, format));
     }
   }
 

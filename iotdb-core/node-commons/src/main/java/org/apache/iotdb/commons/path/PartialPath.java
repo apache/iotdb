@@ -129,10 +129,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1]);
   }
 
-  public boolean endWithWildcard() {
-    return nodes.length != 0 && PathPatternUtil.isWildcard(nodes[nodes.length - 1]);
-  }
-
   // e.g. root.db.d.s, root.db.d.*, root.db.d.s*, not include patterns like root.db.d.**
   public boolean hasExplicitDevice() {
     if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {

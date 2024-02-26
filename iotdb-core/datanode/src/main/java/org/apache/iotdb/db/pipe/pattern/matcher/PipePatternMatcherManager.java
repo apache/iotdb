@@ -46,6 +46,10 @@ public class PipePatternMatcherManager {
     return getMatcherByFormat(event.getPatternFormat()).match(event);
   }
 
+  public boolean patternIsLegal(PipePatternFormat format, String pattern) {
+    return getMatcherByFormat(format).patternIsLegal(pattern);
+  }
+
   public boolean patternCoverDevice(PipePatternFormat format, String pattern, String device) {
     return getMatcherByFormat(format).patternCoverDevice(pattern, device);
   }

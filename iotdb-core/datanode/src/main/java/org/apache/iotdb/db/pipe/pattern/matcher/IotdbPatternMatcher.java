@@ -19,25 +19,32 @@
 
 package org.apache.iotdb.db.pipe.pattern.matcher;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.iotdb.commons.utils.PathUtils;
 
 public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
 
   @Override
+  public boolean patternIsLegal(String pattern) {
+    if (!pattern.startsWith("root")) {
+      return false;
+    }
+
+    try {
+      PathUtils.isLegalPath(pattern);
+    } catch (IllegalPathException e) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
   public boolean patternCoverDevice(String pattern, String device) {
     try {
-      PartialPath devicePath = new PartialPath(device);
       PartialPath patternPath = new PartialPath(pattern);
-      // To cover the device, device should be a prefix of pattern and the last level of pattern
-      // should be * or **.
-      // For example, pattern is root.**.d1.** and device is root.db1.d1, then pattern covers
-      // device.
-      return patternPath.matchPrefixPath(devicePath) && patternPath.endWithWildcard();
+      return patternPath.include(new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (IllegalPathException e) {
       LOGGER.warn("Illegal path exception: ", e);
       return false;
@@ -49,8 +56,8 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
     try {
       PartialPath devicePath = new PartialPath(device);
       PartialPath patternPath = new PartialPath(pattern);
-      // To overlap with pattern, device should be a prefix of pattern.
-      // For example, pattern is root.**.s1 and device is root.db1.d1, then they overlap.
+      // Another way is to use patternPath.overlapWith("device.*"),
+      // there will be no false positives but time cost may be higher.
       return patternPath.matchPrefixPath(devicePath);
     } catch (IllegalPathException e) {
       LOGGER.warn("Illegal path exception: ", e);
@@ -68,27 +75,5 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
       LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
-  }
-
-  @Override
-  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
-    final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
-
-    for (PipeRealtimeDataRegionExtractor extractor : extractors) {
-      String pattern = extractor.getPattern();
-      try {
-        PartialPath devicePath = new PartialPath(device);
-        PartialPath extractorPath = new PartialPath(pattern);
-        if (
-        // To match the extractor, the device path should be a prefix of the extractor path.
-        extractorPath.matchPrefixPath(devicePath)) {
-          filteredExtractors.add(extractor);
-        }
-      } catch (IllegalPathException e) {
-        LOGGER.warn("Illegal path exception: ", e);
-      }
-    }
-
-    return filteredExtractors;
   }
 }
