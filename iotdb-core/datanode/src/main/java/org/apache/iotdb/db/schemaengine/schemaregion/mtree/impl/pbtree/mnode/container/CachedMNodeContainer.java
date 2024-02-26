@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
+import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
@@ -421,70 +422,32 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
   }
 
-  private class BufferIterator implements Iterator<ICachedMNode> {
-    Iterator<ICachedMNode> newChildBufferIterator;
-    Iterator<ICachedMNode> updateChildBufferIterator;
-
-    ICachedMNode newChildBufferHeader;
-    ICachedMNode updateChildBufferHeader;
+  private class BufferIterator extends MergeSortIterator<ICachedMNode> {
 
     BufferIterator() {
-      newChildBufferIterator = getNewChildBuffer().getMNodeChildBufferIterator();
-      updateChildBufferIterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
-      newChildBufferHeader =
-          newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
-      updateChildBufferHeader =
-          updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
+      super(
+          getNewChildBuffer().getMNodeChildBufferIterator(),
+          getUpdatedChildBuffer().getMNodeChildBufferIterator());
     }
 
-    @Override
-    public boolean hasNext() {
-      return newChildBufferHeader != null || updateChildBufferHeader != null;
+    protected ICachedMNode catchLeft() {
+      ICachedMNode ansMNode = leftHeader;
+      leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+      return ansMNode;
     }
 
-    @Override
-    public ICachedMNode next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      return tryGeyNext();
+    protected ICachedMNode catchRight() {
+      ICachedMNode ansMNode = rightHeader;
+      rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
+      return ansMNode;
     }
 
-    private ICachedMNode tryGeyNext() {
-      if (newChildBufferHeader != null && updateChildBufferHeader != null) {
-        if (newChildBufferHeader.getName().compareTo(updateChildBufferHeader.getName()) < 0) {
-          ICachedMNode ansMNode = newChildBufferHeader;
-          newChildBufferHeader =
-              newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
-          return ansMNode;
-        } else if (newChildBufferHeader.getName().compareTo(updateChildBufferHeader.getName())
-            > 0) {
-          ICachedMNode ansMNode = updateChildBufferHeader;
-          updateChildBufferHeader =
-              updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
-          return ansMNode;
-        } else {
-          ICachedMNode ansMNode = updateChildBufferHeader;
-          newChildBufferHeader =
-              newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
-          updateChildBufferHeader =
-              updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
-          return ansMNode;
-        }
-      }
-      if (newChildBufferHeader != null) {
-        ICachedMNode ansMNode = newChildBufferHeader;
-        newChildBufferHeader =
-            newChildBufferIterator.hasNext() ? newChildBufferIterator.next() : null;
-        return ansMNode;
-      }
-      if (updateChildBufferHeader != null) {
-        ICachedMNode ansMNode = updateChildBufferHeader;
-        updateChildBufferHeader =
-            updateChildBufferIterator.hasNext() ? updateChildBufferIterator.next() : null;
-        return ansMNode;
-      }
+    protected ICachedMNode catchEqual() {
       throw new NoSuchElementException();
+    }
+
+    protected int compare() {
+      return leftHeader.getName().compareTo(rightHeader.getName());
     }
   }
 

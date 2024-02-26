@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -52,7 +53,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -649,15 +649,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    */
   private class CachedMNodeIterator implements IMNodeIterator<ICachedMNode> {
     ICachedMNode parent;
-    Iterator<ICachedMNode> diskIterator;
-    Iterator<ICachedMNode> bufferIterator;
-    ICachedMNode nextNode;
-    ICachedMNode diskHeader;
-    ICachedMNode bufferHeader;
+    CachedMNodeMergeIterator mergeIterator;
 
     boolean needLock;
     boolean isLocked;
-
     long readLockStamp;
 
     CachedMNodeIterator(ICachedMNode parent, boolean needLock)
@@ -671,11 +666,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       try {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
-        bufferIterator = container.getChildrenBufferIterator();
-        bufferHeader = bufferIterator.hasNext() ? bufferIterator.next() : null;
-        diskIterator =
+        Iterator<ICachedMNode> bufferIterator = container.getChildrenBufferIterator();
+        Iterator<ICachedMNode> diskIterator =
             !container.isVolatile() ? file.getChildren(parent) : Collections.emptyIterator();
-        diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
+        mergeIterator = new CachedMNodeMergeIterator(diskIterator, bufferIterator);
       } catch (Throwable e) {
         lockManager.stampedReadUnlock(parent, readLockStamp);
         if (needLock) {
@@ -688,70 +682,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     @Override
     public boolean hasNext() {
-      if (nextNode != null) {
-        return true;
-      } else {
-        try {
-          readNext();
-        } catch (MetadataException e) {
-          LOGGER.error("Error occurred during readNext, {}", e.getMessage());
-          return false;
-        }
-        return nextNode != null;
-      }
+      return mergeIterator.hasNext();
     }
 
-    // must invoke hasNext() first
     @Override
     public ICachedMNode next() {
-      if (nextNode == null && !hasNext()) {
-        throw new NoSuchElementException();
-      }
-      ICachedMNode result = nextNode;
-      nextNode = null;
-      return result;
-    }
-
-    private void catchDiskMNode() {
-      nextNode = diskHeader;
-      diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
-      ICachedMNode nodeInMem = parent.getChild(nextNode.getName());
-      if (nodeInMem != null) {
-        try {
-          memoryManager.updateCacheStatusAfterMemoryRead(nodeInMem);
-          nextNode = nodeInMem;
-        } catch (MNodeNotCachedException e) {
-          nextNode = loadChildFromDiskToParent(parent, nextNode);
-        }
-      } else {
-        nextNode = loadChildFromDiskToParent(parent, nextNode);
-      }
-    }
-
-    private void catchBufferMNode() throws MNodeNotCachedException {
-      nextNode = bufferHeader;
-      memoryManager.updateCacheStatusAfterMemoryRead(nextNode);
-      bufferHeader = bufferIterator.hasNext() ? bufferIterator.next() : null;
-    }
-
-    private void readNext() throws MetadataException {
-
-      if (diskHeader != null && bufferHeader != null) { // 内存磁盘都有
-        if (diskHeader.getName().compareTo(bufferHeader.getName()) < 0) { // 拿磁盘
-          catchDiskMNode();
-        } else if (diskHeader.getName().compareTo(bufferHeader.getName()) > 0) { // 拿内存
-          catchBufferMNode();
-        } else { // 拿内存的同时扔掉磁盘的
-          catchBufferMNode();
-          diskHeader = diskIterator.hasNext() ? diskIterator.next() : null;
-        }
-      } else if (diskHeader == null && bufferHeader != null) { // 磁盘没有，内存有，拿内存
-        catchBufferMNode();
-      } else if (bufferHeader == null && diskHeader != null) { // 磁盘有，内存没有，拿磁盘
-        catchDiskMNode();
-      } else { // 磁盘和内存都没有
-        nextNode = null;
-      }
+      return mergeIterator.next();
     }
 
     @Override
@@ -762,9 +698,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     @Override
     public void close() {
       try {
-        if (nextNode != null) {
-          unPin(nextNode, false);
-          nextNode = null;
+        if (mergeIterator.hasNext()) {
+          unPin(mergeIterator.next(), false);
         }
       } finally {
         if (isLocked) {
@@ -774,6 +709,51 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           }
           isLocked = false;
         }
+      }
+    }
+
+    private class CachedMNodeMergeIterator extends MergeSortIterator<ICachedMNode> {
+
+      public CachedMNodeMergeIterator(
+          Iterator<ICachedMNode> leftIterator, Iterator<ICachedMNode> rightIterator) {
+        super(leftIterator, rightIterator);
+      }
+
+      protected ICachedMNode catchLeft() {
+        ICachedMNode ansMNode = leftHeader;
+        leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+        ICachedMNode nodeInMem = parent.getChild(ansMNode.getName());
+        if (nodeInMem != null) {
+          try {
+            memoryManager.updateCacheStatusAfterMemoryRead(nodeInMem);
+            ansMNode = nodeInMem;
+          } catch (MNodeNotCachedException e) {
+            ansMNode = loadChildFromDiskToParent(parent, ansMNode);
+          }
+        } else {
+          ansMNode = loadChildFromDiskToParent(parent, ansMNode);
+        }
+        return ansMNode;
+      }
+
+      protected ICachedMNode catchRight() {
+        ICachedMNode ansMNode = rightHeader;
+        try {
+          memoryManager.updateCacheStatusAfterMemoryRead(ansMNode);
+        } catch (MNodeNotCachedException e) {
+          throw new RuntimeException(e);
+        }
+        rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
+        return ansMNode;
+      }
+
+      protected ICachedMNode catchEqual() {
+        leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
+        return catchRight();
+      }
+
+      protected int compare() {
+        return leftHeader.getName().compareTo(rightHeader.getName());
       }
     }
   }
