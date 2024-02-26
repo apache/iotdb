@@ -23,11 +23,11 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public abstract class MergeSortIterator<E> implements Iterator<E> {
-  private Iterator<E> leftIterator;
-  private Iterator<E> rightIterator;
+  private Iterator<E> leftIterator; // iterator of the sequence on the left
+  private Iterator<E> rightIterator; // iterator of the sequence on the right
 
-  private E leftHeader;
-  private E rightHeader;
+  private E leftHeader; // The first element of the sequence on the left
+  private E rightHeader; // The first element of the sequence on the right
 
   protected MergeSortIterator(Iterator<E> leftIterator, Iterator<E> rightIterator) {
     this.leftIterator = leftIterator;
@@ -36,10 +36,12 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
     rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
   }
 
+  // Determine whether there is a next element
   public boolean hasNext() {
     return leftHeader != null || rightHeader != null;
   }
 
+  // Get the next element. If there is no next element, an error will be reported.
   public E next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
@@ -47,40 +49,48 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
     return tryGetNext();
   }
 
-  protected E catchLeft() {
+  // In merge sort, the first element of the left sequence is added to the sorted sequence while
+  // update the leftHeader.
+  private E catchLeft() {
     E ans = leftHeader;
     leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
     return ans;
   }
 
-  protected E catchRight() {
+  // In merge sort, the first element of the right sequence is added to the sorted sequence while
+  // update the rightHeader.
+  private E catchRight() {
     E ans = rightHeader;
     rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
     return ans;
   }
 
-  protected E catchEqual(int decide) {
+  // When two elements are the same, according to the choice of decide, the target element is left
+  // and the other element is deleted.
+  private E catchEqual(int decide) {
     switch (decide) {
       case -1:
         rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
-        return catchLeft();
+        return onReturnLeft(catchLeft());
       case 0:
         throw new NoSuchElementException();
       case 1:
         leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
-        return catchRight();
+        return onReturnRight(catchRight());
       default:
         throw new IllegalArgumentException();
     }
   }
 
+  // One step in merge sort: compare the first elements of the two sequences and process them based
+  // on the comparison results
   E tryGetNext() {
     if (leftHeader != null && rightHeader != null) {
       switch (compare(leftHeader, rightHeader)) {
         case -1:
           return onReturnLeft(catchLeft());
         case 0:
-          return onReturnEqual(catchEqual(decide()));
+          return catchEqual(decide());
         case 1:
           return onReturnRight(catchRight());
         default:
@@ -95,21 +105,21 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
     }
   }
 
+  // Post-process the first element of the left sequence
   private E onReturnLeft(E left) {
     return left;
   }
 
+  // Post-process the first element of the right sequence
   protected E onReturnRight(E right) {
     return right;
   }
 
-  protected E onReturnEqual(E equal) {
-    return equal;
-  }
-
+  // Decide the target element when two elements are the same
   protected int decide() {
     return 1;
   }
 
+  // Compare two elements
   protected abstract int compare(E left, E right);
 }
