@@ -1825,6 +1825,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         measurementList.add(measurement);
       }
     }
+    if (measurementList.isEmpty()) {
+      throw new SemanticException("InsertStatement should contain at least one measurement");
+    }
     insertStatement.setMeasurementList(measurementList.toArray(new String[0]));
     return timeIndex;
   }
