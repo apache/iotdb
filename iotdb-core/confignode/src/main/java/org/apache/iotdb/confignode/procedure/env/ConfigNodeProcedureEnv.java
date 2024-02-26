@@ -205,7 +205,8 @@ public class ConfigNodeProcedureEnv {
   }
 
   public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
-    final int runningOrReadOnlyDataNodeNum = getNodeManager()
+    final int runningOrReadOnlyDataNodeNum =
+        getNodeManager()
             .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
             .size();
     int dataNodeNumAfterRemoving;
