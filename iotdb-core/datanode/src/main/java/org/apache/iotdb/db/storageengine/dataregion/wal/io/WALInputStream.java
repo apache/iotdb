@@ -59,6 +59,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     dataBuffer = null;
   }
 
+  @Override
+  public int available() throws IOException {
+    return (int) (channel.size() - channel.position());
+  }
+
   private void loadNextSegment() throws IOException {
     headerBuffer.clear();
     if (channel.read(headerBuffer) != Integer.BYTES + 1) {
