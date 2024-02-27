@@ -56,21 +56,21 @@ public class CommonConfig {
   private String adminPassword = "root";
 
   private String userFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + "users";
 
   private String roleFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + "roles";
 
   private String procedureWalFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
@@ -78,11 +78,11 @@ public class CommonConfig {
 
   /** Sync directory, including the log and hardlink tsFiles. */
   private String syncDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** WAL directories. */
   private String[] walDirs = {
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
+    IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
   };
 
   /** Default system file storage is in local file system (unsupported). */
