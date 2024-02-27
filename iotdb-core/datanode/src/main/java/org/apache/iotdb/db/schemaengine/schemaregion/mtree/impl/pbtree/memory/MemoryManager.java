@@ -292,13 +292,14 @@ public class MemoryManager implements IMemoryManager {
   private class VolatileSubtreeIterator implements Iterator<ICachedMNode> {
 
     private final ICachedMNodeContainer container;
-    private final Iterator<ICachedMNode> bufferedNodeIterator;
-
+    private Iterator<ICachedMNode> bufferedNodeIterator;
+    private byte status;
     private ICachedMNode nextSubtree = null;
 
     private VolatileSubtreeIterator(ICachedMNodeContainer container) {
       this.container = container;
-      this.bufferedNodeIterator = container.getChildrenBufferIterator();
+      this.bufferedNodeIterator = container.getNewChildFlushingBuffer().values().iterator();
+      this.status = 0;
     }
 
     @Override
@@ -322,6 +323,12 @@ public class MemoryManager implements IMemoryManager {
     private void tryGetNext() {
       ICachedMNode node;
       CacheEntry cacheEntry;
+      if (!bufferedNodeIterator.hasNext() && status == 0) {
+        // flushingBuffer of NewChildBuffer has been traversed, and the flushingBuffer of
+        // UpdateChildBuffer needs to be traversed.
+        bufferedNodeIterator = container.getUpdatedChildFlushingBuffer().values().iterator();
+        status = 1;
+      }
       while (bufferedNodeIterator.hasNext()) {
         node = bufferedNodeIterator.next();
 
@@ -338,9 +345,28 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
+            if (status == 1
+                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
+              if (cacheEntry.hasVolatileDescendant()
+                  && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+                // these two factor judgement is not redundant because the #hasVolatileDescendant is
+                // on a higher priority than #container.hasChildren
+
+                // nodes with volatile children should be treated as root of volatile subtree and
+                // return for flush
+                nextSubtree = node;
+                unlockImmediately = false;
+              }
+              return;
+            }
+
             cacheEntry.setVolatile(false);
             memoryStatistics.removeVolatileNode();
-            container.moveMNodeToCache(node.getName());
+            if (status == 1) {
+              container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+            } else {
+              container.moveMNodeFromNewChildBufferToCache(node.getName());
+            }
 
             if (cacheEntry.hasVolatileDescendant()
                 && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
@@ -348,8 +374,7 @@ public class MemoryManager implements IMemoryManager {
               // on a higher priority than #container.hasChildren
 
               // nodes with volatile children should be treated as root of volatile subtree and
-              // return
-              // for flush
+              // return for flush
               nextSubtree = node;
               unlockImmediately = false;
               return;

@@ -68,7 +68,7 @@ import static org.junit.Assert.assertTrue;
 public class AggregationDistributionTest {
 
   @Test
-  public void testAggregation1Series2Regions() throws IllegalPathException {
+  public void testAggregation1Series2Regions() {
     QueryId queryId = new QueryId("test_1_series_2_regions");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -95,7 +95,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testAggregation1Series2RegionsWithSlidingWindow() throws IllegalPathException {
+  public void testAggregation1Series2RegionsWithSlidingWindow() {
     QueryId queryId = new QueryId("test_1_series_2_regions_sliding_window");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -130,7 +130,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
+  public void testTimeJoinAggregationSinglePerRegion() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -166,9 +166,7 @@ public class AggregationDistributionTest {
       SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) root;
       List<AggregationDescriptor> descriptorList = handle.getAggregationDescriptorList();
       descriptorList.forEach(
-          d -> {
-            assertEquals(expected.get(handle.getPartitionPath().getFullPath()), d.getStep());
-          });
+          d -> assertEquals(expected.get(handle.getPartitionPath().getFullPath()), d.getStep()));
     }
     root.getChildren().forEach(child -> verifyAggregationStep(expected, child));
   }
@@ -190,7 +188,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationWithSlidingWindow() throws IllegalPathException {
+  public void testTimeJoinAggregationWithSlidingWindow() {
     QueryId queryId = new QueryId("test_query_time_join_agg_with_sliding");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -229,7 +227,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationMultiPerRegion() throws IllegalPathException {
+  public void testTimeJoinAggregationMultiPerRegion() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -254,7 +252,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationMultiPerRegion2() throws IllegalPathException {
+  public void testTimeJoinAggregationMultiPerRegion2() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -775,7 +773,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testAlignByDevice1Device2Region() throws IllegalPathException {
+  public void testAlignByDevice1Device2Region() {
     QueryId queryId = new QueryId("test_align_by_device_1_device_2_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());

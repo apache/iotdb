@@ -216,7 +216,12 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     Assert.assertFalse(seriesScanUtil.canUseCurrentPageStatistics());
     tsBlock = seriesScanUtil.nextPage();
-    Assert.assertNull(tsBlock);
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
+
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.canUseCurrentPageStatistics());
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());
     Assert.assertFalse(seriesScanUtil.hasNextChunk());
