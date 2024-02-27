@@ -68,7 +68,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigReceiverV1.class);
-  private static final AtomicInteger queryIndex = new AtomicInteger(0);
+
+  private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
   private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
@@ -76,8 +77,6 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       new PipeConfigPhysicalPlanTSStatusVisitor();
   private static final PipeConfigPhysicalPlanExceptionVisitor exceptionVisitor =
       new PipeConfigPhysicalPlanExceptionVisitor();
-
-  public IoTDBConfigReceiverV1() {}
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -118,16 +117,18 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
               String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
       LOGGER.warn("Unsupported PipeRequestType on ConfigNode, response status = {}.", status);
       return new TPipeTransferResp(status);
-    } catch (IOException | ConsensusException e) {
-      String error = String.format("Serialization error during pipe receiving, %s", e);
-      LOGGER.warn(error);
+    } catch (Exception e) {
+      final String error =
+          "Exception encountered while handling pipe transfer request. Root cause: "
+              + e.getMessage();
+      LOGGER.warn(error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
 
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req)
-      throws IOException, ConsensusException {
-    ConfigPhysicalPlan plan = ConfigPhysicalPlan.Factory.create(req.body);
+      throws IOException {
+    final ConfigPhysicalPlan plan = ConfigPhysicalPlan.Factory.create(req.body);
     TSStatus result;
     try {
       result = executePlan(plan);
@@ -170,32 +171,36 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       case CommitSetSchemaTemplate:
         return configManager.setSchemaTemplate(
             new TSetSchemaTemplateReq(
-                    getPseudoQueryId(),
+                    generatePseudoQueryId(),
                     ((CommitSetSchemaTemplatePlan) plan).getName(),
                     ((CommitSetSchemaTemplatePlan) plan).getPath())
                 .setIsGeneratedByPipe(true));
       case PipeUnsetTemplate:
         return configManager.unsetSchemaTemplate(
             new TUnsetSchemaTemplateReq(
-                    getPseudoQueryId(),
+                    generatePseudoQueryId(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getName(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getPath())
                 .setIsGeneratedByPipe(true));
       case PipeDeleteTimeSeries:
         return configManager.deleteTimeSeries(
             new TDeleteTimeSeriesReq(
-                    getPseudoQueryId(), ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                    generatePseudoQueryId(),
+                    ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
                 .setIsGeneratedByPipe(true));
       case PipeDeleteLogicalView:
         return configManager.deleteLogicalView(
             new TDeleteLogicalViewReq(
-                    getPseudoQueryId(), ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                    generatePseudoQueryId(),
+                    ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
                 .setIsGeneratedByPipe(true));
       case PipeDeactivateTemplate:
         return configManager
             .getProcedureManager()
             .deactivateTemplate(
-                getPseudoQueryId(), ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(), true);
+                generatePseudoQueryId(),
+                ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(),
+                true);
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -223,9 +228,9 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
     }
   }
 
-  // Used to construct pipe related procedures
-  private String getPseudoQueryId() {
-    return "pipe" + System.currentTimeMillis() + queryIndex.getAndIncrement();
+  /** Used to construct pipe related procedures */
+  private String generatePseudoQueryId() {
+    return "pipe_" + System.currentTimeMillis() + "_" + QUERY_ID_GENERATOR.getAndIncrement();
   }
 
   @Override
