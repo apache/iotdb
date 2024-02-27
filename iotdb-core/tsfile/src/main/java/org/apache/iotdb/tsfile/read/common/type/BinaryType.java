@@ -49,6 +49,11 @@ public class BinaryType implements Type {
     return TypeEnum.BINARY;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static BinaryType getInstance() {
     return INSTANCE;
   }

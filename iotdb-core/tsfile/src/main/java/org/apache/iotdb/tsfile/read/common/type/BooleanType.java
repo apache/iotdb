@@ -49,6 +49,11 @@ public class BooleanType implements Type {
     return TypeEnum.BOOLEAN;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static BooleanType getInstance() {
     return INSTANCE;
   }

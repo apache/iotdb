@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -224,6 +225,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final ISchemaFetcher schemaFetcher;
 
+  private final SqlParser relationSqlParser;
+
   private final TsBlockSerde serde = new TsBlockSerde();
 
   private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
@@ -257,6 +260,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    relationSqlParser = new SqlParser();
   }
 
   private TSExecuteStatementResp executeStatementInternal(

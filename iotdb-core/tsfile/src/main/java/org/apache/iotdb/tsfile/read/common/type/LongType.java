@@ -79,6 +79,11 @@ public class LongType implements Type {
     return TypeEnum.INT64;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static LongType getInstance() {
     return INSTANCE;
   }

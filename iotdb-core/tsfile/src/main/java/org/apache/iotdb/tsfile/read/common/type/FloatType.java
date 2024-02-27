@@ -79,6 +79,11 @@ public class FloatType implements Type {
     return TypeEnum.FLOAT;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static FloatType getInstance() {
     return INSTANCE;
   }

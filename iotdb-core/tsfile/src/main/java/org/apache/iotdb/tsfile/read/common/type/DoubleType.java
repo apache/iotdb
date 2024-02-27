@@ -79,6 +79,11 @@ public class DoubleType implements Type {
     return TypeEnum.DOUBLE;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static DoubleType getInstance() {
     return INSTANCE;
   }

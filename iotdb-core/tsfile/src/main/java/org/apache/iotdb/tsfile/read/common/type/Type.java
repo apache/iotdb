@@ -101,4 +101,7 @@ public interface Type {
   ColumnBuilder createColumnBuilder(int expectedEntries);
 
   TypeEnum getTypeEnum();
+
+  /** True if the type supports compareTo. */
+  boolean isOrderable();
 }

@@ -79,6 +79,11 @@ public class IntType implements Type {
     return TypeEnum.INT32;
   }
 
+  @Override
+  public boolean isOrderable() {
+    return true;
+  }
+
   public static IntType getInstance() {
     return INSTANCE;
   }

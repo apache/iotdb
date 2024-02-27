@@ -134,4 +134,13 @@ public abstract class IClientSession {
   public abstract void addQueryId(Long statementId, long queryId);
 
   public abstract void removeQueryId(Long statementId, Long queryId);
+
+  public Model getModel() {
+    return Model.TABLE;
+  }
+
+  public enum Model {
+    TREE,
+    TABLE
+  }
 }

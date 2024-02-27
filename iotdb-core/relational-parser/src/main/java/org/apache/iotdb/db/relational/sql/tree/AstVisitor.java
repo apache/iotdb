@@ -87,10 +87,6 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitShowFunctions(ShowFunctions node, C context) {
-    return visitStatement(node, context);
-  }
-
   protected R visitUse(Use node, C context) {
     return visitStatement(node, context);
   }
@@ -435,7 +431,7 @@ public abstract class AstVisitor<R, C> {
     return visitDataTypeParameter(node, context);
   }
 
-  protected R visitCreateFunction(ShowFunctions node, C context) {
+  protected R visitShowFunctions(ShowFunctions node, C context) {
     return visitStatement(node, context);
   }
 
