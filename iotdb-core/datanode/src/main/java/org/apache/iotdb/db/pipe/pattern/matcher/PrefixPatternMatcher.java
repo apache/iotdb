@@ -70,7 +70,7 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternOverlapWithDevice(String pattern, String device) {
+  public boolean patternMayOverlapWithDevice(String pattern, String device) {
     return (
         // for example, pattern is root.a.b and device is root.a.b.c
         // in this case, the extractor can be matched without checking the measurements
@@ -81,12 +81,27 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
         || (pattern.length() > device.length() && pattern.startsWith(device));
   }
 
+  /**
+   * Check if a full path with device and measurement can be matched by pattern.
+   *
+   * <p>NOTE: this is only called when {@link
+   * PrefixPatternMatcher#patternMayOverlapWithDevice(String, String)} is true.
+   */
   @Override
   public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
+    // We assume that the device is already matched.
+    if (pattern.length() <= device.length()) {
+      return true;
+    }
+
+    // For example, pattern is "root.a.b.c", device is "root.a.b", then measurements "c" and "cc"
+    // can be matched,
+    // measurements "d" or "dc" can't be matched.
+    String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
     return
     // low cost check comes first
-    pattern.length() == device.length() + measurement.length() + 1
+    pattern.length() <= device.length() + dotAndMeasurement.length()
         // high cost check comes later
-        && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement);
+        && dotAndMeasurement.startsWith(pattern.substring(device.length()));
   }
 }

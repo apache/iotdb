@@ -17,15 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor;
+package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -66,7 +64,7 @@ public class PrefixPatternMatcherTest {
   }
 
   @Test
-  public void testCachedMatcher() throws Exception {
+  public void testRegisteringPrefixMatcher() throws Exception {
     PipeRealtimeDataRegionExtractor dataRegionExtractor = new PipeRealtimeDataRegionFakeExtractor();
     dataRegionExtractor.customize(
         new PipeParameters(
@@ -151,6 +149,57 @@ public class PrefixPatternMatcherTest {
             + ((double) (epochNum * (deviceNum + 1)) / (double) (totalTime) * 1000.0));
 
     future.get();
+  }
+
+  @Test
+  public void testPrefixMatcher() {
+    // Test legal and illegal pattern
+    Assert.assertTrue(matcher.patternIsLegal("root"));
+    Assert.assertTrue(matcher.patternIsLegal("root."));
+    Assert.assertTrue(matcher.patternIsLegal("root.db"));
+    Assert.assertTrue(matcher.patternIsLegal("root.db.d1.s"));
+    Assert.assertTrue(matcher.patternIsLegal("root.db.`1`"));
+
+    Assert.assertFalse(matcher.patternIsLegal("roo"));
+    Assert.assertFalse(matcher.patternIsLegal(""));
+    Assert.assertFalse(matcher.patternIsLegal("root.."));
+    Assert.assertFalse(matcher.patternIsLegal("root./"));
+
+    // Test pattern cover device
+    String device = "root.db.d1";
+
+    Assert.assertTrue(matcher.patternCoverDevice("root", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.d", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.db", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.db.", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.db.d", device));
+    Assert.assertTrue(matcher.patternCoverDevice("root.db.d1", device));
+
+    Assert.assertFalse(matcher.patternCoverDevice("root.db.d1.", device));
+    Assert.assertFalse(matcher.patternCoverDevice("root.db.d1.s1", device));
+    Assert.assertFalse(matcher.patternCoverDevice("root.**", device));
+    Assert.assertFalse(matcher.patternCoverDevice("root.db.d2", device));
+
+    // Test pattern overlap with device
+    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root", device));
+    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1", device));
+    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1.", device));
+    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1.s1", device));
+
+    Assert.assertFalse(matcher.patternMayOverlapWithDevice("root.db.d2", device));
+    Assert.assertFalse(matcher.patternMayOverlapWithDevice("root.**", device));
+
+    // Test pattern match measurement
+    String measurement = "s1";
+
+    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1", device, measurement));
+    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.", device, measurement));
+    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.s", device, measurement));
+    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.s1", device, measurement));
+
+    Assert.assertFalse(matcher.patternMatchMeasurement("root.db.d1.s11", device, measurement));
+    Assert.assertFalse(matcher.patternMatchMeasurement("root.db.d1.s2", device, measurement));
   }
 
   public static class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {

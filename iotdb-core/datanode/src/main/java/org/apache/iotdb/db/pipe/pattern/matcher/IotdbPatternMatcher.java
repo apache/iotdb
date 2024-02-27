@@ -52,7 +52,7 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternOverlapWithDevice(String pattern, String device) {
+  public boolean patternMayOverlapWithDevice(String pattern, String device) {
     try {
       PartialPath devicePath = new PartialPath(device);
       PartialPath patternPath = new PartialPath(pattern);
@@ -65,6 +65,12 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
     }
   }
 
+  /**
+   * Check if a full path with device and measurement can be matched by pattern.
+   *
+   * <p>NOTE: this is only called when {@link
+   * IotdbPatternMatcher#patternMayOverlapWithDevice(String, String)} is true.
+   */
   @Override
   public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
     try {

@@ -46,21 +46,34 @@ public class PipePatternMatcherManager {
     return getMatcherByFormat(event.getPatternFormat()).match(event);
   }
 
+  /** Check if a pattern is legal. Different pattern format may have different rules. */
   public boolean patternIsLegal(PipePatternFormat format, String pattern) {
     return getMatcherByFormat(format).patternIsLegal(pattern);
   }
 
+  /** Check if a device's all measurements are covered by the pattern. */
   public boolean patternCoverDevice(PipePatternFormat format, String pattern, String device) {
     return getMatcherByFormat(format).patternCoverDevice(pattern, device);
   }
 
-  public boolean patternOverlapWithDevice(PipePatternFormat format, String pattern, String device) {
-    return getMatcherByFormat(format).patternOverlapWithDevice(pattern, device);
+  /**
+   * Check if a device may have some measurements matched by the pattern.
+   *
+   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
+   * measurement matches the pattern, please use {@link
+   * PipePatternMatcherManager#patternMatchMeasurement} after this.
+   */
+  public boolean patternMayOverlapWithDevice(
+      PipePatternFormat format, String pattern, String device) {
+    return getMatcherByFormat(format).patternMayOverlapWithDevice(pattern, device);
   }
 
   /**
-   * NOTE: this is only called when {@link
-   * PipePatternMatcherManager#patternOverlapWithDevice(PipePatternFormat, String, String)} is true.
+   * Check if a full path with device and measurement can be matched by pattern under specified
+   * format.
+   *
+   * <p>NOTE: this is only called when {@link PipePatternMatcherManager#patternMayOverlapWithDevice}
+   * is true.
    */
   public boolean patternMatchMeasurement(
       PipePatternFormat format, String pattern, String device, String measurement) {
