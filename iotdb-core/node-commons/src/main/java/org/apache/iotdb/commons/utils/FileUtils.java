@@ -181,4 +181,30 @@ public class FileUtils {
     }
     return file;
   }
+
+  /**
+   * Move source file to target file. The move will be divided into two steps: 1. Copy the source
+   * file to the target location 2. Delete the source file
+   *
+   * @param source source file, which can be a directory.
+   * @param target target file, which can be a directory.
+   * @return success or not
+   */
+  public static boolean moveFileSafe(File source, File target) throws IOException {
+    String fromTo =
+        String.format("from %s to %s", source.getAbsolutePath(), target.getAbsolutePath());
+    LOGGER.info("start to move file, {}", fromTo);
+    if (source.isDirectory()) {
+      boolean copyResult = copyDir(source, target);
+      if (!copyResult) {
+        return false;
+      }
+      recursiveDeleteFolder(source.getAbsolutePath());
+    } else {
+      org.apache.commons.io.FileUtils.copyFile(source, target);
+      org.apache.commons.io.FileUtils.delete(source);
+    }
+    LOGGER.info("move file success, {}", fromTo);
+    return true;
+  }
 }
