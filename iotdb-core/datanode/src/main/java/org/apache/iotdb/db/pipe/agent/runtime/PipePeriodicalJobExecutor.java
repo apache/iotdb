@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +56,8 @@ public class PipePeriodicalJobExecutor {
   private Future<?> executorFuture;
 
   // <Periodical job, Interval in rounds>
-  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs = new ArrayList<>();
+  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs =
+      new CopyOnWriteArrayList<>();
 
   public synchronized void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(
