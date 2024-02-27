@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 
-public abstract class PhysicalPlanVisitor<R, C> {
+public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R process(ConfigPhysicalPlan plan, C context) {
     switch (plan.getType()) {
       case CreateDatabase:

@@ -71,8 +71,10 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
 
   private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
-  private static final PipePlanTSStatusVisitor statusVisitor = new PipePlanTSStatusVisitor();
-  private static final PipePlanExceptionVisitor exceptionVisitor = new PipePlanExceptionVisitor();
+  private static final PipeConfigPhysicalPlanTSStatusVisitor statusVisitor =
+      new PipeConfigPhysicalPlanTSStatusVisitor();
+  private static final PipeConfigPhysicalPlanExceptionVisitor exceptionVisitor =
+      new PipeConfigPhysicalPlanExceptionVisitor();
 
   IoTDBConfigReceiverV1() {}
 

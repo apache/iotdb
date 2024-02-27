@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.PhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -40,7 +40,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
  * and apply different error handling tactics. Please DO NOT modify the {@link TSStatus} returned by
  * the processes that generate the following {@link TSStatus}es in the class.
  */
-public class PipePlanTSStatusVisitor extends PhysicalPlanVisitor<TSStatus, TSStatus> {
+public class PipeConfigPhysicalPlanTSStatusVisitor
+    extends ConfigPhysicalPlanVisitor<TSStatus, TSStatus> {
 
   @Override
   public TSStatus visitPlan(ConfigPhysicalPlan plan, TSStatus context) {
