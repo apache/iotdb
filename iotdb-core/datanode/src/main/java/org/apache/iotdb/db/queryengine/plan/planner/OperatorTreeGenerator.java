@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
@@ -166,6 +167,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -855,6 +857,39 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children,
         dataTypes,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
+  public Operator visitAggregationMergeSort(
+      AggregationMergeSortNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MergeSortOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+
+    //    for (Expression expression : selectExpressions) {
+    //      if (expression instanceof FunctionExpression) {
+    //        FunctionExpression functionExpression = (FunctionExpression) expression;
+    //        String functionName = functionExpression.getFunctionName();
+    //        expression.getExpressionType();
+    //        Accumulator accumulator = AccumulatorFactory.createAccumulator(
+    //                functionName,
+    //                aggregationType,
+    //
+    // Collections.singletonList(context.getTypeProvider().getType(functionExpression.getOutputSymbol())),
+    //                null,
+    //                null,
+    //                true,
+    //                true);
+    //      }
+    //    }
+
+    return new AggregationMergeSortOperator(operatorContext, children, dataTypes);
   }
 
   @Override

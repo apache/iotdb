@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -32,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class AggregationMergeSortNode extends MultiChildProcessNode {
 
@@ -39,21 +41,29 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   private final List<String> outputColumns;
 
+  private final Set<Expression> selectExpressions;
+
   public AggregationMergeSortNode(
-      PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
+      PlanNodeId id,
+      OrderByParameter mergeOrderParameter,
+      List<String> outputColumns,
+      Set<Expression> selectExpressions) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
+    this.selectExpressions = selectExpressions;
   }
 
   public AggregationMergeSortNode(
       PlanNodeId id,
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
-      List<String> outputColumns) {
+      List<String> outputColumns,
+      Set<Expression> selectExpressions) {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
+    this.selectExpressions = selectExpressions;
   }
 
   public OrderByParameter getMergeOrderParameter() {
@@ -62,7 +72,8 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new AggregationMergeSortNode(getPlanNodeId(), getMergeOrderParameter(), outputColumns);
+    return new AggregationMergeSortNode(
+        getPlanNodeId(), getMergeOrderParameter(), outputColumns, selectExpressions);
   }
 
   @Override
@@ -71,7 +82,8 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrderParameter(),
-        outputColumns);
+        outputColumns,
+        selectExpressions);
   }
 
   @Override
@@ -113,7 +125,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       columnSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns);
+    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns, null);
   }
 
   @Override
