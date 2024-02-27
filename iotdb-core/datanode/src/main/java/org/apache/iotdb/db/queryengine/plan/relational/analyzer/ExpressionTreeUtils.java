@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.relational.sql.tree.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.relational.sql.tree.DereferenceExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.Identifier;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
@@ -38,6 +40,10 @@ import static java.util.Objects.requireNonNull;
 
 public final class ExpressionTreeUtils {
   private ExpressionTreeUtils() {}
+
+  static List<FunctionCall> extractAggregateFunctions(Iterable<? extends Node> nodes) {
+    return extractExpressions(nodes, FunctionCall.class, ExpressionTreeUtils::isAggregation);
+  }
 
   public static <T extends Expression> List<T> extractExpressions(
       Iterable<? extends Node> nodes, Class<T> clazz) {
@@ -56,6 +62,10 @@ public final class ExpressionTreeUtils {
         .map(clazz::cast)
         .filter(predicate)
         .collect(toImmutableList());
+  }
+
+  private static boolean isAggregation(FunctionCall functionCall) {
+    return isAggregationFunction(functionCall.getName().toString());
   }
 
   private static List<Node> linearizeNodes(Node node) {
@@ -79,5 +89,10 @@ public final class ExpressionTreeUtils {
       name = DereferenceExpression.getQualifiedName((DereferenceExpression) expression);
     }
     return name;
+  }
+
+  static boolean isAggregationFunction(String functionName) {
+    // TODO consider UDAF
+    return BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName.toLowerCase());
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 
 public class LongType implements Type {
 
-  private static final LongType INSTANCE = new LongType();
+  private static final LongType INT64 = new LongType();
 
   private LongType() {}
 
@@ -80,11 +80,21 @@ public class LongType implements Type {
   }
 
   @Override
+  public String getDisplayName() {
+    return "INT64";
+  }
+
+  @Override
+  public boolean isComparable() {
+    return true;
+  }
+
+  @Override
   public boolean isOrderable() {
     return true;
   }
 
   public static LongType getInstance() {
-    return INSTANCE;
+    return INT64;
   }
 }

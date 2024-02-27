@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class BinaryType implements Type {
-  private static final BinaryType INSTANCE = new BinaryType();
+  private static final BinaryType TEXT = new BinaryType();
 
   private BinaryType() {}
 
@@ -50,11 +50,21 @@ public class BinaryType implements Type {
   }
 
   @Override
+  public String getDisplayName() {
+    return "TEXT";
+  }
+
+  @Override
+  public boolean isComparable() {
+    return true;
+  }
+
+  @Override
   public boolean isOrderable() {
     return true;
   }
 
   public static BinaryType getInstance() {
-    return INSTANCE;
+    return TEXT;
   }
 }

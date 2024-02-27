@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 
 public class FloatType implements Type {
 
-  private static final FloatType INSTANCE = new FloatType();
+  private static final FloatType FLOAT = new FloatType();
 
   private FloatType() {}
 
@@ -80,11 +80,21 @@ public class FloatType implements Type {
   }
 
   @Override
+  public String getDisplayName() {
+    return "FLOAT";
+  }
+
+  @Override
+  public boolean isComparable() {
+    return true;
+  }
+
+  @Override
   public boolean isOrderable() {
     return true;
   }
 
   public static FloatType getInstance() {
-    return INSTANCE;
+    return FLOAT;
   }
 }

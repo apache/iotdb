@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
+import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -64,109 +67,51 @@ public class MetadataUtil {
   }
 
   public static QualifiedObjectName createQualifiedObjectName(
-      Session session, Node node, QualifiedName name) {
+      SessionInfo session, Node node, QualifiedName name) {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 3) {
-      throw new TrinoException(SYNTAX_ERROR, format("Too many dots in table name: %s", name));
+      throw new SemanticException(String.format("Too many dots in table name: %s", name));
     }
 
     List<String> parts = Lists.reverse(name.getParts());
     String objectName = parts.get(0);
-    String schemaName =
-        (parts.size() > 1)
-            ? parts.get(1)
-            : session
-                .getSchema()
-                .orElseThrow(
-                    () ->
-                        semanticException(
-                            MISSING_SCHEMA_NAME,
-                            node,
-                            "Schema must be specified when session schema is not set"));
-    String catalogName =
+    String databaseName =
         (parts.size() > 2)
             ? parts.get(2)
             : session
-                .getCatalog()
+                .getDatabaseName()
                 .orElseThrow(
                     () ->
-                        semanticException(
-                            MISSING_CATALOG_NAME,
-                            node,
+                        new SemanticException(
                             "Catalog must be specified when session catalog is not set"));
 
-    return new QualifiedObjectName(catalogName, schemaName, objectName);
+    return new QualifiedObjectName(databaseName, objectName);
   }
 
-  public static boolean tableExists(Metadata metadata, Session session, String table) {
-    if (session.getCatalog().isEmpty() || session.getSchema().isEmpty()) {
+  public static boolean tableExists(Metadata metadata, SessionInfo session, String table) {
+    if (!session.getDatabaseName().isPresent()) {
       return false;
     }
-    QualifiedObjectName name =
-        new QualifiedObjectName(session.getCatalog().get(), session.getSchema().get(), table);
-    return metadata.getTableHandle(session, name).isPresent();
-  }
-
-  public static void checkRoleExists(
-      Session session,
-      Node node,
-      Metadata metadata,
-      TrinoPrincipal principal,
-      Optional<String> catalog) {
-    if (principal.getType() == ROLE) {
-      checkRoleExists(session, node, metadata, principal.getName(), catalog);
-    }
-  }
-
-  public static void checkRoleExists(
-      Session session, Node node, Metadata metadata, String role, Optional<String> catalog) {
-    if (!metadata.roleExists(session, role, catalog)) {
-      throw semanticException(
-          ROLE_NOT_FOUND,
-          node,
-          "Role '%s' does not exist%s",
-          role,
-          catalog.map(c -> format(" in catalog '%s'", c)).orElse(""));
-    }
-  }
-
-  public static Optional<String> processRoleCommandCatalog(
-      Metadata metadata, Session session, Node node, Optional<String> catalog) {
-    boolean legacyCatalogRoles = isLegacyCatalogRoles(session);
-    // old role commands use only supported catalog roles and used session catalog as the default
-    if (catalog.isEmpty() && legacyCatalogRoles) {
-      catalog = session.getCatalog();
-      if (catalog.isEmpty()) {
-        throw semanticException(MISSING_CATALOG_NAME, node, "Session catalog must be set");
-      }
-    }
-    catalog.ifPresent(
-        catalogName -> getRequiredCatalogHandle(metadata, session, node, catalogName));
-
-    if (catalog.isPresent() && !metadata.isCatalogManagedSecurity(session, catalog.get())) {
-      throw semanticException(
-          NOT_SUPPORTED, node, "Catalog '%s' does not support role management", catalog.get());
-    }
-
-    return catalog;
+    QualifiedObjectName name = new QualifiedObjectName(session.getDatabaseName().get(), table);
+    return metadata.tableExists(name);
   }
 
   public static class TableMetadataBuilder {
-    public static TableMetadataBuilder tableMetadataBuilder(SchemaTableName tableName) {
+    public static TableMetadataBuilder tableMetadataBuilder(String tableName) {
       return new TableMetadataBuilder(tableName);
     }
 
-    private final SchemaTableName tableName;
+    private final String tableName;
     private final ImmutableList.Builder<ColumnMetadata> columns = ImmutableList.builder();
     private final ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
     private final Optional<String> comment;
 
-    private TableMetadataBuilder(SchemaTableName tableName) {
+    private TableMetadataBuilder(String tableName) {
       this(tableName, Optional.empty());
     }
 
-    private TableMetadataBuilder(SchemaTableName tableName, Optional<String> comment) {
+    private TableMetadataBuilder(String tableName, Optional<String> comment) {
       this.tableName = tableName;
       this.comment = comment;
     }
@@ -187,9 +132,8 @@ public class MetadataUtil {
       return this;
     }
 
-    public ConnectorTableMetadata build() {
-      return new ConnectorTableMetadata(
-          tableName, columns.build(), properties.buildOrThrow(), comment);
+    public TableMetadata build() {
+      return new TableMetadata(tableName, columns.build(), properties.buildOrThrow(), comment);
     }
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 
 public class DoubleType implements Type {
 
-  private static final DoubleType INSTANCE = new DoubleType();
+  public static final DoubleType DOUBLE = new DoubleType();
 
   private DoubleType() {}
 
@@ -80,11 +80,21 @@ public class DoubleType implements Type {
   }
 
   @Override
+  public String getDisplayName() {
+    return "DOUBLE";
+  }
+
+  @Override
+  public boolean isComparable() {
+    return true;
+  }
+
+  @Override
   public boolean isOrderable() {
     return true;
   }
 
   public static DoubleType getInstance() {
-    return INSTANCE;
+    return DOUBLE;
   }
 }

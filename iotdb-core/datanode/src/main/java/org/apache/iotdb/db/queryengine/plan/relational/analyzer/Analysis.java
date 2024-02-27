@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.db.relational.sql.tree.AllColumns;
 import org.apache.iotdb.db.relational.sql.tree.ExistsPredicate;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -30,6 +34,7 @@ import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.Offset;
 import org.apache.iotdb.db.relational.sql.tree.OrderBy;
 import org.apache.iotdb.db.relational.sql.tree.Parameter;
+import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
 import org.apache.iotdb.db.relational.sql.tree.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
@@ -88,6 +93,17 @@ public class Analysis {
   // map inner recursive reference in the expandable query to the recursion base scope
   private final Map<NodeRef<Node>, Scope> expandableBaseScopes = new LinkedHashMap<>();
 
+  // Synthetic scope when a query does not have a FROM clause
+  // We need to track this separately because there's no node we can attach it to.
+  private final Map<NodeRef<QuerySpecification>, Scope> implicitFromScopes = new LinkedHashMap<>();
+  private final Map<NodeRef<Node>, Scope> scopes = new LinkedHashMap<>();
+
+  private final Map<NodeRef<Expression>, ResolvedField> columnReferences = new LinkedHashMap<>();
+
+  // a map of users to the columns per table that they access
+  private final Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>>
+      tableColumnReferences = new LinkedHashMap<>();
+
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, OptionalLong> limit = new LinkedHashMap<>();
   private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
@@ -96,6 +112,8 @@ public class Analysis {
   private final Map<NodeRef<Join>, JoinUsingAnalysis> joinUsing = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, SubqueryAnalysis> subQueries = new LinkedHashMap<>();
 
+  private final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
+
   private final Map<NodeRef<Expression>, Type> types = new LinkedHashMap<>();
 
   private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
@@ -103,9 +121,7 @@ public class Analysis {
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
 
-  private final Map<NodeRef<Node>, Scope> scopes = new LinkedHashMap<>();
-
-  private final Map<NodeRef<Expression>, ResolvedField> columnReferences = new LinkedHashMap<>();
+  private final Map<Field, ColumnHandle> columns = new LinkedHashMap<>();
 
   private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates =
       new LinkedHashMap<>();
@@ -121,6 +137,12 @@ public class Analysis {
       new LinkedHashMap<>();
 
   private final Multimap<Field, SourceColumn> originColumnDetails = ArrayListMultimap.create();
+
+  private final Multimap<NodeRef<Expression>, Field> fieldLineage = ArrayListMultimap.create();
+
+  private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
+
+  private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -184,6 +206,14 @@ public class Analysis {
             () ->
                 new IllegalArgumentException(
                     format("Analysis does not contain information for node: %s", node)));
+  }
+
+  public void setImplicitFromScope(QuerySpecification node, Scope scope) {
+    implicitFromScopes.put(NodeRef.of(node), scope);
+  }
+
+  public Scope getImplicitFromScope(QuerySpecification node) {
+    return implicitFromScopes.get(NodeRef.of(node));
   }
 
   public Optional<Scope> tryGetScope(Node node) {
@@ -257,6 +287,14 @@ public class Analysis {
     relationCoercions.put(NodeRef.of(relation), ImmutableList.copyOf(types));
   }
 
+  public void setColumn(Field field, ColumnHandle handle) {
+    columns.put(field, handle);
+  }
+
+  public ColumnHandle getColumn(Field field) {
+    return columns.get(field);
+  }
+
   public Map<NodeRef<Expression>, Type> getCoercions() {
     return unmodifiableMap(coercions);
   }
@@ -276,6 +314,14 @@ public class Analysis {
       Map<NodeRef<Expression>, Type> coercions, Set<NodeRef<Expression>> typeOnlyCoercions) {
     this.coercions.putAll(coercions);
     this.typeOnlyCoercions.addAll(typeOnlyCoercions);
+  }
+
+  public Set<NodeRef<Expression>> getTypeOnlyCoercions() {
+    return unmodifiableSet(typeOnlyCoercions);
+  }
+
+  public boolean isTypeOnlyCoercion(Expression expression) {
+    return typeOnlyCoercions.contains(NodeRef.of(expression));
   }
 
   public void setGroupingSets(QuerySpecification node, GroupingSetAnalysis groupingSets) {
@@ -393,6 +439,26 @@ public class Analysis {
     return subQueries.computeIfAbsent(NodeRef.of(node), key -> new SubqueryAnalysis());
   }
 
+  public TableHandle getTableHandle(Table table) {
+    return tables
+        .get(NodeRef.of(table))
+        .getHandle()
+        .orElseThrow(
+            () -> new IllegalArgumentException(format("%s is not a table reference", table)));
+  }
+
+  public Collection<TableHandle> getTables() {
+    return tables.values().stream()
+        .map(TableEntry::getHandle)
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .collect(toImmutableList());
+  }
+
+  public void registerTable(Table table, Optional<TableHandle> handle, QualifiedObjectName name) {
+    tables.put(NodeRef.of(table), new TableEntry(handle, name));
+  }
+
   public ResolvedField getResolvedField(Expression expression) {
     checkArgument(
         isColumnReference(expression), "Expression is not a column reference: %s", expression);
@@ -402,6 +468,31 @@ public class Analysis {
   public boolean isColumnReference(Expression expression) {
     requireNonNull(expression, "expression is null");
     return columnReferences.containsKey(NodeRef.of(expression));
+  }
+
+  public void addTableColumnReferences(
+      AccessControl accessControl,
+      Identity identity,
+      Multimap<QualifiedObjectName, String> tableColumnMap) {
+    AccessControlInfo accessControlInfo = new AccessControlInfo(accessControl, identity);
+    Map<QualifiedObjectName, Set<String>> references =
+        tableColumnReferences.computeIfAbsent(accessControlInfo, k -> new LinkedHashMap<>());
+    tableColumnMap
+        .asMap()
+        .forEach(
+            (key, value) -> references.computeIfAbsent(key, k -> new HashSet<>()).addAll(value));
+  }
+
+  public void addEmptyColumnReferencesForTable(
+      AccessControl accessControl, Identity identity, QualifiedObjectName table) {
+    AccessControlInfo accessControlInfo = new AccessControlInfo(accessControl, identity);
+    tableColumnReferences
+        .computeIfAbsent(accessControlInfo, k -> new LinkedHashMap<>())
+        .computeIfAbsent(table, k -> new HashSet<>());
+  }
+
+  public Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>> getTableColumnReferences() {
+    return tableColumnReferences;
   }
 
   public RelationType getOutputDescriptor() {
@@ -418,6 +509,88 @@ public class Analysis {
 
   public Set<SourceColumn> getSourceColumns(Field field) {
     return ImmutableSet.copyOf(originColumnDetails.get(field));
+  }
+
+  public void addExpressionFields(Expression expression, Collection<Field> fields) {
+    fieldLineage.putAll(NodeRef.of(expression), fields);
+  }
+
+  public Set<SourceColumn> getExpressionSourceColumns(Expression expression) {
+    return fieldLineage.get(NodeRef.of(expression)).stream()
+        .flatMap(field -> getSourceColumns(field).stream())
+        .collect(toImmutableSet());
+  }
+
+  public void setRelationName(Relation relation, QualifiedName name) {
+    relationNames.put(NodeRef.of(relation), name);
+  }
+
+  public QualifiedName getRelationName(Relation relation) {
+    return relationNames.get(NodeRef.of(relation));
+  }
+
+  public void addAliased(Relation relation) {
+    aliasedRelations.add(NodeRef.of(relation));
+  }
+
+  public boolean isAliased(Relation relation) {
+    return aliasedRelations.contains(NodeRef.of(relation));
+  }
+
+  public static final class AccessControlInfo {
+    private final AccessControl accessControl;
+    private final Identity identity;
+
+    public AccessControlInfo(AccessControl accessControl, Identity identity) {
+      this.accessControl = requireNonNull(accessControl, "accessControl is null");
+      this.identity = requireNonNull(identity, "identity is null");
+    }
+
+    public AccessControl getAccessControl() {
+      return accessControl;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      AccessControlInfo that = (AccessControlInfo) o;
+      return Objects.equals(accessControl, that.accessControl)
+          && Objects.equals(identity, that.identity);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(accessControl, identity);
+    }
+
+    @Override
+    public String toString() {
+      return format("AccessControl: %s, Identity: %s", accessControl.getClass(), identity);
+    }
+  }
+
+  private static class TableEntry {
+    private final Optional<TableHandle> handle;
+    private final QualifiedObjectName name;
+
+    public TableEntry(Optional<TableHandle> handle, QualifiedObjectName name) {
+      this.handle = requireNonNull(handle, "handle is null");
+      this.name = requireNonNull(name, "name is null");
+    }
+
+    public Optional<TableHandle> getHandle() {
+      return handle;
+    }
+
+    public QualifiedObjectName getName() {
+      return name;
+    }
   }
 
   public static class SourceColumn {

@@ -19,4 +19,70 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-public class ExpressionAnalyzer {}
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.Identifier;
+
+import java.util.Optional;
+
+import static java.util.Objects.requireNonNull;
+
+public class ExpressionAnalyzer {
+
+  public static ExpressionAnalysis analyzeExpression(
+      SessionInfo session,
+      AccessControl accessControl,
+      Scope scope,
+      Analysis analysis,
+      Expression expression,
+      WarningCollector warningCollector,
+      CorrelationSupport correlationSupport) {
+    //    ExpressionAnalyzer analyzer =
+    //        new ExpressionAnalyzer(accessControl, analysis, session,
+    //            TypeProvider.empty(), warningCollector);
+    //    analyzer.analyze(expression, scope, correlationSupport);
+    //
+    //    updateAnalysis(analysis, analyzer, session, accessControl);
+    //    analysis.addExpressionFields(expression, analyzer.getSourceFields());
+    //
+    //    return new ExpressionAnalysis(
+    //        analyzer.getExpressionTypes(),
+    //        analyzer.getExpressionCoercions(),
+    //        analyzer.getSubqueryInPredicates(),
+    //        analyzer.getSubqueries(),
+    //        analyzer.getExistsSubqueries(),
+    //        analyzer.getColumnReferences(),
+    //        analyzer.getTypeOnlyCoercions(),
+    //        analyzer.getQuantifiedComparisons(),
+    //        analyzer.getWindowFunctions());
+    return null;
+  }
+
+  public static class LabelPrefixedReference {
+    private final String label;
+    private final Optional<Identifier> column;
+
+    public LabelPrefixedReference(String label, Identifier column) {
+      this(label, Optional.of(requireNonNull(column, "column is null")));
+    }
+
+    public LabelPrefixedReference(String label) {
+      this(label, Optional.empty());
+    }
+
+    private LabelPrefixedReference(String label, Optional<Identifier> column) {
+      this.label = requireNonNull(label, "label is null");
+      this.column = requireNonNull(column, "column is null");
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public Optional<Identifier> getColumn() {
+      return column;
+    }
+  }
+}

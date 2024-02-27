@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public class BooleanType implements Type {
 
-  private static final BooleanType INSTANCE = new BooleanType();
+  public static final BooleanType BOOLEAN = new BooleanType();
 
   private BooleanType() {}
 
@@ -50,11 +50,21 @@ public class BooleanType implements Type {
   }
 
   @Override
+  public String getDisplayName() {
+    return "BOOLEAN";
+  }
+
+  @Override
+  public boolean isComparable() {
+    return true;
+  }
+
+  @Override
   public boolean isOrderable() {
     return true;
   }
 
   public static BooleanType getInstance() {
-    return INSTANCE;
+    return BOOLEAN;
   }
 }
