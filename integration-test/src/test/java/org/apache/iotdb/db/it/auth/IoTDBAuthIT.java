@@ -906,6 +906,8 @@ public class IoTDBAuthIT {
       adminStatement.execute("CREATE USER user02 'pass1234'");
       adminStatement.execute("CREATE ROLE manager");
       adminStatement.execute("GRANT MANAGE_ROLE on root.** TO USER user01");
+      Assert.assertThrows(
+          SQLException.class, () -> adminStatement.execute("GRANT role manager to `root`"));
     }
 
     try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
