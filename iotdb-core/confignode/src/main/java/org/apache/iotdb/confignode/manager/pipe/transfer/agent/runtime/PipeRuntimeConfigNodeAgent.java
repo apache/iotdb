@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAge
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeRuntimeConfigNodeAgent implements IService {
@@ -41,10 +42,13 @@ public class PipeRuntimeConfigNodeAgent implements IService {
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
+
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
+
     // TODO: clean sender (connector) hardlink snapshot dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+
     isShutdown.set(false);
   }
 
@@ -80,7 +84,9 @@ public class PipeRuntimeConfigNodeAgent implements IService {
 
     // Stop all pipes locally if critical exception occurs
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
+      // To avoid deadlock, we use a new thread to stop all pipes.
+      CompletableFuture.runAsync(
+          () -> PipeConfigNodeAgent.task().stopAllPipesWithCriticalException());
     }
   }
 }
