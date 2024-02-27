@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.schema;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -39,12 +39,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   public PipeSchemaRegionSnapshotEvent(
       String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
-    super(
-        snapshotPath,
-        pipeName,
-        pipeTaskMeta,
-        pattern,
-        PipeDataNodeSnapshotResourceManager.getInstance());
+    super(snapshotPath, pipeName, pipeTaskMeta, pattern, PipeResourceManager.snapshot());
   }
 
   @Override

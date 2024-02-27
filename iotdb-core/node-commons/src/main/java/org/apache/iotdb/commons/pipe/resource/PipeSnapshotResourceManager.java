@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeSnapshotResourceManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotResourceManager.class);
 
   private static final String PIPE_SNAPSHOT_DIR_NAME = "pipe_snapshot";

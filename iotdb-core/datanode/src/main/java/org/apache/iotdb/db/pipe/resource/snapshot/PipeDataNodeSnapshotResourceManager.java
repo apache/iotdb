@@ -27,21 +27,12 @@ import java.util.HashSet;
 
 public class PipeDataNodeSnapshotResourceManager extends PipeSnapshotResourceManager {
 
-  private PipeDataNodeSnapshotResourceManager() {
+  public PipeDataNodeSnapshotResourceManager() {
     super(
         new HashSet<>(
             Arrays.asList(
                 IoTDBConstant.DATA_FOLDER_NAME,
                 IoTDBConstant.SYSTEM_FOLDER_NAME,
                 IoTDBConstant.CONSENSUS_FOLDER_NAME)));
-  }
-
-  private static class PipeDataNodeSnapshotResourceManagerHolder {
-    private static final PipeDataNodeSnapshotResourceManager INSTANCE =
-        new PipeDataNodeSnapshotResourceManager();
-  }
-
-  public static synchronized PipeDataNodeSnapshotResourceManager getInstance() {
-    return PipeDataNodeSnapshotResourceManagerHolder.INSTANCE;
   }
 }
