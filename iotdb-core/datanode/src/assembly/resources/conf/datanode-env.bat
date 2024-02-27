@@ -121,9 +121,29 @@ set IOTDB_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseAdaptiveSizePolicy
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xss512k
+@REM options below try to optimize safepoint stw time.
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UnlockDiagnosticVMOptions
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseCountedLoopSafepoints
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:GuaranteedSafepointInterval=0
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:-UseBiasedLocking
+@REM these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
+
+@REM When the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
+@REM CPU_PROCESSOR_NUM=$(nproc)
+@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}
+
+@REM if there are much of stw time of reference process in GC log, you can turn on option below. Note: it may have an impact on application's throughput.
+@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+ParallelRefProcEnabled
+
+@REM this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation. Note: it may reduce memory utilization and trigger OOM killer when memory is tight.
+@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+AlwaysPreTouch
 
 @REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-@REM IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\datanode_heapdump.hprof
+@REM set IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\datanode_heapdump.hprof
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
