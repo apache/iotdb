@@ -3164,8 +3164,8 @@ public class REGERPruneTest {
 
 //        int[] file_lists = {1,8};
 //        for (int file_i : file_lists) {
-//        for (int file_i = 13; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 12; file_i < 13; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 12; file_i < 13; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
