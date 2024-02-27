@@ -29,7 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -93,44 +92,37 @@ public class CompactionScheduler {
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary) {
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+      throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
-    try {
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
-      trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
-      trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
-    } catch (InterruptedException e) {
-      LOGGER.error("Exception occurs when selecting compaction tasks", e);
-      Thread.currentThread().interrupt();
-    }
+    trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
+    trySubmitCount +=
+        tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
+    trySubmitCount +=
+        tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
     return trySubmitCount;
   }
 
   @TestOnly
-  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
+  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
+      throws InterruptedException {
     scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleSummary());
   }
 
   public static int scheduleInsertionCompaction(
-      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser) {
+      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
+      throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
     int trySubmitCount = 0;
-    try {
-      trySubmitCount +=
-          tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
-    } catch (InterruptedException e) {
-      LOGGER.error("Exception occurs when selecting compaction tasks", e);
-      Thread.currentThread().interrupt();
-    }
+    trySubmitCount +=
+        tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
     return trySubmitCount;
   }
 
@@ -142,9 +134,6 @@ public class CompactionScheduler {
       throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
-      return 0;
-    }
-    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
       return 0;
     }
 
@@ -185,9 +174,6 @@ public class CompactionScheduler {
       throws InterruptedException {
     int trySubmitCount = 0;
     for (AbstractCompactionTask task : tasks) {
-      if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
-        break;
-      }
       if (!canAddTaskToWaitingQueue(task)) {
         continue;
       }
@@ -225,9 +211,6 @@ public class CompactionScheduler {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
     }
-    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
-      return 0;
-    }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
     RewriteCrossSpaceCompactionSelector selector =
@@ -261,9 +244,6 @@ public class CompactionScheduler {
       TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
-      return 0;
-    }
-    if (RepairTaskManager.getInstance().hasRunningRepairTask()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();

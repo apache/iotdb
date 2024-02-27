@@ -21,9 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -72,6 +69,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -147,8 +145,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -277,9 +275,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private String insertWriteLockHolder = "";
 
-  private ScheduledExecutorService timedCompactionScheduleTask;
-
-  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
+  private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
@@ -611,15 +607,7 @@ public class DataRegion implements IDataRegionForQuery {
         && !config.isEnableCrossSpaceCompaction()) {
       return;
     }
-    timedCompactionScheduleTask =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.COMPACTION_SCHEDULE.getName() + "-" + databaseName + "-" + dataRegionId);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        timedCompactionScheduleTask,
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
-        TimeUnit.MILLISECONDS);
+    CompactionScheduleTaskManager.getInstance().registerDataRegion(this);
   }
 
   private void recoverCompaction() {
@@ -2400,39 +2388,49 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  protected int executeCompaction() {
-    int trySubmitCount = 0;
-    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-    // sort the time partition from largest to smallest
-    timePartitions.sort(Comparator.reverseOrder());
-
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
-      trySubmitCount += executeInsertionCompaction(timePartitions);
-      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+  public int executeCompaction() throws InterruptedException {
+    if (!isCompactionSelecting.compareAndSet(false, true)) {
+      return 0;
     }
-    if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
-      // the name of this variable is trySubmitCount, because the task submitted to the queue could
-      // be evicted due to the low priority of the task
-      for (long timePartition : timePartitions) {
-        CompactionScheduler.sharedLockCompactionSelection();
-        try {
-          trySubmitCount +=
-              CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
-        } catch (Throwable e) {
-          logger.error("Meet error in compaction schedule.", e);
-        } finally {
-          CompactionScheduler.sharedUnlockCompactionSelection();
+    try {
+      int trySubmitCount = 0;
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      // sort the time partition from largest to smallest
+      timePartitions.sort(Comparator.reverseOrder());
+
+      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
+        trySubmitCount += executeInsertionCompaction(timePartitions);
+        summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+      }
+      if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
+        // the name of this variable is trySubmitCount, because the task submitted to the queue
+        // could
+        // be evicted due to the low priority of the task
+        for (long timePartition : timePartitions) {
+          CompactionScheduler.sharedLockCompactionSelection();
+          try {
+            trySubmitCount +=
+                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+          } catch (InterruptedException e) {
+            throw e;
+          } catch (Throwable e) {
+            logger.error("Meet error in compaction schedule.", e);
+          } finally {
+            CompactionScheduler.sharedUnlockCompactionSelection();
+          }
         }
       }
+      if (summary.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      }
+      return trySubmitCount;
+    } finally {
+      isCompactionSelecting.set(false);
     }
-    if (summary.hasSubmitTask()) {
-      CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
-    }
-    return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction(List<Long> timePartitions) {
+  protected int executeInsertionCompaction(List<Long> timePartitions) throws InterruptedException {
     int trySubmitCount = 0;
     CompactionScheduler.sharedLockCompactionSelection();
     try {
@@ -2451,6 +2449,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
         break;
       }
+    } catch (InterruptedException e) {
+      throw e;
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     } finally {
@@ -2522,6 +2522,8 @@ public class DataRegion implements IDataRegionForQuery {
     CompactionScheduler.exclusiveLockCompactionSelection();
     try {
       return executeCompaction();
+    } catch (InterruptedException ignored) {
+      return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
       writeUnlock();
@@ -3052,6 +3054,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
+    CompactionScheduleTaskManager.getInstance().unregisterDataRegion(this);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance().abortCompaction(databaseName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
@@ -3062,9 +3065,7 @@ public class DataRegion implements IDataRegionForQuery {
         Thread.currentThread().interrupt();
       }
     }
-    if (timedCompactionScheduleTask != null) {
-      timedCompactionScheduleTask.shutdownNow();
-    }
+    isCompactionSelecting.set(false);
   }
 
   public TsFileManager getTsFileResourceManager() {
@@ -3366,10 +3367,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
-  }
-
-  public ScheduledExecutorService getTimedCompactionScheduleTask() {
-    return timedCompactionScheduleTask;
   }
 
   /** This method could only be used in iot consensus */

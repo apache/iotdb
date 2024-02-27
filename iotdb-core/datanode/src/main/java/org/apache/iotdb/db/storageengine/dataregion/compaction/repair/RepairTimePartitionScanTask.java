@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
@@ -66,15 +67,6 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
   }
 
   private void scanTimePartitionFiles() throws InterruptedException {
-    if (repairTimePartition.isRepaired()) {
-      LOGGER.info(
-          "[RepairScheduler][{}][{}] skip repair time partition {} because it is repaired",
-          repairTimePartition.getDatabaseName(),
-          repairTimePartition.getDataRegionId(),
-          repairTimePartition.getTimePartitionId());
-      progress.incrementRepairedTimePartitionNum();
-      return;
-    }
     LOGGER.info(
         "[RepairScheduler][{}][{}] start scan repair time partition {}",
         repairTimePartition.getDatabaseName(),
@@ -204,7 +196,8 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
 
   private void checkTaskStatusAndMayStop() throws InterruptedException {
     if (Thread.interrupted()
-        || RepairTaskManager.getInstance().getRepairTaskStatus() != RepairTaskStatus.RUNNING) {
+        || CompactionScheduleTaskManager.getRepairTaskManagerInstance().getRepairTaskStatus()
+            != RepairTaskStatus.RUNNING) {
       throw new InterruptedException();
     }
   }

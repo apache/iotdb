@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Cros
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
@@ -86,7 +87,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     try {
-      RepairTaskManager.getInstance().start();
+      CompactionScheduleTaskManager.getInstance().start();
     } catch (StartupException e) {
       throw new RuntimeException(e);
     }
@@ -272,7 +273,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithInnerSeqSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithInnerSeqSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
       writer.startChunkGroup("d1");
@@ -346,7 +348,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithInnerUnSeqSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithInnerUnSeqSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource unSeqResource1 = createEmptyFileAndResource(false);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(unSeqResource1)) {
       writer.startChunkGroup("d1");
@@ -420,7 +423,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithCrossSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithCrossSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
       writer.startChunkGroup("d1");
@@ -628,7 +632,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
-    RepairTaskManager.getInstance().markRepairTaskStart();
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -675,7 +679,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
-    RepairTaskManager.getInstance().markRepairTaskStart();
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -734,7 +738,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
 
-    RepairTaskManager.getInstance().markRepairTaskStart();
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
@@ -802,7 +806,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     // reset the repair status
     seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
 
-    RepairTaskManager.getInstance().markRepairTaskStart();
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);
@@ -878,7 +882,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         Collections.emptyList(),
         0);
 
-    RepairTaskManager.getInstance().markRepairTaskStart();
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);
