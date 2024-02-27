@@ -84,27 +84,26 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
   // on the comparison results
   E tryGetNext() {
     if (leftHeader != null && rightHeader != null) {
-      switch (compare(leftHeader, rightHeader)) {
-        case -1:
-          return onReturnLeft(catchLeft());
-        case 0:
-          return catchEqual(decide());
-        case 1:
-          return onReturnRight(catchRight());
-        default:
-          throw new IllegalArgumentException();
+      if (compare(leftHeader, rightHeader) == 0) {
+        return catchEqual(decide());
+      } else if (compare(leftHeader, rightHeader) < 0) {
+        return onReturnLeft(catchLeft());
+      } else if (compare(leftHeader, rightHeader) > 0) {
+        return onReturnRight(catchRight());
+      } else {
+        throw new IllegalArgumentException();
       }
     } else if (leftHeader != null) {
-      return catchLeft();
+      return onReturnLeft(catchLeft());
     } else if (rightHeader != null) {
-      return catchRight();
+      return onReturnRight(catchRight());
     } else {
       throw new NoSuchElementException();
     }
   }
 
   // Post-process the first element of the left sequence
-  private E onReturnLeft(E left) {
+  protected E onReturnLeft(E left) {
     return left;
   }
 

@@ -650,6 +650,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private class CachedMNodeIterator implements IMNodeIterator<ICachedMNode> {
     ICachedMNode parent;
     CachedMNodeMergeIterator mergeIterator;
+    Iterator<ICachedMNode> bufferIterator;
+    Iterator<ICachedMNode> diskIterator;
 
     boolean needLock;
     boolean isLocked;
@@ -666,8 +668,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       try {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
-        Iterator<ICachedMNode> bufferIterator = container.getChildrenBufferIterator();
-        Iterator<ICachedMNode> diskIterator =
+        bufferIterator = container.getChildrenBufferIterator();
+        diskIterator =
             !container.isVolatile() ? file.getChildren(parent) : Collections.emptyIterator();
         mergeIterator = new CachedMNodeMergeIterator(diskIterator, bufferIterator);
       } catch (Throwable e) {
@@ -707,7 +709,6 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     }
 
     private class CachedMNodeMergeIterator extends MergeSortIterator<ICachedMNode> {
-
       public CachedMNodeMergeIterator(
           Iterator<ICachedMNode> diskIterator, Iterator<ICachedMNode> bufferIterator) {
         super(diskIterator, bufferIterator);
