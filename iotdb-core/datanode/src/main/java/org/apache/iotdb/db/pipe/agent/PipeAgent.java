@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.agent;
 
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeReceiverAgent;
-import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskDataNodeAgent;
 import org.apache.iotdb.db.service.DataNode;
 
@@ -30,14 +30,14 @@ public class PipeAgent {
 
   private final PipePluginDataNodeAgent pipePluginDataNodeAgent;
   private final PipeTaskDataNodeAgent pipeTaskDataNodeAgent;
-  private final PipeRuntimeAgent pipeRuntimeAgent;
+  private final PipeRuntimeDataNodeAgent pipeRuntimeDataNodeAgent;
   private final PipeReceiverAgent pipeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
     pipePluginDataNodeAgent = new PipePluginDataNodeAgent();
     pipeTaskDataNodeAgent = new PipeTaskDataNodeAgent();
-    pipeRuntimeAgent = new PipeRuntimeAgent();
+    pipeRuntimeDataNodeAgent = new PipeRuntimeDataNodeAgent();
     pipeReceiverAgent = new PipeReceiverAgent();
   }
 
@@ -65,12 +65,12 @@ public class PipeAgent {
   }
 
   /**
-   * Get the singleton instance of {@link PipeRuntimeAgent}.
+   * Get the singleton instance of {@link PipeRuntimeDataNodeAgent}.
    *
-   * @return the singleton instance of {@link PipeRuntimeAgent}
+   * @return the singleton instance of {@link PipeRuntimeDataNodeAgent}
    */
-  public static PipeRuntimeAgent runtime() {
-    return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
+  public static PipeRuntimeDataNodeAgent runtime() {
+    return PipeAgentHolder.HANDLE.pipeRuntimeDataNodeAgent;
   }
 
   /**

@@ -29,14 +29,14 @@ import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 /** {@link PipeConfigNodeAgent} is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
 
-  private final PipeTaskConfigNodeAgent pipeConfigNodeTaskAgent;
+  private final PipeTaskConfigNodeAgent pipeTaskConfigNodeAgent;
   private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
   private final PipeRuntimeConfigNodeAgent pipeRuntimeConfigNodeAgent;
   private final PipeReceiverConfigNodeAgent pipeReceiverConfigNodeAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
-    pipeConfigNodeTaskAgent = new PipeTaskConfigNodeAgent();
+    pipeTaskConfigNodeAgent = new PipeTaskConfigNodeAgent();
     pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent(null);
     pipeRuntimeConfigNodeAgent = new PipeRuntimeConfigNodeAgent();
     pipeReceiverConfigNodeAgent = new PipeReceiverConfigNodeAgent();
@@ -53,7 +53,7 @@ public class PipeConfigNodeAgent {
    * @return the singleton instance of {@link PipeTaskConfigNodeAgent}
    */
   public static PipeTaskConfigNodeAgent task() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeTaskAgent;
+    return PipeConfigNodeAgentHolder.HANDLE.pipeTaskConfigNodeAgent;
   }
 
   /**

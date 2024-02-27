@@ -47,9 +47,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeRuntimeAgent implements IService {
+public class PipeRuntimeDataNodeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeDataNodeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);

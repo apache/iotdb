@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
-import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipePluginDataRegionAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipePluginSchemaRegionAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -44,26 +44,26 @@ public class PipePluginDataNodeAgent {
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
-  private final PipeDataRegionPluginAgent dataRegionPluginAgent;
-  private final PipeSchemaRegionPluginAgent schemaRegionPluginAgent;
+  private final PipePluginDataRegionAgent dataRegionAgent;
+  private final PipePluginSchemaRegionAgent schemaRegionAgent;
 
   private final ReentrantLock lock;
 
   public PipePluginDataNodeAgent() {
     pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
 
-    dataRegionPluginAgent = new PipeDataRegionPluginAgent(pipePluginMetaKeeper);
-    schemaRegionPluginAgent = new PipeSchemaRegionPluginAgent(null);
+    dataRegionAgent = new PipePluginDataRegionAgent(pipePluginMetaKeeper);
+    schemaRegionAgent = new PipePluginSchemaRegionAgent(null);
 
     lock = new ReentrantLock();
   }
 
-  public PipeDataRegionPluginAgent dataRegion() {
-    return dataRegionPluginAgent;
+  public PipePluginDataRegionAgent dataRegion() {
+    return dataRegionAgent;
   }
 
-  public PipeSchemaRegionPluginAgent schemaRegion() {
-    return schemaRegionPluginAgent;
+  public PipePluginSchemaRegionAgent schemaRegion() {
+    return schemaRegionAgent;
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
@@ -207,22 +207,22 @@ public class PipePluginDataNodeAgent {
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    dataRegionPluginAgent.validate(
+    dataRegionAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
-    schemaRegionPluginAgent.validate(
+    schemaRegionAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
 
   public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
-    dataRegionPluginAgent.validateExtractor(extractorAttributes);
+    dataRegionAgent.validateExtractor(extractorAttributes);
   }
 
   public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
-    dataRegionPluginAgent.validateProcessor(processorAttributes);
+    dataRegionAgent.validateProcessor(processorAttributes);
   }
 
   public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
       throws Exception {
-    dataRegionPluginAgent.validateConnector(pipeName, connectorAttributes);
+    dataRegionAgent.validateConnector(pipeName, connectorAttributes);
   }
 }
