@@ -47,15 +47,15 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
   public Void call() {
     while (true) {
       try {
-        if (Thread.interrupted()) {
-          throw new InterruptedException();
-        }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
         for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
           if (i % workerNum != workerId) {
             continue;
           }
           DataRegion dataRegion = dataRegionListSnapshot.get(i);
+          if (Thread.interrupted()) {
+            throw new InterruptedException();
+          }
           dataRegion.executeCompaction();
         }
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());

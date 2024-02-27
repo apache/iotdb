@@ -73,7 +73,6 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
           continue;
         }
         if (!task.tryOccupyResourcesForRunning()) {
-          incrementTaskPriority(task);
           retryTasks.add(task);
           continue;
         }
@@ -107,9 +106,5 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
       return false;
     }
     return true;
-  }
-
-  private void incrementTaskPriority(AbstractCompactionTask task) {
-    task.updateRetryAllocateResourcesTimes();
   }
 }
