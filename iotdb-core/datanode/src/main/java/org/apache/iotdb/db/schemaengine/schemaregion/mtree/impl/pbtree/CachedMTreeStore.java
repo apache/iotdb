@@ -697,26 +697,20 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     @Override
     public void close() {
-      try {
-        if (mergeIterator.hasNext()) {
-          unPin(mergeIterator.next(), false);
+      if (isLocked) {
+        lockManager.stampedReadUnlock(parent, readLockStamp);
+        if (needLock) {
+          lockManager.globalReadUnlock();
         }
-      } finally {
-        if (isLocked) {
-          lockManager.stampedReadUnlock(parent, readLockStamp);
-          if (needLock) {
-            lockManager.globalReadUnlock();
-          }
-          isLocked = false;
-        }
+        isLocked = false;
       }
     }
 
     private class CachedMNodeMergeIterator extends MergeSortIterator<ICachedMNode> {
 
       public CachedMNodeMergeIterator(
-          Iterator<ICachedMNode> leftIterator, Iterator<ICachedMNode> rightIterator) {
-        super(leftIterator, rightIterator);
+          Iterator<ICachedMNode> diskIterator, Iterator<ICachedMNode> bufferIterator) {
+        super(diskIterator, bufferIterator);
       }
 
       protected ICachedMNode onReturnLeft(ICachedMNode ansMNode) {

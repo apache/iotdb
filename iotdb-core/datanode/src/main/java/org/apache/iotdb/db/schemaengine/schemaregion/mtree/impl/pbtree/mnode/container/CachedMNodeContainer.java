@@ -435,7 +435,8 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
 
     protected int decide() {
-      return 0;
+      throw new IllegalStateException(
+          "There shall not exist two node with the same name separately in newChildBuffer and updateChildBuffer");
     }
 
     protected int compare(ICachedMNode left, ICachedMNode right) {

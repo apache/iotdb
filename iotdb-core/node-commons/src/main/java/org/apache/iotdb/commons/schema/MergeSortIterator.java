@@ -72,8 +72,6 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
       case -1:
         rightHeader = rightIterator.hasNext() ? rightIterator.next() : null;
         return onReturnLeft(catchLeft());
-      case 0:
-        throw new NoSuchElementException();
       case 1:
         leftHeader = leftIterator.hasNext() ? leftIterator.next() : null;
         return onReturnRight(catchRight());
@@ -117,7 +115,7 @@ public abstract class MergeSortIterator<E> implements Iterator<E> {
 
   // Decide the target element when two elements are the same
   protected int decide() {
-    return 1;
+    return 0;
   }
 
   // Compare two elements
