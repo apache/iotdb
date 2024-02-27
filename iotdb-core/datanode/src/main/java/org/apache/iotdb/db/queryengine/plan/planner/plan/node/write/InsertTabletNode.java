@@ -84,7 +84,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   // this is usually used to back-propagate exceptions to the parent plan without losing their
   // proper positions.
   private List<Integer> range;
-  private boolean isEncodedInSerialization = true;
+  private boolean isEncodedInSerialization = false;
   private TSEncoding serializationEncoding = TSEncoding.TS_2DIFF;
   private PublicBAOS encodingTempBaos;
 

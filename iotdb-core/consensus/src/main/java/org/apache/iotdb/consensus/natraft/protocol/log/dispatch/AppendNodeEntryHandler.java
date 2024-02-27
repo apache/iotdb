@@ -151,7 +151,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       }
       return;
     }
-    if (exception instanceof ConnectException) {
+    if (exception instanceof ConnectException || exception.getCause() instanceof ConnectException) {
       logger.debug(
           "{}: Cannot append log {}: cannot connect to {}: {}",
           member.getName(),

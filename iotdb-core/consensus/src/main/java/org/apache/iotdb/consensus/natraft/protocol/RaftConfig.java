@@ -71,7 +71,7 @@ public class RaftConfig {
   private int maxNumberOfPersistRaftLogFiles = 128;
   private int maxPersistRaftLogNumberOnDisk = 10_000_000;
   private int flushRaftLogThreshold = 100_000;
-  private CompressionType logPersistCompressor = CompressionType.SNAPPY;
+  private CompressionType logPersistCompressor = CompressionType.LZ4;
   private long maxSyncLogLag = 100_000;
   private int syncLeaderMaxWaitMs = 30_000;
   private boolean enableCompressedDispatching = true;
@@ -83,7 +83,7 @@ public class RaftConfig {
   private int entryAllocatorCapacity = 100000;
   private int dispatcherMinBatchSize = 10;
   private long dispatcherMaxCompressionIntervalMs = 100;
-  private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
+  private CompressionType dispatchingCompressionType = CompressionType.LZ4;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
 

@@ -318,7 +318,10 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
         // dispatched recently, wait for a while to get a larger batch
         if (maxCompressionIntervalMS > 1) {
           synchronized (entriesToCompress) {
-            entriesToCompress.wait(maxCompressionIntervalMS / 2);
+            if (entriesToCompress.size() < minBatchSize
+                && System.currentTimeMillis() - lastCompressionTimeMs < maxCompressionIntervalMS) {
+              entriesToCompress.wait(maxCompressionIntervalMS / 2);
+            }
           }
         }
         return false;
@@ -326,10 +329,12 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
 
       if (!LogUtils.drainTo(entriesToCompress, currBatch, maxBatchSize)) {
         synchronized (entriesToCompress) {
-          if (getMember().isLeader()) {
-            entriesToCompress.wait(1000);
-          } else {
-            entriesToCompress.wait(5000);
+          if (entriesToCompress.isEmpty()) {
+            if (getMember().isLeader()) {
+              entriesToCompress.wait(1000);
+            } else {
+              entriesToCompress.wait(5000);
+            }
           }
         }
         return false;

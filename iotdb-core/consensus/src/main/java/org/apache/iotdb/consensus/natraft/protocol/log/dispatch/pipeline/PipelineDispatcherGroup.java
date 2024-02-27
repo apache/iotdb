@@ -138,10 +138,6 @@ public class PipelineDispatcherGroup implements Comparable<PipelineDispatcherGro
   }
 
   public void add(DispatchTask dispatchTask) {
-    try {
-      taskQueue.put(dispatchTask);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    taskQueue.offer(dispatchTask);
   }
 }
