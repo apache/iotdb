@@ -31,13 +31,14 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
 
+  protected final boolean isGeneratedByPipe;
+
   protected final AtomicLong referenceCount = new AtomicLong(0);
-  protected boolean isGeneratedByPipe;
 
   protected ProgressIndex progressIndex;
 
   protected PipeWritePlanEvent(
-      boolean isGeneratedByPipe, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }

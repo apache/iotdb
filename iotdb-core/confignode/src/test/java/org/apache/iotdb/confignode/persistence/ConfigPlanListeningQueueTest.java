@@ -97,11 +97,11 @@ public class ConfigPlanListeningQueueTest {
         ConfigPlanListeningQueue.getInstance().newIterator(0);
 
     Event event1 = itr.next(0);
-    Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getPhysicalPlan());
+    Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getConfigPhysicalPlan());
 
     Event event2 = itr.next(0);
     Assert.assertEquals(
-        plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getPhysicalPlan());
+        plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getConfigPhysicalPlan());
     Assert.assertTrue(((PipeConfigRegionWritePlanEvent) event2).isGeneratedByPipe());
 
     Assert.assertNull(itr.next(0));

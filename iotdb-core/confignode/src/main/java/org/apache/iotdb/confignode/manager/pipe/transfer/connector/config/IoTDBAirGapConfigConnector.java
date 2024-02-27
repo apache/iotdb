@@ -86,7 +86,7 @@ public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
     if (!send(
         socket,
         PipeTransferConfigPlanReq.toTPipeTransferBytes(
-            pipeConfigRegionWritePlanEvent.getPhysicalPlan()))) {
+            pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
       throw new PipeException(
           String.format(
               "Transfer PipeWriteConfigPlanEvent %s error. Socket: %s.",

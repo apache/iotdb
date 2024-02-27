@@ -101,7 +101,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferConfigPlanReq.toTPipeTransferReq(
-                      pipeConfigRegionWritePlanEvent.getPhysicalPlan()));
+                      pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -116,7 +116,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
         String.format(
             "Transfer PipeWriteConfigPlanEvent %s error, result status %s",
             pipeConfigRegionWritePlanEvent, status),
-        pipeConfigRegionWritePlanEvent.getPhysicalPlan().toString());
+        pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
   }
 
   private void doTransfer(PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)

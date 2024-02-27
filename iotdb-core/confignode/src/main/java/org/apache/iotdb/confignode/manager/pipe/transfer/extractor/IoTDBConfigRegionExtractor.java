@@ -48,6 +48,6 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
   @Override
   protected boolean isListenType(Event event) {
     return listenTypes.contains(
-        ((PipeConfigRegionWritePlanEvent) event).getPhysicalPlan().getType());
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
   }
 }
