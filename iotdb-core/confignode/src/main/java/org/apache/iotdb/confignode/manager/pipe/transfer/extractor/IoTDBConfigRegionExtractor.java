@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -47,6 +47,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   protected boolean isListenType(Event event) {
-    return listenTypes.contains(((PipeWriteConfigPlanEvent) event).getPhysicalPlan().getType());
+    return listenTypes.contains(
+        ((PipeConfigRegionWritePlanEvent) event).getPhysicalPlan().getType());
   }
 }

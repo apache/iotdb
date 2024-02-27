@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorCl
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBThriftSyncClientConfigNodeManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
@@ -80,8 +80,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
 
   @Override
   public void transfer(Event event) throws Exception {
-    if (event instanceof PipeWriteConfigPlanEvent) {
-      doTransfer((PipeWriteConfigPlanEvent) event);
+    if (event instanceof PipeConfigRegionWritePlanEvent) {
+      doTransfer((PipeConfigRegionWritePlanEvent) event);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransfer((PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
@@ -90,7 +90,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
     }
   }
 
-  private void doTransfer(PipeWriteConfigPlanEvent pipeWriteConfigPlanEvent) throws PipeException {
+  private void doTransfer(PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      throws PipeException {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
@@ -100,7 +101,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferConfigPlanReq.toTPipeTransferReq(
-                      pipeWriteConfigPlanEvent.getPhysicalPlan()));
+                      pipeConfigRegionWritePlanEvent.getPhysicalPlan()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -114,8 +115,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
         status,
         String.format(
             "Transfer PipeWriteConfigPlanEvent %s error, result status %s",
-            pipeWriteConfigPlanEvent, status),
-        pipeWriteConfigPlanEvent.getPhysicalPlan().toString());
+            pipeConfigRegionWritePlanEvent, status),
+        pipeConfigRegionWritePlanEvent.getPhysicalPlan().toString());
   }
 
   private void doTransfer(PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)

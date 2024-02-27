@@ -31,8 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -64,7 +64,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
     if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
-      PipeWriteConfigPlanEvent event;
+      PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
           tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
@@ -72,7 +72,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
         case UnsetTemplate:
           try {
             event =
-                new PipeWriteConfigPlanEvent(
+                new PipeConfigRegionWritePlanEvent(
                     new PipeUnsetSchemaTemplatePlan(
                         ConfigNode.getInstance()
                             .getConfigManager()
@@ -87,7 +87,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
           }
           break;
         default:
-          event = new PipeWriteConfigPlanEvent(plan, isGeneratedByPipe);
+          event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
       if (super.tryListenToElement(event)) {
         event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());

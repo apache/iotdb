@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -101,11 +101,12 @@ public class SchemaNodeListeningQueueTest {
         SchemaNodeListeningQueue.getInstance(0).newIterator(0);
 
     Event event1 = itr.next(0);
-    Assert.assertEquals(node1, ((PipeWritePlanNodeEvent) event1).getPlanNode());
+    Assert.assertEquals(node1, ((PipeSchemaRegionWritePlanEvent) event1).getPlanNode());
 
     Event event2 = itr.next(0);
-    Assert.assertEquals(node2.getWritePlanNode(), ((PipeWritePlanNodeEvent) event2).getPlanNode());
-    Assert.assertTrue(((PipeWritePlanNodeEvent) event2).isGeneratedByPipe());
+    Assert.assertEquals(
+        node2.getWritePlanNode(), ((PipeSchemaRegionWritePlanEvent) event2).getPlanNode());
+    Assert.assertTrue(((PipeSchemaRegionWritePlanEvent) event2).isGeneratedByPipe());
 
     Assert.assertNull(itr.next(0));
   }

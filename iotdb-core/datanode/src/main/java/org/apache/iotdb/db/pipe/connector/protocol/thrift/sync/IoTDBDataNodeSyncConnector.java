@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManag
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -45,7 +45,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSyncSslConnector {
         nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
-  protected void doTransfer(PipeWritePlanNodeEvent pipeWritePlanNodeEvent) throws PipeException {
+  protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException {
     Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
@@ -54,7 +55,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSyncSslConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferPlanNodeReq.toTPipeTransferReq(pipeWritePlanNodeEvent.getPlanNode()));
+                  PipeTransferPlanNodeReq.toTPipeTransferReq(
+                      pipeSchemaRegionWritePlanEvent.getPlanNode()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -68,7 +70,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSyncSslConnector {
         status,
         String.format(
             "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",
-            pipeWritePlanNodeEvent, status),
-        pipeWritePlanNodeEvent.getPlanNode().toString());
+            pipeSchemaRegionWritePlanEvent, status),
+        pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
   }
 }

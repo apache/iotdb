@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
 
   protected final PipeSnapshotResourceManager resourceManager;

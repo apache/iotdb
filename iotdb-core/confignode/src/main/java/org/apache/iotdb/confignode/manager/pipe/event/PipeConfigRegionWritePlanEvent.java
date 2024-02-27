@@ -28,19 +28,21 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
+public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
+
   private ConfigPhysicalPlan physicalPlan;
 
-  public PipeWriteConfigPlanEvent() {
+  public PipeConfigRegionWritePlanEvent() {
     // Used for deserialization
     this(null, false);
   }
 
-  public PipeWriteConfigPlanEvent(ConfigPhysicalPlan physicalPlan, boolean isGeneratedByPipe) {
+  public PipeConfigRegionWritePlanEvent(
+      ConfigPhysicalPlan physicalPlan, boolean isGeneratedByPipe) {
     this(physicalPlan, isGeneratedByPipe, null, null, null);
   }
 
-  public PipeWriteConfigPlanEvent(
+  public PipeConfigRegionWritePlanEvent(
       ConfigPhysicalPlan physicalPlan,
       boolean isGeneratedByPipe,
       String pipeName,
@@ -57,7 +59,7 @@ public class PipeWriteConfigPlanEvent extends PipeWritePlanEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
-    return new PipeWriteConfigPlanEvent(physicalPlan, false, pipeName, pipeTaskMeta, pattern);
+    return new PipeConfigRegionWritePlanEvent(physicalPlan, false, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override

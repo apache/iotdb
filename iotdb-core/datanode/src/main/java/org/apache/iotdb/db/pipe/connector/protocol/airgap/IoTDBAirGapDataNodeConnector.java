@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.io.IOException;
@@ -36,15 +36,17 @@ public abstract class IoTDBAirGapDataNodeConnector extends IoTDBAirGapCommonConn
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
-  protected void doTransfer(Socket socket, PipeWritePlanNodeEvent pipeWritePlanNodeEvent)
+  protected void doTransfer(
+      Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferPlanNodeReq.toTPipeTransferBytes(pipeWritePlanNodeEvent.getPlanNode()))) {
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(
+            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
       throw new PipeException(
           String.format(
               "Transfer PipeWriteSchemaPlanEvent %s error. Socket: %s.",
-              pipeWritePlanNodeEvent, socket));
+              pipeSchemaRegionWritePlanEvent, socket));
     }
   }
 }

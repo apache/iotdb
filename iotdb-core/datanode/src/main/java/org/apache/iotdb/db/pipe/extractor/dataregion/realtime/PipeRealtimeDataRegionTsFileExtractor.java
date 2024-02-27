@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -43,7 +43,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
       return;
     }
 
-    if (event.getEvent() instanceof PipeWritePlanNodeEvent) {
+    if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
       extractDeleteData(event);
     }
 
@@ -89,7 +89,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
       if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (realtimeEvent.getEvent() instanceof PipeWritePlanNodeEvent) {
+      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
         suppliedEvent = supplyDeleteData(realtimeEvent);
       } else if (realtimeEvent.increaseReferenceCount(
           PipeRealtimeDataRegionTsFileExtractor.class.getName())) {

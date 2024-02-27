@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -107,7 +107,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       // Deletion event will be assigned to extractors listened to it
-      if (event.getEvent() instanceof PipeWritePlanNodeEvent) {
+      if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
         return extractors.stream()
             .filter(PipeRealtimeDataRegionExtractor::isExtractDeletion)
             .collect(Collectors.toSet());

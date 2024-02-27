@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
@@ -70,8 +70,8 @@ public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeWriteConfigPlanEvent) {
-      doTransfer(socket, (PipeWriteConfigPlanEvent) event);
+    if (event instanceof PipeConfigRegionWritePlanEvent) {
+      doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
@@ -80,16 +80,17 @@ public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
     }
   }
 
-  private void doTransfer(Socket socket, PipeWriteConfigPlanEvent pipeWriteConfigPlanEvent)
+  private void doTransfer(
+      Socket socket, PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
         socket,
         PipeTransferConfigPlanReq.toTPipeTransferBytes(
-            pipeWriteConfigPlanEvent.getPhysicalPlan()))) {
+            pipeConfigRegionWritePlanEvent.getPhysicalPlan()))) {
       throw new PipeException(
           String.format(
               "Transfer PipeWriteConfigPlanEvent %s error. Socket: %s.",
-              pipeWriteConfigPlanEvent, socket));
+              pipeConfigRegionWritePlanEvent, socket));
     }
   }
 

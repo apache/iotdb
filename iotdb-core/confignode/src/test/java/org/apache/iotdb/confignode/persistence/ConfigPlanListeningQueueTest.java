@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeWriteConfigPlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -97,12 +97,12 @@ public class ConfigPlanListeningQueueTest {
         ConfigPlanListeningQueue.getInstance().newIterator(0);
 
     Event event1 = itr.next(0);
-    Assert.assertEquals(plan1, ((PipeWriteConfigPlanEvent) event1).getPhysicalPlan());
+    Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getPhysicalPlan());
 
     Event event2 = itr.next(0);
     Assert.assertEquals(
-        plan2.getInnerPlan(), ((PipeWriteConfigPlanEvent) event2).getPhysicalPlan());
-    Assert.assertTrue(((PipeWriteConfigPlanEvent) event2).isGeneratedByPipe());
+        plan2.getInnerPlan(), ((PipeConfigRegionWritePlanEvent) event2).getPhysicalPlan());
+    Assert.assertTrue(((PipeConfigRegionWritePlanEvent) event2).isGeneratedByPipe());
 
     Assert.assertNull(itr.next(0));
   }

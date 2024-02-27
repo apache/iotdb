@@ -35,7 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -162,8 +162,8 @@ public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
 
   @Override
   public void transfer(Event event) throws Exception {
-    if (event instanceof PipeWritePlanNodeEvent) {
-      doTransfer((PipeWritePlanNodeEvent) event);
+    if (event instanceof PipeSchemaRegionWritePlanEvent) {
+      doTransfer((PipeSchemaRegionWritePlanEvent) event);
       return;
     }
 

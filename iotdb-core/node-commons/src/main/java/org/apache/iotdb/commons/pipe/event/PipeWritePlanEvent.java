@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
 
   protected final AtomicLong referenceCount = new AtomicLong(0);

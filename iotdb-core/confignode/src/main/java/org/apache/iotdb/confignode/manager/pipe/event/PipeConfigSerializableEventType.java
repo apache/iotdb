@@ -30,11 +30,12 @@ public enum PipeConfigSerializableEventType {
   CONFIG_PLAN((byte) 1),
   CONFIG_SNAPSHOT((byte) 2),
   ;
-  private static final Map<Byte, PipeConfigSerializableEventType> TYPE_MAP = new HashMap<>();
+
+  private static final Map<Byte, PipeConfigSerializableEventType> TYPE_EVENT_MAP = new HashMap<>();
 
   static {
     for (final PipeConfigSerializableEventType type : PipeConfigSerializableEventType.values()) {
-      TYPE_MAP.put(type.getType(), type);
+      TYPE_EVENT_MAP.put(type.getType(), type);
     }
   }
 
@@ -49,20 +50,20 @@ public enum PipeConfigSerializableEventType {
   }
 
   public static PipeConfigSerializableEventType deserialize(byte type) {
-    return TYPE_MAP.get(type);
+    return TYPE_EVENT_MAP.get(type);
   }
 
   public static SerializableEvent deserialize(ByteBuffer buffer) throws IOException {
-    byte eventType = buffer.get();
+    final byte eventType = buffer.get();
     return deserialize(buffer, eventType);
   }
 
   public static SerializableEvent deserialize(ByteBuffer buffer, byte eventType)
       throws IOException {
-    SerializableEvent event;
+    final SerializableEvent event;
     switch (eventType) {
       case 1:
-        event = new PipeWriteConfigPlanEvent();
+        event = new PipeConfigRegionWritePlanEvent();
         break;
       case 2:
         event = new PipeConfigRegionSnapshotEvent();

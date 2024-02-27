@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -161,8 +161,8 @@ public class IoTDBAirGapConnector extends IoTDBAirGapDataNodeConnector {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeWritePlanNodeEvent) {
-      doTransfer(socket, (PipeWritePlanNodeEvent) event);
+    if (event instanceof PipeSchemaRegionWritePlanEvent) {
+      doTransfer(socket, (PipeSchemaRegionWritePlanEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn("IoTDBAirGapConnector does not support transferring generic event: {}.", event);
     }

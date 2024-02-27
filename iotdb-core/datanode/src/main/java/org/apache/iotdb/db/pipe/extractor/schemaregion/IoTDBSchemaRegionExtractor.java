@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeWritePlanNodeEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
@@ -96,7 +96,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   protected boolean isListenType(Event event) {
-    return listenTypes.contains(((PipeWritePlanNodeEvent) event).getPlanNode().getType());
+    return listenTypes.contains(((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
   }
 
   @Override

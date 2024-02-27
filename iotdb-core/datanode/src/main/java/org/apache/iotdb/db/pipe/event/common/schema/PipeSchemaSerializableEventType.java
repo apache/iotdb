@@ -62,7 +62,7 @@ public enum PipeSchemaSerializableEventType {
     SerializableEvent event;
     switch (eventType) {
       case 1:
-        event = new PipeWritePlanNodeEvent();
+        event = new PipeSchemaRegionWritePlanEvent();
         break;
       case 2:
         event = new PipeSchemaRegionSnapshotEvent();
