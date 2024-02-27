@@ -1848,7 +1848,6 @@ public class ConfigManager implements IManager {
     }
     TPipeTransferResp result =
         PipeConfigNodeAgent.receiver()
-            .config()
             .receive(
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()

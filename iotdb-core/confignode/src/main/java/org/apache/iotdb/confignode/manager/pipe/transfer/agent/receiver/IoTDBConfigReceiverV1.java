@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.receiver;
+package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -66,6 +66,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigReceiverV1.class);
   private static final AtomicInteger queryIndex = new AtomicInteger(0);
 
@@ -76,7 +77,7 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
   private static final PipeConfigPhysicalPlanExceptionVisitor exceptionVisitor =
       new PipeConfigPhysicalPlanExceptionVisitor();
 
-  IoTDBConfigReceiverV1() {}
+  public IoTDBConfigReceiverV1() {}
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {

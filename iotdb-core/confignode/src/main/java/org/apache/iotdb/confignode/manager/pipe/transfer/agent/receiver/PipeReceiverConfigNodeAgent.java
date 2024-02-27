@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.pipe.receiver.IoTDBConfigReceiverAgent;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -29,17 +30,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-public class PipeReceiverConfigNodeAgent {
+public class PipeReceiverConfigNodeAgent extends IoTDBReceiverAgent {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverConfigNodeAgent.class);
 
-  private final IoTDBConfigReceiverAgent configAgent;
-
-  public PipeReceiverConfigNodeAgent() {
-    configAgent = new IoTDBConfigReceiverAgent();
-  }
-
-  public IoTDBConfigReceiverAgent config() {
-    return configAgent;
+  @Override
+  protected void initConstructors() {
+    RECEIVER_CONSTRUCTORS.put(
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigReceiverV1::new);
   }
 
   private static void cleanPipeReceiverDir(File receiverFileDir) {
