@@ -48,7 +48,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class CompactionScheduleTaskManager implements IService {
 
-  private final int workerNum = 4;
+  private final int workerNum =
+      IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleThreadNum();
   private ExecutorService compactionScheduleTaskThreadPool;
   private static final Logger logger = LoggerFactory.getLogger(CompactionScheduleTaskManager.class);
   private static final CompactionScheduleTaskManager INSTANCE = new CompactionScheduleTaskManager();
