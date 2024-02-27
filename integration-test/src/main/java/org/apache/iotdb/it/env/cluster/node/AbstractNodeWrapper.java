@@ -487,6 +487,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
+  public void stopForcibly() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      this.instance.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
+      logger.info("Node {} has been successfully forcibly stopped", nodePort);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error. %s", e);
+    }
+  }
+
+  @Override
   public final String getIp() {
     return this.nodeAddress;
   }

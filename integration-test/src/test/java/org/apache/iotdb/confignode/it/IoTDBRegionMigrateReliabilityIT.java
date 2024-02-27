@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.enums.RegionMigrateState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -112,9 +111,11 @@ public class IoTDBRegionMigrateReliabilityIT {
               .orElseThrow(() -> new RuntimeException("gg"));
 
       HashMap<String, Runnable> keywordAction = new HashMap<>();
-      Arrays.stream(RegionTransitionState.values()).
-              forEach(state -> keywordAction.put(String.valueOf(state),
-                      () -> LOGGER.info(String.valueOf(state))));
+      Arrays.stream(RegionTransitionState.values())
+          .forEach(
+              state ->
+                  keywordAction.put(
+                      String.valueOf(state), () -> LOGGER.info(String.valueOf(state))));
       ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
       LOGGER.info("breakpoint setting...");
       service.submit(() -> logBreakpointMonitor(0, keywordAction));
@@ -136,7 +137,6 @@ public class IoTDBRegionMigrateReliabilityIT {
 
       String nodePath =
           EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get().getNodePath();
-      //      nodePath + File.separator +
       File originalRegionDir =
           new File(
               nodePath
@@ -158,32 +158,47 @@ public class IoTDBRegionMigrateReliabilityIT {
   // region helper
 
   private static void logBreakpointMonitor(int nodeIndex, HashMap<String, Runnable> keywordAction) {
-    ProcessBuilder builder = new ProcessBuilder("tail", "-f", EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).getNodePath() + File.separator + "logs" + File.separator + "log_confignode_all.log");
-    builder.redirectErrorStream(true);  // 将错误输出和标准输出合并
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "tail",
+            "-f",
+            EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).getNodePath()
+                + File.separator
+                + "logs"
+                + File.separator
+                + "log_confignode_all.log");
+    builder.redirectErrorStream(true); // 将错误输出和标准输出合并
 
     try {
-      Process process = builder.start();  // 开始执行命令
+      Process process = builder.start(); // 开始执行命令
       // 读取命令的输出
-      try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
           Set<String> detected = new HashSet<>();
           String finalLine = line;
-          keywordAction.keySet().forEach(k -> {
-            if (finalLine.contains(k)) {
-              detected.add(k);
-            }
-          });
-          detected.forEach(k -> {
-            keywordAction.get(k).run();
-            keywordAction.remove(k);
-          });
+          keywordAction
+              .keySet()
+              .forEach(
+                  k -> {
+                    if (finalLine.contains(k)) {
+                      detected.add(k);
+                    }
+                  });
+          detected.forEach(
+              k -> {
+                keywordAction.get(k).run();
+                EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
+                keywordAction.remove(k);
+              });
         }
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
+
   private static String regionMigrateCommand(int who, int from, int to) {
     return String.format(REGION_MIGRATE_COMMAND_FORMAT, who, from, to);
   }
