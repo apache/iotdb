@@ -19,21 +19,6 @@
 
 package org.apache.iotdb.pipe.it.autocreate;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
-import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
-import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
-import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
-import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -43,10 +28,27 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
