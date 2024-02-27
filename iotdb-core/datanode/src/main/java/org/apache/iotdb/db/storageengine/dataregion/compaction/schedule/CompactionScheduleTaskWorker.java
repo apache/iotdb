@@ -47,8 +47,6 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
   public Void call() {
     while (true) {
       try {
-        // This check is needed because the dataRegionList may be empty
-        // If no data region in the list, the thread interrupted status are not checked
         if (Thread.interrupted()) {
           throw new InterruptedException();
         }
