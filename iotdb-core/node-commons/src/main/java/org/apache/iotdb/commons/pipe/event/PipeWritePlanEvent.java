@@ -31,7 +31,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
 
-  protected final boolean isGeneratedByPipe;
+  protected boolean isGeneratedByPipe;
 
   protected final AtomicLong referenceCount = new AtomicLong(0);
 
