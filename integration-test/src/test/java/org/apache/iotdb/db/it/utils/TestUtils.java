@@ -631,12 +631,12 @@ public class TestUtils {
     }
   }
 
-  public static boolean restartCluster(BaseEnv env) {
+  public static void restartCluster(BaseEnv env) {
     env.shutdownAllDataNodes();
     env.shutdownAllConfigNodes();
     env.startAllConfigNodes();
     env.startAllDataNodes();
-    return ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
+    ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
   }
 
   public static void assertDataOnEnv(
