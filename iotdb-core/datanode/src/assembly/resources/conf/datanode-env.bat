@@ -133,13 +133,17 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
 
 @REM When the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
-@REM CPU_PROCESSOR_NUM=$(nproc)
-@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}
+@REM for /F "tokens=2 delims==" %%I in ('wmic cpu get NumberOfCores /value') do (
+@REM     set "CPU_PROCESSOR_NUM=%%I"
+@REM )
+@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:ParallelGCThreads=%CPU_PROCESSOR_NUM%
 
-@REM if there are much of stw time of reference process in GC log, you can turn on option below. Note: it may have an impact on application's throughput.
+@REM if there are much of stw time of reference process in GC log, you can turn on option below.
+@REM NOTE: it may have an impact on application's throughput.
 @REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+ParallelRefProcEnabled
 
-@REM this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation. Note: it may reduce memory utilization and trigger OOM killer when memory is tight.
+@REM this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation.
+@REM NOTE: it may reduce memory utilization and trigger OOM killer when memory is tight.
 @REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+AlwaysPreTouch
 
 @REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance

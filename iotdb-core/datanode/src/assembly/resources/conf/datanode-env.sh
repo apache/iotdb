@@ -276,18 +276,23 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UnlockDiagnosticVMOptions"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseCountedLoopSafepoints"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:GuaranteedSafepointInterval=0"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:-UseBiasedLocking"
-# these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
+# these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 
-# When the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
-# CPU_PROCESSOR_NUM=$(nproc)
+# when the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
+# for Linux:
+#CPU_PROCESSOR_NUM=$(nproc)
+# for MacOS:
+#CPU_PROCESSOR_NUM=$(sysctl -n hw.ncpu)
 #IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}"
 
-# if there are much of stw time of reference process in GC log, you can turn on option below. Note: it may have an impact on application's throughput.
+# if there are much of stw time of reference process in GC log, you can turn on option below.
+# NOTE: it may have an impact on application's throughput.
 #IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ParallelRefProcEnabled"
 
-# this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation. Note: it may reduce memory utilization and trigger OOM killer when memory is tight.
+# this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation.
+# NOTE: it may reduce memory utilization and trigger OOM killer when memory is tight.
 #IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+AlwaysPreTouch"
 
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
