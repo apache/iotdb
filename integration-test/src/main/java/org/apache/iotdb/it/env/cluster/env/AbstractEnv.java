@@ -264,29 +264,28 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
-  public boolean checkClusterStatusWithoutUnknown() {
-    return checkClusterStatus(
-            nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals))
-        && testJDBCConnection();
+  public void checkClusterStatusWithoutUnknown() {
+    checkClusterStatus(
+        nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+    testJDBCConnection();
   }
 
-  public boolean checkClusterStatusOneUnknownOtherRunning() {
-    return checkClusterStatus(
-            nodeStatus -> {
-              Map<String, Integer> count = countNodeStatus(nodeStatus);
-              return count.getOrDefault("Unknown", 0) == 1
-                  && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
-            })
-        && testJDBCConnection();
+  public void checkClusterStatusOneUnknownOtherRunning() {
+    checkClusterStatus(
+        nodeStatus -> {
+          Map<String, Integer> count = countNodeStatus(nodeStatus);
+          return count.getOrDefault("Unknown", 0) == 1
+              && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+        });
+    testJDBCConnection();
   }
   /**
-   * Returns whether the all nodes' status all match the provided predicate. check nodes with RPC
+   * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
+   * if the status of all nodes still not match the predicate, throw AssertionError.
    *
    * @param statusCheck the predicate to test the status of nodes
-   * @return {@code true} if all nodes' status of the cluster match the provided predicate,
-   *     otherwise {@code false}
    */
-  public boolean checkClusterStatus(Predicate<Map<Integer, String>> statusCheck) {
+  public void checkClusterStatus(Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
@@ -316,7 +315,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
         if (flag) {
           logger.info("The cluster is now ready for testing!");
-          return true;
+          return;
         }
       } catch (Exception e) {
         lastException = e;
@@ -330,12 +329,12 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     if (lastException != null) {
       logger.error(
-          "exception in testWorking of ClusterID, message: {}",
+          "exception in test Cluster with RPC, message: {}",
           lastException.getMessage(),
           lastException);
     }
-    logger.info("checkNodeHeartbeat failed after {} retries", retryCount);
-    return false;
+    throw new AssertionError(
+        String.format("After %d times retry, the cluster can't work!", retryCount));
   }
 
   @Override
@@ -488,7 +487,9 @@ public abstract class AbstractEnv implements BaseEnv {
   // because it is hard to add retry and handle exception when getting jdbc connections in
   // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
   // so use this function to add retry when cluster is ready.
-  protected boolean testJDBCConnection() {
+  // after retryCount times, if the jdbc can't connect, throw
+  // AssertionError.
+  protected void testJDBCConnection() {
     logger.info("Testing JDBC connection...");
     List<String> endpoints =
         dataNodeWrapperList.stream()
@@ -526,10 +527,10 @@ public abstract class AbstractEnv implements BaseEnv {
     try {
       testDelegate.requestAll();
     } catch (Exception e) {
-      logger.error("Failed to connect to DataNode", e);
-      return false;
+      logger.error("exception in test Cluster with RPC, message: {}", e.getMessage(), e);
+      throw new AssertionError(
+          String.format("After %d times retry, the cluster can't work!", retryCount));
     }
-    return true;
   }
 
   private String getParam(Constant.Version version, int timeout) {

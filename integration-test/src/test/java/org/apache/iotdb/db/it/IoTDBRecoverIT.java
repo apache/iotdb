@@ -109,7 +109,7 @@ public class IoTDBRecoverIT {
     EnvFactory.getEnv().startAllDataNodes();
     logger.info("All DataNodes are started");
     // check cluster whether restart
-    Assert.assertTrue(((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown());
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -200,7 +200,7 @@ public class IoTDBRecoverIT {
     EnvFactory.getEnv().startAllDataNodes();
     logger.info("All DataNodes are started");
     // wait for cluster to start and check
-    Assert.assertTrue(((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown());
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     // count test
     String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
