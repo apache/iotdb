@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.List;
+
 public interface Type {
 
   /** Gets a boolean at {@code position}. */
@@ -111,4 +113,7 @@ public interface Type {
 
   /** True if the type supports compareTo. */
   boolean isOrderable();
+
+  /** For parameterized types returns the list of parameters. */
+  List<Type> getTypeParameters();
 }

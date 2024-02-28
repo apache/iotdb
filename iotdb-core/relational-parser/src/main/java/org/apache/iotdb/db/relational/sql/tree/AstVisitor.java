@@ -271,6 +271,10 @@ public abstract class AstVisitor<R, C> {
     return visitQueryBody(node, context);
   }
 
+  protected R visitRow(Row node, C context) {
+    return visitExpression(node, context);
+  }
+
   protected R visitTableSubquery(TableSubquery node, C context) {
     return visitQueryBody(node, context);
   }

@@ -23,9 +23,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 
+import java.util.Collections;
+import java.util.List;
+
 public class IntType implements Type {
 
-  private static final IntType INT32 = new IntType();
+  public static final IntType INT32 = new IntType();
 
   private IntType() {}
 
@@ -92,6 +95,11 @@ public class IntType implements Type {
   @Override
   public boolean isOrderable() {
     return true;
+  }
+
+  @Override
+  public List<Type> getTypeParameters() {
+    return Collections.emptyList();
   }
 
   public static IntType getInstance() {

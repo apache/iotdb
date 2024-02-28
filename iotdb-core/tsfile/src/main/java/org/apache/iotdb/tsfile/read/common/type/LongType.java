@@ -23,9 +23,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 
+import java.util.Collections;
+import java.util.List;
+
 public class LongType implements Type {
 
-  private static final LongType INT64 = new LongType();
+  public static final LongType INT64 = new LongType();
 
   private LongType() {}
 
@@ -92,6 +95,11 @@ public class LongType implements Type {
   @Override
   public boolean isOrderable() {
     return true;
+  }
+
+  @Override
+  public List<Type> getTypeParameters() {
+    return Collections.emptyList();
   }
 
   public static LongType getInstance() {

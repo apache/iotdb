@@ -76,6 +76,7 @@ import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.Relation;
 import org.apache.iotdb.db.relational.sql.tree.RenameColumn;
 import org.apache.iotdb.db.relational.sql.tree.RenameTable;
+import org.apache.iotdb.db.relational.sql.tree.Row;
 import org.apache.iotdb.db.relational.sql.tree.Select;
 import org.apache.iotdb.db.relational.sql.tree.SelectItem;
 import org.apache.iotdb.db.relational.sql.tree.SetOperation;
@@ -94,8 +95,10 @@ import org.apache.iotdb.db.relational.sql.tree.TableSubquery;
 import org.apache.iotdb.db.relational.sql.tree.Union;
 import org.apache.iotdb.db.relational.sql.tree.Update;
 import org.apache.iotdb.db.relational.sql.tree.Use;
+import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.relational.sql.tree.With;
 import org.apache.iotdb.db.relational.sql.tree.WithQuery;
+import org.apache.iotdb.tsfile.read.common.type.RowType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -127,6 +130,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
@@ -1588,82 +1592,101 @@ public class StatementAnalyzer {
     // accessControlScope, filter));
     //    }
 
-    //    @Override
-    //    protected Scope visitValues(Values node, Optional<Scope> scope) {
-    //      checkState(!node.getRows().isEmpty());
-    //
-    //      List<Type> rowTypes = node.getRows().stream()
-    //          .map(row -> analyzeExpression(row, createScope(scope)).getType(row))
-    //          .map(type -> {
-    //            if (type instanceof RowType) {
-    //              return type;
-    //            }
-    //            return RowType.anonymousRow(type);
-    //          })
-    //          .collect(toImmutableList());
-    //
-    //      int fieldCount = rowTypes.get(0).getTypeParameters().size();
-    //      Type commonSuperType = rowTypes.get(0);
-    //      for (Type rowType : rowTypes) {
-    //        // check field count consistency for rows
-    //        if (rowType.getTypeParameters().size() != fieldCount) {
-    //          throw semanticException(TYPE_MISMATCH,
-    //              node,
-    //              "Values rows have mismatched sizes: %s vs %s",
-    //              fieldCount,
-    //              rowType.getTypeParameters().size());
-    //        }
-    //
-    //        // determine common super type of the rows
-    //        commonSuperType = typeCoercion.getCommonSuperType(rowType, commonSuperType)
-    //            .orElseThrow(() -> semanticException(TYPE_MISMATCH,
-    //                node,
-    //                "Values rows have mismatched types: %s vs %s",
-    //                rowTypes.get(0),
-    //                rowType));
-    //      }
-    //
-    //      // add coercions
-    //      for (Expression row : node.getRows()) {
-    //        Type actualType = analysis.getType(row);
-    //        if (row instanceof Row) {
-    //          // coerce Row by fields to preserve Row structure and enable optimizations based on
-    // this structure, e.g. pruning, predicate extraction
-    //          // TODO coerce the whole Row and add an Optimizer rule that converts CAST(ROW(...)
-    // AS ...) into ROW(CAST(...), CAST(...), ...).
-    //          //  The rule would also handle Row-type expressions that were specified as
-    // CAST(ROW). It should support multiple casts over a ROW.
-    //          for (int i = 0; i < actualType.getTypeParameters().size(); i++) {
-    //            Expression item = ((Row) row).getItems().get(i);
-    //            Type actualItemType = actualType.getTypeParameters().get(i);
-    //            Type expectedItemType = commonSuperType.getTypeParameters().get(i);
-    //            if (!actualItemType.equals(expectedItemType)) {
-    //              analysis.addCoercion(item, expectedItemType,
-    //                  typeCoercion.isTypeOnlyCoercion(actualItemType, expectedItemType));
-    //            }
-    //          }
-    //        } else if (actualType instanceof RowType) {
-    //          // coerce row-type expression as a whole
-    //          if (!actualType.equals(commonSuperType)) {
-    //            analysis.addCoercion(row, commonSuperType,
-    // typeCoercion.isTypeOnlyCoercion(actualType, commonSuperType));
-    //          }
-    //        } else {
-    //          // coerce field. it will be wrapped in Row by Planner
-    //          Type superType = getOnlyElement(commonSuperType.getTypeParameters());
-    //          if (!actualType.equals(superType)) {
-    //            analysis.addCoercion(row, superType, typeCoercion.isTypeOnlyCoercion(actualType,
-    // superType));
-    //          }
-    //        }
-    //      }
-    //
-    //      List<Field> fields = commonSuperType.getTypeParameters().stream()
-    //          .map(valueType -> Field.newUnqualified(Optional.empty(), valueType))
-    //          .collect(toImmutableList());
-    //
-    //      return createAndAssignScope(node, scope, fields);
-    //    }
+    @Override
+    protected Scope visitValues(Values node, Optional<Scope> scope) {
+      checkState(!node.getRows().isEmpty());
+
+      List<Type> rowTypes =
+          node.getRows().stream()
+              .map(row -> analyzeExpression(row, createScope(scope)).getType(row))
+              .map(
+                  type -> {
+                    if (type instanceof RowType) {
+                      return type;
+                    }
+                    return RowType.anonymousRow(type);
+                  })
+              .collect(toImmutableList());
+
+      int fieldCount = rowTypes.get(0).getTypeParameters().size();
+      Type commonSuperType = rowTypes.get(0);
+      for (Type rowType : rowTypes) {
+        // check field count consistency for rows
+        if (rowType.getTypeParameters().size() != fieldCount) {
+          throw new SemanticException(
+              String.format(
+                  "Values rows have mismatched sizes: %s vs %s",
+                  fieldCount, rowType.getTypeParameters().size()));
+        }
+
+        // determine common super type of the rows
+        //        commonSuperType = typeCoercion.getCommonSuperType(rowType, commonSuperType)
+        //            .orElseThrow(() -> semanticException(TYPE_MISMATCH,
+        //                node,
+        //                "Values rows have mismatched types: %s vs %s",
+        //                rowTypes.get(0),
+        //                rowType));
+      }
+
+      // add coercions
+      int rowIndex = 0;
+      for (Expression row : node.getRows()) {
+        Type actualType = analysis.getType(row);
+        if (row instanceof Row) {
+          // coerce Row by fields to preserve Row structure and enable optimizations based on this
+          // structure, e.g.pruning, predicate extraction
+          // TODO coerce the whole Row and add an Optimizer rule that converts CAST(ROW(...) AS
+          // ...)into ROW (CAST(...),CAST(...), ...).
+          //  The rule would also handle Row-type expressions that were specified as CAST(ROW).It
+          // should support multiple casts over a ROW.
+          for (int i = 0; i < actualType.getTypeParameters().size(); i++) {
+            //            Expression item = ((Row) row).getItems().get(i);
+            Type actualItemType = actualType.getTypeParameters().get(i);
+            Type expectedItemType = commonSuperType.getTypeParameters().get(i);
+            if (!actualItemType.equals(expectedItemType)) {
+              throw new SemanticException(
+                  String.format(
+                      "Type of row %d column %d is mismatched, expected: %s, actual: %s",
+                      rowIndex, i, expectedItemType, actualItemType));
+              //              analysis.addCoercion(item, expectedItemType,
+              //                  typeCoercion.isTypeOnlyCoercion(actualItemType,
+              // expectedItemType));
+            }
+          }
+        } else if (actualType instanceof RowType) {
+          // coerce row-type expression as a whole
+          //          if (!actualType.equals(commonSuperType)) {
+          //            analysis.addCoercion(row, commonSuperType,
+          //                typeCoercion.isTypeOnlyCoercion(actualType, commonSuperType));
+          //          }
+
+          throw new SemanticException(
+              String.format(
+                  "Type of row %d is mismatched, expected: %s, actual: %s",
+                  rowIndex, commonSuperType, actualType));
+        } else {
+          // coerce field. it will be wrapped in Row by Planner
+          Type superType = getOnlyElement(commonSuperType.getTypeParameters());
+          if (!actualType.equals(superType)) {
+            //            analysis.addCoercion(row, superType,
+            // typeCoercion.isTypeOnlyCoercion(actualType,
+            //                superType));
+            throw new SemanticException(
+                String.format(
+                    "Type of row %d is mismatched, expected: %s, actual: %s",
+                    rowIndex, superType, actualType));
+          }
+        }
+        rowIndex++;
+      }
+
+      List<Field> fields =
+          commonSuperType.getTypeParameters().stream()
+              .map(valueType -> Field.newUnqualified(Optional.empty(), valueType))
+              .collect(toImmutableList());
+
+      return createAndAssignScope(node, scope, fields);
+    }
 
     @Override
     protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {

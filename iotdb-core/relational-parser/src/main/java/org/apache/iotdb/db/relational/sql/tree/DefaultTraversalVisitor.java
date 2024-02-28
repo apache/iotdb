@@ -334,6 +334,14 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
+  protected Void visitRow(Row node, C context) {
+    for (Expression expression : node.getItems()) {
+      process(expression, context);
+    }
+    return null;
+  }
+
+  @Override
   protected Void visitTableSubquery(TableSubquery node, C context) {
     process(node.getQuery(), context);
     return null;

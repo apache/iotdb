@@ -48,6 +48,7 @@ import org.apache.iotdb.db.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
 import org.apache.iotdb.db.relational.sql.tree.Parameter;
 import org.apache.iotdb.db.relational.sql.tree.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.relational.sql.tree.Row;
 import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
@@ -416,6 +417,11 @@ class AggregationAnalyzer {
       }
 
       return !node.getDefaultValue().isPresent() || process(node.getDefaultValue().get(), context);
+    }
+
+    @Override
+    protected Boolean visitRow(Row node, Void context) {
+      return node.getItems().stream().allMatch(item -> process(item, context));
     }
 
     @Override

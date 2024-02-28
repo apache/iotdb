@@ -23,6 +23,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import java.util.Collections;
+import java.util.List;
+
 public class BooleanType implements Type {
 
   public static final BooleanType BOOLEAN = new BooleanType();
@@ -62,6 +65,11 @@ public class BooleanType implements Type {
   @Override
   public boolean isOrderable() {
     return true;
+  }
+
+  @Override
+  public List<Type> getTypeParameters() {
+    return Collections.emptyList();
   }
 
   public static BooleanType getInstance() {

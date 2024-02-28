@@ -23,9 +23,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 
+import java.util.Collections;
+import java.util.List;
+
 public class FloatType implements Type {
 
-  private static final FloatType FLOAT = new FloatType();
+  public static final FloatType FLOAT = new FloatType();
 
   private FloatType() {}
 
@@ -92,6 +95,11 @@ public class FloatType implements Type {
   @Override
   public boolean isOrderable() {
     return true;
+  }
+
+  @Override
+  public List<Type> getTypeParameters() {
+    return Collections.emptyList();
   }
 
   public static FloatType getInstance() {

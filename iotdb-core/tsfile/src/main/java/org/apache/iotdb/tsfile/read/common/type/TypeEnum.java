@@ -30,5 +30,7 @@ public enum TypeEnum {
 
   BOOLEAN,
 
-  BINARY
+  BINARY,
+
+  ROW
 }

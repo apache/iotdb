@@ -543,6 +543,8 @@ valueExpression
 
 primaryExpression
     : literalExpression                                                                   #literal
+    | '(' expression (',' expression)+ ')'                                                #rowConstructor
+    | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
     | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'                 #functionCall
     | '(' query ')'                                                                       #subqueryExpression

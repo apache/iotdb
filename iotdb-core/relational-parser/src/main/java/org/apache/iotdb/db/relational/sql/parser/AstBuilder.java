@@ -95,6 +95,7 @@ import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.Relation;
 import org.apache.iotdb.db.relational.sql.tree.RenameColumn;
 import org.apache.iotdb.db.relational.sql.tree.RenameTable;
+import org.apache.iotdb.db.relational.sql.tree.Row;
 import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.Select;
 import org.apache.iotdb.db.relational.sql.tree.SelectItem;
@@ -1149,6 +1150,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitParenthesizedExpression(RelationalSqlParser.ParenthesizedExpressionContext ctx) {
     return visit(ctx.expression());
+  }
+
+  @Override
+  public Node visitRowConstructor(RelationalSqlParser.RowConstructorContext context) {
+    return new Row(getLocation(context), visit(context.expression(), Expression.class));
   }
 
   @Override

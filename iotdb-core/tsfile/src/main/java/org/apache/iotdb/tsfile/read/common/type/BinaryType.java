@@ -24,8 +24,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.Collections;
+import java.util.List;
+
 public class BinaryType implements Type {
-  private static final BinaryType TEXT = new BinaryType();
+  public static final BinaryType TEXT = new BinaryType();
 
   private BinaryType() {}
 
@@ -62,6 +65,11 @@ public class BinaryType implements Type {
   @Override
   public boolean isOrderable() {
     return true;
+  }
+
+  @Override
+  public List<Type> getTypeParameters() {
+    return Collections.emptyList();
   }
 
   public static BinaryType getInstance() {
