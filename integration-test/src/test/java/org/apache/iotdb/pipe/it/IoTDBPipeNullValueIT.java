@@ -220,6 +220,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualIT {
 
       if (withParsing) {
         extractorAttributes.put("extractor.pattern", "root.sg.d1");
+        extractorAttributes.put("extractor.pattern.format", "prefix");
       }
 
       TSStatus status =

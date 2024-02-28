@@ -114,13 +114,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
     // Get the pattern format to check whether the pattern is legal
     final PipePatternFormat patternFormat =
-        PipePatternFormat.valueOf(
-            validator
-                .getParameters()
-                .getStringOrDefault(
-                    Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
-                    PipePatternFormat.getDefaultFormat().toString())
-                .toUpperCase());
+        PipePatternFormat.getFormatFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
     validatePattern(

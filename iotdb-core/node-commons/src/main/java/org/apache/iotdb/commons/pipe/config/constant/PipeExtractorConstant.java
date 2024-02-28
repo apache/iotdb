@@ -24,6 +24,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
+  public static final String SOURCE_VERSION_KEY = "source.version";
+  public static final String SOURCE_VERSION_V2_VALUE = "2";
+
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
   public static final String EXTRACTOR_INCLUSION_DATA_VALUE = "data";

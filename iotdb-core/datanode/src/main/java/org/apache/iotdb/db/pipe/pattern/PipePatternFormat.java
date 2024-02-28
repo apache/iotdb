@@ -20,15 +20,40 @@
 package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import java.util.Arrays;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_VERSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_VERSION_V2_VALUE;
 
 public enum PipePatternFormat {
   PREFIX,
   IOTDB;
 
   public static PipePatternFormat getDefaultFormat() {
-    return PREFIX;
+    return IOTDB;
   }
 
+  public static PipePatternFormat getFormatFromSourceParameters(PipeParameters sourceParameters) {
+    if (sourceParameters.hasAttribute(SOURCE_VERSION_KEY)
+        && sourceParameters.getString(SOURCE_VERSION_KEY).equals(SOURCE_VERSION_V2_VALUE)) {
+      // Pipes with "source.version"="2" can specify the pattern format.
+      return valueOf(
+          sourceParameters
+              .getStringOrDefault(
+                  Arrays.asList(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY),
+                  getDefaultFormat().toString())
+              .toUpperCase());
+    } else {
+      // Pipes without "source.version" attribute always use the PREFIX format.
+      return PREFIX;
+    }
+  }
+
+  /** Get the default pattern of this {@link PipePatternFormat}. */
   public String getDefaultPattern() {
     if (this.equals(PREFIX)) {
       return PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;

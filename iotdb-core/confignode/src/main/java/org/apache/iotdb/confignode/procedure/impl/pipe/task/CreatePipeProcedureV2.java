@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
@@ -67,6 +68,16 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public CreatePipeProcedureV2(TCreatePipeReq createPipeRequest) throws PipeException {
     super();
     this.createPipeRequest = createPipeRequest;
+    // For newly created pipes, we add an internal "source.version" attribute to identify them.
+    // Pipes without this attribute will be treated as legacy version, and their default pattern
+    // format will be "prefix".
+    // Pipes with this attribute will be treated as new version, and their default pattern format
+    // will be "iotdb".
+    this.createPipeRequest
+        .getExtractorAttributes()
+        .put(
+            PipeExtractorConstant.SOURCE_VERSION_KEY,
+            PipeExtractorConstant.SOURCE_VERSION_V2_VALUE);
   }
 
   @Override
