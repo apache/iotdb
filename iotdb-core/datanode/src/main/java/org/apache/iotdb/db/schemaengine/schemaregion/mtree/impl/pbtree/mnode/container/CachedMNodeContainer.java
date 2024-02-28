@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
+import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
@@ -254,7 +255,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public Iterator<ICachedMNode> getChildrenBufferIterator() {
-    return new CachedMNodeContainerIterator((byte) 1);
+    return new BufferIterator();
   }
 
   @Override
@@ -408,11 +409,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = getChildCache().values().iterator();
+          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
           status = 1;
           return true;
         case 1:
-          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
+          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
           status = 2;
           return true;
         case 2:
@@ -422,6 +423,24 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
         default:
           return false;
       }
+    }
+  }
+
+  private class BufferIterator extends MergeSortIterator<ICachedMNode> {
+
+    BufferIterator() {
+      super(
+          getNewChildBuffer().getMNodeChildBufferIterator(),
+          getUpdatedChildBuffer().getMNodeChildBufferIterator());
+    }
+
+    protected int decide() {
+      throw new IllegalStateException(
+          "There shall not exist two node with the same name separately in newChildBuffer and updateChildBuffer");
+    }
+
+    protected int compare(ICachedMNode left, ICachedMNode right) {
+      return left.getName().compareTo(right.getName());
     }
   }
 
