@@ -38,24 +38,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class CompactionScheduleTaskManager implements IService {
 
-  private final int workerNum =
+  private int workerNum =
       IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleThreadNum();
   private ExecutorService compactionScheduleTaskThreadPool;
   private static final Logger logger = LoggerFactory.getLogger(CompactionScheduleTaskManager.class);
   private static final CompactionScheduleTaskManager INSTANCE = new CompactionScheduleTaskManager();
-  private static final List<DataRegion> dataRegionList = new CopyOnWriteArrayList<>();
+  private static final List<DataRegion> dataRegionList = new Vector<>();
   private final RepairDataTaskManager REPAIR_TASK_MANAGER_INSTANCE = new RepairDataTaskManager();
   private final Set<Future<Void>> submitTaskFutures = ConcurrentHashMap.newKeySet();
+  private ReentrantLock lock = new ReentrantLock();
   private volatile boolean init = false;
 
   @Override
@@ -69,63 +71,114 @@ public class CompactionScheduleTaskManager implements IService {
   }
 
   public void stopRunningTasks() {
-    for (Future<Void> repairTask : submitTaskFutures) {
-      repairTask.cancel(true);
-    }
-    for (Future<Void> repairTask : submitTaskFutures) {
-      if (repairTask.isDone()) {
-        continue;
+    lock.lock();
+    try {
+      for (Future<Void> repairTask : submitTaskFutures) {
+        repairTask.cancel(true);
       }
-      try {
-        repairTask.get();
-      } catch (Exception ignored) {
+      for (Future<Void> repairTask : submitTaskFutures) {
+        if (repairTask.isDone()) {
+          continue;
+        }
+        try {
+          repairTask.get();
+        } catch (Exception ignored) {
+        }
       }
+      submitTaskFutures.clear();
+      checkAndMayApplyConfigurationChange();
+    } finally {
+      lock.unlock();
     }
-    submitTaskFutures.clear();
+  }
+
+  public void checkAndMayApplyConfigurationChange() {
+    lock.lock();
+    try {
+      // ignored the change if executing repair data task
+      if (REPAIR_TASK_MANAGER_INSTANCE.hasRunningRepairTask()) {
+        return;
+      }
+      int workerNumInCurrentConfig =
+          IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleThreadNum();
+      if (workerNum == workerNumInCurrentConfig) {
+        return;
+      }
+      workerNum = workerNumInCurrentConfig;
+      restartThreadPool();
+    } finally {
+      lock.unlock();
+    }
   }
 
   public void startScheduleTasks() {
-    for (int workerId = 0; workerId < workerNum; workerId++) {
-      Future<Void> future =
-          compactionScheduleTaskThreadPool.submit(
-              new CompactionScheduleTaskWorker(dataRegionList, workerId, workerNum));
-      submitTaskFutures.add(future);
+    lock.lock();
+    try {
+      for (int workerId = 0; workerId < workerNum; workerId++) {
+        Future<Void> future =
+            compactionScheduleTaskThreadPool.submit(
+                new CompactionScheduleTaskWorker(dataRegionList, workerId, workerNum));
+        submitTaskFutures.add(future);
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override
   public void stop() {
-    if (!init) {
-      return;
+    lock.lock();
+    try {
+      if (!init) {
+        return;
+      }
+      compactionScheduleTaskThreadPool.shutdownNow();
+      logger.info("Waiting for compaction schedule task thread pool to shut down");
+      waitForThreadPoolTerminated();
+    } finally {
+      lock.unlock();
     }
-    compactionScheduleTaskThreadPool.shutdownNow();
-    logger.info("Waiting for compaction schedule task thread pool to shut down");
-    waitForThreadPoolTerminated();
   }
 
   @Override
-  public synchronized void waitAndStop(long milliseconds) {
-    if (!init) {
-      return;
-    }
+  public void waitAndStop(long milliseconds) {
+    lock.lock();
     try {
-      compactionScheduleTaskThreadPool.shutdownNow();
-      compactionScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      logger.warn("compaction schedule task thread pool can not be closed in {} ms", milliseconds);
-      Thread.currentThread().interrupt();
+      if (!init) {
+        return;
+      }
+      try {
+        compactionScheduleTaskThreadPool.shutdownNow();
+        compactionScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        logger.warn(
+            "compaction schedule task thread pool can not be closed in {} ms", milliseconds);
+        Thread.currentThread().interrupt();
+      }
+      waitForThreadPoolTerminated();
+    } finally {
+      lock.unlock();
     }
-    waitForThreadPoolTerminated();
   }
 
-  private synchronized void initThreadPool() {
+  private void initThreadPool() {
     this.compactionScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             workerNum, ThreadName.COMPACTION_SCHEDULE.getName());
     init = true;
   }
 
-  private synchronized void waitForThreadPoolTerminated() {
+  private void restartThreadPool() {
+    stopRunningTasks();
+    compactionScheduleTaskThreadPool.shutdownNow();
+    waitForThreadPoolTerminated();
+    compactionScheduleTaskThreadPool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            workerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+    startScheduleTasks();
+  }
+
+  private void waitForThreadPoolTerminated() {
     long startTime = System.currentTimeMillis();
     int timeMillis = 0;
     while (!compactionScheduleTaskThreadPool.isTerminated()) {
@@ -219,9 +272,14 @@ public class CompactionScheduleTaskManager implements IService {
     }
 
     public Future<Void> submitRepairScanTask(RepairTimePartitionScanTask scanTask) {
-      Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
-      submitTaskFutures.add(future);
-      return future;
+      lock.lock();
+      try {
+        Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
+        submitTaskFutures.add(future);
+        return future;
+      } finally {
+        lock.unlock();
+      }
     }
 
     public void waitRepairTaskFinish() {
