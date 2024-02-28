@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -64,7 +65,7 @@ public class MPPQueryContext {
 
   private int acquiredLockNum;
 
-  private Set<NodeRef<FilterNode>> fromWhereFilterNodes;
+  private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
