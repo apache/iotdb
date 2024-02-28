@@ -26,7 +26,7 @@ import org.apache.iotdb.pipe.PipeEnvironmentException;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractPipeDualIT {
+public abstract class AbstractPipeDualIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
