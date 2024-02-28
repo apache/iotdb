@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.PipeConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -44,7 +44,7 @@ import java.util.HashSet;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
-public class ConfigPlanListeningQueueTest {
+public class PipeConfigPlanListeningQueueTest {
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass
@@ -56,7 +56,7 @@ public class ConfigPlanListeningQueueTest {
 
   @AfterClass
   public static void cleanup() throws IOException {
-    ConfigPlanListeningQueue.getInstance().close();
+    PipeConfigPlanListeningQueue.getInstance().close();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -64,8 +64,8 @@ public class ConfigPlanListeningQueueTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, AuthException {
-    ConfigPlanListeningQueue.getInstance().open();
-    ConfigPlanListeningQueue.getInstance().notifyLeaderReady();
+    PipeConfigPlanListeningQueue.getInstance().open();
+    PipeConfigPlanListeningQueue.getInstance().notifyLeaderReady();
 
     DatabaseSchemaPlan plan1 =
         new DatabaseSchemaPlan(
@@ -82,19 +82,19 @@ public class ConfigPlanListeningQueueTest {
                 false,
                 new ArrayList<>()));
 
-    ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan1, false);
-    ConfigPlanListeningQueue.getInstance().tryListenToPlan(plan2, false);
+    PipeConfigPlanListeningQueue.getInstance().tryListenToPlan(plan1, false);
+    PipeConfigPlanListeningQueue.getInstance().tryListenToPlan(plan2, false);
 
     // tryListenToSnapshots() cannot be tested here since we cannot operate the reference count of
     // the original or deserialized events
 
-    ConfigPlanListeningQueue.getInstance().processTakeSnapshot(snapshotDir);
-    ConfigPlanListeningQueue.getInstance().close();
+    PipeConfigPlanListeningQueue.getInstance().processTakeSnapshot(snapshotDir);
+    PipeConfigPlanListeningQueue.getInstance().close();
 
-    ConfigPlanListeningQueue.getInstance().processLoadSnapshot(snapshotDir);
-    Assert.assertTrue(ConfigPlanListeningQueue.getInstance().isOpened());
+    PipeConfigPlanListeningQueue.getInstance().processLoadSnapshot(snapshotDir);
+    Assert.assertTrue(PipeConfigPlanListeningQueue.getInstance().isOpened());
     ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
-        ConfigPlanListeningQueue.getInstance().newIterator(0);
+        PipeConfigPlanListeningQueue.getInstance().newIterator(0);
 
     Event event1 = itr.next(0);
     Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getConfigPhysicalPlan());

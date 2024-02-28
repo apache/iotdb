@@ -42,7 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.PipeConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -354,7 +354,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       handleSinglePipeMetaChangeOnConfigTaskAgent(
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
-      ConfigPlanListeningQueue.getInstance()
+      PipeConfigPlanListeningQueue.getInstance()
           .increaseReferenceCountForListeningPipe(
               plan.getPipeStaticMeta().getExtractorParameters());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -401,7 +401,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     try {
       String pipeName = plan.getPipeName();
       if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        ConfigPlanListeningQueue.getInstance()
+        PipeConfigPlanListeningQueue.getInstance()
             .decreaseReferenceCountForListeningPipe(
                 pipeMetaKeeper
                     .getPipeMetaByPipeName(pipeName)
@@ -562,7 +562,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
               }
             });
 
-    ConfigPlanListeningQueue.getInstance().removeBefore(newFirstIndex.get());
+    PipeConfigPlanListeningQueue.getInstance().removeBefore(newFirstIndex.get());
 
     // No need to handle meta changes on configNodeAgent here since pipeMetas here only change on
     // follower
@@ -758,7 +758,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void dropPipeOnConfigTaskAgent(String pipeName) {
     // Operate tasks only after leader gets ready
-    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
@@ -775,7 +775,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
     // Operate tasks only after leader gets ready
-    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     // The new agent meta has separated status to enable control by diff
@@ -803,7 +803,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public void handlePipeMetaChangesOnConfigTaskAgent() {
     // Operate tasks only after leader get ready
-    if (!ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       return;
     }
     List<PipeMeta> pipeMetas = new ArrayList<>();
@@ -875,7 +875,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       // We initialize reference count of listening pipes here to avoid separate
       // serialization of it
       for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-        ConfigPlanListeningQueue.getInstance()
+        PipeConfigPlanListeningQueue.getInstance()
             .increaseReferenceCountForListeningPipe(
                 pipeMeta.getStaticMeta().getExtractorParameters());
       }

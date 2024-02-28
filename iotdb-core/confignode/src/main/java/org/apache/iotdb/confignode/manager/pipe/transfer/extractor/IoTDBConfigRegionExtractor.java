@@ -37,12 +37,12 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = PipeConfigPlanFilter.getPipeListenSet(parameters);
+    listenTypes = PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return ConfigPlanListeningQueue.getInstance();
+    return PipeConfigPlanListeningQueue.getInstance();
   }
 
   @Override

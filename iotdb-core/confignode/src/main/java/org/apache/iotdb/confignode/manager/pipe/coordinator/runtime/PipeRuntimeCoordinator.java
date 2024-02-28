@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigPlanListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.PipeConfigPlanListeningQueue;
 import org.apache.iotdb.confignode.service.ConfigNode;
 
 import javax.validation.constraints.NotNull;
@@ -75,7 +75,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public void onConfigRegionGroupLeaderChangedIfReady() {
     if (Objects.nonNull(ConfigNode.getInstance().getConfigManager().getConsensusManager())
-        && ConfigPlanListeningQueue.getInstance().isLeaderReady()) {
+        && PipeConfigPlanListeningQueue.getInstance().isLeaderReady()) {
       pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
     }
   }

@@ -47,23 +47,23 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
+public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigPlanListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigPlanListeningQueue.class);
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
   private int referenceCount = 0;
 
-  private ConfigPlanListeningQueue() {
+  private PipeConfigPlanListeningQueue() {
     super();
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
-    if (PipeConfigPlanFilter.shouldBeListenedByQueue(plan)) {
+    if (PipeConfigPlanListeningFilter.shouldPlanBeListened(plan)) {
       PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
@@ -90,7 +90,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
           event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
       if (super.tryListenToElement(event)) {
-        event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+        event.increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
       }
     }
   }
@@ -99,7 +99,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
       PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      event.increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
       events.add(event);
     }
     super.listenToSnapshots(events);
@@ -111,7 +111,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   // reference count is handled under consensus layer.
   public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException {
-    if (!PipeConfigPlanFilter.getPipeListenSet(parameters).isEmpty()) {
+    if (!PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       referenceCount++;
       if (referenceCount == 1) {
         open();
@@ -121,7 +121,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException, IOException {
-    if (!PipeConfigPlanFilter.getPipeListenSet(parameters).isEmpty()) {
+    if (!PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       referenceCount--;
       if (referenceCount == 0) {
         close();
@@ -139,7 +139,7 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
-      ((EnrichedEvent) result).increaseReferenceCount(ConfigPlanListeningQueue.class.getName());
+      ((EnrichedEvent) result).increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
@@ -161,13 +161,13 @@ public class ConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// INSTANCE ///////////////////////////////
 
-  public static ConfigPlanListeningQueue getInstance() {
+  public static PipeConfigPlanListeningQueue getInstance() {
     return ConfigPlanListeningQueueHolder.INSTANCE;
   }
 
   private static class ConfigPlanListeningQueueHolder {
 
-    private static final ConfigPlanListeningQueue INSTANCE = new ConfigPlanListeningQueue();
+    private static final PipeConfigPlanListeningQueue INSTANCE = new PipeConfigPlanListeningQueue();
 
     private ConfigPlanListeningQueueHolder() {
       // empty constructor
