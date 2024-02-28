@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 
 import org.awaitility.Awaitility;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,10 +76,10 @@ public class IoTDBRegionMigrateReliabilityIT {
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
 
-  //  @After
-  //  public void tearDown() {
-  //    EnvFactory.getEnv().cleanClusterEnvironment();
-  //  }
+  @After
+  public void tearDown() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
 
   @Test
   public void normalTest() throws Exception {
@@ -98,18 +99,11 @@ public class IoTDBRegionMigrateReliabilityIT {
         dataNodeSet.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
-      int selectedRegion =
-          regionMap.keySet().stream().findAny().orElseThrow(() -> new RuntimeException("gg"));
-      int originalDataNode =
-          regionMap.get(selectedRegion).stream()
-              .findAny()
-              .orElseThrow(() -> new RuntimeException("gg"));
-      int destDataNode =
-          dataNodeSet.stream()
-              .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
-              .findAny()
-              .orElseThrow(() -> new RuntimeException("gg"));
+      final int selectedRegion = selectRegion(regionMap);
+      final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
+      final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
 
+      // set breakpoint
       HashMap<String, Runnable> keywordAction = new HashMap<>();
       Arrays.stream(RegionTransitionState.values())
           .forEach(
@@ -125,38 +119,45 @@ public class IoTDBRegionMigrateReliabilityIT {
 
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
-      Awaitility.await()
-          .atMost(1, TimeUnit.MINUTES)
-          .until(
-              () -> {
-                Map<Integer, Set<Integer>> newRegionMap =
-                    getRegionMap(statement.executeQuery(SHOW_REGIONS));
-                Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-                return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-              });
+      awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
 
-      String nodePath =
-          EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get().getNodePath();
-      File originalRegionDir =
-          new File(
-              nodePath
-                  + File.separator
-                  + IoTDBConstant.DATA_FOLDER_NAME
-                  + File.separator
-                  + "datanode"
-                  + File.separator
-                  + IoTDBConstant.CONSENSUS_FOLDER_NAME
-                  + File.separator
-                  + "data_region");
-      Assert.assertTrue(originalRegionDir.isDirectory());
-      Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+      checkRegionFileClear(originalDataNode);
 
       LOGGER.info("test pass");
     }
   }
 
-  // region helper
+  //region ConfigNode crash tests
+  @Test
+  public void cnCrashDuringPreCheck() {
 
+  }
+
+  @Test
+  public void cnCrashDuringCreatePeer() {
+
+  }
+
+  @Test
+  public void cnCrashDuringAddPeer() {
+
+  }
+
+  // TODO: other cn crash test
+
+  //endregion
+
+  //region DataNode crash tests
+
+  //endregion
+
+  //region Helpers
+
+  /**
+   * Monitor the node's log and do something.
+   * @param nodeIndex
+   * @param keywordAction Map<keyword, action>
+   */
   private static void logBreakpointMonitor(int nodeIndex, HashMap<String, Runnable> keywordAction) {
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -189,7 +190,7 @@ public class IoTDBRegionMigrateReliabilityIT {
           detected.forEach(
               k -> {
                 keywordAction.get(k).run();
-                EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
+//                EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
                 keywordAction.remove(k);
               });
         }
@@ -216,6 +217,56 @@ public class IoTDBRegionMigrateReliabilityIT {
       }
     }
     return regionMap;
+  }
+
+  private static int selectRegion(Map<Integer, Set<Integer>> regionMap) {
+    return regionMap.keySet().stream().findAny().orElseThrow(() -> new RuntimeException("gg"));
+  }
+
+  private static int selectOriginalDataNode(Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
+    return regionMap.get(selectedRegion).stream()
+            .findAny()
+            .orElseThrow(() -> new RuntimeException("gg"));
+  }
+
+  private static int selectDestDataNode(Set<Integer> dataNodeSet, Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
+    return dataNodeSet.stream()
+            .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
+            .findAny()
+            .orElseThrow(() -> new RuntimeException("gg"));
+  }
+
+  private static void awaitUntilSuccess(Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
+    Awaitility.await()
+            .atMost(1, TimeUnit.MINUTES)
+            .until(
+                    () -> {
+                      Map<Integer, Set<Integer>> newRegionMap =
+                              getRegionMap(statement.executeQuery(SHOW_REGIONS));
+                      Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+                      return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+                    });
+  }
+
+  /**
+   * Check whether the original DataNode's region file has been deleted.
+   */
+  private static void checkRegionFileClear(int dataNode) {
+    String nodePath =
+            EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
+    File originalRegionDir =
+            new File(
+                    nodePath
+                            + File.separator
+                            + IoTDBConstant.DATA_FOLDER_NAME
+                            + File.separator
+                            + "datanode"
+                            + File.separator
+                            + IoTDBConstant.CONSENSUS_FOLDER_NAME
+                            + File.separator
+                            + "data_region");
+    Assert.assertTrue(originalRegionDir.isDirectory());
+    Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
   }
 
   // endregion
