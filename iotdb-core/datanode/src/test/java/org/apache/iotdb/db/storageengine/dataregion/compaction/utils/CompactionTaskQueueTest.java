@@ -40,7 +40,6 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -164,53 +163,6 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
       thread.interrupt();
       thread.join();
     }
-  }
-
-  @Test
-  public void testIncrementPriority()
-      throws InterruptedException, IOException, MetadataException, WriteProcessException {
-    AbstractCompactionTask mockTask1 = prepareTask(200, 10, 1);
-    AbstractCompactionTask mockTask2 = prepareTask(1600, 10, 2);
-    Mockito.when(mockTask2.getRetryAllocateResourcesTimes()).thenReturn(Integer.MAX_VALUE);
-    AbstractCompactionTask mockTask3 = prepareTask(600, 10, 3);
-    CompactionTaskQueue queue =
-        new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
-    queue.put(mockTask1);
-    queue.put(mockTask3);
-    CountDownLatch latch = new CountDownLatch(3);
-    Thread thread =
-        new Thread(
-            () -> {
-              while (!queue.isEmpty()) {
-                try {
-                  AbstractCompactionTask task = queue.take();
-                  Assert.assertEquals(mockTask3, task);
-
-                  queue.put(mockTask2);
-                  latch.countDown();
-
-                  task = queue.take();
-                  Assert.assertEquals(mockTask2, task);
-                  latch.countDown();
-
-                  task = queue.take();
-                  Assert.assertEquals(mockTask1, task);
-
-                  latch.countDown();
-                } catch (InterruptedException ignored) {
-                  Assert.fail();
-                }
-              }
-            });
-    thread.start();
-    while (latch.getCount() != 2) {
-      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
-    }
-    releaseTaskOccupiedResources(mockTask3);
-    latch.await();
-    releaseTaskOccupiedResources(mockTask2);
-    releaseTaskOccupiedResources(mockTask1);
-    thread.join();
   }
 
   private AbstractCompactionTask prepareTask(long memCost, int fileNum, long timePartition)

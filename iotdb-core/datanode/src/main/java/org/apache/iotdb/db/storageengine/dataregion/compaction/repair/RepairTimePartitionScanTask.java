@@ -95,6 +95,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
           latch.countDown();
           continue;
         }
+        LOGGER.info("[RepairScheduler] start check tsfile: {}", sourceFile);
         RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(sourceFile);
         scanUtil.scanTsFile();
         checkTaskStatusAndMayStop();

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
@@ -68,15 +66,9 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
         dropCompactionTask(task);
         continue;
       }
-      try {
-        if (!task.tryOccupyResourcesForRunning()) {
-          queue.add(task);
-          return null;
-        }
-      } catch (CompactionFileCountExceededException | CompactionMemoryNotEnoughException e) {
-        // Should not reach here
-        dropCompactionTask(task);
-        continue;
+      if (!task.tryOccupyResourcesForRunning()) {
+        queue.add(task);
+        return null;
       }
       if (!transitTaskFileStatus(task)) {
         dropCompactionTask(task);
