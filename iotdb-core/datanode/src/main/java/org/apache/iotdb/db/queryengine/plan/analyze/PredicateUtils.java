@@ -335,29 +335,25 @@ public class PredicateUtils {
     }
   }
 
-  public static boolean predicateCanPushDownToSource(Expression predicate) {
-    return new PredicateCanPushDownToSourceChecker().process(predicate, null);
-  }
-
   public static PartialPath extractPredicateSourceSymbol(Expression predicate) {
     List<Expression> sourceExpressions = ExpressionAnalyzer.searchSourceExpressions(predicate);
     Set<PartialPath> sourcePaths =
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toSet());
+    Iterator<PartialPath> pathIterator = sourcePaths.iterator();
+    MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
+
     if (sourcePaths.size() == 1) {
       // only contain one source path, can be push down
-      return sourcePaths.iterator().next();
+      return firstPath.isUnderAlignedEntity() ? firstPath.getDevicePath() : firstPath;
     }
 
     // sourcePaths contain more than one path, can be push down when
     // these paths under on aligned device
-    Iterator<PartialPath> pathIterator = sourcePaths.iterator();
-    MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
     if (!firstPath.isUnderAlignedEntity()) {
       return null;
     }
-
     PartialPath checkedDevice = firstPath.getDevicePath();
     while (pathIterator.hasNext()) {
       MeasurementPath path = (MeasurementPath) pathIterator.next();
@@ -366,6 +362,10 @@ public class PredicateUtils {
       }
     }
     return checkedDevice;
+  }
+
+  public static boolean predicateCanPushDownToSource(Expression predicate) {
+    return new PredicateCanPushDownToSourceChecker().process(predicate, null);
   }
 
   public static boolean predicateCanPushIntoScan(Expression predicate) {
