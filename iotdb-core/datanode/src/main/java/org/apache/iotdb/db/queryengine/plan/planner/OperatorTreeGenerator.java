@@ -3162,7 +3162,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                ExplainAnalyzeOperator.class.getName());
+                ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(operatorContext, operator, false);
   }
 }

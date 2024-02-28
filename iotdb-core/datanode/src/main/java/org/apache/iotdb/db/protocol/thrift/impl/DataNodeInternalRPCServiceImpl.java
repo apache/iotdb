@@ -164,6 +164,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
@@ -308,7 +310,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-    // TODO
     return resp;
   }
 
@@ -1118,6 +1119,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
     return throttleQuotaManager.setThrottleQuota(req);
+  }
+
+  @Override
+  public TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(
+      TFetchFragmentInstanceStatisticsReq req) throws TException {
+    FragmentInstanceManager fragmentInstanceManager = FragmentInstanceManager.getInstance();
+    TFetchFragmentInstanceStatisticsResp resp;
+    try {
+      resp =
+          fragmentInstanceManager.getFragmentInstanceStatistics(
+              FragmentInstanceId.fromThrift(req.getFragmentInstanceId()));
+      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      resp = new TFetchFragmentInstanceStatisticsResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXPLAIN_ANALYZE_FETCH_ERROR, e.getMessage()));
+      LOGGER.error(e.getMessage());
+    }
+    return resp;
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

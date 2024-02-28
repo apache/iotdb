@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -132,7 +133,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     root =
         new ExplainAnalyzeNode(
             context.getQueryId().genPlanNodeId(), root, explainAnalyzeStatement.isVerbose());
-    context.getTypeProvider().setType("Explain Analyze", TSDataType.TEXT);
+    context.getTypeProvider().setType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
     return root;
   }
 

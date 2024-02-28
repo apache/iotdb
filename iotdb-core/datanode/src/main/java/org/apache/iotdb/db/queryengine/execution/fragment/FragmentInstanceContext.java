@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -91,6 +92,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private DataNodeQueryContext dataNodeQueryContext;
+
+  // Used for EXPLAIN ANALYZE to cache statistics result when the FI is finished,
+  // it will not be released until it's fetched.
+  private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
+
+  private long initQueryDataSourceCost = 0;
+  private long readyQueueTime = 0;
+  private long blockQueueTime = 0;
+  private long unclosedSeqFileNum = 0;
+  private long unclosedUnseqFileNum = 0;
+  private long closedSeqFileNum = 0;
+  private long closedUnseqFileNum = 0;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -375,8 +388,16 @@ public class FragmentInstanceContext extends QueryContext {
     // sequence data
     addUsedFilesForQuery(dataSource.getSeqResources());
 
+    // Record statistics of seqFiles
+    unclosedSeqFileNum = unClosedFilePaths.size();
+    closedSeqFileNum = closedFilePaths.size();
+
     // unsequence data
     addUsedFilesForQuery(dataSource.getUnseqResources());
+
+    // Record statistics of files of unseqFiles
+    unclosedUnseqFileNum = unClosedFilePaths.size() - unclosedSeqFileNum;
+    closedUnseqFileNum = closedFilePaths.size() - closedSeqFileNum;
   }
 
   private void addUsedFilesForQuery(List<TsFileResource> resources) {
@@ -544,5 +565,54 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setTimePartitions(List<Long> timePartitions) {
     this.timePartitions = timePartitions;
+  }
+
+  // Only used in EXPLAIN ANALYZE
+  public void setFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsResp statistics) {
+    this.fragmentInstanceStatistics = statistics;
+  }
+
+  public TFetchFragmentInstanceStatisticsResp getFragmentInstanceStatistics() {
+    return fragmentInstanceStatistics;
+  }
+
+  public void setInitQueryDataSourceCost(long initQueryDataSourceCost) {
+    this.initQueryDataSourceCost = initQueryDataSourceCost;
+  }
+
+  public long getInitQueryDataSourceCost() {
+    return initQueryDataSourceCost;
+  }
+
+  public void addReadyQueuedTime(long time) {
+    readyQueueTime += time;
+  }
+
+  public void addBlockQueuedTime(long time) {
+    blockQueueTime += time;
+  }
+
+  public long getReadyQueueTime() {
+    return readyQueueTime;
+  }
+
+  public long getBlockQueueTime() {
+    return blockQueueTime;
+  }
+
+  public long getClosedSeqFileNum() {
+    return closedSeqFileNum;
+  }
+
+  public long getUnclosedUnseqFileNum() {
+    return unclosedUnseqFileNum;
+  }
+
+  public long getClosedUnseqFileNum() {
+    return closedUnseqFileNum;
+  }
+
+  public long getUnclosedSeqFileNum() {
+    return unclosedSeqFileNum;
   }
 }
