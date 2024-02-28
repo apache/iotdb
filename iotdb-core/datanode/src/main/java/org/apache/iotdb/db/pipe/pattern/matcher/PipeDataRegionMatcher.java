@@ -50,6 +50,9 @@ public interface PipeDataRegionMatcher {
   /** Check if a pattern is legal. Different pattern format may have different rules. */
   boolean patternIsLegal(String pattern);
 
+  /** Check if a pattern matches all time-series under a database. */
+  boolean patternCoverDb(String pattern, String device);
+
   /** Check if a device's all measurements are covered by the pattern. */
   boolean patternCoverDevice(String pattern, String device);
 

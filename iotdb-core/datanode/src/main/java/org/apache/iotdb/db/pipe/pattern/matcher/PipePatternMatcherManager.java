@@ -51,6 +51,11 @@ public class PipePatternMatcherManager {
     return getMatcherByFormat(format).patternIsLegal(pattern);
   }
 
+  /** Check if a pattern matches all time-series under a database. */
+  public boolean patternCoversDb(PipePatternFormat format, String pattern, String db) {
+    return getMatcherByFormat(format).patternCoverDb(pattern, db);
+  }
+
   /** Check if a device's all measurements are covered by the pattern. */
   public boolean patternCoverDevice(PipePatternFormat format, String pattern, String device) {
     return getMatcherByFormat(format).patternCoverDevice(pattern, device);

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -198,11 +199,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (patternFormat.equals(PipePatternFormat.PREFIX)
-          && databaseName != null
-          && pattern.length() <= databaseName.length()
-          && databaseName.startsWith(pattern)) {
-        isDbNameCoveredByPattern = true;
+      if (databaseName != null) {
+        isDbNameCoveredByPattern =
+            PipePatternMatcherManager.getInstance()
+                .patternCoversDb(patternFormat, pattern, databaseName);
       }
     }
 

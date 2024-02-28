@@ -41,6 +41,17 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
+  public boolean patternCoverDb(String pattern, String db) {
+    try {
+      PartialPath patternPath = new PartialPath(pattern);
+      return patternPath.include(new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Illegal path exception: ", e);
+      return false;
+    }
+  }
+
+  @Override
   public boolean patternCoverDevice(String pattern, String device) {
     try {
       PartialPath patternPath = new PartialPath(pattern);

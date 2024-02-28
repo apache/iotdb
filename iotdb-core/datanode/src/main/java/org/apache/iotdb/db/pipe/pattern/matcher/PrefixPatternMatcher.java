@@ -63,6 +63,11 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
+  public boolean patternCoverDb(String pattern, String db) {
+    return pattern.length() <= db.length() && db.startsWith(pattern);
+  }
+
+  @Override
   public boolean patternCoverDevice(String pattern, String device) {
     // for example, pattern is root.a.b and device is root.a.b.c
     // in this case, the extractor can be matched without checking the measurements
