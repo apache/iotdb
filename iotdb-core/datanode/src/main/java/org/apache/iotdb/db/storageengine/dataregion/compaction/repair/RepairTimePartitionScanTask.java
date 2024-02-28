@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
@@ -196,9 +195,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
   }
 
   private void checkTaskStatusAndMayStop() throws InterruptedException {
-    if (Thread.interrupted()
-        || CompactionScheduleTaskManager.getRepairTaskManagerInstance().getRepairTaskStatus()
-            != RepairTaskStatus.RUNNING) {
+    if (Thread.interrupted()) {
       throw new InterruptedException();
     }
   }

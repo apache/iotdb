@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
@@ -273,6 +274,9 @@ public class CompactionScheduleTaskManager implements IService {
 
     public Future<Void> submitRepairScanTask(RepairTimePartitionScanTask scanTask) {
       lock.lock();
+      if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
+        return null;
+      }
       try {
         Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
         submitTaskFutures.add(future);
@@ -283,7 +287,7 @@ public class CompactionScheduleTaskManager implements IService {
     }
 
     public void waitRepairTaskFinish() {
-      for (Future<Void> result : submitTaskFutures) {
+      for (Future<Void> result : new ArrayList<>(submitTaskFutures)) {
         try {
           result.get();
         } catch (CancellationException cancellationException) {
