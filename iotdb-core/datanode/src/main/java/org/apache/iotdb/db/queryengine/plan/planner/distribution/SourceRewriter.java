@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -74,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +90,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
@@ -228,55 +229,66 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     if (analysis.isExistDeviceCrossRegion() && analysis.isDeviceViewSpecialProcess()) {
       // return processSpecialDeviceView(node, context);
 
-      // TODO 1. generate old and new measurement idx relationship 2. generate new outputColumns for
+      // TODO 1. generate old and new measurement idx relationship
+      // TODO 2. generate new outputColumns for
       // each subDeviceView
-//      Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
-//      List<String> newPartialOutputColumns = new ArrayList<>();
-//
-      Set<Expression> selectExpressions = analysis.getSelectExpressions();
-//
-//      int i = 0, idxSum = 0;
-//      for (Expression expression : selectExpressions) {
-//        if (i == 0) {
-//          // device
-//          newPartialOutputColumns.add(expression.getOutputSymbol());
-//          i++;
-//          idxSum++;
-//          continue;
-//        }
-//        FunctionExpression aggExpression = (FunctionExpression) expression;
-//        List<String> actualPartialAggregationNames =
-//            getActualPartialAggregationNames(aggExpression.getFunctionName());
-//        for (String actualAggName : actualPartialAggregationNames) {
-//          newPartialOutputColumns.add(
-//              new FunctionExpression(
-//                      actualAggName,
-//                      aggExpression.getFunctionAttributes(),
-//                      aggExpression.getExpressions())
-//                  .getOutputSymbol());
-//        }
-//        // TODO need update typeProvider?
-//        if (actualPartialAggregationNames.size() > 1) {
-//          newMeasurementIdxMap.put(i, Arrays.asList(idxSum++, idxSum++));
-//        } else {
-//          newMeasurementIdxMap.put(i, Collections.singletonList(idxSum++));
-//        }
-//        i++;
-//      }
+      Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
+      List<String> newPartialOutputColumns = new ArrayList<>();
 
-//      for (String device : node.getDevices()) {
-//        List<Integer> oldMeasurementList =
-//                node.getDeviceToMeasurementIndexesMap().get(device);
-//        List<Integer> newMeasurementList = new ArrayList<>();
-//        for (int idx : oldMeasurementList) {
-//          newMeasurementList.addAll(newMeasurementIdxMap.get(idx));
-//        }
-//        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementList);
-//      }
+      Set<Expression> selectExpressions = analysis.getSelectExpressions();
+      int[] newAggregationIdx = new int[selectExpressions.size()];
+
+      int i = 0, idxSum = 0;
+      for (Expression expression : selectExpressions) {
+        if (i == 0) {
+          // device
+          newPartialOutputColumns.add(expression.getOutputSymbol());
+          i++;
+          idxSum++;
+          continue;
+        }
+        FunctionExpression aggExpression = (FunctionExpression) expression;
+        // used for AVG, FIRST_VALUE, LAST_VALUE, TIME_DURATION agg function
+        List<String> actualPartialAggregationNames =
+            getActualPartialAggregationNames(aggExpression.getFunctionName());
+        for (String actualAggName : actualPartialAggregationNames) {
+          FunctionExpression partialFunctionExpression =
+              new FunctionExpression(
+                  actualAggName,
+                  aggExpression.getFunctionAttributes(),
+                  aggExpression.getExpressions());
+          if (actualPartialAggregationNames.size() > 1) {
+            TSDataType dataType = analyzeExpression(analysis, partialFunctionExpression);
+            context
+                .queryContext
+                .getTypeProvider()
+                .setType(partialFunctionExpression.getOutputSymbol(), dataType);
+          }
+          newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
+        }
+
+        newAggregationIdx[i] = actualPartialAggregationNames.size();
+        // TODO need update typeProvider?
+        if (actualPartialAggregationNames.size() > 1) {
+          newMeasurementIdxMap.put(i, Arrays.asList(idxSum++, idxSum++));
+        } else {
+          newMeasurementIdxMap.put(i, Collections.singletonList(idxSum++));
+        }
+        i++;
+      }
+
+      for (String device : node.getDevices()) {
+        List<Integer> oldMeasurementList = node.getDeviceToMeasurementIndexesMap().get(device);
+        List<Integer> newMeasurementList = new ArrayList<>();
+        for (int idx : oldMeasurementList) {
+          newMeasurementList.addAll(newMeasurementIdxMap.get(idx));
+        }
+        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementList);
+      }
 
       for (PlanNode planNode : deviceViewNodeList) {
         DeviceViewNode deviceViewNode = (DeviceViewNode) planNode;
-        // deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
+        deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
         transferAggregatorsRecursively2(planNode, context);
       }
 
@@ -285,7 +297,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
               context.queryContext.getQueryId().genPlanNodeId(),
               node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
-              selectExpressions);
+              selectExpressions,
+              newAggregationIdx);
       deviceViewNodeList.forEach(mergeSortNode::addChild);
       return Collections.singletonList(mergeSortNode);
     } else {
@@ -410,16 +423,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           List<String> aggregationNames = descriptor.getActualAggregationNames(true);
           for (String aggregationName : aggregationNames) {
             newDescriptorList.add(
-                    new AggregationDescriptor(
-                            aggregationName,
-                            AggregationStep.PARTIAL,
-                            descriptor.getInputExpressions(),
-                            descriptor.getInputAttributes()));
+                new AggregationDescriptor(
+                    aggregationName,
+                    AggregationStep.PARTIAL,
+                    descriptor.getInputExpressions(),
+                    descriptor.getInputAttributes()));
           }
         }
         scanSourceNode.setAggregationDescriptorList(newDescriptorList);
       }
-
     }
   }
 
@@ -759,9 +771,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                         descriptor.getInputExpressions(),
                         descriptor.getInputAttributes())));
     leafAggDescriptorList.forEach(
-        d ->
-            updateTypeProviderByPartialAggregation(
-                d, context.queryContext.getTypeProvider()));
+        d -> updateTypeProviderByPartialAggregation(d, context.queryContext.getTypeProvider()));
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
@@ -1490,8 +1500,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
-        updateTypeProviderByPartialAggregation(
-            descriptor, context.queryContext.getTypeProvider());
+        updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
@@ -1588,8 +1597,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .forEach(
               d -> {
                 d.setStep(AggregationStep.PARTIAL);
-                updateTypeProviderByPartialAggregation(
-                    d, context.queryContext.getTypeProvider());
+                updateTypeProviderByPartialAggregation(d, context.queryContext.getTypeProvider());
               });
     }
 

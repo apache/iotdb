@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -28,15 +31,22 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory.createAccumulator;
 
 public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
-  // private final ITimeRangeIterator timeRangeIterator;
-
-  // Current interval of aggregation window [curStartTime, curEndTime)
-  private TimeRange curTimeRange;
+  private List<Accumulator> accumulators;
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -45,18 +55,37 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
   private boolean finished;
 
+  private Map<String, List<Aggregator>> aggMap;
+
+  private final TimeComparator timeComparator;
+
+  private final Comparator<Binary> deviceComparator;
+
   private boolean currentFinished;
 
-  private String currentDevice;
+  private Binary currentDevice;
 
   private long currentTime;
 
+  private int[] readIndex;
+
+  List<Integer> newAggregationIdx;
+
   public AggregationMergeSortOperator(
-      OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
+      OperatorContext operatorContext,
+      List<Operator> children,
+      List<TSDataType> dataTypes,
+      List<Accumulator> accumulators,
+      TimeComparator timeComparator,
+      Comparator<Binary> deviceComparator) {
     super(operatorContext, children);
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
+    this.accumulators = accumulators;
+    this.timeComparator = timeComparator;
+    this.deviceComparator = deviceComparator;
+    readIndex = new int[inputTsBlocks.length];
   }
 
   @Override
@@ -64,7 +93,6 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     long startTime = System.nanoTime();
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
 
-    // 1. fill consumed up TsBlock
     if (!prepareInput()) {
       return null;
     }
@@ -72,9 +100,71 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     tsBlockBuilder.reset();
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (TsBlock tsBlock : inputTsBlocks) {
-      timeBuilder.writeLong(tsBlock.getTimeColumn().getLong(0));
-      valueColumnBuilders[0].writeBinary(tsBlock.getValueColumns()[0].getBinary(0));
+
+    while (true) {
+      currentDevice = null;
+
+      for (int idx = 0; idx < inputTsBlocks.length; idx++) {
+        TsBlock tsBlock = inputTsBlocks[idx];
+        if (!noMoreTsBlocks[idx] && tsBlock == null) {
+          return null;
+        }
+
+        if (readIndex[idx] >= tsBlock.getPositionCount()) {
+          inputTsBlocks[idx] = null;
+        }
+
+        Binary device = tsBlock.getColumn(0).getBinary(readIndex[idx]);
+
+        if (currentDevice == null) {
+          currentDevice = device;
+        } else {
+          if (deviceComparator.compare(device, currentDevice) < 0) {
+            currentDevice = device;
+          }
+        }
+      }
+
+      if (currentDevice == null) {
+        break;
+      }
+
+      for (int idx = 0; idx < inputTsBlocks.length; idx++) {
+        TsBlock tsBlock = inputTsBlocks[idx];
+        if (tsBlock == null) {
+          continue;
+        }
+
+        if (readIndex[idx] >= tsBlock.getPositionCount()) {
+          inputTsBlocks[idx] = null;
+        }
+
+        Binary device = tsBlock.getColumn(0).getBinary(readIndex[idx]);
+        if (device.equals(currentDevice)) {
+          currentTime = tsBlock.getTimeColumn().getLong(readIndex[idx]);
+          int cnt = 0;
+          for (int i = 0; i < accumulators.size(); i++) {
+            Accumulator accumulator = accumulators.get(i);
+            if (newAggregationIdx.get(i) == 2) {
+              accumulator.addIntermediate(tsBlock.getColumns(new int[2]{cnt++, cnt+}));
+            } else {
+              accumulator.addIntermediate(tsBlock.getColumns(new int[]));
+            }
+          }
+          readIndex[idx] ++;
+        }
+      }
+
+      timeBuilder.writeLong(currentTime);
+      for (int i = 1; i < dataTypes.size(); i++) {
+        accumulators.get(i).outputFinal(valueColumnBuilders[i]);
+      }
+
+      currentDevice = null;
+
+      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
+        break;
+      }
     }
 
     return tsBlockBuilder.build();
@@ -82,27 +172,47 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    // TODO the child of DeviceViewNode already calc TimeRange?
-    // return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
-
     if (finished) {
       return false;
     }
+
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isEmpty(i)) {
+      if (isInputNotEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
         if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
-          children.get(i).close();
-          children.set(i, null);
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
+          handleFinishedChild(i);
         }
       }
     }
+
     return false;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    boolean hasReadyChild = false;
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || isInputNotEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+      ListenableFuture<?> blocked = children.get(i).isBlocked();
+      if (blocked.isDone()) {
+        hasReadyChild = true;
+        // only when not blocked, canCallNext[i] equals true
+        canCallNext[i] = true;
+      } else {
+        listenableFutures.add(blocked);
+      }
+    }
+
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   @Override
@@ -110,15 +220,34 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     if (finished) {
       return true;
     }
-    finished = true;
 
+    finished = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (!noMoreTsBlocks[i] || isInputNotEmpty(i)) {
         finished = false;
         break;
       }
     }
     return finished;
+  }
+
+  @Override
+  public void close() throws Exception {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      final Operator operator = children.get(i);
+      if (operator != null) {
+        operator.close();
+      }
+    }
+  }
+
+  @Override
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    // invoking this method when children.get(currentChildIndex).hasNext return false
+    noMoreTsBlocks[currentChildIndex] = true;
+    inputTsBlocks[currentChildIndex] = null;
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
   }
 
   @Override
@@ -134,5 +263,9 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0;
+  }
+
+  private boolean isInputNotEmpty(int index) {
+    return inputTsBlocks[index] != null && !inputTsBlocks[index].isEmpty();
   }
 }

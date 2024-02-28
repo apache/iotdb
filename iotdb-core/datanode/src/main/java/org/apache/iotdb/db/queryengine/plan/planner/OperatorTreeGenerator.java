@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
@@ -147,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaC
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -277,6 +279,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
@@ -872,24 +875,53 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
-    //    for (Expression expression : selectExpressions) {
-    //      if (expression instanceof FunctionExpression) {
-    //        FunctionExpression functionExpression = (FunctionExpression) expression;
-    //        String functionName = functionExpression.getFunctionName();
-    //        expression.getExpressionType();
-    //        Accumulator accumulator = AccumulatorFactory.createAccumulator(
-    //                functionName,
-    //                aggregationType,
-    //
-    // Collections.singletonList(context.getTypeProvider().getType(functionExpression.getOutputSymbol())),
-    //                null,
-    //                null,
-    //                true,
-    //                true);
-    //      }
-    //    }
+    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
 
-    return new AggregationMergeSortOperator(operatorContext, children, dataTypes);
+    boolean timeAscending = true;
+    TimeComparator timeComparator = ASC_TIME_COMPARATOR;
+    Comparator<Binary> deviceComparator = ASC_BINARY_COMPARATOR;
+    for (SortItem sortItem : sortItemList) {
+      if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getSortKey())) {
+        if (sortItem.getOrdering() == Ordering.DESC) {
+          timeAscending = false;
+          timeComparator = DESC_TIME_COMPARATOR;
+        }
+      } else if ("Device".equalsIgnoreCase(sortItem.getSortKey())) {
+        if (sortItem.getOrdering() == Ordering.DESC) {
+          deviceComparator = DESC_BINARY_COMPARATOR;
+        }
+      }
+    }
+
+    List<Accumulator> accumulators = new ArrayList<>();
+    for (Expression expression : node.getSelectExpressions()) {
+      if (expression instanceof FunctionExpression) {
+        FunctionExpression functionExpression = (FunctionExpression) expression;
+        String aggregationName = functionExpression.getFunctionName();
+        Accumulator accumulator =
+            AccumulatorFactory.createAccumulator(
+                aggregationName,
+                getAggregationTypeByFuncName(aggregationName),
+                Collections.singletonList(
+                    context.getTypeProvider().getType(functionExpression.getOutputSymbol())),
+                null,
+                null,
+                timeAscending,
+                false);
+        accumulators.add(accumulator);
+      }
+    }
+
+    return new AggregationMergeSortOperator(
+        operatorContext, children, dataTypes, accumulators, timeComparator, deviceComparator);
   }
 
   @Override

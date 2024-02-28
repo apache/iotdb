@@ -81,7 +81,7 @@ public class AggregationDescriptor {
     this.inputAttributes = inputAttributes;
   }
 
-  private TAggregationType getAggregationTypeByFuncName(String funcName) {
+  public static TAggregationType getAggregationTypeByFuncName(String funcName) {
     if (isBuiltinAggregationName(funcName.toLowerCase())) {
       return TAggregationType.valueOf(funcName.toUpperCase());
     } else {

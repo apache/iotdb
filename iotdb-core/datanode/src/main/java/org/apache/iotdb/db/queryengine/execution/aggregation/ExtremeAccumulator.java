@@ -225,6 +225,11 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
+  @Override
+  public int getPartialResultSize() {
+    return 1;
+  }
+
   private void addIntInput(Column[] column, BitMap bitMap) {
     int count = column[0].getPositionCount();
     for (int i = 0; i < count; i++) {
