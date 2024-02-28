@@ -463,8 +463,13 @@ public class ConfigPlanExecutor {
       case PipeDeleteTimeSeries:
       case PipeDeleteLogicalView:
       case PipeDeactivateTemplate:
-        // Pipe payload, will not execute
+        // Pipe payload, used to trigger plan extraction.
+        // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      case PipeUnsetTemplate:
+        // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
+        // collects UnsetTemplatePlan and before receiver calls ConfigManager.
+        throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }
