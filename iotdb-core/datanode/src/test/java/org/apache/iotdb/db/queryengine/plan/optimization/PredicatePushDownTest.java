@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
@@ -118,6 +119,45 @@ public class PredicatePushDownTest {
             .transform(
                 "5",
                 Collections.singletonList(sin(timeSeries(schemaMap.get("root.sg.d1.s1")))),
+                false)
+            .getRoot());
+
+    checkPushDown(
+        "select sin(s1) from root.sg.d1 where time > 100 and s2 > 10 and s1 + s2 > 20",
+        new TestPlanBuilder()
+            .fullOuterTimeJoin(
+                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+            .filter(
+                "3",
+                Collections.singletonList(sin(timeSeries(schemaMap.get("root.sg.d1.s1")))),
+                and(
+                    gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")),
+                    gt(
+                        add(
+                            timeSeries(schemaMap.get("root.sg.d1.s1")),
+                            timeSeries(schemaMap.get("root.sg.d1.s2"))),
+                        intValue("20"))),
+                false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .leftOuterTimeJoin(
+                "4",
+                Ordering.ASC,
+                new TestPlanBuilder()
+                    .scan(
+                        "1",
+                        schemaMap.get("root.sg.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                    .getRoot(),
+                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+            .filter(
+                "5",
+                Collections.singletonList(sin(timeSeries(schemaMap.get("root.sg.d1.s1")))),
+                gt(
+                    add(
+                        timeSeries(schemaMap.get("root.sg.d1.s1")),
+                        timeSeries(schemaMap.get("root.sg.d1.s2"))),
+                    intValue("20")),
                 false)
             .getRoot());
 

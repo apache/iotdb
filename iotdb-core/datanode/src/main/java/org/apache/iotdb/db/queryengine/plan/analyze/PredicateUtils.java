@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
@@ -27,11 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeExce
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceExtractor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
@@ -44,8 +46,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PredicateUtils {
 
@@ -331,12 +335,37 @@ public class PredicateUtils {
     }
   }
 
-  public static PartialPath extractPredicateSourceSymbol(
-      Expression predicate, boolean isBuildPlanUseTemplate) {
-    PredicateCanPushDownToSourceExtractor.Context context =
-        new PredicateCanPushDownToSourceExtractor.Context(isBuildPlanUseTemplate);
-    predicate.accept(new PredicateCanPushDownToSourceExtractor(), context);
-    return context.getExtractedSourcePath();
+  public static boolean predicateCanPushDownToSource(Expression predicate) {
+    return new PredicateCanPushDownToSourceChecker().process(predicate, null);
+  }
+
+  public static PartialPath extractPredicateSourceSymbol(Expression predicate) {
+    List<Expression> sourceExpressions = ExpressionAnalyzer.searchSourceExpressions(predicate);
+    Set<PartialPath> sourcePaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toSet());
+    if (sourcePaths.size() == 1) {
+      // only contain one source path, can be push down
+      return sourcePaths.iterator().next();
+    }
+
+    // sourcePaths contain more than one path, can be push down when
+    // these paths under on aligned device
+    Iterator<PartialPath> pathIterator = sourcePaths.iterator();
+    MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
+    if (!firstPath.isUnderAlignedEntity()) {
+      return null;
+    }
+
+    PartialPath checkedDevice = firstPath.getDevicePath();
+    while (pathIterator.hasNext()) {
+      MeasurementPath path = (MeasurementPath) pathIterator.next();
+      if (!path.isUnderAlignedEntity() || !path.getDevicePath().equals(checkedDevice)) {
+        return null;
+      }
+    }
+    return checkedDevice;
   }
 
   public static boolean predicateCanPushIntoScan(Expression predicate) {

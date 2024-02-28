@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -125,12 +127,14 @@ public class PredicatePushDown implements PlanOptimizer {
       }
 
       Expression inheritedPredicate = context.getInheritedPredicate();
+
       List<Expression> conjuncts = PredicateUtils.extractConjuncts(inheritedPredicate);
       List<PlanNode> children = node.getChildren();
+
       List<Expression> cannotPushDownConjuncts = new ArrayList<>();
-      List<List<Expression>> pushDownConjunctsForEachChild = new ArrayList<>(children.size());
+      List<List<Expression>> pushDownConjunctsForEachChild = new ArrayList<>();
       extractPushDownConjunctsForEachChild(
-          conjuncts, children, cannotPushDownConjuncts, pushDownConjunctsForEachChild, context);
+          conjuncts, children, cannotPushDownConjuncts, pushDownConjunctsForEachChild);
 
       if (cannotPushDownConjuncts.size() == conjuncts.size()) {
         // all conjuncts cannot push down
@@ -173,13 +177,16 @@ public class PredicatePushDown implements PlanOptimizer {
         List<Expression> conjuncts,
         List<PlanNode> children,
         List<Expression> cannotPushDownConjuncts,
-        List<List<Expression>> pushDownConjunctsForEachChild,
-        RewriterContext context) {
+        List<List<Expression>> pushDownConjunctsForEachChild) {
       // distinguish conjuncts that can push down and cannot push down
       Map<PartialPath, List<Expression>> pushDownConjunctsMap = new HashMap<>();
       for (Expression conjunct : conjuncts) {
-        PartialPath extractedSourcePath =
-            PredicateUtils.extractPredicateSourceSymbol(conjunct, context.isBuildPlanUseTemplate());
+        if (!PredicateUtils.predicateCanPushDownToSource(conjunct)) {
+          cannotPushDownConjuncts.add(conjunct);
+          continue;
+        }
+
+        PartialPath extractedSourcePath = PredicateUtils.extractPredicateSourceSymbol(conjunct);
         if (extractedSourcePath == null) {
           cannotPushDownConjuncts.add(conjunct);
         } else {
@@ -194,8 +201,16 @@ public class PredicatePushDown implements PlanOptimizer {
         checkArgument(
             child instanceof SeriesScanSourceNode, "Unexpected node type: " + child.getClass());
         PartialPath sourcePath = ((SeriesScanSourceNode) child).getPartitionPath();
-        pushDownConjunctsForEachChild.add(
-            pushDownConjunctsMap.getOrDefault(sourcePath, Collections.emptyList()));
+        if (sourcePath instanceof MeasurementPath) {
+          pushDownConjunctsForEachChild.add(
+              pushDownConjunctsMap.getOrDefault(sourcePath, Collections.emptyList()));
+        } else if (sourcePath instanceof AlignedPath) {
+          pushDownConjunctsForEachChild.add(
+              pushDownConjunctsMap.getOrDefault(
+                  sourcePath.getDevicePath(), Collections.emptyList()));
+        } else {
+          throw new IllegalArgumentException("sourcePath must be MeasurementPath or AlignedPath");
+        }
       }
     }
 
@@ -260,8 +275,7 @@ public class PredicatePushDown implements PlanOptimizer {
 
       Expression inheritedPredicate = context.getInheritedPredicate();
       if (context.enablePushDownUseTemplate()
-          || PredicateUtils.predicateCanPushDownToSource(
-              inheritedPredicate, node.getPartitionPath(), context.isBuildPlanUseTemplate())) {
+          || PredicateUtils.predicateCanPushDownToSource(inheritedPredicate)) {
         node.setPushDownPredicate(inheritedPredicate);
         if (!templatedInfo.hasPushDownPredicate()) {
           templatedInfo.setPushDownPredicate(inheritedPredicate);
@@ -291,18 +305,34 @@ public class PredicatePushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSeriesScanSource(SeriesScanSourceNode node, RewriterContext context) {
       Expression inheritedPredicate = context.getInheritedPredicate();
-      if (PredicateUtils.predicateCanPushDownToSource(
-          inheritedPredicate, node.getPartitionPath(), context.isBuildPlanUseTemplate())) {
-        node.setPushDownPredicate(inheritedPredicate);
-        context.setEnablePushDown(true);
 
+      List<Expression> conjuncts = PredicateUtils.extractConjuncts(inheritedPredicate);
+      List<Expression> canPushDownConjuncts = new ArrayList<>();
+      List<Expression> cannotPushDownConjuncts = new ArrayList<>();
+      for (Expression conjunct : conjuncts) {
+        if (PredicateUtils.predicateCanPushDownToSource(conjunct)) {
+          canPushDownConjuncts.add(conjunct);
+        } else {
+          cannotPushDownConjuncts.add(conjunct);
+        }
+      }
+
+      if (canPushDownConjuncts.isEmpty()) {
+        // cannot push down
+        return node;
+      }
+
+      node.setPushDownPredicate(PredicateUtils.combineConjuncts(canPushDownConjuncts));
+      context.setEnablePushDown(true);
+
+      if (cannotPushDownConjuncts.isEmpty()) {
+        // all conjuncts can be push down
         PlanNode resultNode = planTransform(node, context);
         resultNode = planProject(resultNode, context);
         return resultNode;
+      } else {
+        return planFilter(node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context);
       }
-
-      // cannot push down
-      return node;
     }
 
     private PlanNode planTransform(PlanNode resultNode, RewriterContext context) {
