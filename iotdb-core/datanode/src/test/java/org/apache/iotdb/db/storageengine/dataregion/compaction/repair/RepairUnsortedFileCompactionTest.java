@@ -798,6 +798,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
     try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
@@ -868,6 +869,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     File tempDir = getEmptyRepairDataLogDir();
     try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover

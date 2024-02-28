@@ -66,6 +66,7 @@ public class RepairLoggerTest extends AbstractRepairDataTest {
     File logFile = null;
     try (RepairLogger logger = new RepairLogger(tempDir, false)) {
       logFile = logger.getLogFile();
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       logger.recordRepairedTimePartition(mockRepairTimePartition);
     }
     RepairTaskRecoverLogParser logParser = new RepairTaskRecoverLogParser(logFile);
@@ -97,6 +98,7 @@ public class RepairLoggerTest extends AbstractRepairDataTest {
     File logFile = null;
     try (RepairLogger logger = new RepairLogger(tempDir, false)) {
       logFile = logger.getLogFile();
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       for (int i = 0; i < 3; i++) {
         logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
         logger.recordCannotRepairFiles(mockRepairTimePartition);
@@ -124,6 +126,7 @@ public class RepairLoggerTest extends AbstractRepairDataTest {
     File tempDir = getEmptyRepairDataLogDir();
     File logFile = null;
     try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       logFile = logger.getLogFile();
       logger.markStartOfRepairedTimePartition(mockRepairTimePartition);
       logger.recordCannotRepairFiles(mockRepairTimePartition);

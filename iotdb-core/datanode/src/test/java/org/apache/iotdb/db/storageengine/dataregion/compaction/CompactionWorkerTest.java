@@ -208,8 +208,7 @@ public class CompactionWorkerTest {
             () -> {
               try {
                 queue.take();
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+              } catch (InterruptedException ignored) {
               }
             });
     thread.start();

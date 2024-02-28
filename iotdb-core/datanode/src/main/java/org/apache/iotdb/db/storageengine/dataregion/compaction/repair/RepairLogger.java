@@ -152,7 +152,7 @@ public class RepairLogger implements Closeable {
   }
 
   public void recordRepairTaskStartTimeIfLogFileEmpty(long repairTaskStartTime) throws IOException {
-    if (logFile.length() != 0 && repairTaskStartTime != Long.MIN_VALUE) {
+    if (logFile.length() != 0) {
       return;
     }
     String repairTaskStartTimeLog =
