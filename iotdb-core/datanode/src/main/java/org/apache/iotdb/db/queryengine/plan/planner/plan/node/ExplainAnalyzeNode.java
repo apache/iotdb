@@ -51,16 +51,16 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return new ExplainAnalyzeNode(planNodeId, null, verbose);
   }
 
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof ExplainAnalyzeNode)) return false;
     ExplainAnalyzeNode that = (ExplainAnalyzeNode) o;
     return verbose == that.verbose;
-  }
-
-  public boolean isVerbose() {
-    return verbose;
   }
 
   @Override

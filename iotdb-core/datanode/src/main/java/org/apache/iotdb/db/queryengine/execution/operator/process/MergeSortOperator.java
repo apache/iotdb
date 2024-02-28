@@ -61,6 +61,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    operatorContext.recordSpecifiedInfo("Merge sort branches", String.valueOf(inputOperatorsCount));
   }
 
   @Override

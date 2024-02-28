@@ -314,7 +314,9 @@ public class QueryExecution implements IQueryExecution {
     try {
       result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(System.nanoTime() - startTime);
+      long analyzeCost = System.nanoTime() - startTime;
+      context.setAnalyzeCost(analyzeCost);
+      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
     }
     return result;
   }
@@ -357,10 +359,14 @@ public class QueryExecution implements IQueryExecution {
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+    long startTime = System.nanoTime();
     this.logicalPlan = planner.plan(this.analysis);
-    if (isQuery() && logger.isDebugEnabled()) {
-      logger.debug(
-          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    if (isQuery()) {
+      context.setLogicalPlanCost(System.nanoTime() - startTime);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+      }
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
     checkTimeOutForQuery();
@@ -373,8 +379,9 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      long distributionPlanCost = System.nanoTime() - startTime;
+      context.setDistributionPlanCost(distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
@@ -777,6 +784,10 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public Statement getStatement() {
     return analysis.getStatement();
+  }
+
+  public MPPQueryContext getContext() {
+    return context;
   }
 
   public String toString() {

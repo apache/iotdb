@@ -41,6 +41,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             Coordinator.getInstance()
                 .getQueryExecution(operatorContext.getInstanceContext().getId().getQueryId());
     this.instances = queryExecution.getDistributedPlan().getInstances();
+    fragmentInstanceStatisticsDrawer.renderPlanStatistics(queryExecution.getContext());
   }
 
   @Override

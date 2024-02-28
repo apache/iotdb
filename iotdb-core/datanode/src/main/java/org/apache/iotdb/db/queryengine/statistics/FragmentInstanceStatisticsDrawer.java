@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.statistics;
 
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
@@ -31,16 +32,37 @@ import java.util.List;
 import java.util.Map;
 
 public class FragmentInstanceStatisticsDrawer {
-
-  private int maxLevel = 0;
   private int maxLineLength = 0;
+  private final List<StatisticLine> table = new ArrayList<>();
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
+
+  public void renderPlanStatistics(MPPQueryContext context) {
+    addLine(
+        table, 0, String.format("Analyze Cost: %s ms", context.getAnalyzeCost() * NS_TO_MS_FACTOR));
+    addLine(
+        table,
+        0,
+        String.format(
+            "Fetch Partition Cost: %s ms", context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
+    addLine(
+        table,
+        0,
+        String.format("Fetch Schema Cost: %s ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
+    addLine(
+        table,
+        0,
+        String.format("Logical Plan Cost: %s ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
+    addLine(
+        table,
+        0,
+        String.format(
+            "Distribution Plan Cost: %s ms", context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+  }
 
   public List<StatisticLine> renderFragmentInstances(
       List<FragmentInstance> instancesToBeRendered,
       Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics,
       boolean verbose) {
-    List<StatisticLine> table = new ArrayList<>();
     for (FragmentInstance instance : instancesToBeRendered) {
       List<StatisticLine> singleFragmentInstanceArea = new ArrayList<>();
       TFetchFragmentInstanceStatisticsResp statistics = allStatistics.get(instance.getId());
@@ -298,7 +320,6 @@ public class FragmentInstanceStatisticsDrawer {
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {
-    maxLevel = Math.max(maxLevel, level);
     maxLineLength = Math.max(maxLineLength, value.length());
 
     StringBuilder sb = new StringBuilder();
@@ -360,10 +381,6 @@ public class FragmentInstanceStatisticsDrawer {
     for (PlanNode child : planNodeTree.getChildren()) {
       renderOperator(child, operatorStatistics, singleFragmentInstanceArea, indentNum + 1);
     }
-  }
-
-  public int getMaxLevel() {
-    return maxLevel;
   }
 
   public int getMaxLineLength() {

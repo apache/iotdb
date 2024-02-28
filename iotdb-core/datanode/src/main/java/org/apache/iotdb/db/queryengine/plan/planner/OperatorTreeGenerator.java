@@ -326,6 +326,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesScanOperator.class.getSimpleName());
+    operatorContext.recordSpecifiedInfo("SeriesPath", seriesPath.getFullPath());
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,

@@ -62,6 +62,11 @@ public class MPPQueryContext {
   private int acquiredLockNum;
 
   private boolean isExplainAnalyze = false;
+  private long analyzeCost;
+  private long fetchPartitionCost;
+  private long fetchSchemaCost;
+  private long logicalPlanCost;
+  private long distributionPlanCost;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -183,5 +188,45 @@ public class MPPQueryContext {
 
   public boolean isExplainAnalyze() {
     return isExplainAnalyze;
+  }
+
+  public long getAnalyzeCost() {
+    return analyzeCost;
+  }
+
+  public long getDistributionPlanCost() {
+    return distributionPlanCost;
+  }
+
+  public long getFetchPartitionCost() {
+    return fetchPartitionCost;
+  }
+
+  public long getFetchSchemaCost() {
+    return fetchSchemaCost;
+  }
+
+  public long getLogicalPlanCost() {
+    return logicalPlanCost;
+  }
+
+  public void setAnalyzeCost(long analyzeCost) {
+    this.analyzeCost = analyzeCost;
+  }
+
+  public void setDistributionPlanCost(long distributionPlanCost) {
+    this.distributionPlanCost = distributionPlanCost;
+  }
+
+  public void setFetchPartitionCost(long fetchPartitionCost) {
+    this.fetchPartitionCost = fetchPartitionCost;
+  }
+
+  public void setFetchSchemaCost(long fetchSchemaCost) {
+    this.fetchSchemaCost = fetchSchemaCost;
+  }
+
+  public void setLogicalPlanCost(long logicalPlanCost) {
+    this.logicalPlanCost = logicalPlanCost;
   }
 }
