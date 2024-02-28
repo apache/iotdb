@@ -28,8 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
-public class PredicateCanPushDownToSourceChecker
-    extends LogicalAndVisitor<PredicateCanPushDownToSourceChecker.Context> {
+public class PredicateCanPushDownToSourceExtractor
+    extends LogicalAndVisitor<PredicateCanPushDownToSourceExtractor.Context> {
 
   @Override
   public Boolean visitIsNullExpression(IsNullExpression isNullExpression, Context context) {
@@ -73,13 +73,11 @@ public class PredicateCanPushDownToSourceChecker
 
   public static class Context {
 
-    private final PartialPath checkedSourcePath;
-    private final boolean isAligned;
+    private PartialPath checkedSourcePath;
+    private boolean isAligned;
     private final boolean isBuildPlanUseTemplate;
 
-    public Context(PartialPath checkedSourcePath, boolean isBuildPlanUseTemplate) {
-      this.checkedSourcePath = checkedSourcePath;
-      this.isAligned = checkedSourcePath instanceof AlignedPath;
+    public Context(boolean isBuildPlanUseTemplate) {
       this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
     }
 
@@ -93,6 +91,10 @@ public class PredicateCanPushDownToSourceChecker
 
     public boolean isAligned() {
       return isAligned;
+    }
+
+    public PartialPath getExtractedSourcePath() {
+      return null;
     }
   }
 }

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceExtractor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
@@ -331,13 +331,12 @@ public class PredicateUtils {
     }
   }
 
-  public static boolean predicateCanPushDownToSource(
-      Expression predicate, PartialPath checkedSourcePath, boolean isBuildPlanUseTemplate) {
-    return new PredicateCanPushDownToSourceChecker()
-        .process(
-            predicate,
-            new PredicateCanPushDownToSourceChecker.Context(
-                checkedSourcePath, isBuildPlanUseTemplate));
+  public static PartialPath extractPredicateSourceSymbol(
+      Expression predicate, boolean isBuildPlanUseTemplate) {
+    PredicateCanPushDownToSourceExtractor.Context context =
+        new PredicateCanPushDownToSourceExtractor.Context(isBuildPlanUseTemplate);
+    predicate.accept(new PredicateCanPushDownToSourceExtractor(), context);
+    return context.getExtractedSourcePath();
   }
 
   public static boolean predicateCanPushIntoScan(Expression predicate) {

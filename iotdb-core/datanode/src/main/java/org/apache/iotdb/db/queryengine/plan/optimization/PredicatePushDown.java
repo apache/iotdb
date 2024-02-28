@@ -46,7 +46,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -123,18 +126,11 @@ public class PredicatePushDown implements PlanOptimizer {
 
       Expression inheritedPredicate = context.getInheritedPredicate();
       List<Expression> conjuncts = PredicateUtils.extractConjuncts(inheritedPredicate);
-
       List<PlanNode> children = node.getChildren();
-
-      List<List<Expression>> pushDownConjunctsForEachChild = new ArrayList<>(children.size());
-      // empty list for each child at first
-      for (int i = 0; i < children.size(); i++) {
-        pushDownConjunctsForEachChild.add(new ArrayList<>());
-      }
-
       List<Expression> cannotPushDownConjuncts = new ArrayList<>();
+      List<List<Expression>> pushDownConjunctsForEachChild = new ArrayList<>(children.size());
       extractPushDownConjunctsForEachChild(
-          conjuncts, children, pushDownConjunctsForEachChild, cannotPushDownConjuncts, context);
+          conjuncts, children, cannotPushDownConjuncts, pushDownConjunctsForEachChild, context);
 
       if (cannotPushDownConjuncts.size() == conjuncts.size()) {
         // all conjuncts cannot push down
@@ -176,31 +172,30 @@ public class PredicatePushDown implements PlanOptimizer {
     private void extractPushDownConjunctsForEachChild(
         List<Expression> conjuncts,
         List<PlanNode> children,
-        List<List<Expression>> pushDownConjunctsForEachChild,
         List<Expression> cannotPushDownConjuncts,
+        List<List<Expression>> pushDownConjunctsForEachChild,
         RewriterContext context) {
-      // find the source symbol for each child
-      List<PartialPath> sourcePathForEachChild = new ArrayList<>(children.size());
+      // distinguish conjuncts that can push down and cannot push down
+      Map<PartialPath, List<Expression>> pushDownConjunctsMap = new HashMap<>();
+      for (Expression conjunct : conjuncts) {
+        PartialPath extractedSourcePath =
+            PredicateUtils.extractPredicateSourceSymbol(conjunct, context.isBuildPlanUseTemplate());
+        if (extractedSourcePath == null) {
+          cannotPushDownConjuncts.add(conjunct);
+        } else {
+          pushDownConjunctsMap
+              .computeIfAbsent(extractedSourcePath, k -> new ArrayList<>())
+              .add(conjunct);
+        }
+      }
+
+      // find the push down predicate for each child
       for (PlanNode child : children) {
         checkArgument(
             child instanceof SeriesScanSourceNode, "Unexpected node type: " + child.getClass());
-        sourcePathForEachChild.add(((SeriesScanSourceNode) child).getPartitionPath());
-      }
-
-      // distinguish conjuncts that can push down and cannot push down
-      for (Expression conjunct : conjuncts) {
-        boolean canPushDown = false;
-        for (int i = 0; i < sourcePathForEachChild.size(); i++) {
-          if (PredicateUtils.predicateCanPushDownToSource(
-              conjunct, sourcePathForEachChild.get(i), context.isBuildPlanUseTemplate())) {
-            pushDownConjunctsForEachChild.get(i).add(conjunct);
-            canPushDown = true;
-            break;
-          }
-        }
-        if (!canPushDown) {
-          cannotPushDownConjuncts.add(conjunct);
-        }
+        PartialPath sourcePath = ((SeriesScanSourceNode) child).getPartitionPath();
+        pushDownConjunctsForEachChild.add(
+            pushDownConjunctsMap.getOrDefault(sourcePath, Collections.emptyList()));
       }
     }
 
