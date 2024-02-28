@@ -289,7 +289,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public void transferAllBufferReceivingToFlushing() {
+  public synchronized void transferAllBufferReceivingToFlushing() {
     getNewChildBuffer().transferReceivingBufferToFlushingBuffer();
     getUpdatedChildBuffer().transferReceivingBufferToFlushingBuffer();
   }

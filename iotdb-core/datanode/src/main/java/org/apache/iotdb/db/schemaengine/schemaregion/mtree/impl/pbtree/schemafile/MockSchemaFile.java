@@ -46,7 +46,7 @@ public class MockSchemaFile implements ISchemaFile {
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   private long fileTail = 0;
-  private final Map<Long, Map<String, ICachedMNode>> mockFile = new HashMap<>();
+  private final Map<Long, Map<String, ICachedMNode>> mockFile = new ConcurrentHashMap<>();
 
   public MockSchemaFile(PartialPath storageGroupPath) {
     this.storageGroupPath = storageGroupPath;
