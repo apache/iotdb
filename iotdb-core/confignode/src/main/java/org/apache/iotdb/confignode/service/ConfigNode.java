@@ -126,8 +126,6 @@ public class ConfigNode implements ConfigNodeMBean {
       setUpInternalServices();
       // Init ConfigManager
       initConfigManager();
-      // Init Pipe RuntimeAgent
-      registerManager.register(PipeConfigNodeAgent.runtime());
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
@@ -250,6 +248,9 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
+
+    // Init Pipe Runtime Agent
+    registerManager.register(PipeConfigNodeAgent.runtime());
 
     LOGGER.info("Successfully setup internal services.");
   }

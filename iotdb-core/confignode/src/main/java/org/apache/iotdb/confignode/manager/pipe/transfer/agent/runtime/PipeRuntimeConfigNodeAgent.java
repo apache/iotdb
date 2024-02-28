@@ -50,6 +50,7 @@ public class PipeRuntimeConfigNodeAgent implements IService {
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
     isShutdown.set(false);
+    LOGGER.info("PipeRuntimeConfigNodeAgent started");
   }
 
   @Override
@@ -60,6 +61,8 @@ public class PipeRuntimeConfigNodeAgent implements IService {
     isShutdown.set(true);
 
     PipeConfigNodeAgent.task().dropAllPipeTasks();
+
+    LOGGER.info("PipeRuntimeConfigNodeAgent stopped");
   }
 
   public boolean isShutdown() {
