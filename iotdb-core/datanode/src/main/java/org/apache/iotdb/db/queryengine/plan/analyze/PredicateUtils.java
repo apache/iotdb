@@ -335,6 +335,13 @@ public class PredicateUtils {
     }
   }
 
+  /**
+   * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
+   * the given predicate. If the predicate contains multiple source symbols, return null.
+   *
+   * @param predicate given predicate
+   * @return the source symbol extracted from the given predicate
+   */
   public static PartialPath extractPredicateSourceSymbol(Expression predicate) {
     List<Expression> sourceExpressions = ExpressionAnalyzer.searchSourceExpressions(predicate);
     Set<PartialPath> sourcePaths =
@@ -364,10 +371,26 @@ public class PredicateUtils {
     return checkedDevice;
   }
 
+  /**
+   * Check if the given predicate can be pushed down from FilterNode to ScanNode.
+   *
+   * <p>The predicate <b>cannot</b> be pushed down if it satisfies the following conditions:
+   * <li>predicate contains IS_NULL
+   *
+   * @param predicate given predicate
+   * @return true if the given predicate can be pushed down to source
+   */
   public static boolean predicateCanPushDownToSource(Expression predicate) {
     return new PredicateCanPushDownToSourceChecker().process(predicate, null);
   }
 
+  /**
+   * Check if the given predicate can be pushed into ScanOperator and execute using the {@link
+   * Filter} interface.
+   *
+   * @param predicate given predicate
+   * @return true if the given predicate can be pushed into ScanOperator
+   */
   public static boolean predicateCanPushIntoScan(Expression predicate) {
     return new PredicatePushIntoScanChecker().process(predicate, null);
   }

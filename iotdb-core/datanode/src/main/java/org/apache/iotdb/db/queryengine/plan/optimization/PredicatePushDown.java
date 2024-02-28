@@ -57,6 +57,7 @@ import java.util.function.Function;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
+/** <b>Optimization phase:</b> Logical plan planning. */
 public class PredicatePushDown implements PlanOptimizer {
 
   @Override
@@ -357,9 +358,19 @@ public class PredicatePushDown implements PlanOptimizer {
           pushDownFilterNode.getScanOrder());
     }
 
+    /**
+     * ProjectNode is used to project the output columns of the child node.
+     *
+     * <p>There are two cases where ProjectNode is used:
+     * <li>Because of the removal of the FilterNode (FilterAndProjectOperator), we need a
+     *     ProjectNode to do the projection.
+     * <li>For ALIGN_BY_DEVICE query, the ProjectNode is used to ensure the order of the output
+     *     columns is consistent with before optimization (required by MergeSortOperator).
+     */
     private PlanNode planProject(PlanNode resultNode, RewriterContext context) {
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();
       if (resultNode instanceof TransformNode) {
+        // transform contains project
         return resultNode;
       }
 
