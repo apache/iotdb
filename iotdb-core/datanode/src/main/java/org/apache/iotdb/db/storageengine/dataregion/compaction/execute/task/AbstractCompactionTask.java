@@ -180,11 +180,12 @@ public abstract class AbstractCompactionTask {
     }
   }
 
-  public boolean tryOccupyResourcesForRunning() {
+  public boolean tryOccupyResourcesForRunning()
+      throws CompactionFileCountExceededException, CompactionMemoryNotEnoughException {
     if (!isDiskSpaceCheckPassed()) {
       return false;
     }
-    boolean blockUntilCanExecute = true;
+    boolean blockUntilCanExecute = false;
     long estimatedMemoryCost = getEstimatedMemoryCost();
     try {
       SystemInfo.getInstance()
@@ -193,7 +194,8 @@ public abstract class AbstractCompactionTask {
       memoryAcquired = true;
       SystemInfo.getInstance().addCompactionFileNum(getProcessedFileNum(), blockUntilCanExecute);
       fileHandleAcquired = true;
-    } catch (CompactionMemoryNotEnoughException | CompactionFileCountExceededException ignored) {
+    } catch (CompactionMemoryNotEnoughException | CompactionFileCountExceededException e) {
+      throw e;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
