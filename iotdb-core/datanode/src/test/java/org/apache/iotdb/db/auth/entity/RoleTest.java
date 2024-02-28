@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.auth.entity;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IllegalPrivilegeException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
@@ -48,13 +49,27 @@ public class RoleTest {
         "Role{name='role', pathPrivilegeList=[root.ln : "
             + "WRITE_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
         role1.toString());
-  }
 
-  @Test
-  public void TestRole_GrantAndRevoke() throws IllegalPrivilegeException, IllegalPathException {
-    Role role = new Role("role");
-    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
-    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    //    role.
+    Role admin = new Role("root");
+    PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
+    PathPrivilege pathPri = new PathPrivilege(rootPath);
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (!item.isPathRelevant()) {
+        admin.getSysPrivilege().add(item.ordinal());
+        admin.getSysPriGrantOpt().add(item.ordinal());
+      } else {
+        pathPri.grantPrivilege(item.ordinal(), true);
+      }
+    }
+    admin.getPathPrivilegeList().add(pathPri);
+    Assert.assertEquals(
+        "Role{name='root', pathPrivilegeList=[root.** : READ_DAT"
+            + "A_with_grant_option WRITE_DATA_with_grant_option READ_SCHEMA_with"
+            + "_grant_option WRITE_SCHEMA_with_grant_option], systemPrivilegeSet=[MANAGE_ROLE"
+            + "_with_grant_option , USE_UDF_with_grant_option , USE_CQ_with_grant_option , USE"
+            + "_PIPE_with_grant_option , USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_g"
+            + "rant_option , MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option , EXTEND"
+            + "_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ]}",
+        admin.toString());
   }
 }
