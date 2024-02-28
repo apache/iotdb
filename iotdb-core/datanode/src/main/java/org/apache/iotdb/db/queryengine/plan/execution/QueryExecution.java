@@ -793,4 +793,8 @@ public class QueryExecution implements IQueryExecution {
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
   }
+
+  public ScheduledExecutorService getScheduledExecutor() {
+    return scheduledExecutor;
+  }
 }
