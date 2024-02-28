@@ -945,7 +945,7 @@ repairData
 
 // Explain
 explain
-    : EXPLAIN (ANALYZE)? selectStatement
+    : EXPLAIN (ANALYZE)? selectStatement (VERBOSE operator_eq boolean_literal)?
     ;
 
 // Set System To readonly/running/error

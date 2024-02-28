@@ -59,6 +59,10 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return verbose == that.verbose;
   }
 
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   @Override
   public int hashCode() {
     return super.hashCode() + Boolean.hashCode(verbose);

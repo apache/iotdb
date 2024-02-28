@@ -870,6 +870,10 @@ VARIATION
     : V A R I A T I O N
     ;
 
+VERBOSE
+    : V E R B O S E
+    ;
+
 VERIFY
     : V E R I F Y
     ;
