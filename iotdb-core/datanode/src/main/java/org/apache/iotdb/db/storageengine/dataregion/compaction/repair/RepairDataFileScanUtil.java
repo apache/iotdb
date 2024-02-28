@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -34,13 +35,13 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,15 +149,40 @@ public class RepairDataFileScanUtil {
         continue;
       }
       Chunk chunk = reader.readMemChunk(chunkMetadata);
-      ChunkReader chunkReader = new ChunkReader(chunk);
-      while (chunkReader.hasNextSatisfiedPage()) {
-        IPointReader pointReader = chunkReader.nextPageData().getBatchDataIterator();
-        while (pointReader.hasNextTimeValuePair()) {
-          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-          checkPreviousTimeAndUpdate(measurement, timeValuePair.getTimestamp());
+      ChunkHeader chunkHeader = chunk.getHeader();
+      CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
+      ByteBuffer chunkDataBuffer = chunk.getData();
+      while (chunkDataBuffer.hasRemaining()) {
+        // deserialize a PageHeader from chunkDataBuffer
+        PageHeader pageHeader = null;
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
+        } else {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        }
+        ByteBuffer pageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+
+        ByteBuffer uncompressedPageData =
+            uncompressPageData(chunkHeader.getCompressionType(), pageHeader, pageData);
+        ByteBuffer timeBuffer = getTimeBufferFromNonAlignedPage(uncompressedPageData);
+        Decoder timeDecoder =
+            Decoder.getDecoderByType(
+                TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                TSDataType.INT64);
+        while (timeDecoder.hasNext(timeBuffer)) {
+          long currentTime = timeDecoder.readLong(timeBuffer);
+          checkPreviousTimeAndUpdate(measurement, currentTime);
         }
       }
     }
+  }
+
+  private ByteBuffer getTimeBufferFromNonAlignedPage(ByteBuffer uncompressedPageData) {
+    int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(uncompressedPageData);
+
+    ByteBuffer timeBuffer = uncompressedPageData.slice();
+    timeBuffer.limit(timeBufferLength);
+    return timeBuffer;
   }
 
   private ByteBuffer uncompressPageData(
