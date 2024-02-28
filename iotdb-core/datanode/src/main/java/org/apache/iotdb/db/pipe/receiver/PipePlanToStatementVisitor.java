@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -52,6 +53,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
@@ -109,15 +111,31 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
       MeasurementGroup group = path2Group.getValue();
-      dataTypes.addAll(group.getDataTypes());
-      encodings.addAll(group.getEncodings());
-      compressors.addAll(group.getCompressors());
-      propsList.addAll(group.getPropsList());
-      aliasList.addAll(group.getAliasList());
-      tagsList.addAll(group.getTagsList());
-      attributesList.addAll(group.getAttributesList());
-      for (int i = 0; i < group.getAttributesList().size(); ++i) {
-        paths.add(path2Group.getKey());
+      dataTypes.addAll(
+          Objects.nonNull(group.getDataTypes()) ? group.getDataTypes() : new ArrayList<>());
+      encodings.addAll(
+          Objects.nonNull(group.getEncodings()) ? group.getEncodings() : new ArrayList<>());
+      compressors.addAll(
+          Objects.nonNull(group.getCompressors()) ? group.getCompressors() : new ArrayList<>());
+      propsList.addAll(
+          Objects.nonNull(group.getPropsList()) ? group.getPropsList() : new ArrayList<>());
+      aliasList.addAll(
+          Objects.nonNull(group.getAliasList()) ? group.getAliasList() : new ArrayList<>());
+      tagsList.addAll(
+          Objects.nonNull(group.getTagsList()) ? group.getTagsList() : new ArrayList<>());
+      attributesList.addAll(
+          Objects.nonNull(group.getAttributesList())
+              ? group.getAttributesList()
+              : new ArrayList<>());
+      try {
+        if (Objects.nonNull(group.getMeasurements())) {
+          for (int i = 0; i < group.getMeasurements().size(); ++i) {
+            paths.add(
+                new PartialPath(path2Group.getKey().getFullPath(), group.getMeasurements().get(i)));
+          }
+        }
+      } catch (IllegalPathException ignore) {
+        // There typically won't be illegal paths
       }
     }
 
