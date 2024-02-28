@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -143,5 +144,25 @@ public class RowType implements Type {
   @Override
   public boolean isOrderable() {
     return orderable;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    RowType rowType = (RowType) o;
+    return comparable == rowType.comparable
+        && orderable == rowType.orderable
+        && Objects.equals(fields, rowType.fields)
+        && Objects.equals(fieldTypes, rowType.fieldTypes);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fields, fieldTypes, comparable, orderable);
   }
 }

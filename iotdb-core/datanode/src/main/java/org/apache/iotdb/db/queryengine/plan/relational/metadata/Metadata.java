@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -55,4 +58,7 @@ public interface Metadata {
    * @throws RuntimeException if table handle is no longer valid
    */
   Map<String, ColumnHandle> getColumnHandles(SessionInfo session, TableHandle tableHandle);
+
+  ResolvedFunction resolveOperator(OperatorType operatorType, List<? extends Type> argumentTypes)
+      throws OperatorNotFoundException;
 }

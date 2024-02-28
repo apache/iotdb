@@ -1911,6 +1911,7 @@ public class StatementAnalyzer {
 
         ExpressionAnalysis expressionAnalysis =
             ExpressionAnalyzer.analyzeExpression(
+                metadata,
                 sessionContext,
                 accessControl,
                 orderByScope,
@@ -2096,6 +2097,7 @@ public class StatementAnalyzer {
 
     private ExpressionAnalysis analyzeExpression(Expression expression, Scope scope) {
       return ExpressionAnalyzer.analyzeExpression(
+          metadata,
           sessionContext,
           accessControl,
           scope,
@@ -2108,6 +2110,7 @@ public class StatementAnalyzer {
     private ExpressionAnalysis analyzeExpression(
         Expression expression, Scope scope, CorrelationSupport correlationSupport) {
       return ExpressionAnalyzer.analyzeExpression(
+          metadata,
           sessionContext,
           accessControl,
           scope,

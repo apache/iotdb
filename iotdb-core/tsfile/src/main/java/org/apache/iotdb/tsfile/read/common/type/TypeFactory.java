@@ -46,4 +46,26 @@ public class TypeFactory {
             String.format("Invalid TSDataType for TypeFactory: %s", tsDataType));
     }
   }
+
+  public static Type getType(TypeEnum typeEnum) {
+    switch (typeEnum) {
+      case INT32:
+        return IntType.getInstance();
+      case INT64:
+        return LongType.getInstance();
+      case FLOAT:
+        return FloatType.getInstance();
+      case DOUBLE:
+        return DoubleType.getInstance();
+      case BOOLEAN:
+        return BooleanType.getInstance();
+      case BINARY:
+        return BinaryType.getInstance();
+      case UNKNOWN:
+        return UnknownType.getInstance();
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Invalid TypeEnum for TypeFactory: %s", typeEnum));
+    }
+  }
 }

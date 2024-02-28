@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.relational.sql.tree.ExistsPredicate;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
@@ -37,31 +36,28 @@ import static java.util.Objects.requireNonNull;
 
 public class ExpressionAnalysis {
   private final Map<NodeRef<Expression>, Type> expressionTypes;
-  private final Map<NodeRef<Expression>, Type> expressionCoercions;
-  private final Set<NodeRef<Expression>> typeOnlyCoercions;
+  //  private final Map<NodeRef<Expression>, Type> expressionCoercions;
+  //  private final Set<NodeRef<Expression>> typeOnlyCoercions;
   private final Map<NodeRef<Expression>, ResolvedField> columnReferences;
   private final Set<NodeRef<InPredicate>> subqueryInPredicates;
   private final Set<NodeRef<SubqueryExpression>> subqueries;
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries;
   private final Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons;
-  private final Set<NodeRef<FunctionCall>> windowFunctions;
 
   public ExpressionAnalysis(
       Map<NodeRef<Expression>, Type> expressionTypes,
-      Map<NodeRef<Expression>, Type> expressionCoercions,
       Set<NodeRef<InPredicate>> subqueryInPredicates,
       Set<NodeRef<SubqueryExpression>> subqueries,
       Set<NodeRef<ExistsPredicate>> existsSubqueries,
       Map<NodeRef<Expression>, ResolvedField> columnReferences,
-      Set<NodeRef<Expression>> typeOnlyCoercions,
-      Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons,
-      Set<NodeRef<FunctionCall>> windowFunctions) {
+      Set<NodeRef<QuantifiedComparisonExpression>> quantifiedComparisons) {
     this.expressionTypes =
         ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
-    this.expressionCoercions =
-        ImmutableMap.copyOf(requireNonNull(expressionCoercions, "expressionCoercions is null"));
-    this.typeOnlyCoercions =
-        ImmutableSet.copyOf(requireNonNull(typeOnlyCoercions, "typeOnlyCoercions is null"));
+    //    this.expressionCoercions =
+    //        ImmutableMap.copyOf(requireNonNull(expressionCoercions, "expressionCoercions is
+    // null"));
+    //    this.typeOnlyCoercions =
+    //        ImmutableSet.copyOf(requireNonNull(typeOnlyCoercions, "typeOnlyCoercions is null"));
     this.columnReferences =
         ImmutableMap.copyOf(requireNonNull(columnReferences, "columnReferences is null"));
     this.subqueryInPredicates =
@@ -71,8 +67,6 @@ public class ExpressionAnalysis {
         ImmutableSet.copyOf(requireNonNull(existsSubqueries, "existsSubqueries is null"));
     this.quantifiedComparisons =
         ImmutableSet.copyOf(requireNonNull(quantifiedComparisons, "quantifiedComparisons is null"));
-    this.windowFunctions =
-        ImmutableSet.copyOf(requireNonNull(windowFunctions, "windowFunctions is null"));
   }
 
   public Type getType(Expression expression) {
@@ -81,14 +75,6 @@ public class ExpressionAnalysis {
 
   public Map<NodeRef<Expression>, Type> getExpressionTypes() {
     return expressionTypes;
-  }
-
-  public Type getCoercion(Expression expression) {
-    return expressionCoercions.get(NodeRef.of(expression));
-  }
-
-  public boolean isTypeOnlyCoercion(Expression expression) {
-    return typeOnlyCoercions.contains(NodeRef.of(expression));
   }
 
   public boolean isColumnReference(Expression node) {
@@ -109,9 +95,5 @@ public class ExpressionAnalysis {
 
   public Set<NodeRef<QuantifiedComparisonExpression>> getQuantifiedComparisons() {
     return quantifiedComparisons;
-  }
-
-  public Set<NodeRef<FunctionCall>> getWindowFunctions() {
-    return windowFunctions;
   }
 }

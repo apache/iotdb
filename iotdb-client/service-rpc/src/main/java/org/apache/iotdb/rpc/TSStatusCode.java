@@ -113,6 +113,8 @@ public enum TSStatusCode {
   NO_SUCH_QUERY(714),
   QUERY_WAS_KILLED(715),
 
+  OPERATOR_NOT_FOUND(716),
+
   // Authentication
   INIT_AUTH_ERROR(800),
   WRONG_LOGIN_PASSWORD(801),

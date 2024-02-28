@@ -19,16 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class TypeProvider {
@@ -39,6 +48,7 @@ public class TypeProvider {
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
+    types = null;
   }
 
   public TypeProvider(Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo) {
@@ -46,6 +56,7 @@ public class TypeProvider {
     this.templatedInfo = templatedInfo;
     // The type of TimeStampOperand is INT64
     this.typeMap.putIfAbsent(TIMESTAMP_EXPRESSION_STRING, TSDataType.INT64);
+    types = null;
   }
 
   public TSDataType getType(String symbol) {
@@ -71,6 +82,50 @@ public class TypeProvider {
     return this.templatedInfo;
   }
 
+  // ----------------------used for relational model----------------------------
+
+  private final Map<Symbol, Type> types;
+
+  public static TypeProvider viewOf(Map<Symbol, Type> types) {
+    return new TypeProvider(types);
+  }
+
+  public static TypeProvider copyOf(Map<Symbol, Type> types) {
+    return new TypeProvider(ImmutableMap.copyOf(types));
+  }
+
+  public static TypeProvider empty() {
+    return new TypeProvider(ImmutableMap.of());
+  }
+
+  private TypeProvider(Map<Symbol, Type> types) {
+    this.types = types;
+
+    this.typeMap = null;
+  }
+
+  private TypeProvider(
+      Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo, Map<Symbol, Type> types) {
+    this.typeMap = typeMap;
+    this.templatedInfo = templatedInfo;
+    this.types = types;
+  }
+
+  public Type get(Symbol symbol) {
+    requireNonNull(symbol, "symbol is null");
+
+    Type type = types.get(symbol);
+    checkArgument(type != null, "no type found for symbol '%s'", symbol);
+
+    return type;
+  }
+
+  public Map<Symbol, Type> allTypes() {
+    // types may be a HashMap, so creating an ImmutableMap here would add extra cost when allTypes
+    // gets called frequently
+    return Collections.unmodifiableMap(types);
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
@@ -83,6 +138,16 @@ public class TypeProvider {
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       templatedInfo.serialize(byteBuffer);
+    }
+
+    if (types == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(types.size(), byteBuffer);
+      for (Map.Entry<Symbol, Type> entry : types.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey().getName(), byteBuffer);
+        ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), byteBuffer);
+      }
     }
   }
 
@@ -99,11 +164,21 @@ public class TypeProvider {
       ReadWriteIOUtils.write((byte) 1, stream);
       templatedInfo.serialize(stream);
     }
+
+    if (types == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write(types.size(), stream);
+      for (Map.Entry<Symbol, Type> entry : types.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey().getName(), stream);
+        ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), stream);
+      }
+    }
   }
 
   public static TypeProvider deserialize(ByteBuffer byteBuffer) {
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, TSDataType> typeMap = new HashMap<>();
+    Map<String, TSDataType> typeMap = new HashMap<>(mapSize);
     while (mapSize > 0) {
       typeMap.put(
           ReadWriteIOUtils.readString(byteBuffer),
@@ -117,7 +192,20 @@ public class TypeProvider {
       templatedInfo = TemplatedInfo.deserialize(byteBuffer);
     }
 
-    return new TypeProvider(typeMap, templatedInfo);
+    Map<Symbol, Type> types = null;
+    byte hasTypes = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasTypes == 1) {
+      mapSize = ReadWriteIOUtils.readInt(byteBuffer);
+      types = new HashMap<>(mapSize);
+      while (mapSize > 0) {
+        types.put(
+            new Symbol(ReadWriteIOUtils.readString(byteBuffer)),
+            TypeFactory.getType(TypeEnum.values()[ReadWriteIOUtils.readInt(byteBuffer)]));
+        mapSize--;
+      }
+    }
+
+    return new TypeProvider(typeMap, templatedInfo, types);
   }
 
   @Override
