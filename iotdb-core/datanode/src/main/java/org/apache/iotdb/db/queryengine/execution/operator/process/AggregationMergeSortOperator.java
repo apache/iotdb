@@ -28,11 +28,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -142,23 +144,31 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
         Binary device = tsBlock.getColumn(0).getBinary(readIndex[idx]);
         if (device.equals(currentDevice)) {
           currentTime = tsBlock.getTimeColumn().getLong(readIndex[idx]);
-          int cnt = 0;
+          int cnt = 1;
           for (int i = 0; i < accumulators.size(); i++) {
             Accumulator accumulator = accumulators.get(i);
-            if (newAggregationIdx.get(i) == 2) {
-              accumulator.addIntermediate(tsBlock.getColumns(new int[2]{cnt++, cnt+}));
+            if (accumulator.getPartialResultSize() == 2) {
+              Column[] columns = new Column[2];
+              columns[0] = tsBlock.getColumn(cnt++);
+              columns[1] = tsBlock.getColumn(cnt++);
+              accumulator.addIntermediate(columns);
             } else {
-              accumulator.addIntermediate(tsBlock.getColumns(new int[]));
+              Column[] columns = new Column[1];
+              columns[0] = tsBlock.getColumn(cnt++);
+              accumulator.addIntermediate(columns);
             }
           }
           readIndex[idx] ++;
+
+          accumulators.forEach(Accumulator::reset);
         }
       }
 
       timeBuilder.writeLong(currentTime);
       for (int i = 1; i < dataTypes.size(); i++) {
-        accumulators.get(i).outputFinal(valueColumnBuilders[i]);
+        accumulators.get(i-1).outputFinal(valueColumnBuilders[i]);
       }
+      tsBlockBuilder.declarePosition();
 
       currentDevice = null;
 
