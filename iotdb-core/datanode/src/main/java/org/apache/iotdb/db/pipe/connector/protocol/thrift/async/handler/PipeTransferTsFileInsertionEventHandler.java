@@ -116,6 +116,7 @@ public class PipeTransferTsFileInsertionEventHandler
                 tsFile.getName());
       } catch (Exception e) {
         onError(e);
+        return;
       }
 
       try {
