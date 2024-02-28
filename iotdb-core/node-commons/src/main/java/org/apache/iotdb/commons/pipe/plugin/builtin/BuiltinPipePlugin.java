@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothin
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.DownSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingFilterProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,6 +52,7 @@ public enum BuiltinPipePlugin {
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
+  STD_FILTER_PROCESSOR("sdt-filter-processor", SwingingDoorTrendingFilterProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),

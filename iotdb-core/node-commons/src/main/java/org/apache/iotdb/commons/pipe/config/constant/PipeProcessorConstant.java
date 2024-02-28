@@ -34,6 +34,15 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY =
       "processor.down-sampling.memory-limit-in-bytes";
   public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
+  public static final String PROCESSOR_SDT_FILTER_COMPRESSION_DEVIATION_KEY =
+      "processor.sdt-filter.compression-deviation";
+  public static final double PROCESSOR_SDT_FILTER_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_SDT_FILTER_MIN_TIME_INTERVAL_KEY =
+      "processor.sdt-filter.min-time-interval";
+  public static final long PROCESSOR_SDT_FILTER_MIN_TIME_INTERVAL_DEFAULT_VALUE = -1;
+  public static final String PROCESSOR_SDT_FILTER_MAX_TIME_INTERVAL_KEY =
+      "processor.sdt-filter.max-time-interval";
+  public static final long PROCESSOR_SDT_FILTER_MAX_TIME_INTERVAL_DEFAULT_VALUE = -1;
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
