@@ -258,11 +258,11 @@ public class IoTDBConfig {
 
   /** System directory, including version file for each database and metadata */
   private String systemDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Schema directory, including storage set of values. */
   private String schemaDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
@@ -270,7 +270,7 @@ public class IoTDBConfig {
 
   /** Query directory, stores temporary files of query */
   private String queryDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -307,7 +307,7 @@ public class IoTDBConfig {
 
   /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
   private String[][] tierDataDirs = {
-    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
+    {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
   private String loadTsFileDir =
@@ -317,14 +317,14 @@ public class IoTDBConfig {
   private String multiDirStrategyClassName = null;
 
   private String ratisDataRegionSnapshotDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.DATA_FOLDER_NAME
           + File.separator
           + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
 
   /** Consensus directory. */
-  private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
+  private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
   private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
 
@@ -332,7 +332,7 @@ public class IoTDBConfig {
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
