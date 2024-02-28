@@ -71,7 +71,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     super(id);
     measurementGroupMap = new HashMap<>();
 
-    // gather measurements of same device
+    // Gather measurements of same device
     int size = paths.size();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
