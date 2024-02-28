@@ -55,6 +55,27 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
+  private String oldUserFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "users";
+
+  private String oldRoleFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "roles";
+
+  private String oldProcedureWalFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "procedure";
+
   private String userFolder =
       IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
@@ -295,6 +316,18 @@ public class CommonConfig {
 
   public void setAdminPassword(String adminPassword) {
     this.adminPassword = adminPassword;
+  }
+
+  public String getOldUserFolder() {
+    return oldUserFolder;
+  }
+
+  public String getOldRoleFolder() {
+    return oldRoleFolder;
+  }
+
+  public String getOldProcedureWalFolder() {
+    return oldProcedureWalFolder;
   }
 
   public String getUserFolder() {
