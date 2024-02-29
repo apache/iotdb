@@ -605,18 +605,7 @@ public class IoTConsensusServerImpl {
   public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
     try {
       serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      for (Peer peer : configuration) {
-        Path tmpConfigurationPath =
-            Paths.get(
-                new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
-                    .getAbsolutePath());
-        Path configurationPath =
-            Paths.get(
-                new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
-                    .getAbsolutePath());
-        Files.deleteIfExists(configurationPath);
-        Files.move(tmpConfigurationPath, configurationPath);
-      }
+      tmpConfigurationUpdate(configuration);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           "Unexpected error occurs when update configuration", e);
@@ -634,9 +623,7 @@ public class IoTConsensusServerImpl {
       // interrupted
       // unexpectedly, we need substitute configuration with tmpConfiguration file
       if (Files.exists(tmpConfigurationPath)) {
-        if (Files.exists(configurationPath)) {
-          Files.delete(configurationPath);
-        }
+        Files.deleteIfExists(configurationPath);
         Files.move(tmpConfigurationPath, configurationPath);
       }
       buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
@@ -644,21 +631,34 @@ public class IoTConsensusServerImpl {
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
       }
+      Files.delete(configurationPath);
+      persistConfiguration();
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
       Path dirPath = Paths.get(storageDir);
       try {
         List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
+        tmpConfigurationUpdate(tmpPeerList);
         List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
-        for (Peer peer : peerList) {
-          if (!tmpPeerList.contains(peer)) {
-            configuration.add(peer);
-          }
-        }
-        configuration.addAll(tmpPeerList);
+        configuration.addAll(peerList);
       } catch (IOException ioe) {
         logger.error("Unexpected error occurs when recovering configuration", ioe);
       }
+    }
+  }
+
+  private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {
+    for (Peer peer : tmpPeerList) {
+      Path tmpConfigurationPath =
+          Paths.get(
+              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
+                  .getAbsolutePath());
+      Path configurationPath =
+          Paths.get(
+              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
+                  .getAbsolutePath());
+      Files.deleteIfExists(configurationPath);
+      Files.move(tmpConfigurationPath, configurationPath);
     }
   }
 
@@ -875,8 +875,12 @@ public class IoTConsensusServerImpl {
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
         peer.serialize(outputStream);
       } finally {
-        fileOutputStream.flush();
-        fileOutputStream.getFD().sync();
+        try {
+          fileOutputStream.flush();
+          fileOutputStream.getFD().sync();
+        } catch (IOException e) {
+          logger.error("Failed to fsync the configuration file {}", peerConfigurationFileName, e);
+        }
       }
     }
   }
