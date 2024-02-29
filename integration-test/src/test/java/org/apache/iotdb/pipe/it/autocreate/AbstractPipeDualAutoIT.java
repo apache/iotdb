@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 
 abstract class AbstractPipeDualAutoIT {
@@ -33,28 +32,20 @@ abstract class AbstractPipeDualAutoIT {
 
   @Before
   public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-      senderEnv.initClusterEnvironment();
-      receiverEnv.initClusterEnvironment();
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   @After
   public final void tearDown() {
-    try {
-      senderEnv.cleanClusterEnvironment();
-      receiverEnv.cleanClusterEnvironment();
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    senderEnv.cleanClusterEnvironment();
+    receiverEnv.cleanClusterEnvironment();
   }
 }
