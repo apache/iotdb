@@ -39,7 +39,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -65,32 +64,28 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
   @Override
   @Before
   public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv
-          .getConfig()
-          .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
-          .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-      receiverEnv
-          .getConfig()
-          .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
-          .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-      senderEnv.initClusterEnvironment(3, 3, 180);
-      receiverEnv.initClusterEnvironment(3, 3, 180);
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    senderEnv.initClusterEnvironment(3, 3, 180);
+    receiverEnv.initClusterEnvironment(3, 3, 180);
   }
 
   @Test

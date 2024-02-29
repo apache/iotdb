@@ -31,7 +31,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -47,24 +46,20 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
   @Override
   @Before
   public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv
-          .getConfig()
-          .getCommonConfig()
-          .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-          .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-          .setSchemaReplicationFactor(3);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaReplicationFactor(3);
 
-      senderEnv.initClusterEnvironment(3, 3, 180);
-      receiverEnv.initClusterEnvironment();
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    senderEnv.initClusterEnvironment(3, 3, 180);
+    receiverEnv.initClusterEnvironment();
   }
 
   @Test

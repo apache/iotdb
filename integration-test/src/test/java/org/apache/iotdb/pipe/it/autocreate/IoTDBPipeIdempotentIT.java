@@ -30,7 +30,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -49,28 +48,24 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   @Override
   @Before
   public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-      // All the schema operations must be under the same database to
-      // be in the same region, therefore a non-idempotent operation can block the next one
-      // and fail the IT
-      senderEnv
-          .getConfig()
-          .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
-          .setDefaultSchemaRegionGroupNumPerDatabase(1);
-      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    // All the schema operations must be under the same database to
+    // be in the same region, therefore a non-idempotent operation can block the next one
+    // and fail the IT
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setDefaultSchemaRegionGroupNumPerDatabase(1);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-      // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
-      // of the tested idempotent sql.
-      senderEnv.initClusterEnvironment();
-      receiverEnv.initClusterEnvironment();
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
+    // of the tested idempotent sql.
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   @Test
