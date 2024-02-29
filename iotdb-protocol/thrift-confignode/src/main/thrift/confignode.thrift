@@ -104,6 +104,7 @@ struct TRuntimeConfiguration {
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
+  6: optional string clusterId
 }
 
 struct TDataNodeRegisterReq {
@@ -944,6 +945,9 @@ service IConfigNodeRPCService {
 
   /** Get the matched Databases' TDatabaseSchema */
   TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
+
+  /** Test only */
+  common.TSStatus createManyDatabases()
 
   // ======================================================
   // SchemaPartition

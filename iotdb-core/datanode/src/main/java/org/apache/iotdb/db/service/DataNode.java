@@ -370,6 +370,9 @@ public class DataNode implements DataNodeMBean {
 
     /* Store ttl information */
     StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
+
+    /* Store cluster ID */
+    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
   }
 
   /**

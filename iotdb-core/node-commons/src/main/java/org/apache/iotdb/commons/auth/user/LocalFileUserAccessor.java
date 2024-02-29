@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -395,10 +396,20 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public void reset() {
+    checkOldUserDir(SystemFileFactory.INSTANCE.getFile(userDirPath));
     if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
       LOGGER.info("user info dir {} is created", userDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
       LOGGER.error("user info dir {} can not be created", userDirPath);
+    }
+  }
+
+  private void checkOldUserDir(File newDir) {
+    File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldUserFolder());
+    if (oldDir.exists()) {
+      if (!FileUtils.moveFileSafe(oldDir, newDir)) {
+        LOGGER.error("move old user dir fail: {}", oldDir.getAbsolutePath());
+      }
     }
   }
 

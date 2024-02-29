@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -40,15 +39,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ShowClusterIdTask implements IConfigTask {
-  public static void buildTSBlock(
-      TGetClusterIdResp getClusterIdResp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTSBlock(String clusterId, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showClusterIdColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    String clusterId = getClusterIdResp.getClusterId();
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(clusterId, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
