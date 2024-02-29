@@ -311,6 +311,7 @@ public class ConfigManager implements IManager {
 
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
+    this.consensusManager.get().start();
   }
 
   public void close() throws IOException {

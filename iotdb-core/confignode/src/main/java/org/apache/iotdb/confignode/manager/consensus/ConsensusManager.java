@@ -78,13 +78,33 @@ public class ConsensusManager {
     setConsensusLayer(stateMachine);
   }
 
+  public void start() throws IOException {
+    consensusImpl.start();
+    if (SystemPropertiesUtils.isRestarted()) {
+      LOGGER.info("Init ConsensusManager successfully when restarted");
+    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+      // Create ConsensusGroup that contains only itself
+      // if the current ConfigNode is Seed-ConfigNode
+      try {
+        createPeerForConsensusGroup(
+            Collections.singletonList(
+                new TConfigNodeLocation(
+                    SEED_CONFIG_NODE_ID,
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      } catch (ConsensusException e) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+      }
+    }
+  }
+
   public void close() throws IOException {
     consensusImpl.stop();
   }
 
   /** ConsensusLayer local implementation. */
   private void setConsensusLayer(ConfigRegionStateMachine stateMachine) throws IOException {
-
     if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       upgrade();
       consensusImpl =
@@ -210,24 +230,6 @@ public class ConsensusManager {
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               CONF.getConfigNodeConsensusProtocolClass())));
-    }
-    consensusImpl.start();
-    if (SystemPropertiesUtils.isRestarted()) {
-      LOGGER.info("Init ConsensusManager successfully when restarted");
-    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
-      // Create ConsensusGroup that contains only itself
-      // if the current ConfigNode is Seed-ConfigNode
-      try {
-        createPeerForConsensusGroup(
-            Collections.singletonList(
-                new TConfigNodeLocation(
-                    SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
-      } catch (ConsensusException e) {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
-      }
     }
   }
 
