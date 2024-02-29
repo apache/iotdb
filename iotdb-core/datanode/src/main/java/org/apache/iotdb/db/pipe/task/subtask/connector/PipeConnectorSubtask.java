@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  // For input and output
+  // For input
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
@@ -148,11 +149,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);
     } catch (Exception e) {
-      LOGGER.warn(
-          "PipeConnector: {} heartbeat failed, or encountered failure when transferring generic event. Failure: {}",
-          outputPipeConnector.getClass().getName(),
-          e.getMessage());
-      throw e;
+      throw new PipeConnectionException(
+          "PipeConnector: "
+              + outputPipeConnector.getClass().getName()
+              + " heartbeat failed, or encountered failure when transferring generic event. Failure: "
+              + e.getMessage(),
+          e);
     }
 
     lastHeartbeatEventInjectTime = System.currentTimeMillis();
