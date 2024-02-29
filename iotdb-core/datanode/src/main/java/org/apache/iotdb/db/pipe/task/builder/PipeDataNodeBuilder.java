@@ -32,6 +32,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PipeDataNodeBuilder {
@@ -46,8 +47,10 @@ public class PipeDataNodeBuilder {
 
   public Map<Integer, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
-
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
+
+    final List<DataRegionId> dataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
+    final List<SchemaRegionId> schemaRegionIds = SchemaEngine.getInstance().getAllSchemaRegionIds();
 
     final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
     for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
@@ -56,12 +59,8 @@ public class PipeDataNodeBuilder {
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
 
       if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()
-          && (StorageEngine.getInstance()
-                  .getAllDataRegionIds()
-                  .contains(new DataRegionId(consensusGroupId))
-              || SchemaEngine.getInstance()
-                  .getAllSchemaRegionIds()
-                  .contains(new SchemaRegionId(consensusGroupId)))) {
+          && (dataRegionIds.contains(new DataRegionId(consensusGroupId))
+              || schemaRegionIds.contains(new SchemaRegionId(consensusGroupId)))) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupId,
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
