@@ -64,6 +64,9 @@ public class RegionMigrateProcedure
 
   private TDataNodeLocation destDataNode;
 
+  private TDataNodeLocation coordinatorForAddPeer;
+  private TDataNodeLocation coordinatorForRemovePeer;
+
   private boolean migrateSuccess = true;
 
   private String migrateResult = "";
@@ -75,11 +78,15 @@ public class RegionMigrateProcedure
   public RegionMigrateProcedure(
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode) {
+      TDataNodeLocation destDataNode,
+      TDataNodeLocation coordinatorForAddPeer,
+      TDataNodeLocation coordinatorForRemovePeer) {
     super();
     this.consensusGroupId = consensusGroupId;
     this.originalDataNode = originalDataNode;
     this.destDataNode = destDataNode;
+    this.coordinatorForAddPeer = coordinatorForAddPeer;
+    this.coordinatorForRemovePeer = coordinatorForRemovePeer;
   }
 
   @Override
@@ -101,7 +108,7 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId);
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinatorForAddPeer);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
@@ -116,7 +123,9 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus = handler.removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          tsStatus =
+              handler.removeRegionPeer(
+                  originalDataNode, consensusGroupId, coordinatorForRemovePeer);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {

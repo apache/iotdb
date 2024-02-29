@@ -232,26 +232,9 @@ public class DataNodeRemoveHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus addRegionPeer(TDataNodeLocation destDataNode, TConsensusGroupId regionId) {
+  public TSStatus addRegionPeer(
+      TDataNodeLocation destDataNode, TConsensusGroupId regionId, TDataNodeLocation coordinator) {
     TSStatus status;
-
-    // Here we pick the DataNode who contains one of the RegionReplica of the specified
-    // ConsensusGroup except the new one
-    // in order to notify the origin ConsensusGroup that another peer is created and demand to join
-    Optional<TDataNodeLocation> selectedDataNode =
-        filterDataNodeWithOtherRegionReplica(regionId, destDataNode);
-    if (!selectedDataNode.isPresent()) {
-      LOGGER.warn(
-          "{}, There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check RegionGroup: {} by show regions sql command",
-          REGION_MIGRATE_PROCESS,
-          regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check by show regions sql command");
-      return status;
-    }
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
@@ -259,14 +242,14 @@ public class DataNodeRemoveHandler {
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                selectedDataNode.get().getInternalEndPoint(),
+                coordinator.getInternalEndPoint(),
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
-        getIdWithRpcEndpoint(selectedDataNode.get()),
+        getIdWithRpcEndpoint(coordinator),
         getIdWithRpcEndpoint(destDataNode));
     return status;
   }
@@ -283,33 +266,23 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus removeRegionPeer(
       TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode,
-      TConsensusGroupId regionId) {
+      TConsensusGroupId regionId,
+      TDataNodeLocation coordinator) {
     TSStatus status;
-
-    TDataNodeLocation rpcClientDataNode;
-
-    // Here we pick the DataNode who contains one of the RegionReplica of the specified
-    // ConsensusGroup except the origin one
-    // in order to notify the new ConsensusGroup that the origin peer should secede now
-    // If the selectedDataNode equals null, we choose the destDataNode to execute the method
-    Optional<TDataNodeLocation> selectedDataNode =
-        filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-    rpcClientDataNode = selectedDataNode.orElse(destDataNode);
 
     // Send removeRegionPeer request to the rpcClientDataNode
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                rpcClientDataNode.getInternalEndPoint(),
+                coordinator.getInternalEndPoint(),
                 maintainPeerReq,
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
-        getIdWithRpcEndpoint(rpcClientDataNode));
+        getIdWithRpcEndpoint(coordinator));
     return status;
   }
 
@@ -646,7 +619,7 @@ public class DataNodeRemoveHandler {
    * @return A DataNodeLocation that contains other RegionReplica and different from the
    *     filterLocation
    */
-  private Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
