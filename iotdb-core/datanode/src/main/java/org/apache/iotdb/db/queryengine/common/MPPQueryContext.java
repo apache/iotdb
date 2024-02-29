@@ -25,14 +25,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -64,8 +61,6 @@ public class MPPQueryContext {
   private Filter globalTimeFilter;
 
   private int acquiredLockNum;
-
-  private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -183,13 +178,5 @@ public class MPPQueryContext {
 
   public ZoneId getZoneId() {
     return session.getZoneId();
-  }
-
-  public void setFromWhere(FilterNode filterNode) {
-    this.fromWhereFilterNodes.add(NodeRef.of(filterNode));
-  }
-
-  public boolean fromWhere(FilterNode filterNode) {
-    return fromWhereFilterNodes.contains(NodeRef.of(filterNode));
   }
 }

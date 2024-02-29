@@ -121,7 +121,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -139,12 +138,11 @@ public class LogicalPlanBuilder {
 
   protected PlanNode root;
 
+  private final Analysis analysis;
   private final MPPQueryContext context;
 
-  private final Function<Expression, TSDataType> getPreAnalyzedType;
-
   public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
-    this.getPreAnalyzedType = analysis::getType;
+    this.analysis = analysis;
     this.context = context;
   }
 
@@ -157,6 +155,10 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  private TSDataType getPreAnalyzedType(Expression expression) {
+    return analysis.getType(expression);
+  }
+
   void updateTypeProvider(Collection<Expression> expressions) {
     if (expressions == null) {
       return;
@@ -167,7 +169,7 @@ public class LogicalPlanBuilder {
               && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
-                .setType(expression.getExpressionString(), getPreAnalyzedType.apply(expression));
+                .setType(expression.getExpressionString(), getPreAnalyzedType(expression));
           }
         });
   }
@@ -1187,7 +1189,7 @@ public class LogicalPlanBuilder {
             isGroupByTime,
             scanOrder);
     if (fromWhere) {
-      context.setFromWhere(filterNode);
+      analysis.setFromWhere(filterNode);
     }
     this.root = filterNode;
     updateTypeProvider(selectExpressions);

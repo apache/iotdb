@@ -70,9 +70,7 @@ public class PredicatePushDown implements PlanOptimizer {
       return plan;
     }
     return plan.accept(
-        new Rewriter(),
-        new RewriterContext(
-            context, queryStatement.isAlignByDevice(), analysis.isAllDevicesInOneTemplate()));
+        new Rewriter(), new RewriterContext(analysis, context, queryStatement.isAlignByDevice()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -394,20 +392,19 @@ public class PredicatePushDown implements PlanOptimizer {
     private final boolean isAlignByDevice;
     private final boolean isBuildPlanUseTemplate;
     private final TemplatedInfo templatedInfo;
-    private final Function<FilterNode, Boolean> fromWhere;
+    private final Function<FilterNode, Boolean> filterNodeFromWhereChecker;
 
     private FilterNode pushDownFilterNode;
 
     private boolean enablePushDown = false;
     private boolean enablePushDownUseTemplate = false;
 
-    private RewriterContext(
-        MPPQueryContext context, boolean isAlignByDevice, boolean isBuildPlanUseTemplate) {
+    private RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.queryId = context.getQueryId();
       this.isAlignByDevice = isAlignByDevice;
-      this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
+      this.isBuildPlanUseTemplate = analysis.isAllDevicesInOneTemplate();
       this.templatedInfo = context.getTypeProvider().getTemplatedInfo();
-      this.fromWhere = context::fromWhere;
+      this.filterNodeFromWhereChecker = analysis::fromWhere;
     }
 
     public PlanNodeId genPlanNodeId() {
@@ -427,7 +424,7 @@ public class PredicatePushDown implements PlanOptimizer {
     }
 
     public boolean isFromWhere(FilterNode filterNode) {
-      return Boolean.TRUE.equals(fromWhere.apply(filterNode));
+      return Boolean.TRUE.equals(filterNodeFromWhereChecker.apply(filterNode));
     }
 
     public FilterNode getPushDownFilterNode() {
