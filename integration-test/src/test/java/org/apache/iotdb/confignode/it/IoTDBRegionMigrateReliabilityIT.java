@@ -69,11 +69,7 @@ public class IoTDBRegionMigrateReliabilityIT {
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataReplicationFactor(2)
-        .setSchemaReplicationFactor(3);
-
-    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }
 
   @After
@@ -81,8 +77,54 @@ public class IoTDBRegionMigrateReliabilityIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // region Normal tests
+
   @Test
-  public void normalTest() throws Exception {
+  public void normal1C2DTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+    EnvFactory.getEnv().initClusterEnvironment(1, 2);
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      statement.execute(INSERTION);
+
+      ResultSet result = statement.executeQuery(SHOW_REGIONS);
+      Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
+
+      result = statement.executeQuery(SHOW_DATANODES);
+      Set<Integer> dataNodeSet = new HashSet<>();
+      while (result.next()) {
+        dataNodeSet.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+      }
+
+      final int selectedRegion = selectRegion(regionMap);
+      final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
+      final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
+
+      statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
+
+      awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+
+      checkRegionFileClear(originalDataNode);
+
+      LOGGER.info("test pass");
+    }
+  }
+
+  @Test
+  public void normal3C3DTest() throws Exception {
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataReplicationFactor(2)
+        .setSchemaReplicationFactor(3);
+    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement();
         final SyncConfigNodeIServiceClient configClient =
@@ -127,34 +169,31 @@ public class IoTDBRegionMigrateReliabilityIT {
     }
   }
 
-  //region ConfigNode crash tests
+  // endregion
+
+  // region ConfigNode crash tests
   @Test
-  public void cnCrashDuringPreCheck() {
-
-  }
-
-  @Test
-  public void cnCrashDuringCreatePeer() {
-
-  }
+  public void cnCrashDuringPreCheck() {}
 
   @Test
-  public void cnCrashDuringAddPeer() {
+  public void cnCrashDuringCreatePeer() {}
 
-  }
+  @Test
+  public void cnCrashDuringAddPeer() {}
 
   // TODO: other cn crash test
 
-  //endregion
+  // endregion
 
-  //region DataNode crash tests
+  // region DataNode crash tests
 
-  //endregion
+  // endregion
 
-  //region Helpers
+  // region Helpers
 
   /**
    * Monitor the node's log and do something.
+   *
    * @param nodeIndex
    * @param keywordAction Map<keyword, action>
    */
@@ -190,7 +229,8 @@ public class IoTDBRegionMigrateReliabilityIT {
           detected.forEach(
               k -> {
                 keywordAction.get(k).run();
-//                EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
+                //
+                // EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
                 keywordAction.remove(k);
               });
         }
@@ -223,48 +263,48 @@ public class IoTDBRegionMigrateReliabilityIT {
     return regionMap.keySet().stream().findAny().orElseThrow(() -> new RuntimeException("gg"));
   }
 
-  private static int selectOriginalDataNode(Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
+  private static int selectOriginalDataNode(
+      Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
     return regionMap.get(selectedRegion).stream()
-            .findAny()
-            .orElseThrow(() -> new RuntimeException("gg"));
+        .findAny()
+        .orElseThrow(() -> new RuntimeException("gg"));
   }
 
-  private static int selectDestDataNode(Set<Integer> dataNodeSet, Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
+  private static int selectDestDataNode(
+      Set<Integer> dataNodeSet, Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
     return dataNodeSet.stream()
-            .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
-            .findAny()
-            .orElseThrow(() -> new RuntimeException("gg"));
+        .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
+        .findAny()
+        .orElseThrow(() -> new RuntimeException("gg"));
   }
 
-  private static void awaitUntilSuccess(Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
+  private static void awaitUntilSuccess(
+      Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
     Awaitility.await()
-            .atMost(1, TimeUnit.MINUTES)
-            .until(
-                    () -> {
-                      Map<Integer, Set<Integer>> newRegionMap =
-                              getRegionMap(statement.executeQuery(SHOW_REGIONS));
-                      Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-                      return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-                    });
+        .atMost(1, TimeUnit.MINUTES)
+        .until(
+            () -> {
+              Map<Integer, Set<Integer>> newRegionMap =
+                  getRegionMap(statement.executeQuery(SHOW_REGIONS));
+              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+            });
   }
 
-  /**
-   * Check whether the original DataNode's region file has been deleted.
-   */
+  /** Check whether the original DataNode's region file has been deleted. */
   private static void checkRegionFileClear(int dataNode) {
-    String nodePath =
-            EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
+    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
     File originalRegionDir =
-            new File(
-                    nodePath
-                            + File.separator
-                            + IoTDBConstant.DATA_FOLDER_NAME
-                            + File.separator
-                            + "datanode"
-                            + File.separator
-                            + IoTDBConstant.CONSENSUS_FOLDER_NAME
-                            + File.separator
-                            + "data_region");
+        new File(
+            nodePath
+                + File.separator
+                + IoTDBConstant.DATA_FOLDER_NAME
+                + File.separator
+                + "datanode"
+                + File.separator
+                + IoTDBConstant.CONSENSUS_FOLDER_NAME
+                + File.separator
+                + "data_region");
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
   }
