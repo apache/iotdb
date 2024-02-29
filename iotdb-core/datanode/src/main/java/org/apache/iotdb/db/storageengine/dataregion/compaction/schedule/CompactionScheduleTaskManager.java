@@ -306,7 +306,7 @@ public class CompactionScheduleTaskManager implements IService {
         try {
           result.get();
         } catch (CancellationException cancellationException) {
-          logger.warn("[RepairScheduler] scan task is cancelled");
+          logger.info("[RepairScheduler] scan task is cancelled");
         } catch (Exception e) {
           logger.error("[RepairScheduler] Meet errors when scan time partition files", e);
         }

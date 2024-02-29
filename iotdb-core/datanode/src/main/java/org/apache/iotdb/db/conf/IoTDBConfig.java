@@ -492,8 +492,8 @@ public class IoTDBConfig {
   /** The max candidate file num in one cross space compaction task */
   private int fileLimitPerCrossTask = 500;
 
-  /** The max candidate file num in cross space compaction */
-  private int totalFileLimitForCrossTask = 5000;
+  /** The max candidate file num in compaction */
+  private int totalFileLimitForCompactionTask = 5000;
 
   /** The max total size of candidate files in one cross space compaction task */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
@@ -2785,7 +2785,7 @@ public class IoTDBConfig {
   }
 
   public int getTotalFileLimitForCompactionTask() {
-    return totalFileLimitForCrossTask;
+    return totalFileLimitForCompactionTask;
   }
 
   public void setFileLimitPerCrossTask(int fileLimitPerCrossTask) {
