@@ -64,7 +64,7 @@ public class AuditLogger {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId());
+      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
   private static final List<AuditLogOperation> auditLogOperationList =
       config.getAuditLogOperation();

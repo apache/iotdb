@@ -617,7 +617,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
             .execute(
                 statement,
                 SessionManager.getInstance().requestQueryId(),
-                new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+                new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
                 "",
                 partitionFetcher,
                 schemaFetcher,

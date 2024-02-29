@@ -340,7 +340,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         context.queryContext.getQueryId().genPlanNodeId(),
         node.getOutputExpressions(),
         node.isKeepNull(),
-        node.getZoneId(),
         node.getScanOrder());
   }
 
@@ -871,23 +870,31 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         innerTimeJoinNode.setTimePartitions(timePartitionIds);
 
         // region group id -> parent InnerTimeJoinNode
-        Map<Integer, InnerTimeJoinNode> map = new HashMap<>();
+        Map<Integer, PlanNode> map = new HashMap<>();
         for (SeriesSourceNode sourceNode : seriesScanNodes) {
           TRegionReplicaSet dataRegion =
               analysis.getPartitionInfo(sourceNode.getPartitionPath(), oneRegion.get(0));
           InnerTimeJoinNode parent =
-              map.computeIfAbsent(
-                  dataRegion.regionId.id,
-                  k -> {
-                    InnerTimeJoinNode value = (InnerTimeJoinNode) node.clone();
-                    value.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-                    value.setTimePartitions(timePartitionIds);
-                    return value;
-                  });
+              (InnerTimeJoinNode)
+                  map.computeIfAbsent(
+                      dataRegion.regionId.id,
+                      k -> {
+                        InnerTimeJoinNode value = (InnerTimeJoinNode) node.clone();
+                        value.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                        value.setTimePartitions(timePartitionIds);
+                        return value;
+                      });
           SeriesSourceNode split = (SeriesSourceNode) sourceNode.clone();
           split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
           split.setRegionReplicaSet(dataRegion);
           parent.addChild(split);
+        }
+
+        for (Map.Entry<Integer, PlanNode> entry : map.entrySet()) {
+          InnerTimeJoinNode joinNode = (InnerTimeJoinNode) entry.getValue();
+          if (joinNode.getChildren().size() == 1) {
+            map.put(entry.getKey(), joinNode.getChildren().get(0));
+          }
         }
 
         if (map.size() > 1) {

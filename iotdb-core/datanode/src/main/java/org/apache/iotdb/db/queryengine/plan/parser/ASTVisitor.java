@@ -1395,7 +1395,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Select Clause
   private SelectComponent parseSelectClause(
       IoTDBSqlParser.SelectClauseContext ctx, QueryStatement queryStatement) {
-    SelectComponent selectComponent = new SelectComponent(zoneId);
+    SelectComponent selectComponent = new SelectComponent();
 
     // parse LAST
     if (ctx.LAST() != null) {
@@ -3266,7 +3266,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    showQueriesStatement.setZoneId(zoneId);
     return showQueriesStatement;
   }
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner;
+package org.apache.iotdb.db.queryengine.plan.planner.logical;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -54,10 +54,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 
-import java.time.ZonedDateTime;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,16 +65,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** This class generates logical plans for test cases of the read statements. */
-public class QueryLogicalPlanUtil {
+import static org.apache.iotdb.db.queryengine.plan.planner.logical.LogicalPlannerTestUtil.parseSQLToPlanNode;
+import static org.junit.Assert.fail;
 
-  // test cases of read statement
-  public static final List<String> querySQLs = new ArrayList<>();
+public class DataQueryLogicalPlannerTest {
 
-  // key: read statement; value: expected logical plan
-  public static final Map<String, PlanNode> sqlToPlanMap = new HashMap<>();
-
-  public static final Map<String, PartialPath> schemaMap = new HashMap<>();
+  private static final Map<String, PartialPath> schemaMap = new HashMap<>();
 
   static {
     try {
@@ -106,53 +102,52 @@ public class QueryLogicalPlanUtil {
     }
   }
 
-  /* Last Query */
-  static {
+  @Test
+  public void testLastQuery() {
     String sql = "SELECT last * FROM root.sg.** WHERE time > 100 ORDER BY timeseries ASC";
 
     QueryId queryId = new QueryId("test");
-    List<PlanNode> sourceNodeList = new ArrayList<>();
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null));
-    sourceNodeList.add(
-        new AlignedLastQueryScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
-            null));
-    sourceNodeList.add(
-        new AlignedLastQueryScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2")),
-            null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null));
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null));
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
 
+    LastQueryScanNode d1s1 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null);
+    LastQueryScanNode d1s2 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null);
+    LastQueryScanNode d1s3 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null);
+    LastQueryScanNode d2s1 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null);
+    LastQueryScanNode d2s2 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null);
+    LastQueryScanNode d2s4 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null);
+    AlignedLastQueryScanNode d2a =
+        new AlignedLastQueryScanNode(
+            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), null);
+
+    List<PlanNode> sourceNodeList = Arrays.asList(d1s1, d1s2, d1s3, d2a, d2s1, d2s2, d2s4);
     LastQueryNode lastQueryNode =
         new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, Ordering.ASC, false);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, lastQueryNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, lastQueryNode);
   }
 
-  /* Simple Query */
-  static {
+  @Test
+  public void testSimpleRawDataQuery() {
     String sql = "SELECT ** FROM root.sg.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -174,24 +169,27 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             (AlignedPath) schemaMap.get("root.sg.d2.a"),
             Ordering.ASC,
-            false));
+            true));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), fullOuterTimeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Raw Data Query */
-  static {
+  @Test
+  public void testRawDataQuery() {
     String sql =
         "SELECT s1 FROM root.sg.* WHERE time > 100 and s2 > 10 "
             + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 SLIMIT 1 SOFFSET 1";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -231,23 +229,25 @@ public class QueryLogicalPlanUtil {
             new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
             predicate,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), filterNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Raw Data Query (align by device) */
-  static {
+  @Test
+  public void testRawDataQueryAlignByDevice() {
     String sql =
         "SELECT * FROM root.sg.* WHERE time > 100 and s1 > 10 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(
@@ -284,7 +284,6 @@ public class QueryLogicalPlanUtil {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
@@ -323,7 +322,6 @@ public class QueryLogicalPlanUtil {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
@@ -344,18 +342,20 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Simple Aggregation Query */
-  static {
+  @Test
+  public void testSimpleAggregationQuery() {
     String sql =
         "SELECT last_value(s1), first_value(s1), sum(s2) FROM root.sg.** WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -470,19 +470,21 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), fullOuterTimeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Aggregation Query (without value filter) */
-  static {
+  @Test
+  public void testAggregationQueryWithoutValueFilter() {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.** WHERE time > 100 "
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Filter timeFilter = TimeFilterApi.gt(100);
     try {
       sourceNodeList.add(
           new AlignedSeriesAggregationScanNode(
@@ -639,18 +641,20 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Aggregation Query (without value filter and align by device) */
-  static {
+  @Test
+  public void testAggregationQueryWithoutValueFilterAlignByDevice() {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
-    Filter timeFilter = TimeFilterApi.gt(100);
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesAggregationScanNode(
@@ -738,17 +742,20 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Aggregation Query (with value filter) */
-  static {
+  @Test
+  public void testAggregationQueryWithValueFilter() {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC LIMIT 100 OFFSET 100";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
@@ -795,7 +802,6 @@ public class QueryLogicalPlanUtil {
             },
             predicate,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode =
@@ -877,17 +883,20 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
-  /* Aggregation Query (with value filter and align by device) */
-  static {
+  @Test
+  public void testAggregationQueryWithValueFilterAlignByDevice() {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
             + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
         new SeriesScanNode(
@@ -918,7 +927,6 @@ public class QueryLogicalPlanUtil {
             },
             predicate1,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode1 =
@@ -974,7 +982,6 @@ public class QueryLogicalPlanUtil {
             },
             predicate2,
             false,
-            ZonedDateTime.now().getOffset(),
             Ordering.DESC);
 
     AggregationNode aggregationNode2 =
@@ -1019,7 +1026,55 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
+  }
+
+  @Test
+  public void testGroupByTagWithValueFilter() {
+    String sql = "select max_value(s1) from root.** where s1>1 group by tags(key1)";
+    try {
+      parseSQLToPlanNode(sql);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Only time filters are supported in GROUP BY TAGS query"));
+    }
+  }
+
+  @Test
+  public void testGroupByTagWithIllegalSpecialLimitClause() {
+    String[] inputSql =
+        new String[] {
+          "select max_value(s1) from root.** group by tags(key1) align by device",
+          "select max_value(s1) from root.** group by tags(key1) limit 1",
+          "select max_value(s1) from root.** group by([0, 10000), 5ms), tags(key1) limit 1 offset 1 slimit 1 soffset 1"
+        };
+    String[] expectedMsg =
+        new String[] {
+          "GROUP BY TAGS does not support align by device now",
+          "Limit or slimit are not supported yet in GROUP BY TAGS",
+          "Limit or slimit are not supported yet in GROUP BY TAGS",
+        };
+    for (int i = 0; i < inputSql.length; i++) {
+      try {
+        parseSQLToPlanNode(inputSql[i]);
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(inputSql[i], e.getMessage().contains(expectedMsg[i]));
+      }
+    }
+  }
+
+  @Test
+  public void testGroupByTagWithDuplicatedAliasWithTagKey() {
+    String sql = "select max_value(s1) as key1 from root.** group by tags(key1)";
+    try {
+      parseSQLToPlanNode(sql);
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("Output column is duplicated with the tag key: key1"));
+    }
   }
 }

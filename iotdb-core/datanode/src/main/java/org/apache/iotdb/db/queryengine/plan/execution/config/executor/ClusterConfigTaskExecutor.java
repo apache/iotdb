@@ -2269,7 +2269,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
               context.getSql(),
-              createContinuousQueryStatement.getZoneId(),
+              context.getZoneId().getId(),
               context.getSession() == null ? null : context.getSession().getUserName());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
