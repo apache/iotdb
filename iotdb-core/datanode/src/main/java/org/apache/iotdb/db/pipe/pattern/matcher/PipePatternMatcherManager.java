@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,7 +44,12 @@ public class PipePatternMatcherManager {
   }
 
   public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event) {
-    return getMatcherByFormat(event.getPatternFormat()).match(event);
+    final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
+    // match extractors of all formats.
+    for (PipeDataRegionMatcher matcher : format2MatcherMap.values()) {
+      matchedExtractors.addAll(matcher.match(event));
+    }
+    return matchedExtractors;
   }
 
   /** Check if a pattern is legal. Different pattern format may have different rules. */

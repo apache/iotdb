@@ -277,14 +277,16 @@ public class PipeTabletInsertionEventTest {
     Assert.assertTrue(isAligned2);
 
     PipeRawTabletInsertionEvent event3 =
-        new PipeRawTabletInsertionEvent(tablet1, true, new PipePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet1, true, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet3 = event3.convertToTablet();
     boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertTrue(isAligned3);
 
     PipeRawTabletInsertionEvent event4 =
-        new PipeRawTabletInsertionEvent(tablet2, true, new PipePattern(pattern));
+        new PipeRawTabletInsertionEvent(
+            tablet2, true, new PipePattern(pattern, PipePatternFormat.PREFIX));
     Tablet tablet4 = event4.convertToTablet();
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);

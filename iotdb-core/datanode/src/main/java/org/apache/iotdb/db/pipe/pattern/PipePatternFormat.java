@@ -30,6 +30,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_VERSION_V2_VALUE;
 
 public enum PipePatternFormat {
+  UNKNOWN,
   PREFIX,
   IOTDB;
 
@@ -59,8 +60,11 @@ public enum PipePatternFormat {
       return PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
     } else if (this.equals(IOTDB)) {
       return PipeExtractorConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
+    } else if (this.equals(UNKNOWN)) {
+      return null;
     } else {
-      throw new UnsupportedOperationException("Unsupported pipe pattern type.");
+      throw new UnsupportedOperationException(
+          String.format("Unsupported pipe pattern type: %s.", this));
     }
   }
 }

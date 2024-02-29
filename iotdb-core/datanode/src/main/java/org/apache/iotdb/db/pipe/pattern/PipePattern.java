@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.pattern;
 
+import javax.validation.constraints.NotNull;
+
 import java.util.Objects;
 
 public class PipePattern {
@@ -26,13 +28,14 @@ public class PipePattern {
   private final String pattern;
   private final PipePatternFormat format;
 
-  public PipePattern(String pattern, PipePatternFormat format) {
+  public PipePattern(String pattern, @NotNull PipePatternFormat format) {
     this.pattern = pattern;
-    this.format = format != null ? format : PipePatternFormat.getDefaultFormat();
+    this.format = format;
   }
 
-  public PipePattern(String pattern) {
-    this(pattern, PipePatternFormat.getDefaultFormat());
+  public PipePattern() {
+    this.format = PipePatternFormat.UNKNOWN;
+    this.pattern = PipePatternFormat.UNKNOWN.getDefaultPattern();
   }
 
   public String getPattern() {

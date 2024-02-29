@@ -70,7 +70,7 @@ public abstract class EnrichedEvent implements Event {
     referenceCount = new AtomicInteger(0);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pipePattern = pipePattern != null ? pipePattern : new PipePattern(null);
+    this.pipePattern = pipePattern != null ? pipePattern : new PipePattern();
     this.startTime = startTime;
     this.endTime = endTime;
     isPatternParsed = this.pipePattern.isRoot();
@@ -190,9 +190,7 @@ public abstract class EnrichedEvent implements Event {
    * @return the pattern
    */
   public final String getPattern() {
-    return pipePattern.getPattern() == null
-        ? pipePattern.getFormat().getDefaultPattern()
-        : pipePattern.getPattern();
+    return pipePattern.getPattern();
   }
 
   public final PipePatternFormat getPatternFormat() {
