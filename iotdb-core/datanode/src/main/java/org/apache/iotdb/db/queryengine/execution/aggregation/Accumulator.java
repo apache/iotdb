@@ -86,5 +86,7 @@ public interface Accumulator {
 
   TSDataType getFinalType();
 
-  int getPartialResultSize();
+  default int getPartialResultSize() {
+    return 1;
+  }
 }
