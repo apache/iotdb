@@ -42,7 +42,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -67,7 +66,7 @@ public class ConsensusManager {
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
   private static final int SEED_CONFIG_NODE_ID = 0;
   private static final long MAX_WAIT_READY_TIME_MS =
-      IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2;
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2;
   private static final long RETRY_WAIT_TIME_MS = 100;
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
