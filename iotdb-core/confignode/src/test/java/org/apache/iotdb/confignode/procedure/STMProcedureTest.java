@@ -28,7 +28,7 @@ import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestSTMProcedure extends TestProcedureBase {
+public class STMProcedureTest extends TestProcedureBase {
 
   @Test
   public void testSubmitProcedure() {

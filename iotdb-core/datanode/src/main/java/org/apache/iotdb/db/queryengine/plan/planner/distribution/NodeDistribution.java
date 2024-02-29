@@ -22,15 +22,31 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 public class NodeDistribution {
-  protected NodeDistributionType type;
-  protected TRegionReplicaSet region;
+  private NodeDistributionType type;
+  private TRegionReplicaSet region;
 
-  protected NodeDistribution(NodeDistributionType type, TRegionReplicaSet region) {
+  public NodeDistribution(NodeDistributionType type, TRegionReplicaSet region) {
     this.type = type;
     this.region = region;
   }
 
-  protected NodeDistribution(NodeDistributionType type) {
+  public NodeDistribution(NodeDistributionType type) {
     this.type = type;
+  }
+
+  public NodeDistributionType getType() {
+    return this.type;
+  }
+
+  public void setType(NodeDistributionType type) {
+    this.type = type;
+  }
+
+  public TRegionReplicaSet getRegion() {
+    return this.region;
+  }
+
+  public void setRegion(TRegionReplicaSet region) {
+    this.region = region;
   }
 }

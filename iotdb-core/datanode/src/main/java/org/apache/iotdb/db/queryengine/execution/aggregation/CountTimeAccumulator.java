@@ -37,12 +37,12 @@ public class CountTimeAccumulator implements Accumulator {
 
   // Column should be like: | Time | Time |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-
+  public void addInput(Column[] columns, BitMap bitMap) {
+    int count = columns[0].getPositionCount();
     if ((bitMap == null) || bitMap.isAllMarked()) {
-      countValue += (lastIndex + 1);
+      countValue += count;
     } else {
-      for (int i = 0; i <= lastIndex; i++) {
+      for (int i = 0; i < count; i++) {
         if (bitMap.isMarked(i)) {
           countValue++;
         }

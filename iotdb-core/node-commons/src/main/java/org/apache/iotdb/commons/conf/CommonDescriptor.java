@@ -258,6 +258,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
+                String.valueOf(
+                    config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
@@ -437,6 +443,37 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_interval_seconds",
                 String.valueOf(config.getPipeStuckRestartIntervalSeconds()))));
+
+    config.setPipeMetaReportMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_num_per_round",
+                String.valueOf(config.getPipeMetaReportMaxLogNumPerRound()))));
+    config.setPipeMetaReportMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_report_max_log_interval_rounds",
+                String.valueOf(config.getPipeMetaReportMaxLogIntervalRounds()))));
+    config.setPipeTsFilePinMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_pin_max_log_num_per_round",
+                String.valueOf(config.getPipeTsFilePinMaxLogNumPerRound()))));
+    config.setPipeTsFilePinMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_tsfile_pin_max_log_interval_rounds",
+                String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
+    config.setPipeWalPinMaxLogNumPerRound(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_num_per_round",
+                String.valueOf(config.getPipeWalPinMaxLogNumPerRound()))));
+    config.setPipeWalPinMaxLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_wal_pin_max_log_interval_rounds",
+                String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(

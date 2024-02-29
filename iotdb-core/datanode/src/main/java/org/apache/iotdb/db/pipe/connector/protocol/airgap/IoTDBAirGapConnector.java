@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnect
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -201,7 +199,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       final HashMap<String, String> params = new HashMap<>();
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
-          PipeAgent.runtime().getClusterIdIfPossible());
+          IoTDBDescriptor.getInstance().getConfig().getClusterId());
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
@@ -256,25 +254,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                .parseEventWithPatternOrTime());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(
-            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
-      }
-      return;
-    } else {
-      // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-          return;
-        }
-      }
-    }
-
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -309,17 +288,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      try {
-        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-          transfer(event);
-        }
-      } finally {
-        tsFileInsertionEvent.close();
-      }
       return;
     }
 

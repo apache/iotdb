@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV2Req;
@@ -177,7 +177,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
     final HashMap<String, String> params = new HashMap<>();
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
-        PipeAgent.runtime().getClusterIdIfPossible());
+        IoTDBDescriptor.getInstance().getConfig().getClusterId());
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
@@ -186,7 +186,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftClientManager {
 
     // Retry to handshake by PipeTransferHandshakeV1Req.
     if (resp.get() != null
-        && resp.get().getStatus().getCode() == TSStatusCode.PIPE_VERSION_ERROR.getStatusCode()) {
+        && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
       LOGGER.info(
           "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
               + "retry to handshake by PipeTransferHandshakeV1Req.",

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
@@ -187,13 +188,14 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         needProcess = null;
       }
 
+      TsBlock inputRegion = inputTsBlock.getRegion(0, lastIndexToProcess + 1);
       for (Aggregator aggregator : aggregators) {
         // Current agg method has been calculated
         if (aggregator.hasFinalResult()) {
           continue;
         }
 
-        aggregator.processTsBlock(inputTsBlock, needProcess, lastIndexToProcess);
+        aggregator.processTsBlock(inputRegion, needProcess);
       }
       int lastReadRowIndex = lastIndexToProcess + 1;
       // If lastReadRowIndex is not zero, some of tsBlock is consumed and result is cached in

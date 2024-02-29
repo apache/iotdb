@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
@@ -49,6 +50,7 @@ import java.util.Iterator;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getSegAddrInContainer;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.getTreeBFT;
 import static org.apache.iotdb.db.metadata.mtree.schemafile.SchemaFileTest.virtualTriangleMTree;
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
 import static org.junit.Assert.fail;
 
 public class SchemaFileLogTest {
@@ -95,6 +97,8 @@ public class SchemaFileLogTest {
     while (ite.hasNext()) {
       ICachedMNode curNode = ite.next();
       if (!curNode.isMeasurement()) {
+        ICachedMNodeContainer container = getCachedMNodeContainer(curNode);
+        container.transferAllBufferReceivingToFlushing();
         sf.writeMNode(curNode);
         lastNode = curNode;
       }
