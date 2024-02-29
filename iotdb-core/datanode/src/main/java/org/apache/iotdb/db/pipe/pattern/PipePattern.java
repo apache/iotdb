@@ -52,6 +52,7 @@ public abstract class PipePattern {
     return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
+  /** @return not null. */
   public static PipePattern getPipePatternFromSourceParameters(PipeParameters sourceParameters) {
     String pattern = sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
     if (sourceParameters.hasAttribute(SOURCE_VERSION_KEY)

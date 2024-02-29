@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.pattern.IotdbPipePattern;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -49,6 +51,9 @@ public class TsFileInsertionDataContainerTest {
 
   private static final long TSFILE_START_TIME = 300L;
 
+  private static final String PREFIX_FORMAT = "prefix";
+  private static final String IOTDB_FORMAT = "iotdb";
+
   private File alignedTsFile;
   private File nonalignedTsFile;
 
@@ -72,6 +77,10 @@ public class TsFileInsertionDataContainerTest {
     measurementNumbers.add(1);
     measurementNumbers.add(2);
 
+    Set<String> patternFormats = new HashSet<>();
+    patternFormats.add(PREFIX_FORMAT);
+    patternFormats.add(IOTDB_FORMAT);
+
     Set<Pair<Long, Long>> startEndTimes = new HashSet<>();
     startEndTimes.add(new Pair<>(100L, TSFILE_START_TIME - 1));
     startEndTimes.add(new Pair<>(100L, TSFILE_START_TIME));
@@ -92,44 +101,126 @@ public class TsFileInsertionDataContainerTest {
 
     for (int deviceNumber : deviceNumbers) {
       for (int measurementNumber : measurementNumbers) {
-        for (Pair<Long, Long> startEndTime : startEndTimes) {
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 0, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 2, startEndTime.left, startEndTime.right);
+        for (String patternFormat : patternFormats) {
+          for (Pair<Long, Long> startEndTime : startEndTimes) {
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                0,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                2,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
 
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 999, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1000, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1001, startEndTime.left, startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                999,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1000,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1001,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
 
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 999 * 2 + 1, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1000, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1001 * 2 - 1, startEndTime.left, startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                999 * 2 + 1,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1000,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1001 * 2 - 1,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
 
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1023, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1024, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1025, startEndTime.left, startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1023,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1024,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1025,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
 
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1023 * 2 + 1, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1024 * 2, startEndTime.left, startEndTime.right);
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 1025 * 2 - 1, startEndTime.left, startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1023 * 2 + 1,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1024 * 2,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                1025 * 2 - 1,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
 
-          testToTabletInsertionEvents(
-              deviceNumber, measurementNumber, 10001, startEndTime.left, startEndTime.right);
+            testToTabletInsertionEvents(
+                deviceNumber,
+                measurementNumber,
+                10001,
+                patternFormat,
+                startEndTime.left,
+                startEndTime.right);
+          }
         }
       }
     }
@@ -139,14 +230,16 @@ public class TsFileInsertionDataContainerTest {
       int deviceNumber,
       int measurementNumber,
       int rowNumberInOneDevice,
+      String patternFormat,
       long startTime,
       long endTime)
       throws Exception {
     LOGGER.info(
-        "testToTabletInsertionEvents: deviceNumber: {}, measurementNumber: {}, rowNumberInOneDevice: {}, startTime: {}, endTime: {}",
+        "testToTabletInsertionEvents: deviceNumber: {}, measurementNumber: {}, rowNumberInOneDevice: {}, patternFormat: {}, startTime: {}, endTime: {}",
         deviceNumber,
         measurementNumber,
         rowNumberInOneDevice,
+        patternFormat,
         startTime,
         endTime);
 
@@ -192,12 +285,21 @@ public class TsFileInsertionDataContainerTest {
       }
     }
 
+    final PipePattern rootPattern;
+    switch (patternFormat) {
+      case PREFIX_FORMAT:
+        rootPattern = new PrefixPipePattern("root");
+        break;
+      case IOTDB_FORMAT:
+      default:
+        rootPattern = new IotdbPipePattern("root.**");
+        break;
+    }
+
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(
-                alignedTsFile, new PrefixPipePattern("root"), startTime, endTime);
+            new TsFileInsertionDataContainer(alignedTsFile, rootPattern, startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
-            new TsFileInsertionDataContainer(
-                nonalignedTsFile, new PrefixPipePattern("root"), startTime, endTime)) {
+            new TsFileInsertionDataContainer(nonalignedTsFile, rootPattern, startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -233,20 +335,19 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet, false)
-                                                    .processRowByRow(
-                                                        (row, collector) -> {
-                                                          try {
-                                                            rowCollector.collectRow(row);
-                                                            Assert.assertEquals(
-                                                                measurementNumber, row.size());
-                                                            count3.incrementAndGet();
-                                                          } catch (IOException e) {
-                                                            throw new RuntimeException(e);
-                                                          }
-                                                        });
-                                              }))));
+                                              (tablet, rowCollector) ->
+                                                  new PipeRawTabletInsertionEvent(tablet, false)
+                                                      .processRowByRow(
+                                                          (row, collector) -> {
+                                                            try {
+                                                              rowCollector.collectRow(row);
+                                                              Assert.assertEquals(
+                                                                  measurementNumber, row.size());
+                                                              count3.incrementAndGet();
+                                                            } catch (IOException e) {
+                                                              throw new RuntimeException(e);
+                                                            }
+                                                          })))));
 
       Assert.assertEquals(count1.getAndSet(0), deviceNumber * expectedRowNumber);
       Assert.assertEquals(count2.getAndSet(0), deviceNumber * expectedRowNumber);
@@ -258,19 +359,18 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet, false)
-                                .processRowByRow(
-                                    (row, collector) -> {
-                                      try {
-                                        rowCollector.collectRow(row);
-                                        Assert.assertEquals(measurementNumber, row.size());
-                                        count1.incrementAndGet();
-                                      } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                      }
-                                    });
-                          })
+                          (tablet, rowCollector) ->
+                              new PipeRawTabletInsertionEvent(tablet, false)
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          rowCollector.collectRow(row);
+                                          Assert.assertEquals(measurementNumber, row.size());
+                                          count1.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      }))
                       .forEach(
                           tabletInsertionEvent1 ->
                               tabletInsertionEvent1
@@ -298,9 +398,9 @@ public class TsFileInsertionDataContainerTest {
                                                 }
                                               }))));
 
-      Assert.assertEquals(count1.get(), deviceNumber * expectedRowNumber);
-      Assert.assertEquals(count2.get(), deviceNumber * expectedRowNumber);
-      Assert.assertEquals(count3.get(), deviceNumber * expectedRowNumber);
+      Assert.assertEquals(deviceNumber * expectedRowNumber, count1.get());
+      Assert.assertEquals(deviceNumber * expectedRowNumber, count2.get());
+      Assert.assertEquals(deviceNumber * expectedRowNumber, count3.get());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -341,18 +441,26 @@ public class TsFileInsertionDataContainerTest {
                           }));
     }
 
+    final PipePattern oneAlignedDevicePattern;
+    final PipePattern oneNonAlignedDevicePattern;
+    switch (patternFormat) {
+      case PREFIX_FORMAT:
+        oneAlignedDevicePattern = new PrefixPipePattern(oneDeviceInAlignedTsFile.get());
+        oneNonAlignedDevicePattern = new PrefixPipePattern(oneDeviceInUnalignedTsFile.get());
+        break;
+      case IOTDB_FORMAT:
+      default:
+        oneAlignedDevicePattern = new IotdbPipePattern(oneDeviceInAlignedTsFile.get() + ".**");
+        oneNonAlignedDevicePattern = new IotdbPipePattern(oneDeviceInUnalignedTsFile.get() + ".**");
+        break;
+    }
+
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile,
-                new PrefixPipePattern(oneDeviceInAlignedTsFile.get()),
-                startTime,
-                endTime);
+                alignedTsFile, oneAlignedDevicePattern, startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile,
-                new PrefixPipePattern(oneDeviceInUnalignedTsFile.get()),
-                startTime,
-                endTime); ) {
+                nonalignedTsFile, oneNonAlignedDevicePattern, startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -388,24 +496,23 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet, false)
-                                                    .processRowByRow(
-                                                        (row, collector) -> {
-                                                          try {
-                                                            rowCollector.collectRow(row);
-                                                            Assert.assertEquals(
-                                                                measurementNumber, row.size());
-                                                            count3.incrementAndGet();
-                                                          } catch (IOException e) {
-                                                            throw new RuntimeException(e);
-                                                          }
-                                                        });
-                                              }))));
+                                              (tablet, rowCollector) ->
+                                                  new PipeRawTabletInsertionEvent(tablet, false)
+                                                      .processRowByRow(
+                                                          (row, collector) -> {
+                                                            try {
+                                                              rowCollector.collectRow(row);
+                                                              Assert.assertEquals(
+                                                                  measurementNumber, row.size());
+                                                              count3.incrementAndGet();
+                                                            } catch (IOException e) {
+                                                              throw new RuntimeException(e);
+                                                            }
+                                                          })))));
 
-      Assert.assertEquals(count1.getAndSet(0), expectedRowNumber);
-      Assert.assertEquals(count2.getAndSet(0), expectedRowNumber);
-      Assert.assertEquals(count3.getAndSet(0), expectedRowNumber);
+      Assert.assertEquals(expectedRowNumber, count1.getAndSet(0));
+      Assert.assertEquals(expectedRowNumber, count2.getAndSet(0));
+      Assert.assertEquals(expectedRowNumber, count3.getAndSet(0));
 
       nonalignedContainer
           .toTabletInsertionEvents()
@@ -413,19 +520,18 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet, false)
-                                .processRowByRow(
-                                    (row, collector) -> {
-                                      try {
-                                        rowCollector.collectRow(row);
-                                        Assert.assertEquals(measurementNumber, row.size());
-                                        count1.incrementAndGet();
-                                      } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                      }
-                                    });
-                          })
+                          (tablet, rowCollector) ->
+                              new PipeRawTabletInsertionEvent(tablet, false)
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          rowCollector.collectRow(row);
+                                          Assert.assertEquals(measurementNumber, row.size());
+                                          count1.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      }))
                       .forEach(
                           tabletInsertionEvent1 ->
                               tabletInsertionEvent1
@@ -453,26 +559,36 @@ public class TsFileInsertionDataContainerTest {
                                                 }
                                               }))));
 
-      Assert.assertEquals(count1.get(), expectedRowNumber);
-      Assert.assertEquals(count2.get(), expectedRowNumber);
-      Assert.assertEquals(count3.get(), expectedRowNumber);
+      Assert.assertEquals(expectedRowNumber, count1.get());
+      Assert.assertEquals(expectedRowNumber, count2.get());
+      Assert.assertEquals(expectedRowNumber, count3.get());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
+    final PipePattern oneAlignedMeasurementPattern;
+    final PipePattern oneNonAlignedMeasurementPattern;
+    switch (patternFormat) {
+      case PREFIX_FORMAT:
+        oneAlignedMeasurementPattern = new PrefixPipePattern(oneMeasurementInAlignedTsFile.get());
+        oneNonAlignedMeasurementPattern =
+            new PrefixPipePattern(oneMeasurementInUnalignedTsFile.get());
+        break;
+      case IOTDB_FORMAT:
+      default:
+        oneAlignedMeasurementPattern = new IotdbPipePattern(oneMeasurementInAlignedTsFile.get());
+        oneNonAlignedMeasurementPattern =
+            new IotdbPipePattern(oneMeasurementInUnalignedTsFile.get());
+        break;
+    }
+
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile,
-                new PrefixPipePattern(oneMeasurementInAlignedTsFile.get()),
-                startTime,
-                endTime);
+                alignedTsFile, oneAlignedMeasurementPattern, startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile,
-                new PrefixPipePattern(oneMeasurementInUnalignedTsFile.get()),
-                startTime,
-                endTime); ) {
+                nonalignedTsFile, oneNonAlignedMeasurementPattern, startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -508,23 +624,22 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet, false)
-                                                    .processRowByRow(
-                                                        (row, collector) -> {
-                                                          try {
-                                                            rowCollector.collectRow(row);
-                                                            Assert.assertEquals(1, row.size());
-                                                            count3.incrementAndGet();
-                                                          } catch (IOException e) {
-                                                            throw new RuntimeException(e);
-                                                          }
-                                                        });
-                                              }))));
+                                              (tablet, rowCollector) ->
+                                                  new PipeRawTabletInsertionEvent(tablet, false)
+                                                      .processRowByRow(
+                                                          (row, collector) -> {
+                                                            try {
+                                                              rowCollector.collectRow(row);
+                                                              Assert.assertEquals(1, row.size());
+                                                              count3.incrementAndGet();
+                                                            } catch (IOException e) {
+                                                              throw new RuntimeException(e);
+                                                            }
+                                                          })))));
 
-      Assert.assertEquals(count1.getAndSet(0), expectedRowNumber);
-      Assert.assertEquals(count2.getAndSet(0), expectedRowNumber);
-      Assert.assertEquals(count3.getAndSet(0), expectedRowNumber);
+      Assert.assertEquals(expectedRowNumber, count1.getAndSet(0));
+      Assert.assertEquals(expectedRowNumber, count2.getAndSet(0));
+      Assert.assertEquals(expectedRowNumber, count3.getAndSet(0));
 
       nonalignedContainer
           .toTabletInsertionEvents()
@@ -532,19 +647,18 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet, false)
-                                .processRowByRow(
-                                    (row, collector) -> {
-                                      try {
-                                        rowCollector.collectRow(row);
-                                        Assert.assertEquals(1, row.size());
-                                        count1.incrementAndGet();
-                                      } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                      }
-                                    });
-                          })
+                          (tablet, rowCollector) ->
+                              new PipeRawTabletInsertionEvent(tablet, false)
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          rowCollector.collectRow(row);
+                                          Assert.assertEquals(1, row.size());
+                                          count1.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      }))
                       .forEach(
                           tabletInsertionEvent1 ->
                               tabletInsertionEvent1
@@ -571,20 +685,30 @@ public class TsFileInsertionDataContainerTest {
                                                 }
                                               }))));
 
-      Assert.assertEquals(count1.get(), expectedRowNumber);
-      Assert.assertEquals(count2.get(), expectedRowNumber);
-      Assert.assertEquals(count3.get(), expectedRowNumber);
+      Assert.assertEquals(expectedRowNumber, count1.get());
+      Assert.assertEquals(expectedRowNumber, count2.get());
+      Assert.assertEquals(expectedRowNumber, count3.get());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
+    final PipePattern notExistPattern;
+    switch (patternFormat) {
+      case PREFIX_FORMAT:
+        notExistPattern = new PrefixPipePattern("not-exist-pattern");
+        break;
+      case IOTDB_FORMAT:
+      default:
+        notExistPattern = new IotdbPipePattern("not-exist-pattern");
+        break;
+    }
+
     try (final TsFileInsertionDataContainer alignedContainer =
-            new TsFileInsertionDataContainer(
-                alignedTsFile, new PrefixPipePattern("not-exist-pattern"), startTime, endTime);
+            new TsFileInsertionDataContainer(alignedTsFile, notExistPattern, startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile, new PrefixPipePattern("not-exist-pattern"), startTime, endTime)) {
+                nonalignedTsFile, notExistPattern, startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -620,23 +744,22 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet, false)
-                                                    .processRowByRow(
-                                                        (row, collector) -> {
-                                                          try {
-                                                            rowCollector.collectRow(row);
-                                                            Assert.assertEquals(0, row.size());
-                                                            count3.incrementAndGet();
-                                                          } catch (IOException e) {
-                                                            throw new RuntimeException(e);
-                                                          }
-                                                        });
-                                              }))));
+                                              (tablet, rowCollector) ->
+                                                  new PipeRawTabletInsertionEvent(tablet, false)
+                                                      .processRowByRow(
+                                                          (row, collector) -> {
+                                                            try {
+                                                              rowCollector.collectRow(row);
+                                                              Assert.assertEquals(0, row.size());
+                                                              count3.incrementAndGet();
+                                                            } catch (IOException e) {
+                                                              throw new RuntimeException(e);
+                                                            }
+                                                          })))));
 
-      Assert.assertEquals(count1.getAndSet(0), 0);
-      Assert.assertEquals(count2.getAndSet(0), 0);
-      Assert.assertEquals(count3.getAndSet(0), 0);
+      Assert.assertEquals(0, count1.getAndSet(0));
+      Assert.assertEquals(0, count2.getAndSet(0));
+      Assert.assertEquals(0, count3.getAndSet(0));
 
       nonalignedContainer
           .toTabletInsertionEvents()
@@ -644,19 +767,18 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet, false)
-                                .processRowByRow(
-                                    (row, collector) -> {
-                                      try {
-                                        rowCollector.collectRow(row);
-                                        Assert.assertEquals(0, row.size());
-                                        count1.incrementAndGet();
-                                      } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                      }
-                                    });
-                          })
+                          (tablet, rowCollector) ->
+                              new PipeRawTabletInsertionEvent(tablet, false)
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          rowCollector.collectRow(row);
+                                          Assert.assertEquals(0, row.size());
+                                          count1.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      }))
                       .forEach(
                           tabletInsertionEvent1 ->
                               tabletInsertionEvent1
@@ -683,9 +805,9 @@ public class TsFileInsertionDataContainerTest {
                                                 }
                                               }))));
 
-      Assert.assertEquals(count1.get(), 0);
-      Assert.assertEquals(count2.get(), 0);
-      Assert.assertEquals(count3.get(), 0);
+      Assert.assertEquals(0, count1.get());
+      Assert.assertEquals(0, count2.get());
+      Assert.assertEquals(0, count3.get());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

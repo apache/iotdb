@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -118,7 +119,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           extractorsFilteredByDevice.forEach(
               extractor -> {
                 final PipePattern pattern = extractor.getPipePattern();
-                if (pattern.coversDevice(device)) {
+                if (Objects.isNull(pattern) || pattern.coversDevice(device)) {
                   matchedExtractors.add(extractor);
                 } else {
                   for (final String measurement : measurements) {
@@ -163,7 +164,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
-      if (extractor.getPipePattern().mayOverlapWithDevice(device)) {
+      final PipePattern pipePattern = extractor.getPipePattern();
+      if (Objects.isNull(pipePattern) || pipePattern.mayOverlapWithDevice(device)) {
         filteredExtractors.add(extractor);
       }
     }

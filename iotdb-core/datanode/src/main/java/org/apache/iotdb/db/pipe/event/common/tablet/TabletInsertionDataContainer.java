@@ -375,7 +375,7 @@ public class TabletInsertionDataContainer {
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
-    if (pattern.isRoot() || pattern.coversDevice(deviceId)) {
+    if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
