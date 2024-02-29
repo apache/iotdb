@@ -180,7 +180,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         return;
       }
       LOGGER.info("[RepairScheduler] Wait compaction schedule task finish");
-      CompactionScheduleTaskManager.getInstance().stopRunningTasks();
+      CompactionScheduleTaskManager.getInstance().stopCompactionScheduleTasks();
       try {
         LOGGER.info("[RepairScheduler] Wait all running compaction task finish");
         CompactionTaskManager.getInstance().waitAllCompactionFinish();

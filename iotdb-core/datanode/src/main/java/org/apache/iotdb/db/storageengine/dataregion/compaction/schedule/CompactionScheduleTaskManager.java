@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
@@ -57,7 +56,8 @@ public class CompactionScheduleTaskManager implements IService {
   private static final CompactionScheduleTaskManager INSTANCE = new CompactionScheduleTaskManager();
   private static final List<DataRegion> dataRegionList = new Vector<>();
   private final RepairDataTaskManager REPAIR_TASK_MANAGER_INSTANCE = new RepairDataTaskManager();
-  private final Set<Future<Void>> submitTaskFutures = ConcurrentHashMap.newKeySet();
+  private final Set<Future<Void>> submitCompactionScheduleTaskFutures =
+      ConcurrentHashMap.newKeySet();
   private ReentrantLock lock = new ReentrantLock();
   private volatile boolean init = false;
 
@@ -71,22 +71,22 @@ public class CompactionScheduleTaskManager implements IService {
     logger.info("Compaction schedule task manager started.");
   }
 
-  public void stopRunningTasks() {
+  public void stopCompactionScheduleTasks() {
     lock.lock();
     try {
-      for (Future<Void> repairTask : submitTaskFutures) {
-        repairTask.cancel(true);
+      for (Future<Void> task : submitCompactionScheduleTaskFutures) {
+        task.cancel(true);
       }
-      for (Future<Void> repairTask : submitTaskFutures) {
-        if (repairTask.isDone()) {
+      for (Future<Void> task : submitCompactionScheduleTaskFutures) {
+        if (task.isDone()) {
           continue;
         }
         try {
-          repairTask.get();
+          task.get();
         } catch (Exception ignored) {
         }
       }
-      submitTaskFutures.clear();
+      submitCompactionScheduleTaskFutures.clear();
       checkAndMayApplyConfigurationChange();
     } finally {
       lock.unlock();
@@ -119,7 +119,7 @@ public class CompactionScheduleTaskManager implements IService {
         Future<Void> future =
             compactionScheduleTaskThreadPool.submit(
                 new CompactionScheduleTaskWorker(dataRegionList, workerId, workerNum));
-        submitTaskFutures.add(future);
+        submitCompactionScheduleTaskFutures.add(future);
       }
     } finally {
       lock.unlock();
@@ -170,7 +170,7 @@ public class CompactionScheduleTaskManager implements IService {
   }
 
   private void restartThreadPool() {
-    stopRunningTasks();
+    stopCompactionScheduleTasks();
     compactionScheduleTaskThreadPool.shutdownNow();
     waitForThreadPoolTerminated();
     compactionScheduleTaskThreadPool =
@@ -224,6 +224,8 @@ public class CompactionScheduleTaskManager implements IService {
     private final AtomicReference<RepairTaskStatus> repairTaskStatus =
         new AtomicReference<>(RepairTaskStatus.STOPPED);
 
+    private final Set<Future<Void>> submitRepairScanTaskFutures = ConcurrentHashMap.newKeySet();
+
     public boolean markRepairTaskStart() {
       return repairTaskStatus.compareAndSet(RepairTaskStatus.STOPPED, RepairTaskStatus.RUNNING);
     }
@@ -269,7 +271,20 @@ public class CompactionScheduleTaskManager implements IService {
       if (repairTaskStatus.get() == RepairTaskStatus.STOPPED) {
         return;
       }
-      stopRunningTasks();
+      for (Future<Void> task : submitRepairScanTaskFutures) {
+        task.cancel(true);
+      }
+      for (Future<Void> task : submitRepairScanTaskFutures) {
+        if (task.isDone()) {
+          continue;
+        }
+        try {
+          task.get();
+        } catch (Exception ignored) {
+        }
+      }
+      submitRepairScanTaskFutures.clear();
+      checkAndMayApplyConfigurationChange();
     }
 
     public Future<Void> submitRepairScanTask(RepairTimePartitionScanTask scanTask) {
@@ -279,7 +294,7 @@ public class CompactionScheduleTaskManager implements IService {
       }
       try {
         Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
-        submitTaskFutures.add(future);
+        submitRepairScanTaskFutures.add(future);
         return future;
       } finally {
         lock.unlock();
@@ -287,7 +302,7 @@ public class CompactionScheduleTaskManager implements IService {
     }
 
     public void waitRepairTaskFinish() {
-      for (Future<Void> result : new ArrayList<>(submitTaskFutures)) {
+      for (Future<Void> result : submitRepairScanTaskFutures) {
         try {
           result.get();
         } catch (CancellationException cancellationException) {
@@ -296,7 +311,7 @@ public class CompactionScheduleTaskManager implements IService {
           logger.error("[RepairScheduler] Meet errors when scan time partition files", e);
         }
       }
-      submitTaskFutures.clear();
+      submitRepairScanTaskFutures.clear();
     }
   }
 }

@@ -84,6 +84,10 @@ public class RepairDataFileScanUtil {
         }
       }
     } catch (IOException ioException) {
+      // ignored the exception caused by thread interrupt
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
       logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), ioException);
       isBrokenFile = true;
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
