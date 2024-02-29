@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
