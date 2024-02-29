@@ -153,6 +153,8 @@ import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 
+  private final StatementAnalyzerFactory statementAnalyzerFactory;
+
   private final Analysis analysis;
 
   private final AccessControl accessControl;
@@ -166,12 +168,14 @@ public class StatementAnalyzer {
   private final CorrelationSupport correlationSupport;
 
   public StatementAnalyzer(
+      StatementAnalyzerFactory statementAnalyzerFactory,
       Analysis analysis,
       AccessControl accessControl,
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
       CorrelationSupport correlationSupport) {
+    this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.accessControl = accessControl;
     this.warningCollector = warningCollector;
@@ -633,13 +637,8 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope) {
       StatementAnalyzer analyzer =
-          new StatementAnalyzer(
-              analysis,
-              accessControl,
-              warningCollector,
-              sessionContext,
-              metadata,
-              CorrelationSupport.ALLOWED);
+          statementAnalyzerFactory.createStatementAnalyzer(
+              analysis, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -1913,6 +1912,7 @@ public class StatementAnalyzer {
             ExpressionAnalyzer.analyzeExpression(
                 metadata,
                 sessionContext,
+                statementAnalyzerFactory,
                 accessControl,
                 orderByScope,
                 analysis,
@@ -2099,6 +2099,7 @@ public class StatementAnalyzer {
       return ExpressionAnalyzer.analyzeExpression(
           metadata,
           sessionContext,
+          statementAnalyzerFactory,
           accessControl,
           scope,
           analysis,
@@ -2112,6 +2113,7 @@ public class StatementAnalyzer {
       return ExpressionAnalyzer.analyzeExpression(
           metadata,
           sessionContext,
+          statementAnalyzerFactory,
           accessControl,
           scope,
           analysis,

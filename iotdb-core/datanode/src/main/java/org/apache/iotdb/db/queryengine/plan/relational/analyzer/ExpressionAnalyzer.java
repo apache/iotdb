@@ -148,6 +148,7 @@ public class ExpressionAnalyzer {
   private ExpressionAnalyzer(
       Metadata metadata,
       AccessControl accessControl,
+      StatementAnalyzerFactory statementAnalyzerFactory,
       Analysis analysis,
       SessionInfo session,
       TypeProvider types,
@@ -156,8 +157,8 @@ public class ExpressionAnalyzer {
         metadata,
         accessControl,
         (node, correlationSupport) ->
-            new StatementAnalyzer(
-                analysis, accessControl, warningCollector, session, metadata, correlationSupport),
+            statementAnalyzerFactory.createStatementAnalyzer(
+                analysis, session, warningCollector, correlationSupport),
         session,
         types,
         analysis.getParameters(),
@@ -1394,6 +1395,7 @@ public class ExpressionAnalyzer {
   public static ExpressionAnalysis analyzeExpressions(
       Metadata metadata,
       SessionInfo session,
+      StatementAnalyzerFactory statementAnalyzerFactory,
       AccessControl accessControl,
       TypeProvider types,
       Iterable<Expression> expressions,
@@ -1401,7 +1403,14 @@ public class ExpressionAnalyzer {
       WarningCollector warningCollector) {
     Analysis analysis = new Analysis(null, parameters);
     ExpressionAnalyzer analyzer =
-        new ExpressionAnalyzer(metadata, accessControl, analysis, session, types, warningCollector);
+        new ExpressionAnalyzer(
+            metadata,
+            accessControl,
+            statementAnalyzerFactory,
+            analysis,
+            session,
+            types,
+            warningCollector);
     for (Expression expression : expressions) {
       analyzer.analyze(
           expression,
@@ -1420,6 +1429,7 @@ public class ExpressionAnalyzer {
   public static ExpressionAnalysis analyzeExpression(
       Metadata metadata,
       SessionInfo session,
+      StatementAnalyzerFactory statementAnalyzerFactory,
       AccessControl accessControl,
       Scope scope,
       Analysis analysis,
@@ -1428,7 +1438,13 @@ public class ExpressionAnalyzer {
       CorrelationSupport correlationSupport) {
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
-            metadata, accessControl, analysis, session, TypeProvider.empty(), warningCollector);
+            metadata,
+            accessControl,
+            statementAnalyzerFactory,
+            analysis,
+            session,
+            TypeProvider.empty(),
+            warningCollector);
     analyzer.analyze(expression, scope, correlationSupport);
 
     updateAnalysis(analysis, analyzer, session, accessControl);

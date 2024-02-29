@@ -19,4 +19,61 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-public class Analyzer {}
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.Parameter;
+import org.apache.iotdb.db.relational.sql.tree.Statement;
+
+import java.util.List;
+import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
+
+public class Analyzer {
+
+  private final StatementAnalyzerFactory statementAnalyzerFactory;
+
+  private final SessionInfo session;
+  private final List<Expression> parameters;
+
+  private final Map<NodeRef<Parameter>, Expression> parameterLookup;
+
+  private final WarningCollector warningCollector;
+
+  Analyzer(
+      SessionInfo session,
+      StatementAnalyzerFactory statementAnalyzerFactory,
+      List<Expression> parameters,
+      Map<NodeRef<Parameter>, Expression> parameterLookup,
+      WarningCollector warningCollector) {
+    this.session = requireNonNull(session, "session is null");
+    this.statementAnalyzerFactory =
+        requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
+    this.parameters = parameters;
+    this.parameterLookup = parameterLookup;
+    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+  }
+
+  public Analysis analyze(Statement statement) {
+    Analysis analysis = new Analysis(statement, parameterLookup);
+    StatementAnalyzer analyzer =
+        statementAnalyzerFactory.createStatementAnalyzer(
+            analysis, session, warningCollector, CorrelationSupport.ALLOWED);
+
+    analyzer.analyze(statement);
+
+    // TODO access control
+    // check column access permissions for each table
+    //    analysis.getTableColumnReferences().forEach((accessControlInfo, tableColumnReferences) ->
+    //        tableColumnReferences.forEach((tableName, columns) ->
+    //            accessControlInfo.getAccessControl().checkCanSelectFromColumns(
+    //                accessControlInfo.getSecurityContext(session.getRequiredTransactionId(),
+    // session.getQueryId(),
+    //                    session.getStart()),
+    //                tableName,
+    //                columns)));
+
+    return analysis;
+  }
+}

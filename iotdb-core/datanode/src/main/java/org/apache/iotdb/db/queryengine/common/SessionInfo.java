@@ -55,16 +55,11 @@ public class SessionInfo {
   }
 
   public SessionInfo(
-      long sessionId,
-      String userName,
-      String zoneId,
-      @Nullable String databaseName,
-      ClientVersion version) {
+      long sessionId, String userName, String zoneId, @Nullable String databaseName) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.databaseName = databaseName;
-    this.version = version;
   }
 
   public long getSessionId() {
