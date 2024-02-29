@@ -47,32 +47,6 @@ public interface PipeDataRegionMatcher {
    */
   Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event);
 
-  /** Check if a pattern is legal. Different pattern format may have different rules. */
-  boolean patternIsLegal(String pattern);
-
-  /** Check if a pattern matches all time-series under a database. */
-  boolean patternCoverDb(String pattern, String device);
-
-  /** Check if a device's all measurements are covered by the pattern. */
-  boolean patternCoverDevice(String pattern, String device);
-
-  /**
-   * Check if a device may have some measurements matched by the pattern.
-   *
-   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
-   * measurement matches the pattern, please use {@link
-   * PipeDataRegionMatcher#patternMatchMeasurement} after this.
-   */
-  boolean patternMayOverlapWithDevice(String pattern, String device);
-
-  /**
-   * Check if a full path with device and measurement can be matched by pattern.
-   *
-   * <p>NOTE: this is only called when {@link PipeDataRegionMatcher#patternMayOverlapWithDevice} is
-   * true.
-   */
-  boolean patternMatchMeasurement(String pattern, String device, String measurement);
-
   /** Clear all the registered extractors and internal data structures. */
   void clear();
 }

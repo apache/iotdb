@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -70,10 +69,10 @@ public abstract class EnrichedEvent implements Event {
     referenceCount = new AtomicInteger(0);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.pipePattern = pipePattern != null ? pipePattern : new PipePattern();
+    this.pipePattern = pipePattern;
     this.startTime = startTime;
     this.endTime = endTime;
-    isPatternParsed = this.pipePattern.isRoot();
+    isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
   }
 
@@ -189,12 +188,12 @@ public abstract class EnrichedEvent implements Event {
    *
    * @return the pattern
    */
-  public final String getPattern() {
-    return pipePattern.getPattern();
+  public final String getPatternString() {
+    return pipePattern != null ? pipePattern.getPattern() : null;
   }
 
-  public final PipePatternFormat getPatternFormat() {
-    return pipePattern.getFormat();
+  public final PipePattern getPipePattern() {
+    return pipePattern;
   }
 
   public final long getStartTime() {

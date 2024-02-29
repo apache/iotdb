@@ -21,8 +21,7 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
-import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
+import org.apache.iotdb.db.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -195,16 +194,10 @@ public class TsFileInsertionDataContainerTest {
 
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile,
-                new PipePattern("root", PipePatternFormat.PREFIX),
-                startTime,
-                endTime);
+                alignedTsFile, new PrefixPipePattern("root"), startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile,
-                new PipePattern("root", PipePatternFormat.PREFIX),
-                startTime,
-                endTime)) {
+                nonalignedTsFile, new PrefixPipePattern("root"), startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);
@@ -351,13 +344,13 @@ public class TsFileInsertionDataContainerTest {
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
                 alignedTsFile,
-                new PipePattern(oneDeviceInAlignedTsFile.get(), PipePatternFormat.PREFIX),
+                new PrefixPipePattern(oneDeviceInAlignedTsFile.get()),
                 startTime,
                 endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
                 nonalignedTsFile,
-                new PipePattern(oneDeviceInUnalignedTsFile.get(), PipePatternFormat.PREFIX),
+                new PrefixPipePattern(oneDeviceInUnalignedTsFile.get()),
                 startTime,
                 endTime); ) {
       AtomicInteger count1 = new AtomicInteger(0);
@@ -471,13 +464,13 @@ public class TsFileInsertionDataContainerTest {
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
                 alignedTsFile,
-                new PipePattern(oneMeasurementInAlignedTsFile.get(), PipePatternFormat.PREFIX),
+                new PrefixPipePattern(oneMeasurementInAlignedTsFile.get()),
                 startTime,
                 endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
                 nonalignedTsFile,
-                new PipePattern(oneMeasurementInUnalignedTsFile.get(), PipePatternFormat.PREFIX),
+                new PrefixPipePattern(oneMeasurementInUnalignedTsFile.get()),
                 startTime,
                 endTime); ) {
       AtomicInteger count1 = new AtomicInteger(0);
@@ -588,16 +581,10 @@ public class TsFileInsertionDataContainerTest {
 
     try (final TsFileInsertionDataContainer alignedContainer =
             new TsFileInsertionDataContainer(
-                alignedTsFile,
-                new PipePattern("not-exist-pattern", PipePatternFormat.PREFIX),
-                startTime,
-                endTime);
+                alignedTsFile, new PrefixPipePattern("not-exist-pattern"), startTime, endTime);
         final TsFileInsertionDataContainer nonalignedContainer =
             new TsFileInsertionDataContainer(
-                nonalignedTsFile,
-                new PipePattern("not-exist-pattern", PipePatternFormat.PREFIX),
-                startTime,
-                endTime); ) {
+                nonalignedTsFile, new PrefixPipePattern("not-exist-pattern"), startTime, endTime)) {
       AtomicInteger count1 = new AtomicInteger(0);
       AtomicInteger count2 = new AtomicInteger(0);
       AtomicInteger count3 = new AtomicInteger(0);

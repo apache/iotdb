@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -35,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
+public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
 
@@ -116,8 +117,8 @@ public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatche
           // measurements.
           extractorsFilteredByDevice.forEach(
               extractor -> {
-                final String pattern = extractor.getPattern();
-                if (patternCoverDevice(pattern, device)) {
+                final PipePattern pattern = extractor.getPipePattern();
+                if (pattern.coversDevice(device)) {
                   matchedExtractors.add(extractor);
                 } else {
                   for (final String measurement : measurements) {
@@ -126,7 +127,7 @@ public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatche
                       continue;
                     }
 
-                    if (patternMatchMeasurement(pattern, device, measurement)) {
+                    if (pattern.matchesMeasurement(device, measurement)) {
                       matchedExtractors.add(extractor);
                       // There would be no more matched extractors because the measurements are
                       // unique
@@ -162,8 +163,7 @@ public abstract class CachedSchemaPatternMatcher implements PipeDataRegionMatche
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
-      String pattern = extractor.getPattern();
-      if (patternMayOverlapWithDevice(pattern, device)) {
+      if (extractor.getPipePattern().mayOverlapWithDevice(device)) {
         filteredExtractors.add(extractor);
       }
     }

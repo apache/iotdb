@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -376,9 +375,7 @@ public class TabletInsertionDataContainer {
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
-    if (pattern.isRoot()
-        || PipePatternMatcherManager.getInstance()
-            .patternCoverDevice(pattern.getFormat(), pattern.getPattern(), deviceId)) {
+    if (pattern.isRoot() || pattern.coversDevice(deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
@@ -386,8 +383,7 @@ public class TabletInsertionDataContainer {
 
     // case 2: for example, pattern is root.a.b.c and device is root.a.b
     // in this case, we need to check the full path
-    else if (PipePatternMatcherManager.getInstance()
-        .patternMayOverlapWithDevice(pattern.getFormat(), pattern.getPattern(), deviceId)) {
+    else if (pattern.mayOverlapWithDevice(deviceId)) {
       int filteredCount = 0;
 
       for (int i = 0; i < originColumnSize; i++) {
@@ -398,9 +394,7 @@ public class TabletInsertionDataContainer {
           continue;
         }
 
-        if (PipePatternMatcherManager.getInstance()
-            .patternMatchMeasurement(
-                pattern.getFormat(), pattern.getPattern(), deviceId, measurement)) {
+        if (pattern.matchesMeasurement(deviceId, measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
       }

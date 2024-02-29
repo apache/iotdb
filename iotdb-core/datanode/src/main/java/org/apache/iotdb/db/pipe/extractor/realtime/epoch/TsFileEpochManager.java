@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -65,7 +64,7 @@ public class TsFileEpochManager {
         epoch,
         resource.getDevices().stream()
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
-        new PipePattern(event.getPattern(), event.getPatternFormat()));
+        event.getPipePattern());
   }
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
@@ -77,6 +76,6 @@ public class TsFileEpochManager {
         event,
         epoch,
         Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
-        new PipePattern(event.getPattern(), event.getPatternFormat()));
+        event.getPipePattern());
   }
 }

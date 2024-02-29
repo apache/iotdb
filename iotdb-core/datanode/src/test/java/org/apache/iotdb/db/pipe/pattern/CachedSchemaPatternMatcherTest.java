@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.pattern.matcher.PrefixPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -45,15 +45,15 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class PrefixPatternMatcherTest {
+public class CachedSchemaPatternMatcherTest {
 
-  private PrefixPatternMatcher matcher;
+  private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionExtractor> extractors;
 
   @Before
   public void setUp() {
-    matcher = new PrefixPatternMatcher();
+    matcher = new CachedSchemaPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     extractors = new ArrayList<>();
   }
@@ -130,14 +130,13 @@ public class PrefixPatternMatcherTest {
                 null,
                 null,
                 Collections.singletonMap("root." + i, measurements),
-                new PipePattern("root", PipePatternFormat.PREFIX));
+                new PrefixPipePattern("root"));
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
       PipeRealtimeEvent event =
-          new PipeRealtimeEvent(
-              null, null, deviceMap, new PipePattern("root", PipePatternFormat.PREFIX));
+          new PipeRealtimeEvent(null, null, deviceMap, new PrefixPipePattern("root"));
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
@@ -151,60 +150,11 @@ public class PrefixPatternMatcherTest {
     future.get();
   }
 
-  @Test
-  public void testPrefixMatcher() {
-    // Test legal and illegal pattern
-    Assert.assertTrue(matcher.patternIsLegal("root"));
-    Assert.assertTrue(matcher.patternIsLegal("root."));
-    Assert.assertTrue(matcher.patternIsLegal("root.db"));
-    Assert.assertTrue(matcher.patternIsLegal("root.db.d1.s"));
-    Assert.assertTrue(matcher.patternIsLegal("root.db.`1`"));
-
-    Assert.assertFalse(matcher.patternIsLegal("roo"));
-    Assert.assertFalse(matcher.patternIsLegal(""));
-    Assert.assertFalse(matcher.patternIsLegal("root.."));
-    Assert.assertFalse(matcher.patternIsLegal("root./"));
-
-    // Test pattern cover device
-    String device = "root.db.d1";
-
-    Assert.assertTrue(matcher.patternCoverDevice("root", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.d", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.db", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.db.", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.db.d", device));
-    Assert.assertTrue(matcher.patternCoverDevice("root.db.d1", device));
-
-    Assert.assertFalse(matcher.patternCoverDevice("root.db.d1.", device));
-    Assert.assertFalse(matcher.patternCoverDevice("root.db.d1.s1", device));
-    Assert.assertFalse(matcher.patternCoverDevice("root.**", device));
-    Assert.assertFalse(matcher.patternCoverDevice("root.db.d2", device));
-
-    // Test pattern overlap with device
-    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root", device));
-    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1", device));
-    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1.", device));
-    Assert.assertTrue(matcher.patternMayOverlapWithDevice("root.db.d1.s1", device));
-
-    Assert.assertFalse(matcher.patternMayOverlapWithDevice("root.db.d2", device));
-    Assert.assertFalse(matcher.patternMayOverlapWithDevice("root.**", device));
-
-    // Test pattern match measurement
-    String measurement = "s1";
-
-    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1", device, measurement));
-    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.", device, measurement));
-    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.s", device, measurement));
-    Assert.assertTrue(matcher.patternMatchMeasurement("root.db.d1.s1", device, measurement));
-
-    Assert.assertFalse(matcher.patternMatchMeasurement("root.db.d1.s11", device, measurement));
-    Assert.assertFalse(matcher.patternMatchMeasurement("root.db.d1.s2", device, measurement));
-  }
-
   public static class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {
 
-    public PipeRealtimeDataRegionFakeExtractor() {}
+    public PipeRealtimeDataRegionFakeExtractor() {
+      pipePattern = new PrefixPipePattern(null);
+    }
 
     @Override
     public Event supply() {
@@ -222,10 +172,13 @@ public class PrefixPatternMatcherTest {
                   for (String s : v) {
                     match[0] =
                         match[0]
-                            || (k + TsFileConstant.PATH_SEPARATOR + s).startsWith(getPattern());
+                            || (k + TsFileConstant.PATH_SEPARATOR + s)
+                                .startsWith(getPatternString());
                   }
                 } else {
-                  match[0] = match[0] || (getPattern().startsWith(k) || k.startsWith(getPattern()));
+                  match[0] =
+                      match[0]
+                          || (getPatternString().startsWith(k) || k.startsWith(getPatternString()));
                 }
               });
       Assert.assertTrue(match[0]);

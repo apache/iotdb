@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.pattern.matcher;
+package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -27,10 +27,20 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 
-public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
+public class PrefixPipePattern extends PipePattern {
+  private static final String DEFAULT_PATTERN = "root";
+
+  public PrefixPipePattern(String pattern) {
+    super(pattern);
+  }
 
   @Override
-  public boolean patternIsLegal(String pattern) {
+  public String getDefaultPattern() {
+    return DEFAULT_PATTERN;
+  }
+
+  @Override
+  public boolean isLegal() {
     if (!pattern.startsWith("root")) {
       return false;
     }
@@ -63,19 +73,19 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternCoverDb(String pattern, String db) {
+  public boolean coversDb(String db) {
     return pattern.length() <= db.length() && db.startsWith(pattern);
   }
 
   @Override
-  public boolean patternCoverDevice(String pattern, String device) {
+  public boolean coversDevice(String device) {
     // for example, pattern is root.a.b and device is root.a.b.c
     // in this case, the extractor can be matched without checking the measurements
     return pattern.length() <= device.length() && device.startsWith(pattern);
   }
 
   @Override
-  public boolean patternMayOverlapWithDevice(String pattern, String device) {
+  public boolean mayOverlapWithDevice(String device) {
     return (
         // for example, pattern is root.a.b and device is root.a.b.c
         // in this case, the extractor can be matched without checking the measurements
@@ -86,14 +96,8 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
         || (pattern.length() > device.length() && pattern.startsWith(device));
   }
 
-  /**
-   * Check if a full path with device and measurement can be matched by pattern.
-   *
-   * <p>NOTE: this is only called when {@link
-   * PrefixPatternMatcher#patternMayOverlapWithDevice(String, String)} is true.
-   */
   @Override
-  public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
+  public boolean matchesMeasurement(String device, String measurement) {
     // We assume that the device is already matched.
     if (pattern.length() <= device.length()) {
       return true;
@@ -108,5 +112,10 @@ public class PrefixPatternMatcher extends CachedSchemaPatternMatcher {
     pattern.length() <= device.length() + dotAndMeasurement.length()
         // high cost check comes later
         && dotAndMeasurement.startsWith(pattern.substring(device.length()));
+  }
+
+  @Override
+  public String toString() {
+    return "PrefixPipePattern" + super.toString();
   }
 }

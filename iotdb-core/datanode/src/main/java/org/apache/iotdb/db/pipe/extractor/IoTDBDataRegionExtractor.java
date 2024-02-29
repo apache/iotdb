@@ -30,8 +30,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridE
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
-import org.apache.iotdb.db.pipe.pattern.PipePatternFormat;
-import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
+import org.apache.iotdb.db.pipe.pattern.PipePattern;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -57,8 +56,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE;
@@ -73,7 +70,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
@@ -113,17 +109,11 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
     // Get the pattern format to check whether the pattern is legal
-    final PipePatternFormat patternFormat =
-        PipePatternFormat.getFormatFromSourceParameters(validator.getParameters());
+    final PipePattern pattern =
+        PipePattern.getPipePatternFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
-    validatePattern(
-        patternFormat,
-        validator
-            .getParameters()
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE));
+    validatePattern(pattern);
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -196,10 +186,9 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(PipePatternFormat format, String pattern) {
-    if (!PipePatternMatcherManager.getInstance().patternIsLegal(format, pattern)) {
-      throw new IllegalArgumentException(
-          String.format("Pattern \"%s\" is illegal under format %s.", pattern, format));
+  private void validatePattern(PipePattern pattern) {
+    if (!pattern.isLegal()) {
+      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
     }
   }
 

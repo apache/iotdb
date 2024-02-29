@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -251,12 +250,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     final InsertNode node = getInsertNodeViaCacheIfPossible();
     return super.shouldParsePattern()
         && Objects.nonNull(pipePattern)
-        && (Objects.isNull(node)
-            || !PipePatternMatcherManager.getInstance()
-                .patternCoverDevice(
-                    pipePattern.getFormat(),
-                    pipePattern.getPattern(),
-                    node.getDevicePath().getFullPath()));
+        && (Objects.isNull(node) || !pipePattern.coversDevice(node.getDevicePath().getFullPath()));
   }
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {

@@ -42,7 +42,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
     super(
         enrichedEvent.getPipeName(),
         enrichedEvent.getPipeTaskMeta(),
-        new PipePattern(enrichedEvent.getPattern(), enrichedEvent.getPatternFormat()),
+        enrichedEvent.getPipePattern(),
         enrichedEvent.getStartTime(),
         enrichedEvent.getEndTime());
     this.userDefinedEvent = userDefinedEvent;

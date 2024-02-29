@@ -17,17 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.pattern.matcher;
+package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 
-public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class IotdbPipePattern extends PipePattern {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IotdbPipePattern.class);
+
+  private static final String DEFAULT_PATTERN = "root.**";
+
+  public IotdbPipePattern(String pattern) {
+    super(pattern);
+  }
 
   @Override
-  public boolean patternIsLegal(String pattern) {
+  public String getDefaultPattern() {
+    return DEFAULT_PATTERN;
+  }
+
+  @Override
+  public boolean isLegal() {
     if (!pattern.startsWith("root")) {
       return false;
     }
@@ -41,7 +56,7 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternCoverDb(String pattern, String db) {
+  public boolean coversDb(String db) {
     try {
       PartialPath patternPath = new PartialPath(pattern);
       return patternPath.include(new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
@@ -52,7 +67,7 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternCoverDevice(String pattern, String device) {
+  public boolean coversDevice(String device) {
     try {
       PartialPath patternPath = new PartialPath(pattern);
       return patternPath.include(new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
@@ -63,7 +78,7 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
   }
 
   @Override
-  public boolean patternMayOverlapWithDevice(String pattern, String device) {
+  public boolean mayOverlapWithDevice(String device) {
     try {
       PartialPath devicePath = new PartialPath(device);
       PartialPath patternPath = new PartialPath(pattern);
@@ -76,14 +91,8 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
     }
   }
 
-  /**
-   * Check if a full path with device and measurement can be matched by pattern.
-   *
-   * <p>NOTE: this is only called when {@link
-   * IotdbPatternMatcher#patternMayOverlapWithDevice(String, String)} is true.
-   */
   @Override
-  public boolean patternMatchMeasurement(String pattern, String device, String measurement) {
+  public boolean matchesMeasurement(String device, String measurement) {
     try {
       PartialPath measurementPath = new PartialPath(device, measurement);
       PartialPath patternPath = new PartialPath(pattern);
@@ -92,5 +101,10 @@ public class IotdbPatternMatcher extends CachedSchemaPatternMatcher {
       LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
+  }
+
+  @Override
+  public String toString() {
+    return "IotdbPipePattern" + super.toString();
   }
 }

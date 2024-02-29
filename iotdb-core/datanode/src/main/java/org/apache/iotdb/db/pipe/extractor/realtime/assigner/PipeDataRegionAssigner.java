@@ -24,10 +24,13 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
-import org.apache.iotdb.db.pipe.pattern.PipePattern;
-import org.apache.iotdb.db.pipe.pattern.matcher.PipePatternMatcherManager;
+import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipeDataRegionMatcher;
 
 public class PipeDataRegionAssigner {
+
+  /** The matcher is used to match the event with the extractor based on the pattern. */
+  private final PipeDataRegionMatcher matcher;
 
   /** The disruptor is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
@@ -39,6 +42,7 @@ public class PipeDataRegionAssigner {
   }
 
   public PipeDataRegionAssigner(String dataRegionId) {
+    this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
@@ -55,7 +59,7 @@ public class PipeDataRegionAssigner {
   }
 
   public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
-    PipePatternMatcherManager.getInstance()
+    matcher
         .match(event)
         .forEach(
             extractor -> {
@@ -67,7 +71,7 @@ public class PipeDataRegionAssigner {
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeName(),
                       extractor.getPipeTaskMeta(),
-                      new PipePattern(extractor.getPattern(), extractor.getPatternFormat()),
+                      extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
 
@@ -85,15 +89,15 @@ public class PipeDataRegionAssigner {
   }
 
   public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {
-    PipePatternMatcherManager.getInstance().register(extractor);
+    matcher.register(extractor);
   }
 
   public void stopAssignTo(PipeRealtimeDataRegionExtractor extractor) {
-    PipePatternMatcherManager.getInstance().deregister(extractor);
+    matcher.register(extractor);
   }
 
   public boolean notMoreExtractorNeededToBeAssigned() {
-    return PipePatternMatcherManager.getInstance().getRegisterCount() == 0;
+    return matcher.getRegisterCount() == 0;
   }
 
   /**
@@ -102,7 +106,7 @@ public class PipeDataRegionAssigner {
    */
   public void gc() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
-    PipePatternMatcherManager.getInstance().clear();
+    matcher.clear();
     disruptor.clear();
   }
 
