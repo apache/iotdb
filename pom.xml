@@ -95,7 +95,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
-        <jackson.version>2.15.2</jackson.version>
+        <jackson.version>2.15.3</jackson.version>
         <!-- This is the last version to support the javax namespace -->
         <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
         <!-- This is the last version to support the javax namespace -->
@@ -151,7 +151,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.0.1</ratis.version>
+        <ratis.version>3.1.0-21cb7b6-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>
@@ -1321,7 +1321,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
-                <version>1.21</version>
+                <version>1.26.0</version>
             </dependency>
             <!-- Conflict:
         hadoop-mapreduce-client-core (pulls in 4.0 and 3.0)

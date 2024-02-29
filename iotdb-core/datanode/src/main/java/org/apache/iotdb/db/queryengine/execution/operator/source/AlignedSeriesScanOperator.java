@@ -24,9 +24,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -36,12 +38,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder.MAX_LINE_NUMBER;
-
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final int valueColumnCount;
   private boolean finished = false;
+  private int maxTsBlockLineNum = -1;
 
   public AlignedSeriesScanOperator(
       OperatorContext context,
@@ -50,7 +51,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       boolean queryAllSensors,
-      List<TSDataType> dataTypes) {
+      List<TSDataType> dataTypes,
+      int maxTsBlockLineNum) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
@@ -67,6 +69,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
             maxReturnSize,
             (1L + valueColumnCount)
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+    this.maxTsBlockLineNum = maxTsBlockLineNum;
   }
 
   @Override
@@ -169,7 +172,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private void appendToBuilder(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
-    if (resultTsBlockBuilder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
+    if (resultTsBlockBuilder.isEmpty()
+        && tsBlock.getPositionCount() >= resultTsBlockBuilder.getMaxTsBlockLineNumber()) {
       retainedTsBlock = tsBlock;
       return;
     }
@@ -212,5 +216,12 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   protected List<TSDataType> getResultDataTypes() {
     // time + all value columns
     return seriesScanUtil.getTsDataTypeList();
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource(dataSource);
+    resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+    resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 }

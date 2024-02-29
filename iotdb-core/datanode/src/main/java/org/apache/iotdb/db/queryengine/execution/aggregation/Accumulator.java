@@ -34,11 +34,8 @@ public interface Accumulator {
    *
    * <p>bitMap is required for group-by framework. When needed(eq. controlColumn is null), bitMap
    * can guide accumulator to skip some rows
-   *
-   * <p>lastIndex is required for group-by framework indicating the row to return to leave in
-   * advance for various reasons(eq. current row doesn't satisfy the window)
    */
-  void addInput(Column[] column, BitMap bitMap, int lastIndex);
+  void addInput(Column[] columns, BitMap bitMap);
 
   /**
    * Sliding window constantly add and remove partial result in the window. Aggregation functions

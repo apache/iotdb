@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
 import org.slf4j.Logger;
@@ -37,6 +38,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
 public class PBTreeFlushExecutor {
 
@@ -126,7 +129,10 @@ public class PBTreeFlushExecutor {
     Iterator<ICachedMNode> volatileSubtreeIterator;
     List<ICachedMNode> collectedVolatileSubtrees;
     try {
+      ICachedMNodeContainer container = getCachedMNodeContainer(subtreeRoot);
+      container.transferAllBufferReceivingToFlushing();
       file.writeMNode(subtreeRoot);
+
       flushNodeNum.incrementAndGet();
       flushMemSize.addAndGet(subtreeRoot.estimateSize());
       volatileSubtreeIterator =
@@ -160,7 +166,10 @@ public class PBTreeFlushExecutor {
       subtreeRoot = subtreeIterator.next();
 
       try {
+        ICachedMNodeContainer container = getCachedMNodeContainer(subtreeRoot);
+        container.transferAllBufferReceivingToFlushing();
         file.writeMNode(subtreeRoot);
+
         flushNodeNum.incrementAndGet();
         flushMemSize.addAndGet(subtreeRoot.estimateSize());
         collectedVolatileSubtrees = new ArrayList<>();

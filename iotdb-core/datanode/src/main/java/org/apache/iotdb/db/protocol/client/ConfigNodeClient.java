@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -471,6 +472,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus createManyDatabases() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.setTTL(setTTLReq), status -> !updateConfigNodeLeader(status));
@@ -861,6 +868,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createPipe(TCreatePipeReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createPipe(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterPipe(TAlterPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterPipe(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

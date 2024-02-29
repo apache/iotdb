@@ -28,6 +28,7 @@ public class RegionExecutionResult {
   private String message;
 
   private TSStatus status;
+  private boolean needRetry;
 
   public boolean isAccepted() {
     return accepted;
@@ -51,5 +52,13 @@ public class RegionExecutionResult {
 
   public void setStatus(TSStatus status) {
     this.status = status;
+  }
+
+  public boolean isNeedRetry() {
+    return needRetry;
+  }
+
+  public void setNeedRetry(boolean needRetry) {
+    this.needRetry = needRetry;
   }
 }

@@ -424,4 +424,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
     return this;
   }
+
+  @Override
+  public CommonConfig setWalMode(String walMode) {
+    dnConfig.setWalMode(walMode);
+    cnConfig.setWalMode(walMode);
+    return this;
+  }
 }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -43,7 +43,7 @@ public class PipeReceiverTest {
     IoTDBThriftReceiverV1 receiver = new IoTDBThriftReceiverV1();
     try {
       receiver.receive(
-          PipeTransferHandshakeReq.toTPipeTransferReq(
+          PipeTransferHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
           mock(IPartitionFetcher.class),
           mock(ISchemaFetcher.class));

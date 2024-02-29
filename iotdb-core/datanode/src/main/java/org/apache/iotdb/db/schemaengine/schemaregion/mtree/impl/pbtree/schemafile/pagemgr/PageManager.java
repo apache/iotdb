@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -172,13 +173,15 @@ public abstract class PageManager implements IPageManager {
     int subIndex;
     long curSegAddr = getNodeAddress(node);
     long actualAddress; // actual segment to write record
+    long res; // result of write
     ICachedMNode child;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
     String alias;
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet()
+            .stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       // check and pre-allocate
@@ -207,10 +210,16 @@ public abstract class PageManager implements IPageManager {
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress), cxt);
 
-      try {
-        curPage
-            .getAsSegmentedPage()
-            .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      res =
+          curPage
+              .getAsSegmentedPage()
+              .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      if (res >= 0) {
+        if (res != 0) {
+          // spare size increased, buckets need to update
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
+        }
+
         interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
@@ -218,8 +227,9 @@ public abstract class PageManager implements IPageManager {
         if (alias != null && subIndex >= 0) {
           insertSubIndexEntry(subIndex, alias, entry.getKey(), cxt);
         }
-
-      } catch (SchemaPageOverflowException e) {
+      } else {
+        // page overflow
+        // current page is not enough for coming record
         if (curPage.getAsSegmentedPage().getSegmentSize(SchemaFile.getSegIndex(actualAddress))
             == SchemaFileConfig.SEG_MAX_SIZ) {
           // curPage might be replaced so unnecessary to mark it here
@@ -240,7 +250,7 @@ public abstract class PageManager implements IPageManager {
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
                   ICachedMNodeContainer.getCachedMNodeContainer(node)
-                      .getNewChildBuffer()
+                      .getNewChildFlushingBuffer()
                       .entrySet()
                       .size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize, cxt);
@@ -273,8 +283,11 @@ public abstract class PageManager implements IPageManager {
     ICachedMNode child, oldChild;
     ISchemaPage curPage;
     ByteBuffer childBuffer;
+    long res; // result of update
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
+        ICachedMNodeContainer.getCachedMNodeContainer(node)
+            .getUpdatedChildFlushingBuffer()
+            .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       childBuffer = RecordUtils.node2Buffer(child);
@@ -319,10 +332,15 @@ public abstract class PageManager implements IPageManager {
         insertNewSubEntry = removeOldSubEntry = false;
       }
 
-      try {
-        curPage
-            .getAsSegmentedPage()
-            .update(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      res =
+          curPage
+              .getAsSegmentedPage()
+              .update(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+      if (res >= 0) {
+        if (res != 0) {
+          // spare size increased, buckets need to update
+          cxt.indexBuckets.sortIntoBucket(curPage, (short) -1);
+        }
         interleavedFlush(curPage, cxt);
         cxt.markDirty(curPage);
 
@@ -336,7 +354,8 @@ public abstract class PageManager implements IPageManager {
             insertSubIndexEntry(subIndex, alias, entry.getKey(), cxt);
           }
         }
-      } catch (SchemaPageOverflowException e) {
+      } else {
+        // page overflow
         if (curPage.getAsSegmentedPage().getSegmentSize(SchemaFile.getSegIndex(actualAddress))
             == SchemaFileConfig.SEG_MAX_SIZ) {
           multiPageUpdateOverflowOperation(curPage, entry.getKey(), childBuffer, cxt);
@@ -544,7 +563,13 @@ public abstract class PageManager implements IPageManager {
   private long preAllocateSegment(short size, SchemaPageContext cxt)
       throws IOException, MetadataException {
     ISegmentedPage page = getMinApplSegmentedPageInMem(size, cxt);
-    return SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    short sparePrev = page.getSpareSize();
+    long res = SchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
+    if (sparePrev < page.getSpareSize()) {
+      // a compaction trigger by allocNewSegment had increased spare size
+      cxt.indexBuckets.sortIntoBucket(page, (short) -1);
+    }
+    return res;
   }
 
   protected ISchemaPage replacePageInCache(ISchemaPage page, SchemaPageContext cxt) {
@@ -561,7 +586,8 @@ public abstract class PageManager implements IPageManager {
    * @param size size of the expected segment
    * @return always write locked
    */
-  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt) {
+  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt)
+      throws SegmentNotFoundException {
     // pages retrieved from context is unnecessary and inefficient to lock
     ISchemaPage targetPage = cxt.indexBuckets.getNearestFitPage(size, false);
     if (targetPage != null) {
@@ -592,7 +618,8 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt) {
+  protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt)
+      throws SegmentNotFoundException {
     ISchemaPage newPage =
         ISchemaPage.initSegmentedPage(
             ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.incrementAndGet());

@@ -57,6 +57,12 @@ public class PipeMemoryManager {
 
   private long usedMemorySizeInBytes;
 
+  // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
+  // threshold, allocations of memory block for tablets will be rejected.
+  private static final double TABLET_MEMORY_REJECT_THRESHOLD =
+      PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
+  private volatile long usedMemorySizeInBytesOfTablets;
+
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
@@ -69,13 +75,58 @@ public class PipeMemoryManager {
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
+    return forceAllocate(sizeInBytes, false);
+  }
+
+  public PipeTabletMemoryBlock forceAllocateWithRetry(Tablet tablet)
+      throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
-      return new PipeMemoryBlock(sizeInBytes);
+      // No need to calculate the tablet size, skip it to save time
+      return new PipeTabletMemoryBlock(0);
+    }
+
+    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+      if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
+          < TABLET_MEMORY_REJECT_THRESHOLD) {
+        break;
+      }
+
+      try {
+        Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+      }
+    }
+
+    if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
+        >= TABLET_MEMORY_REJECT_THRESHOLD) {
+      throw new PipeRuntimeOutOfMemoryCriticalException(
+          String.format(
+              "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
+                  + "total memory size %d bytes, used memory for tablet size %d bytes,",
+              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
+    }
+
+    synchronized (this) {
+      final PipeTabletMemoryBlock block =
+          (PipeTabletMemoryBlock) forceAllocate(calculateTabletSizeInBytes(tablet), true);
+      usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
+      return block;
+    }
+  }
+
+  private PipeMemoryBlock forceAllocate(long sizeInBytes, boolean isForTablet)
+      throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return isForTablet
+          ? new PipeTabletMemoryBlock(sizeInBytes)
+          : new PipeMemoryBlock(sizeInBytes);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
-        return registeredMemoryBlock(sizeInBytes);
+        return registerMemoryBlock(sizeInBytes, isForTablet);
       }
 
       try {
@@ -98,11 +149,6 @@ public class PipeMemoryManager {
             sizeInBytes));
   }
 
-  public synchronized PipeMemoryBlock forceAllocate(Tablet tablet)
-      throws PipeRuntimeOutOfMemoryCriticalException {
-    return forceAllocate(calculateTabletSizeInBytes(tablet));
-  }
-
   /**
    * Allocate a memory block for pipe only if memory already used is less than specified threshold.
    *
@@ -116,6 +162,11 @@ public class PipeMemoryManager {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
+
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeMemoryBlock(sizeInBytes);
+    }
+
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
         && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
       return forceAllocate(sizeInBytes);
@@ -199,7 +250,7 @@ public class PipeMemoryManager {
     }
 
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
-      return registeredMemoryBlock(sizeInBytes);
+      return registerMemoryBlock(sizeInBytes);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
@@ -214,7 +265,7 @@ public class PipeMemoryManager {
             usedMemorySizeInBytes,
             sizeInBytes,
             sizeToAllocateInBytes);
-        return registeredMemoryBlock(sizeToAllocateInBytes);
+        return registerMemoryBlock(sizeToAllocateInBytes);
       }
 
       sizeToAllocateInBytes =
@@ -233,7 +284,7 @@ public class PipeMemoryManager {
           usedMemorySizeInBytes,
           sizeInBytes,
           sizeToAllocateInBytes);
-      return registeredMemoryBlock(sizeToAllocateInBytes);
+      return registerMemoryBlock(sizeToAllocateInBytes);
     } else {
       LOGGER.warn(
           "tryAllocate: failed to allocate memory, "
@@ -242,7 +293,7 @@ public class PipeMemoryManager {
           TOTAL_MEMORY_SIZE_IN_BYTES,
           usedMemorySizeInBytes,
           sizeInBytes);
-      return registeredMemoryBlock(0);
+      return registerMemoryBlock(0);
     }
   }
 
@@ -254,6 +305,9 @@ public class PipeMemoryManager {
 
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= memoryInBytesNeededToBeAllocated) {
       usedMemorySizeInBytes += memoryInBytesNeededToBeAllocated;
+      if (block instanceof PipeTabletMemoryBlock) {
+        usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
+      }
       block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() + memoryInBytesNeededToBeAllocated);
       return true;
     }
@@ -261,10 +315,15 @@ public class PipeMemoryManager {
     return false;
   }
 
-  private PipeMemoryBlock registeredMemoryBlock(long sizeInBytes) {
+  private PipeMemoryBlock registerMemoryBlock(long sizeInBytes) {
+    return registerMemoryBlock(sizeInBytes, false);
+  }
+
+  private PipeMemoryBlock registerMemoryBlock(long sizeInBytes, boolean isForTablet) {
     usedMemorySizeInBytes += sizeInBytes;
 
-    final PipeMemoryBlock returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
+    final PipeMemoryBlock returnedMemoryBlock =
+        isForTablet ? new PipeTabletMemoryBlock(sizeInBytes) : new PipeMemoryBlock(sizeInBytes);
     allocatedBlocks.add(returnedMemoryBlock);
     return returnedMemoryBlock;
   }
@@ -300,6 +359,9 @@ public class PipeMemoryManager {
 
     allocatedBlocks.remove(block);
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
+    if (block instanceof PipeTabletMemoryBlock) {
+      usedMemorySizeInBytesOfTablets -= block.getMemoryUsageInBytes();
+    }
     block.markAsReleased();
 
     this.notifyAll();
@@ -311,6 +373,9 @@ public class PipeMemoryManager {
     }
 
     usedMemorySizeInBytes -= sizeInBytes;
+    if (block instanceof PipeTabletMemoryBlock) {
+      usedMemorySizeInBytesOfTablets -= sizeInBytes;
+    }
     block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() - sizeInBytes);
 
     this.notifyAll();

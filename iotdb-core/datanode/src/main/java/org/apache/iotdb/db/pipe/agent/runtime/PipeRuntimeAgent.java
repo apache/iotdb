@@ -49,11 +49,11 @@ public class PipeRuntimeAgent implements IService {
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
-      new PipePeriodicalJobExecutor();
-
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
+
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
 
   //////////////////////////// System Service Interface ////////////////////////////
 
