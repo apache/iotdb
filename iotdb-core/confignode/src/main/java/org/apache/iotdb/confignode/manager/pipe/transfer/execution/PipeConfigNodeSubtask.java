@@ -207,9 +207,10 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
   }
 
   //////////////////////////// Error report ////////////////////////////
+
   @Override
   protected String getRootCause(Throwable throwable) {
-    return null;
+    return throwable != null ? throwable.getMessage() : null;
   }
 
   @Override

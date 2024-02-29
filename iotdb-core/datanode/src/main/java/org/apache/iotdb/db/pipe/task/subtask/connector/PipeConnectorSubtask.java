@@ -226,6 +226,7 @@ public class PipeConnectorSubtask extends PipeTransferSubtask {
   }
 
   //////////////////////////// Error report ////////////////////////////
+
   @Override
   protected String getRootCause(Throwable throwable) {
     return ErrorHandlingUtils.getRootCause(throwable).getMessage();

@@ -236,6 +236,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   }
 
   //////////////////////////// Error report ////////////////////////////
+
   @Override
   protected String getRootCause(Throwable throwable) {
     return ErrorHandlingUtils.getRootCause(throwable).getMessage();

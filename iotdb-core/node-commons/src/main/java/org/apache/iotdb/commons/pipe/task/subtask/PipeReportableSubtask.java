@@ -56,10 +56,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   }
 
   private void onEnrichedEventFailure(Throwable throwable) {
-    int maxRetryTimes =
+    final int maxRetryTimes =
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
             ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
             : MAX_RETRY_TIMES;
+
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
@@ -81,7 +82,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           retryCount.get(),
           maxRetryTimes);
       try {
-        Thread.sleep(1000L * retryCount.get());
+        Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
       } catch (InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
