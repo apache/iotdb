@@ -30,7 +30,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -47,23 +46,19 @@ import java.util.Set;
 public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
   @Before
   public void setUp() {
-    try {
-      MultiEnvFactory.createEnv(2);
-      senderEnv = MultiEnvFactory.getEnv(0);
-      receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-      senderEnv
-          .getConfig()
-          .getCommonConfig()
-          .setAutoCreateSchemaEnabled(true)
-          .setTimestampPrecision("ms");
-      receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setTimestampPrecision("ms");
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-      senderEnv.initClusterEnvironment();
-      receiverEnv.initClusterEnvironment();
-    } catch (Throwable e) {
-      Assume.assumeNoException(e);
-    }
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   @Test

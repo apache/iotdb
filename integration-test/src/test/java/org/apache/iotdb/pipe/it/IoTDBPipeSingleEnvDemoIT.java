@@ -29,7 +29,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -43,21 +42,13 @@ import java.util.Map;
 public class IoTDBPipeSingleEnvDemoIT {
   @Before
   public void setUp() throws Exception {
-    try {
-      MultiEnvFactory.createEnv(1);
-      MultiEnvFactory.getEnv(0).initClusterEnvironment(1, 1);
-    } catch (Exception e) {
-      Assume.assumeNoException(e);
-    }
+    MultiEnvFactory.createEnv(1);
+    MultiEnvFactory.getEnv(0).initClusterEnvironment(1, 1);
   }
 
   @After
   public void tearDown() {
-    try {
-      MultiEnvFactory.getEnv(0).cleanClusterEnvironment();
-    } catch (Exception e) {
-      Assume.assumeNoException(e);
-    }
+    MultiEnvFactory.getEnv(0).cleanClusterEnvironment();
   }
 
   @Test
