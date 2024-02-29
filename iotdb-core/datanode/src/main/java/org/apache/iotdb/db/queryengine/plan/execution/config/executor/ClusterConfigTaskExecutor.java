@@ -67,7 +67,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -1184,17 +1183,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showClusterId() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TGetClusterIdResp getClusterIdResp = new TGetClusterIdResp();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      getClusterIdResp = client.getClusterId();
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-
-    // build TSBlock
-    ShowClusterIdTask.buildTSBlock(getClusterIdResp, future);
-
+    ShowClusterIdTask.buildTSBlock(
+        IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
     return future;
   }
 
