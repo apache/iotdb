@@ -627,9 +627,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus repairData() throws TException {
+  public TSStatus startRepairData() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.repairData(), status -> !updateConfigNodeLeader(status));
+        () -> client.startRepairData(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopRepairData(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

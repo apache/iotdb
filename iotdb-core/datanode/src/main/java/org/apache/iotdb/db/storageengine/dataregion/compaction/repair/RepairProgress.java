@@ -17,30 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class CompactionValidationFailedException extends RuntimeException {
-  private TsFileResource overlappedTsFileResource = null;
+public class RepairProgress {
+  private final int totalTimePartitionNum;
+  private final AtomicInteger repairedTimePartitionNum;
 
-  public CompactionValidationFailedException(String msg) {
-    super(msg);
+  public RepairProgress(int totalTimePartitionNum) {
+    this.totalTimePartitionNum = totalTimePartitionNum;
+    this.repairedTimePartitionNum = new AtomicInteger(0);
   }
 
-  public CompactionValidationFailedException(TsFileResource overlappedTsFileResource) {
-    super(
-        "Failed to pass compaction validation, sequence files has overlap, file is "
-            + overlappedTsFileResource);
-    this.overlappedTsFileResource = overlappedTsFileResource;
+  public int incrementRepairedTimePartitionNum() {
+    return repairedTimePartitionNum.incrementAndGet();
   }
 
-  public TsFileResource getOverlappedTsFileResource() {
-    return overlappedTsFileResource;
-  }
-
-  @Override
-  public Throwable fillInStackTrace() {
-    return this;
+  public int getTotalTimePartitionNum() {
+    return totalTimePartitionNum;
   }
 }
