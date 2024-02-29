@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -119,6 +120,10 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
+    ReadWriteIOUtils.write(selectExpressions.size(), byteBuffer);
+    for (Expression expression : selectExpressions) {
+      Expression.serialize(expression, byteBuffer);
+    }
   }
 
   @Override
@@ -128,6 +133,10 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     ReadWriteIOUtils.write(outputColumns.size(), stream);
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, stream);
+    }
+    ReadWriteIOUtils.write(selectExpressions.size(), stream);
+    for (Expression expression : selectExpressions) {
+      Expression.serialize(expression, stream);
     }
   }
 
@@ -139,8 +148,15 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
+    Set<Expression> expressions = new LinkedHashSet<>();
+    int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    while (expressionSize > 0) {
+      expressions.add(Expression.deserialize(byteBuffer));
+      expressionSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns, null, null);
+    return new AggregationMergeSortNode(
+        planNodeId, orderByParameter, outputColumns, expressions, null);
   }
 
   @Override

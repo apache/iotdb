@@ -86,8 +86,5 @@ public interface Accumulator {
 
   TSDataType getFinalType();
 
-  default int getPartialResultSize() {
-    throw new UnsupportedOperationException(
-        "This type of accumulator does not support getPartialResultSize!");
-  }
+  int getPartialResultSize();
 }

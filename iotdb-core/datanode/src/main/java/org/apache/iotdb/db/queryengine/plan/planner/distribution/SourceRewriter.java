@@ -93,6 +93,7 @@ import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_IF;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
@@ -197,11 +198,18 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1) {
         // specialProcess and existDeviceCrossRegion, use the old aggregation logic
-        analysis.setExistDeviceCrossRegion();
-        // TODO group by session, variation, count, count_if no not use old logic
-        // if (analysis.isDeviceViewSpecialProcess()) {
-        //  return processSpecialDeviceView(node, context);
-        // }
+        if (!analysis.isExistDeviceCrossRegion()) {
+          analysis.setExistDeviceCrossRegion();
+          // `group by session, variation, count; count_if` can not use AggMergeSort, it uses old
+          // aggregation logic
+          if (!analysis.hasGroupByParameter()
+              && !hasCountIfAggregation(analysis.getDeviceViewOutputExpressions())) {
+            analysis.setUseAggMergeSort();
+          }
+        }
+        if (analysis.isDeviceViewSpecialProcess() && !analysis.isUseAggMergeSort()) {
+          return processSpecialDeviceView(node, context);
+        }
       }
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
@@ -227,10 +235,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     if (analysis.isExistDeviceCrossRegion() && analysis.isDeviceViewSpecialProcess()) {
-      // return processSpecialDeviceView(node, context);
-
-      // TODO 1. generate old and new measurement idx relationship
-      // TODO 2. generate new outputColumns for
+      // 1. generate old and new measurement idx relationship
+      // 2. generate new outputColumns
       // each subDeviceView
       Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
       List<String> newPartialOutputColumns = new ArrayList<>();
@@ -241,7 +247,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       int i = 0, idxSum = 0;
       for (Expression expression : selectExpressions) {
         if (i == 0) {
-          // device
           newPartialOutputColumns.add(expression.getOutputSymbol());
           i++;
           idxSum++;
@@ -268,7 +273,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         }
 
         newAggregationIdx[i] = actualPartialAggregationNames.size();
-        // TODO need update typeProvider?
         if (actualPartialAggregationNames.size() > 1) {
           newMeasurementIdxMap.put(i, Arrays.asList(idxSum++, idxSum++));
         } else {
@@ -289,7 +293,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       for (PlanNode planNode : deviceViewNodeList) {
         DeviceViewNode deviceViewNode = (DeviceViewNode) planNode;
         deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
-        transferAggregatorsRecursively2(planNode, context);
+        transferAggregatorsRecursively(planNode, context);
       }
 
       AggregationMergeSortNode mergeSortNode =
@@ -398,7 +402,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return outputAggregationNames;
   }
 
-  private void transferAggregatorsRecursively2(PlanNode planNode, DistributionPlanContext context) {
+  private void transferAggregatorsRecursively(PlanNode planNode, DistributionPlanContext context) {
     if (planNode instanceof SeriesAggregationSourceNode) {
       SeriesAggregationSourceNode scanSourceNode = (SeriesAggregationSourceNode) planNode;
       for (AggregationDescriptor descriptor : scanSourceNode.getAggregationDescriptorList()) {
@@ -408,38 +412,19 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     for (PlanNode child : planNode.getChildren()) {
-      transferAggregatorsRecursively2(child, context);
+      transferAggregatorsRecursively(child, context);
     }
   }
 
-  private void transferAggregatorsRecursively(PlanNode planNode) {
-    for (PlanNode child : planNode.getChildren()) {
-      transferAggregatorsRecursively(child);
-
-      if (child instanceof SeriesAggregationSourceNode) {
-        SeriesAggregationSourceNode scanSourceNode = (SeriesAggregationSourceNode) child;
-        List<AggregationDescriptor> newDescriptorList = new ArrayList<>();
-        for (AggregationDescriptor descriptor : scanSourceNode.getAggregationDescriptorList()) {
-          List<String> aggregationNames = descriptor.getActualAggregationNames(true);
-          for (String aggregationName : aggregationNames) {
-            newDescriptorList.add(
-                new AggregationDescriptor(
-                    aggregationName,
-                    AggregationStep.PARTIAL,
-                    descriptor.getInputExpressions(),
-                    descriptor.getInputAttributes()));
-          }
+  private boolean hasCountIfAggregation(Set<Expression> selectExpressions) {
+    for (Expression e : selectExpressions) {
+      if (e instanceof FunctionExpression) {
+        if (COUNT_IF.equalsIgnoreCase(((FunctionExpression) e).getFunctionName())) {
+          return true;
         }
-        scanSourceNode.setAggregationDescriptorList(newDescriptorList);
       }
     }
-  }
-
-  @Override
-  public List<PlanNode> visitAggregationMergeSort(
-      AggregationMergeSortNode node, DistributionPlanContext context) {
-    // TODO remove this method?
-    return null;
+    return false;
   }
 
   private List<PlanNode> processSpecialDeviceView(

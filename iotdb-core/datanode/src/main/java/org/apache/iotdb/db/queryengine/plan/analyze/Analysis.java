@@ -176,6 +176,8 @@ public class Analysis {
 
   private boolean existDeviceCrossRegion;
 
+  private boolean useAggMergeSort;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -664,6 +666,14 @@ public class Analysis {
 
   public void setExistDeviceCrossRegion() {
     this.existDeviceCrossRegion = true;
+  }
+
+  public boolean isUseAggMergeSort() {
+    return this.useAggMergeSort;
+  }
+
+  public void setUseAggMergeSort() {
+    this.useAggMergeSort = true;
   }
 
   public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
