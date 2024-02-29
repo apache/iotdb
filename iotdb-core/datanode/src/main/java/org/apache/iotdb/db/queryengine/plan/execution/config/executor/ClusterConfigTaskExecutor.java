@@ -2428,25 +2428,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
-    TPipeConfigTransferReq configTransferReq =
+    final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
             req.version, req.type, req.body, req instanceof AirGapPseudoTPipeTransferRequest);
-    TPipeTransferResp result;
-    try (ConfigNodeClient configNodeClient =
+
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TPipeConfigTransferResp pipeConfigTransferResp =
+      final TPipeConfigTransferResp pipeConfigTransferResp =
           configNodeClient.handleTransferConfigPlan(configTransferReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
           != pipeConfigTransferResp.getStatus().getCode()) {
         LOGGER.warn("Failed to handleTransferConfigPlan, status is {}.", pipeConfigTransferResp);
       }
-      result = new TPipeTransferResp(pipeConfigTransferResp.status);
-      result.setBody(pipeConfigTransferResp.body);
+      return new TPipeTransferResp(pipeConfigTransferResp.status)
+          .setBody(pipeConfigTransferResp.body);
     } catch (Exception e) {
-      TSStatus tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(e.toString());
-      result = new TPipeTransferResp(tsStatus);
+      return new TPipeTransferResp(
+          new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+              .setMessage(e.toString()));
     }
-    return result;
   }
 }
