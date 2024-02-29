@@ -666,13 +666,13 @@ public class IoTConsensusServerImpl {
       throws IOException {
     ByteBuffer buffer;
     List<Peer> tmpConfiguration = new ArrayList<>();
-    File[] files =
+    Path[] files =
         Files.walk(dirPath)
             .filter(Files::isRegularFile)
             .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
-            .toArray(File[]::new);
-    for (File file : files) {
-      buffer = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+            .toArray(Path[]::new);
+    for (Path file : files) {
+      buffer = ByteBuffer.wrap(Files.readAllBytes(file));
       tmpConfiguration.add(Peer.deserialize(buffer));
     }
     return tmpConfiguration;
