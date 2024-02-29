@@ -235,8 +235,13 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
               timePartition.getDataRegionId(),
               timePartition.getTimePartitionId());
           repairProgress.incrementRepairedTimePartitionNum();
-          return;
+          continue;
         }
+        LOGGER.info(
+            "[RepairScheduler] submit a repair time partition scan task {}-{}-{}",
+            timePartition.getDatabaseName(),
+            timePartition.getDataRegionId(),
+            timePartition.getTimePartitionId());
         repairDataTaskManager.submitRepairScanTask(
             new RepairTimePartitionScanTask(timePartition, repairLogger, repairProgress));
       }
