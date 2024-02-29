@@ -79,7 +79,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -263,7 +262,7 @@ public class NodeManager {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
     if (clusterId == null) {
       resp.setStatus(
           new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
@@ -318,7 +317,7 @@ public class NodeManager {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
     if (clusterId == null) {
