@@ -188,6 +188,9 @@ public class ColumnHeaderConstant {
   public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
 
+  // column names for show current timestamp
+  public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -463,4 +466,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(SOURCE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
+      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
 }

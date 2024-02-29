@@ -255,4 +255,5 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | CURRENT_TIMESTAMP
     ;
