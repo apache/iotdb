@@ -64,7 +64,7 @@ public class CachedSchemaPatternMatcherTest {
   }
 
   @Test
-  public void testRegisteringPrefixMatcher() throws Exception {
+  public void testCachedMatcher() throws Exception {
     PipeRealtimeDataRegionExtractor dataRegionExtractor = new PipeRealtimeDataRegionFakeExtractor();
     dataRegionExtractor.customize(
         new PipeParameters(
@@ -127,16 +127,12 @@ public class CachedSchemaPatternMatcherTest {
       for (int j = 0; j < deviceNum; j++) {
         PipeRealtimeEvent event =
             new PipeRealtimeEvent(
-                null,
-                null,
-                Collections.singletonMap("root." + i, measurements),
-                new PrefixPipePattern("root"));
+                null, null, Collections.singletonMap("root." + i, measurements), null);
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeEvent event =
-          new PipeRealtimeEvent(null, null, deviceMap, new PrefixPipePattern("root"));
+      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, null);
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
