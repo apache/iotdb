@@ -245,7 +245,16 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    long maxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    // inputTsBlocks will cache all the tsBlocks returned by inputOperators
+    for (Operator operator : children) {
+      maxPeekMemory += operator.calculateMaxReturnSize();
+      maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
+    }
+    for (Operator operator : children) {
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, calculateMaxReturnSize());
   }
 
   @Override
@@ -255,7 +264,14 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : children) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+    }
+    return currentRetainedSize - minChildReturnSize;
   }
 
   private boolean isInputNotEmpty(int index) {
