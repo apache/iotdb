@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -76,7 +77,15 @@ public class PipeRuntimeConfigNodeAgent implements IService {
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
-  public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+  public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
+    if (event.getPipeTaskMeta() != null) {
+      report(event.getPipeTaskMeta(), pipeRuntimeException);
+    } else {
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
+    }
+  }
+
+  private void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
         "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
         pipeTaskMeta,

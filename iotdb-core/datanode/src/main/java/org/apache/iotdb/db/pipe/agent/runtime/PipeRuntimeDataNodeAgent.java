@@ -155,6 +155,14 @@ public class PipeRuntimeDataNodeAgent implements IService {
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
+  public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
+    if (event.getPipeTaskMeta() != null) {
+      report(event.getPipeTaskMeta(), pipeRuntimeException);
+    } else {
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
+    }
+  }
+
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
         "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
@@ -169,14 +177,6 @@ public class PipeRuntimeDataNodeAgent implements IService {
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       // To avoid deadlock, we use a new thread to stop all pipes.
       CompletableFuture.runAsync(() -> PipeAgent.task().stopAllPipesWithCriticalException());
-    }
-  }
-
-  public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {
-    if (event.getPipeTaskMeta() != null) {
-      report(event.getPipeTaskMeta(), pipeRuntimeException);
-    } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 

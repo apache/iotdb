@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeTransferSubtask;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -42,7 +42,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeInfo.CONFIG_REGION_ID;
 
-public class PipeConfigNodeSubtask extends PipeTransferSubtask {
+public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
@@ -215,6 +215,6 @@ public class PipeConfigNodeSubtask extends PipeTransferSubtask {
 
   @Override
   protected void report(EnrichedEvent event, PipeRuntimeException exception) {
-    PipeConfigNodeAgent.runtime().report(event.getPipeTaskMeta(), exception);
+    PipeConfigNodeAgent.runtime().report(event, exception);
   }
 }

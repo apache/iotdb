@@ -35,35 +35,25 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 
-public abstract class PipeTransferSubtask extends PipeReportableSubtask {
+public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferSubtask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractConnectorSubtask.class);
 
+  // For output (transfer events to the target system in connector)
   protected PipeConnector outputPipeConnector;
 
-  protected ExecutorService subtaskCallbackListeningExecutor;
-
-  // For controlling subtask submitting, making sure that a subtask is submitted to only one thread
-  // at a time
-  protected volatile boolean isSubmitted = false;
   // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
+  protected ExecutorService subtaskCallbackListeningExecutor;
 
-  protected PipeTransferSubtask(
+  // For controlling subtask submitting, making sure that
+  // a subtask is submitted to only one thread at a time
+  protected volatile boolean isSubmitted = false;
+
+  protected PipeAbstractConnectorSubtask(
       String taskID, long creationTime, PipeConnector outputPipeConnector) {
     super(taskID, creationTime);
     this.outputPipeConnector = outputPipeConnector;
-  }
-
-  @Override
-  public Boolean call() throws Exception {
-    final boolean hasAtLeastOneEventProcessed = super.call();
-
-    // Wait for the callable to be decorated by Futures.addCallback in the executorService
-    // to make sure that the callback can be submitted again on success or failure.
-    callbackDecoratingLock.waitForDecorated();
-
-    return hasAtLeastOneEventProcessed;
   }
 
   @Override
@@ -76,26 +66,15 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     this.subtaskScheduler = subtaskScheduler;
   }
 
-  /**
-   * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
-   * called when connector starts or the subTask finishes the last round, Thus the {@link
-   * PipeTransferSubtask#isSubmitted} sign is added to avoid concurrent problem of the two, ensuring
-   * two or more submitting threads generates only one winner.
-   */
   @Override
-  public synchronized void submitSelf() {
-    if (shouldStopSubmittingSelf.get() || isSubmitted) {
-      return;
-    }
+  public Boolean call() throws Exception {
+    final boolean hasAtLeastOneEventProcessed = super.call();
 
-    callbackDecoratingLock.markAsDecorating();
-    try {
-      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-      isSubmitted = true;
-    } finally {
-      callbackDecoratingLock.markAsDecorated();
-    }
+    // Wait for the callable to be decorated by Futures.addCallback in the executorService
+    // to make sure that the callback can be submitted again on success or failure.
+    callbackDecoratingLock.waitForDecorated();
+
+    return hasAtLeastOneEventProcessed;
   }
 
   @Override
@@ -200,5 +179,27 @@ public abstract class PipeTransferSubtask extends PipeReportableSubtask {
     // For non enriched event, forever retry.
     // For enriched event, retry if connection is set up successfully.
     return false;
+  }
+
+  /**
+   * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
+   * called when connector starts or the subTask finishes the last round, Thus the {@link
+   * PipeAbstractConnectorSubtask#isSubmitted} sign is added to avoid concurrent problem of the two,
+   * ensuring two or more submitting threads generates only one winner.
+   */
+  @Override
+  public synchronized void submitSelf() {
+    if (shouldStopSubmittingSelf.get() || isSubmitted) {
+      return;
+    }
+
+    callbackDecoratingLock.markAsDecorating();
+    try {
+      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+      isSubmitted = true;
+    } finally {
+      callbackDecoratingLock.markAsDecorated();
+    }
   }
 }
