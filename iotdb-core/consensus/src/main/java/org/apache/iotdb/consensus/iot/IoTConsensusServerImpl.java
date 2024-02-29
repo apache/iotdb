@@ -605,22 +605,21 @@ public class IoTConsensusServerImpl {
   public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
     try {
       serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      Path tmpConfigurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
-      Path configurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      Files.deleteIfExists(configurationPath);
-      Files.move(tmpConfigurationPath, configurationPath);
+      for (Peer peer : configuration) {
+        Path tmpConfigurationPath =
+            Paths.get(
+                new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
+                    .getAbsolutePath());
+        Path configurationPath =
+            Paths.get(
+                new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
+                    .getAbsolutePath());
+        Files.deleteIfExists(configurationPath);
+        Files.move(tmpConfigurationPath, configurationPath);
+      }
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           "Unexpected error occurs when update configuration", e);
-    }
-  }
-
-  private void serializeConfigurationTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeInt(configuration.size());
-    for (Peer peer : configuration) {
-      peer.serialize(outputStream);
     }
   }
 
@@ -647,8 +646,36 @@ public class IoTConsensusServerImpl {
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
-      logger.error("Unexpected error occurs when recovering configuration", e);
+      Path dirPath = Paths.get(storageDir);
+      try {
+        List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
+        List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
+        for (Peer peer : peerList) {
+          if (!tmpPeerList.contains(peer)) {
+            configuration.add(peer);
+          }
+        }
+        configuration.addAll(tmpPeerList);
+      } catch (IOException ioe) {
+        logger.error("Unexpected error occurs when recovering configuration", ioe);
+      }
     }
+  }
+
+  private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
+      throws IOException {
+    ByteBuffer buffer;
+    List<Peer> tmpConfiguration = new ArrayList<>();
+    File[] files =
+        Files.walk(dirPath)
+            .filter(Files::isRegularFile)
+            .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
+            .toArray(File[]::new);
+    for (File file : files) {
+      buffer = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+      tmpConfiguration.add(Peer.deserialize(buffer));
+    }
+    return tmpConfiguration;
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
@@ -841,15 +868,16 @@ public class IoTConsensusServerImpl {
 
   private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
       throws IOException {
-    FileOutputStream fileOutputStream =
-        new FileOutputStream(new File(storageDir, configurationFileName));
-    DataOutputStream outputStream = new DataOutputStream(fileOutputStream);
-    try {
-      serializeConfigurationTo(outputStream);
-    } finally {
-      fileOutputStream.flush();
-      fileOutputStream.getFD().sync();
-      outputStream.close();
+    for (Peer peer : configuration) {
+      String peerConfigurationFileName = peer.getNodeId() + "_" + configurationFileName;
+      FileOutputStream fileOutputStream =
+          new FileOutputStream(new File(storageDir, peerConfigurationFileName));
+      try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
+        peer.serialize(outputStream);
+      } finally {
+        fileOutputStream.flush();
+        fileOutputStream.getFD().sync();
+      }
     }
   }
 
