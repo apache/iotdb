@@ -109,6 +109,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
         new ConcurrentHashMap<>();
+
+    // data regions & schema regions
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -117,19 +119,23 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               final String databaseName =
                   env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
               if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                // Pipe only collect user's data, filter metric database here.
+                // Pipe only collect user's data, filter out metric database here.
                 consensusGroupIdToTaskMetaMap.put(
                     regionGroupId.getId(),
                     new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
               }
             });
-    // Though the configRegion's id is 0, here we still use Integer.MIN_VALUE to tell from
-    // SchemaRegion and DataRegion's Ids since their ids start from 0 together.
+
+    // config region
     consensusGroupIdToTaskMetaMap.put(
+        // 0 is the consensus group id of the config region, but data region id and schema region id
+        // also start from 0, so we use Integer.MIN_VALUE to represent the config region
         Integer.MIN_VALUE,
         new PipeTaskMeta(
             MinimumProgressIndex.INSTANCE,
+            // The leader of the config region is the config node itself
             ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
     pipeRuntimeMeta.setShouldBeRunning(true);
