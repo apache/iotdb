@@ -192,7 +192,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
     }
     for (Operator operator : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemoryWithCounter());
     }
     return Math.max(maxPeekMemory, calculateMaxReturnSize());
   }

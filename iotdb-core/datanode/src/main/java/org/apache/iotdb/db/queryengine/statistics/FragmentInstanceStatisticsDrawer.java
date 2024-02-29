@@ -370,7 +370,7 @@ public class FragmentInstanceStatisticsDrawer {
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("Estimated Memory Size: %s", operatorStatistic.getMemoryInMB()));
+          String.format("Estimated Memory Size: %s B", operatorStatistic.getMemoryInMB()));
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {
         for (Map.Entry<String, String> entry : operatorStatistic.getSpecifiedInfo().entrySet()) {

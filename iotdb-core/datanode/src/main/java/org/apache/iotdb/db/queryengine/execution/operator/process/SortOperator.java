@@ -349,7 +349,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return inputOperator.calculateMaxPeekMemory()
+    return inputOperator.calculateMaxPeekMemoryWithCounter()
         + inputOperator.calculateRetainedSizeAfterCallingNext()
         + SORT_BUFFER_SIZE;
   }
