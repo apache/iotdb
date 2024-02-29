@@ -49,4 +49,9 @@ public class PipePattern {
   public boolean isRoot() {
     return Objects.isNull(pattern) || this.pattern.equals(this.format.getDefaultPattern());
   }
+
+  @Override
+  public String toString() {
+    return "PipePattern{pattern='" + pattern + "', format=" + format + "}";
+  }
 }
