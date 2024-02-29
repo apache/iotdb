@@ -467,6 +467,7 @@ struct TOperatorStatistics{
   6: required map<string,string> specifiedInfo
   7: required i64 inputRows
   8: required i64 memoryInMB
+  9: optional i64 count
 }
 
 struct TQueryStatistics {

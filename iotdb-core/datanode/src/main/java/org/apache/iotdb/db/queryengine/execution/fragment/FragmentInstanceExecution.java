@@ -170,23 +170,90 @@ public class FragmentInstanceExecution {
   }
 
   // Fill Operator level info for statistics
-  private void fillFragmentInstanceStatistics(
-      List<OperatorContext> contexts, Map<String, TOperatorStatistics> operatorStatisticsMap) {
+  // Return needMerge to indicate if operatorStatistics in current fragmentInstance is merged.
+  private boolean fillFragmentInstanceStatistics(
+      List<OperatorContext> contexts,
+      Map<String, TOperatorStatistics> operatorStatisticsMap,
+      Map<String, Integer> operatorCoutMap,
+      Map<String, String> leadOverloadOperators,
+      boolean needMerge) {
     for (OperatorContext operatorContext : contexts) {
       TOperatorStatistics operatorStatistics = new TOperatorStatistics();
+      // some exchange operators don't have planNodeId
       if (operatorContext.getPlanNodeId() == null) continue;
-      operatorStatistics.setPlanNodeId(operatorContext.getPlanNodeId().toString());
-      operatorStatistics.setOperatorType(operatorContext.getOperatorType());
-      operatorStatistics.setTotalExecutionTimeInNanos(
-          operatorContext.getTotalExecutionTimeInNanos());
-      operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
-      operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
-      operatorStatistics.setInputRows(operatorContext.getInputRows());
-      operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
-      operatorStatistics.setMemoryInMB(operatorContext.getEstimatedMemorySize());
 
-      operatorStatisticsMap.put(operatorContext.getPlanNodeId().toString(), operatorStatistics);
+      String operatorType = operatorContext.getOperatorType();
+      // If the operatorType is already overloaded, then merge all operatorStatistics with the
+      // leadOverloadOperator
+      if (needMerge) {
+        setOperatorStatistics(operatorStatistics, operatorContext);
+        if (leadOverloadOperators.containsKey(operatorType)) {
+          merge(
+              operatorStatisticsMap.get(leadOverloadOperators.get(operatorType)),
+              operatorStatistics);
+        } else {
+          String planNodeId = operatorContext.getPlanNodeId().toString();
+          operatorStatistics.setCount(1);
+          operatorStatistics.getSpecifiedInfo().clear();
+          leadOverloadOperators.put(operatorType, planNodeId);
+          operatorStatisticsMap.put(planNodeId, operatorStatistics);
+        }
+      } else {
+        setOperatorStatistics(operatorStatistics, operatorContext);
+        operatorStatisticsMap.put(operatorContext.getPlanNodeId().toString(), operatorStatistics);
+        operatorCoutMap.put(operatorType, operatorCoutMap.getOrDefault(operatorType, 0) + 1);
+        if (operatorCoutMap.get(operatorType) >= 10) {
+          needMerge = true;
+          // merge all the operatorStatistics with the overload type and remain only one in
+          // operatorStatisticsMap
+          mergeAllOperatorStatistics(operatorStatisticsMap, leadOverloadOperators);
+        }
+      }
     }
+    return needMerge;
+  }
+
+  private void mergeAllOperatorStatistics(
+      Map<String, TOperatorStatistics> operatorStatisticsMap,
+      Map<String, String> leadOverloadOperators) {
+    for (Map.Entry<String, TOperatorStatistics> entry : operatorStatisticsMap.entrySet()) {
+      if (leadOverloadOperators.containsKey(entry.getValue().getOperatorType())) {
+        merge(
+            operatorStatisticsMap.get(
+                leadOverloadOperators.get(entry.getValue().getOperatorType())),
+            entry.getValue());
+      } else {
+        TOperatorStatistics operatorStatistics = entry.getValue();
+        operatorStatistics.setCount(1);
+        // Can't merge specifiedInfo of String-type, so just clear it
+        operatorStatistics.getSpecifiedInfo().clear();
+        // keep the first one in operatorStatisticsMap as the only-one leadOverloadOperator
+        leadOverloadOperators.put(
+            operatorStatistics.getOperatorType(), operatorStatistics.getPlanNodeId());
+      }
+    }
+  }
+
+  private void merge(TOperatorStatistics first, TOperatorStatistics second) {
+    first.setTotalExecutionTimeInNanos(
+        first.getTotalExecutionTimeInNanos() + second.getTotalExecutionTimeInNanos());
+    first.setNextCalledCount(first.getNextCalledCount() + second.getNextCalledCount());
+    first.setHasNextCalledCount(first.getHasNextCalledCount() + second.getHasNextCalledCount());
+    first.setInputRows(first.getInputRows() + second.getInputRows());
+    first.setMemoryInMB(first.getMemoryInMB() + second.getMemoryInMB());
+    first.setCount(first.getCount() + 1);
+  }
+
+  private void setOperatorStatistics(
+      TOperatorStatistics operatorStatistics, OperatorContext operatorContext) {
+    operatorStatistics.setPlanNodeId(operatorContext.getPlanNodeId().toString());
+    operatorStatistics.setOperatorType(operatorContext.getOperatorType());
+    operatorStatistics.setTotalExecutionTimeInNanos(operatorContext.getTotalExecutionTimeInNanos());
+    operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
+    operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
+    operatorStatistics.setInputRows(operatorContext.getInputRows());
+    operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
+    operatorStatistics.setMemoryInMB(operatorContext.getEstimatedMemorySize());
   }
 
   // Directly build statistics from FragmentInstanceExecution, which is still running.
@@ -199,12 +266,30 @@ public class FragmentInstanceExecution {
     }
 
     Map<String, TOperatorStatistics> operatorStatisticsMap = new HashMap<>();
+    Map<String, Integer> operatorCountMap = new HashMap<>();
+    Map<String, String> leadOverloadOperators = new HashMap<>();
+    boolean merge = false;
     // Currently, they should be the drivers for each pipeline
     for (IDriver driver : drivers) {
-      fillFragmentInstanceStatistics(
-          driver.getDriverContext().getOperatorContexts(), operatorStatisticsMap);
+      merge =
+          fillFragmentInstanceStatistics(
+              driver.getDriverContext().getOperatorContexts(),
+              operatorStatisticsMap,
+              operatorCountMap,
+              leadOverloadOperators,
+              merge);
     }
-    statistics.setOperatorStatisticsMap(operatorStatisticsMap);
+
+    if (merge) {
+      Map<String, TOperatorStatistics> newOperatorStatisticsMap = new HashMap<>();
+      for (Map.Entry<String, String> entry : leadOverloadOperators.entrySet()) {
+        newOperatorStatisticsMap.put(entry.getValue(), operatorStatisticsMap.get(entry.getValue()));
+      }
+      statistics.setOperatorStatisticsMap(newOperatorStatisticsMap);
+    } else {
+      statistics.setOperatorStatisticsMap(operatorStatisticsMap);
+    }
+
     return statistics;
   }
 

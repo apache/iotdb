@@ -339,42 +339,46 @@ public class FragmentInstanceStatisticsDrawer {
     if (planNodeTree == null) return;
     TOperatorStatistics operatorStatistic =
         operatorStatistics.get(planNodeTree.getPlanNodeId().toString());
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum,
-        String.format(
-            "[PlanNodeId %s]: %s(%s)",
-            planNodeTree.getPlanNodeId().toString(),
-            planNodeTree.getClass().getSimpleName(),
-            operatorStatistic.getOperatorType()));
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum + 2,
-        String.format(
-            "CPU Time: %s ms", operatorStatistic.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum + 2,
-        String.format("input: %s rows", operatorStatistic.getInputRows()));
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum + 2,
-        String.format("HasNext() Called Count: %s", operatorStatistic.hasNextCalledCount));
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum + 2,
-        String.format("Next() Called Count: %s", operatorStatistic.nextCalledCount));
-    addLine(
-        singleFragmentInstanceArea,
-        indentNum + 2,
-        String.format("Estimated Memory Size: %s", operatorStatistic.getMemoryInMB()));
+    if (operatorStatistic != null) {
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum,
+          String.format(
+              "[PlanNodeId %s]: %s(%s) %s",
+              planNodeTree.getPlanNodeId().toString(),
+              planNodeTree.getClass().getSimpleName(),
+              operatorStatistic.getOperatorType(),
+              operatorStatistic.isSetCount() ? "Count: * " + operatorStatistic.getCount() : ""));
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum + 2,
+          String.format(
+              "CPU Time: %s ms",
+              operatorStatistic.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum + 2,
+          String.format("input: %s rows", operatorStatistic.getInputRows()));
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum + 2,
+          String.format("HasNext() Called Count: %s", operatorStatistic.hasNextCalledCount));
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum + 2,
+          String.format("Next() Called Count: %s", operatorStatistic.nextCalledCount));
+      addLine(
+          singleFragmentInstanceArea,
+          indentNum + 2,
+          String.format("Estimated Memory Size: %s", operatorStatistic.getMemoryInMB()));
 
-    if (operatorStatistic.getSpecifiedInfoSize() != 0) {
-      for (Map.Entry<String, String> entry : operatorStatistic.getSpecifiedInfo().entrySet()) {
-        addLine(
-            singleFragmentInstanceArea,
-            indentNum + 2,
-            String.format("%s: %s", entry.getKey(), entry.getValue()));
+      if (operatorStatistic.getSpecifiedInfoSize() != 0) {
+        for (Map.Entry<String, String> entry : operatorStatistic.getSpecifiedInfo().entrySet()) {
+          addLine(
+              singleFragmentInstanceArea,
+              indentNum + 2,
+              String.format("%s: %s", entry.getKey(), entry.getValue()));
+        }
       }
     }
 

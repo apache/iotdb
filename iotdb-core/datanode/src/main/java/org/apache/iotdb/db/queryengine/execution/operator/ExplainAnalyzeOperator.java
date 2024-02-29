@@ -36,7 +36,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final boolean verbose;
   private boolean outputResult = false;
   private final List<FragmentInstance> instances;
-  private final long LOG_INTERNAL_IN_MS = 10000;
+  private static final long LOG_INTERNAL_IN_MS = 10000;
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
   private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
