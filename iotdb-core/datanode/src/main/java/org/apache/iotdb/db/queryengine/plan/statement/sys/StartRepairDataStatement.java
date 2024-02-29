@@ -29,11 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class RepairDataStatement extends Statement implements IConfigStatement {
+public class StartRepairDataStatement extends Statement implements IConfigStatement {
 
   private boolean onCluster;
 
-  public RepairDataStatement(StatementType repairDataType) {
+  public StartRepairDataStatement(StatementType repairDataType) {
     this.statementType = repairDataType;
   }
 
@@ -57,6 +57,6 @@ public class RepairDataStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitRepairData(this, context);
+    return visitor.visitStartRepairData(this, context);
   }
 }

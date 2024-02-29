@@ -78,7 +78,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | repairData | explain
+    : merge | fullMerge | flush | clearCache | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
@@ -938,9 +938,14 @@ settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
     ;
 
-// Repair Data
-repairData
-    : REPAIR DATA (ON (LOCAL | CLUSTER))?
+// Start Repair Data
+startRepairData
+    : START REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Stop Repair Data
+stopRepairData
+    : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain
@@ -1182,28 +1187,28 @@ operator_or
     | OPERATOR_BITWISE_OR
     | OPERATOR_LOGICAL_OR
     ;
-    
+
 operator_not
     : NOT
     | OPERATOR_NOT
     ;
-    
+
 operator_contains
     : CONTAINS
     ;
-    
+
 operator_between
     : BETWEEN
     ;
-    
+
 operator_is
     : IS
     ;
-    
+
 operator_in
     : IN
     ;
-    
+
 null_literal
     : NULL
     ;
