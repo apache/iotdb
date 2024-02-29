@@ -34,8 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
@@ -45,31 +43,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class AlignedSeriesScanNode extends SeriesSourceNode {
+public class AlignedSeriesScanNode extends SeriesScanSourceNode {
 
   // The paths of the target series which will be scanned.
   private final AlignedPath alignedPath;
 
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private Ordering scanOrder = Ordering.ASC;
-
-  // push down predicate for current series, could be null if it doesn't exist
-  @Nullable private Expression pushDownPredicate;
-
-  // push down limit for result set. The default value is -1, which means no limit
-  private long pushDownLimit;
-
-  // push down offset for result set. The default value is 0
-  private long pushDownOffset;
-
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
   private boolean queryAllSensors = false;
-
-  // The id of DataRegion where the node will run
-  private TRegionReplicaSet regionReplicaSet;
 
   public AlignedSeriesScanNode(PlanNodeId id, AlignedPath alignedPath) {
     super(id);
@@ -78,8 +59,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
 
   public AlignedSeriesScanNode(
       PlanNodeId id, AlignedPath alignedPath, Ordering scanOrder, boolean lastLevelUseWildcard) {
-    this(id, alignedPath);
-    this.scanOrder = scanOrder;
+    super(id, scanOrder);
+    this.alignedPath = alignedPath;
     this.queryAllSensors = lastLevelUseWildcard;
   }
 
@@ -91,10 +72,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet,
       boolean lastLevelUseWildcard) {
-    this(id, alignedPath, scanOrder, lastLevelUseWildcard);
-    this.pushDownLimit = pushDownLimit;
-    this.pushDownOffset = pushDownOffset;
-    this.regionReplicaSet = dataRegionReplicaSet;
+    super(id, scanOrder, pushDownLimit, pushDownOffset, dataRegionReplicaSet);
+    this.alignedPath = alignedPath;
+    this.queryAllSensors = lastLevelUseWildcard;
   }
 
   public AlignedSeriesScanNode(
@@ -106,84 +86,17 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet,
       boolean lastLevelUseWildcard) {
-    this(id, alignedPath, scanOrder, lastLevelUseWildcard);
-    this.pushDownPredicate = pushDownPredicate;
-    this.pushDownLimit = pushDownLimit;
-    this.pushDownOffset = pushDownOffset;
-    this.regionReplicaSet = dataRegionReplicaSet;
+    super(id, scanOrder, pushDownPredicate, pushDownLimit, pushDownOffset, dataRegionReplicaSet);
+    this.alignedPath = alignedPath;
+    this.queryAllSensors = lastLevelUseWildcard;
   }
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
   }
 
-  public Ordering getScanOrder() {
-    return scanOrder;
-  }
-
-  @Nullable
-  @Override
-  public Expression getPushDownPredicate() {
-    return pushDownPredicate;
-  }
-
-  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
-    this.pushDownPredicate = pushDownPredicate;
-  }
-
-  public long getPushDownLimit() {
-    return pushDownLimit;
-  }
-
-  public long getPushDownOffset() {
-    return pushDownOffset;
-  }
-
-  public void setPushDownLimit(long pushDownLimit) {
-    this.pushDownLimit = pushDownLimit;
-  }
-
-  public void setPushDownOffset(long pushDownOffset) {
-    this.pushDownOffset = pushDownOffset;
-  }
-
-  @Override
-  public void open() throws Exception {
-    // Do nothing
-  }
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
-  }
-
-  @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
-  }
-
-  @Override
-  public void close() throws Exception {
-    // Do nothing
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
   public boolean isQueryAllSensors() {
     return queryAllSensors;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("no child is allowed for AlignedSeriesScanNode");
   }
 
   @Override
@@ -195,8 +108,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         getPushDownPredicate(),
         getPushDownLimit(),
         getPushDownOffset(),
-        this.regionReplicaSet,
-        this.queryAllSensors);
+        getRegionReplicaSet(),
+        isQueryAllSensors());
   }
 
   @Override
@@ -297,6 +210,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         planNodeId,
         alignedPath,
         typeProvider.getTemplatedInfo().getScanOrder(),
+        typeProvider.getTemplatedInfo().getPushDownPredicate(),
         typeProvider.getTemplatedInfo().getLimitValue(),
         typeProvider.getTemplatedInfo().getOffsetValue(),
         null,
@@ -315,26 +229,12 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       return false;
     }
     AlignedSeriesScanNode that = (AlignedSeriesScanNode) o;
-    return pushDownLimit == that.pushDownLimit
-        && pushDownOffset == that.pushDownOffset
-        && alignedPath.equals(that.alignedPath)
-        && scanOrder == that.scanOrder
-        && Objects.equals(pushDownPredicate, that.pushDownPredicate)
-        && Objects.equals(queryAllSensors, that.queryAllSensors)
-        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+    return queryAllSensors == that.queryAllSensors && alignedPath.equals(that.alignedPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(),
-        alignedPath,
-        scanOrder,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        regionReplicaSet,
-        queryAllSensors);
+    return Objects.hash(super.hashCode(), alignedPath, queryAllSensors);
   }
 
   public String toString() {
