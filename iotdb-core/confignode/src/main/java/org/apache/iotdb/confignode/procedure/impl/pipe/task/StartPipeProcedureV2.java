@@ -65,7 +65,8 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
 
-    return pipeTaskInfo.get().isPipeRunning(pipeName);
+    return pipeTaskInfo.get().isPipeRunning(pipeName)
+        && !pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override

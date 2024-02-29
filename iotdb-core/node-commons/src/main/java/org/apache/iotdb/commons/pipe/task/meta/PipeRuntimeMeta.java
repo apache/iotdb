@@ -95,7 +95,7 @@ public class PipeRuntimeMeta {
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
 
-  private final AtomicBoolean shouldBeRunning = new AtomicBoolean(false);
+  private final AtomicBoolean isStoppedByRuntimeException = new AtomicBoolean(false);
 
   public PipeRuntimeMeta() {
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
@@ -127,12 +127,12 @@ public class PipeRuntimeMeta {
     }
   }
 
-  public boolean getShouldBeRunning() {
-    return shouldBeRunning.get();
+  public boolean getIsStoppedByRuntimeException() {
+    return isStoppedByRuntimeException.get();
   }
 
-  public void setShouldBeRunning(boolean shouldBeRunning) {
-    this.shouldBeRunning.set(shouldBeRunning);
+  public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
+    this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -167,7 +167,7 @@ public class PipeRuntimeMeta {
     }
 
     ReadWriteIOUtils.write(exceptionsClearTime.get(), outputStream);
-    ReadWriteIOUtils.write(shouldBeRunning.get(), outputStream);
+    ReadWriteIOUtils.write(isStoppedByRuntimeException.get(), outputStream);
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
@@ -221,7 +221,7 @@ public class PipeRuntimeMeta {
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(inputStream));
-    pipeRuntimeMeta.shouldBeRunning.set(ReadWriteIOUtils.readBool(inputStream));
+    pipeRuntimeMeta.isStoppedByRuntimeException.set(ReadWriteIOUtils.readBool(inputStream));
 
     return pipeRuntimeMeta;
   }
@@ -277,7 +277,7 @@ public class PipeRuntimeMeta {
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
-    pipeRuntimeMeta.shouldBeRunning.set(ReadWriteIOUtils.readBool(byteBuffer));
+    pipeRuntimeMeta.isStoppedByRuntimeException.set(ReadWriteIOUtils.readBool(byteBuffer));
 
     return pipeRuntimeMeta;
   }
@@ -295,7 +295,7 @@ public class PipeRuntimeMeta {
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
         && nodeId2PipeRuntimeExceptionMap.equals(that.nodeId2PipeRuntimeExceptionMap)
         && exceptionsClearTime.get() == that.exceptionsClearTime.get()
-        && shouldBeRunning.get() == that.shouldBeRunning.get();
+        && isStoppedByRuntimeException.get() == that.isStoppedByRuntimeException.get();
   }
 
   @Override
@@ -305,7 +305,7 @@ public class PipeRuntimeMeta {
         consensusGroupId2TaskMetaMap,
         nodeId2PipeRuntimeExceptionMap,
         exceptionsClearTime.get(),
-        shouldBeRunning.get());
+        isStoppedByRuntimeException.get());
   }
 
   @Override
@@ -319,8 +319,8 @@ public class PipeRuntimeMeta {
         + nodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()
-        + ", shouldBeRunning="
-        + shouldBeRunning.get()
+        + ", isStoppedByRuntimeException="
+        + isStoppedByRuntimeException.get()
         + "}";
   }
 }

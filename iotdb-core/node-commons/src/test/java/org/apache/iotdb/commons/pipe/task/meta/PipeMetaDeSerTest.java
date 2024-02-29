@@ -85,7 +85,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
-    pipeRuntimeMeta.setShouldBeRunning(false);
+    pipeRuntimeMeta.setIsStoppedByRuntimeException(false);
     pipeRuntimeMeta.setExceptionsClearTime(123456789L);
     pipeRuntimeMeta
         .getNodeId2PipeRuntimeExceptionMap()
@@ -96,7 +96,7 @@ public class PipeMetaDeSerTest {
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
-    pipeRuntimeMeta.setShouldBeRunning(true);
+    pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
     pipeRuntimeMeta.setExceptionsClearTime(0);
     pipeRuntimeMeta
         .getNodeId2PipeRuntimeExceptionMap()
