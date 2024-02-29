@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
@@ -38,7 +36,6 @@ public class QualifiedObjectName {
   private static final Pattern PATTERN =
       Pattern.compile("(?<database>" + COMPONENT + ")\\.(?<table>" + COMPONENT + ")");
 
-  @JsonCreator
   public static QualifiedObjectName valueOf(String name) {
     requireNonNull(name, "name is null");
     Matcher matcher = PATTERN.matcher(name);
@@ -85,7 +82,6 @@ public class QualifiedObjectName {
     return Objects.hash(dbName, objectName);
   }
 
-  @JsonValue
   @Override
   public String toString() {
     return quoteIfNeeded(dbName) + '.' + quoteIfNeeded(objectName);

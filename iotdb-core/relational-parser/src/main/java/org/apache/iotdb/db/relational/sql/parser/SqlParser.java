@@ -123,7 +123,8 @@ public class SqlParser {
       Optional<NodeLocation> location,
       Function<RelationalSqlParser, ParserRuleContext> parseFunction) {
     try {
-      RelationalSqlLexer lexer = new RelationalSqlLexer(CharStreams.fromString(sql));
+      RelationalSqlLexer lexer =
+          new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
       CommonTokenStream tokenStream = new CommonTokenStream(lexer);
       RelationalSqlParser parser = new RelationalSqlParser(tokenStream);
       initializer.accept(lexer, parser);

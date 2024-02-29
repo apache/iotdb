@@ -20,7 +20,18 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -29,11 +40,20 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
+import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
@@ -42,10 +62,56 @@ public class AnalyzerTest {
   private final NopAccessControl nopAccessControl = new NopAccessControl();
 
   @Test
-  public void testRawDataQuery() {
-    String sql = "select s1, status, s1 + 1 as t from table1 where time > 100 and s2 > 10;";
+  public void testRawDataQuery() throws OperatorNotFoundException {
+    String sql = "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10";
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
+
+    TableHandle tableHandle = Mockito.mock(TableHandle.class);
+    Mockito.when(
+            metadata.getTableHandle(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+        .thenReturn(Optional.of(tableHandle));
+
+    Map<String, ColumnHandle> map = new HashMap<>();
+    TableSchema tableSchema = Mockito.mock(TableSchema.class);
+    Mockito.when(tableSchema.getTableName()).thenReturn("table1");
+    ColumnSchema column1 =
+        ColumnSchema.builder().setName("time").setType(INT64).setHidden(false).build();
+    ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
+    map.put("time", column1Handle);
+    ColumnSchema column2 =
+        ColumnSchema.builder().setName("s1").setType(INT32).setHidden(false).build();
+    ColumnHandle column2Handle = Mockito.mock(ColumnHandle.class);
+    map.put("s1", column2Handle);
+    ColumnSchema column3 =
+        ColumnSchema.builder().setName("s2").setType(INT64).setHidden(false).build();
+    ColumnHandle column3Handle = Mockito.mock(ColumnHandle.class);
+    map.put("s2", column3Handle);
+    List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
+    Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
+
+    Mockito.when(metadata.getTableSchema(Mockito.any(), eq(tableHandle))).thenReturn(tableSchema);
+    Mockito.when(metadata.getColumnHandles(Mockito.any(), eq(tableHandle))).thenReturn(map);
+
+    ResolvedFunction lLessThanI =
+        new ResolvedFunction(
+            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
+            new FunctionId("l<i"),
+            FunctionKind.SCALAR,
+            true);
+
+    ResolvedFunction iAddi =
+        new ResolvedFunction(
+            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
+            new FunctionId("l+i"),
+            FunctionKind.SCALAR,
+            true);
+
+    Mockito.when(
+            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
+        .thenReturn(lLessThanI);
+    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32, INT32))))
+        .thenReturn(iAddi);
 
     Analysis actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
