@@ -121,9 +121,4 @@ public class CountAccumulator implements Accumulator {
   public TSDataType getFinalType() {
     return TSDataType.INT64;
   }
-
-  @Override
-  public int getPartialResultSize() {
-    return 0;
-  }
 }

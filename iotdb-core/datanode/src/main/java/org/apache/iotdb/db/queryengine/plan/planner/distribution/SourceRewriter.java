@@ -409,6 +409,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         descriptor.setStep(AggregationStep.PARTIAL);
         updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
       }
+    } else if (planNode instanceof AggregationNode) {
+      AggregationNode aggregationNode = (AggregationNode) planNode;
+      // TODO set partial
     }
 
     for (PlanNode child : planNode.getChildren()) {
@@ -417,11 +420,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private boolean hasCountIfAggregation(Set<Expression> selectExpressions) {
-    for (Expression e : selectExpressions) {
-      if (e instanceof FunctionExpression) {
-        if (COUNT_IF.equalsIgnoreCase(((FunctionExpression) e).getFunctionName())) {
-          return true;
-        }
+    for (Expression expression : selectExpressions) {
+      if (expression instanceof FunctionExpression
+          && (COUNT_IF.equalsIgnoreCase(((FunctionExpression) expression).getFunctionName()))) {
+        return true;
       }
     }
     return false;

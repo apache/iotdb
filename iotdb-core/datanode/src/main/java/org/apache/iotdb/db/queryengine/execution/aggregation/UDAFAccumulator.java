@@ -195,11 +195,6 @@ public class UDAFAccumulator implements Accumulator {
     return UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType());
   }
 
-  @Override
-  public int getPartialResultSize() {
-    return 1;
-  }
-
   private void onError(String methodName, Exception e) {
     LOGGER.warn(
         "Error occurred during executing UDAF, please check whether the implementation of UDF is correct according to the udf-api description.",

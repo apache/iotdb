@@ -119,11 +119,6 @@ public class MinTimeAccumulator implements Accumulator {
     return TSDataType.INT64;
   }
 
-  @Override
-  public int getPartialResultSize() {
-    return 1;
-  }
-
   protected void updateMinTime(long curTime) {
     hasCandidateResult = true;
     minTime = Math.min(minTime, curTime);

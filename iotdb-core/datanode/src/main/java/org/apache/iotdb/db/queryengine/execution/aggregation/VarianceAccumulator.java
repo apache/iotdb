@@ -211,11 +211,6 @@ public class VarianceAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  @Override
-  public int getPartialResultSize() {
-    return 1;
-  }
-
   private void addIntInput(Column[] columns, BitMap bitmap) {
     int size = columns[0].getPositionCount();
     for (int i = 0; i < size; i++) {
