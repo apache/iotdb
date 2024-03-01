@@ -75,6 +75,10 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  /**
+   * If this plan node has to be serialized or deserialized, override this method. If this method is
+   * overridden, the serialization and deserialization methods must be implemented.
+   */
   public PlanNodeType getType() {
     throw new UnsupportedOperationException("This planNode does not support getType().");
   }
