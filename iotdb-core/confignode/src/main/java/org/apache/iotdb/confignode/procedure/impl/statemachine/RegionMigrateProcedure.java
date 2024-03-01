@@ -113,30 +113,11 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          tsStatus =
-              handler.removeRegionPeer(
-                  originalDataNode, consensusGroupId, coordinatorForRemovePeer);
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
-          } else {
-            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
-          }
-          logBreakpoint(state.name());
-          setNextState(RegionTransitionState.DELETE_OLD_REGION_PEER);
-          break;
-        case DELETE_OLD_REGION_PEER:
-          tsStatus = handler.deleteOldRegionPeer(originalDataNode, consensusGroupId);
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
-          }
-          logBreakpoint(state.name());
-          // Remove consensus group after a node stop, which will be failed, but we will
-          // continuously execute.
-          setNextState(RegionTransitionState.REMOVE_REGION_LOCATION_CACHE);
-          break;
-        case REMOVE_REGION_LOCATION_CACHE:
-          handler.removeRegionLocation(consensusGroupId, originalDataNode);
-          logBreakpoint(state.name());
+          addChildProcedure(
+              new RemoveRegionPeerProcedure(
+                  consensusGroupId, coordinatorForRemovePeer, originalDataNode));
+          setNextState(RegionTransitionState.PROCEDURE_FINISH);
+        case PROCEDURE_FINISH:
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -247,7 +228,7 @@ public class RegionMigrateProcedure
       coordinatorForAddPeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOGGER.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOGGER.error("Error in deserialize {}", this.getClass(), e);
     }
   }
 

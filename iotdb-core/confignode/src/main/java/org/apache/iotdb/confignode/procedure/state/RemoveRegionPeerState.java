@@ -19,14 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.state;
 
-public enum RegionTransitionState {
-  REGION_MIGRATE_PREPARE,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  ADD_REGION_LOCATION_CACHE,
-  CHANGE_REGION_LEADER,
+public enum RemoveRegionPeerState {
   REMOVE_REGION_PEER,
-  PROCEDURE_FINISH,
   DELETE_OLD_REGION_PEER,
-  REMOVE_REGION_LOCATION_CACHE
+  REMOVE_REGION_LOCATION_CACHE,
 }
