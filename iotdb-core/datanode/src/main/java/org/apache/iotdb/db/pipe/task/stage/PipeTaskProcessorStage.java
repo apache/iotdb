@@ -64,12 +64,10 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       PipeProcessorSubtaskExecutor executor) {
-    final PipeProcessor pipeProcessor;
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
-      pipeProcessor = PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters);
-    } else {
-      pipeProcessor = PipeAgent.plugin().schemaRegion().reflectProcessor(pipeProcessorParameters);
-    }
+    final PipeProcessor pipeProcessor =
+        StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+            ? PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters)
+            : PipeAgent.plugin().schemaRegion().reflectProcessor(pipeProcessorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
