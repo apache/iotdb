@@ -208,7 +208,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex)
+    return RamUsageEstimator.sizeOfMap(deviceToIndex)
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
   }

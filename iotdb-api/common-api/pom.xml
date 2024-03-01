@@ -28,12 +28,6 @@
     </parent>
     <artifactId>common-api</artifactId>
     <name>IoTDB: API: Common API</name>
-    <dependencies>
-        <dependency>
-            <groupId>org.openjdk.jol</groupId>
-            <artifactId>jol-core</artifactId>
-        </dependency>
-    </dependencies>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>
