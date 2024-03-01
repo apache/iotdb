@@ -843,17 +843,6 @@
                 <version>${airlift-units.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>stats</artifactId>
-                <version>${airlift.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.annotation</groupId>
-                        <artifactId>javax.annotation-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
                 <version>${jjwt.version}</version>

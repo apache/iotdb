@@ -30,15 +30,11 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 
-import io.airlift.stats.CounterStat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
-
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FAILED;
 
 public class FragmentInstanceExecution {
 
@@ -66,14 +62,13 @@ public class FragmentInstanceExecution {
       List<IDriver> drivers,
       ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
-      CounterStat failedInstances,
       long timeOut,
       MPPDataExchangeManager exchangeManager)
       throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
-    execution.initialize(failedInstances, scheduler);
+    execution.initialize(scheduler);
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -121,8 +116,7 @@ public class FragmentInstanceExecution {
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction
   @SuppressWarnings("squid:S1181")
-  private void initialize(CounterStat failedInstances, IDriverScheduler scheduler) {
-    requireNonNull(failedInstances, "failedInstances is null");
+  private void initialize(IDriverScheduler scheduler) {
     stateMachine.addStateChangeListener(
         newState -> {
           try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
@@ -132,11 +126,6 @@ public class FragmentInstanceExecution {
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug("Enter the stateChangeListener");
-            }
-
-            // Update failed tasks counter
-            if (newState == FAILED) {
-              failedInstances.update(1);
             }
 
             clearShuffleSinkHandle(newState);
