@@ -2561,7 +2561,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     ExplainAnalyzeStatement explainAnalyzeStatement = new ExplainAnalyzeStatement(queryStatement);
     if (ctx.VERBOSE() != null) {
-      explainAnalyzeStatement.setVerbose(Boolean.parseBoolean(ctx.boolean_literal().getText()));
+      explainAnalyzeStatement.setVerbose(true);
     }
     return explainAnalyzeStatement;
   }

@@ -33,51 +33,58 @@ import java.util.Map;
 
 public class FragmentInstanceStatisticsDrawer {
   private int maxLineLength = 0;
-  private final List<StatisticLine> table = new ArrayList<>();
+  private static final double EPSILON = 1e-10;
+  private final List<StatisticLine> planHeader = new ArrayList<>();
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
 
   public void renderPlanStatistics(MPPQueryContext context) {
     addLine(
-        table, 0, String.format("Analyze Cost: %s ms", context.getAnalyzeCost() * NS_TO_MS_FACTOR));
+        planHeader,
+        0,
+        String.format("Analyze Cost: %.3f ms", context.getAnalyzeCost() * NS_TO_MS_FACTOR));
     addLine(
-        table,
+        planHeader,
         0,
         String.format(
-            "Fetch Partition Cost: %s ms", context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
+            "Fetch Partition Cost: %.3f ms", context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
     addLine(
-        table,
-        0,
-        String.format("Fetch Schema Cost: %s ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
-    addLine(
-        table,
-        0,
-        String.format("Logical Plan Cost: %s ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
-    addLine(
-        table,
+        planHeader,
         0,
         String.format(
-            "Distribution Plan Cost: %s ms", context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+            "Fetch Schema Cost: %.3f ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Logical Plan Cost: %.3f ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Distribution Plan Cost: %.3f ms",
+            context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
   }
 
   public List<StatisticLine> renderFragmentInstances(
       List<FragmentInstance> instancesToBeRendered,
       Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics,
       boolean verbose) {
+    List<StatisticLine> table = new ArrayList<>(planHeader);
+    addLine(
+        table, 0, String.format("Fragment Instances Count: %s", instancesToBeRendered.size() - 1));
     for (FragmentInstance instance : instancesToBeRendered) {
       List<StatisticLine> singleFragmentInstanceArea = new ArrayList<>();
       TFetchFragmentInstanceStatisticsResp statistics = allStatistics.get(instance.getId());
       if (statistics == null || statistics.getDataRegion() == null) {
         continue;
       }
+      addBlankLine(singleFragmentInstanceArea);
       addLine(
           singleFragmentInstanceArea,
           0,
           String.format(
-              "FRAGMENT-INSTANCE[Id: %s][IP: %s][Database: %s][DataRegion: %s]",
-              instance.getId().toString(),
-              statistics.getIp(),
-              statistics.getDatabase(),
-              statistics.getDataRegion()));
+              "FRAGMENT-INSTANCE[Id: %s][IP: %s][DataRegion: %s]",
+              instance.getId().toString(), statistics.getIp(), statistics.getDataRegion()));
       addLine(
           singleFragmentInstanceArea,
           1,
@@ -88,7 +95,7 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "Cost of initDataQuerySource: %s ms",
+              "Cost of initDataQuerySource: %.3f ms",
               statistics.getInitDataQuerySourceCost() * NS_TO_MS_FACTOR));
       addLine(
           singleFragmentInstanceArea,
@@ -106,7 +113,7 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "ready queued time: %s ms, blocked queued time: %s ms",
+              "ready queued time: %.3f ms, blocked queued time: %.3f ms",
               statistics.getReadyQueuedTime() * NS_TO_MS_FACTOR,
               statistics.getBlockQueuedTime() * NS_TO_MS_FACTOR));
       if (verbose) {
@@ -122,201 +129,192 @@ public class FragmentInstanceStatisticsDrawer {
     return table;
   }
 
+  private void addLineWithValueCheck(
+      List<StatisticLine> singleFragmentInstanceArea, int level, String valueName, long value) {
+    if (value != 0) {
+      addLine(singleFragmentInstanceArea, level, valueName + String.format(": %s", value));
+    }
+  }
+
+  private void addLineWithValueCheck(
+      List<StatisticLine> singleFragmentInstanceArea, int level, String valueName, double value) {
+    if (Math.abs(value) > EPSILON) {
+      addLine(singleFragmentInstanceArea, level, valueName + String.format(": %.3f", value));
+    }
+  }
+
+  private void addBlankLine(List<StatisticLine> singleFragmentInstanceArea) {
+    addLine(singleFragmentInstanceArea, 0, " ");
+  }
+
   private void renderQueryStatistics(
       TQueryStatistics queryStatistics, List<StatisticLine> singleFragmentInstanceArea) {
     addLine(singleFragmentInstanceArea, 1, "Query Statistics:");
-    addLine(
+
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataDiskSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataDiskSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataDiskSeqCount",
+        queryStatistics.loadTimeSeriesMetadataDiskSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataDiskUnSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataDiskUnSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataDiskUnSeqCount",
+        queryStatistics.loadTimeSeriesMetadataDiskUnSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataMemSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataMemSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataMemSeqCount",
+        queryStatistics.loadTimeSeriesMetadataMemSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataMemUnSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataMemUnSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataMemUnSeqCount",
+        queryStatistics.loadTimeSeriesMetadataMemUnSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedDiskSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataAlignedDiskSeqCount",
+        queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedDiskUnSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataAlignedDiskUnSeqCount",
+        queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedMemSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataAlignedMemSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataAlignedMemSeqCount",
+        queryStatistics.loadTimeSeriesMetadataAlignedMemSeqCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedMemUnSeqCount: %s",
-            queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqCount));
-    addLine(
+        "loadTimeSeriesMetadataAlignedMemUnSeqCount",
+        queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqCount);
+
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataDiskSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataDiskSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataDiskSeqTime",
+        queryStatistics.loadTimeSeriesMetadataDiskSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataDiskUnSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataDiskUnSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataDiskUnSeqTime",
+        queryStatistics.loadTimeSeriesMetadataDiskUnSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataMemSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataMemSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataMemSeqTime",
+        queryStatistics.loadTimeSeriesMetadataMemSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataMemUnSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataMemUnSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataMemUnSeqTime",
+        queryStatistics.loadTimeSeriesMetadataMemUnSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedDiskSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataAlignedDiskSeqTime",
+        queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedDiskUnSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataAlignedDiskUnSeqTime",
+        queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedMemSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataAlignedMemSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataAlignedMemSeqTime",
+        queryStatistics.loadTimeSeriesMetadataAlignedMemSeqTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "loadTimeSeriesMetadataAlignedMemUnSeqTime: %s ms",
-            queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR));
-    addLine(
+        "loadTimeSeriesMetadataAlignedMemUnSeqTime",
+        queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR);
+
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructNonAlignedChunkReadersDiskCount: %s",
-            queryStatistics.constructNonAlignedChunkReadersDiskCount));
-    addLine(
+        "constructNonAlignedChunkReadersDiskCount",
+        queryStatistics.constructNonAlignedChunkReadersDiskCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructNonAlignedChunkReadersMemCount: %s",
-            queryStatistics.constructNonAlignedChunkReadersMemCount));
-    addLine(
+        "constructNonAlignedChunkReadersMemCount",
+        queryStatistics.constructNonAlignedChunkReadersMemCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructAlignedChunkReadersDiskCount: %s",
-            queryStatistics.constructAlignedChunkReadersDiskCount));
-    addLine(
+        "constructAlignedChunkReadersDiskCount",
+        queryStatistics.constructAlignedChunkReadersDiskCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructAlignedChunkReadersMemCount: %s",
-            queryStatistics.constructAlignedChunkReadersMemCount));
-    addLine(
+        "constructAlignedChunkReadersMemCount",
+        queryStatistics.constructAlignedChunkReadersMemCount);
+
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructNonAlignedChunkReadersDiskTime: %s ms",
-            queryStatistics.constructNonAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR));
-    addLine(
+        "constructNonAlignedChunkReadersDiskTime",
+        queryStatistics.constructNonAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructNonAlignedChunkReadersMemTime: %s ms",
-            queryStatistics.constructNonAlignedChunkReadersMemTime * NS_TO_MS_FACTOR));
-    addLine(
+        "constructNonAlignedChunkReadersMemTime",
+        queryStatistics.constructNonAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructAlignedChunkReadersDiskTime: %s ms",
-            queryStatistics.constructAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR));
-    addLine(
+        "constructAlignedChunkReadersDiskTime",
+        queryStatistics.constructAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "constructAlignedChunkReadersMemTime: %s ms",
-            queryStatistics.constructAlignedChunkReadersMemTime * NS_TO_MS_FACTOR));
-    addLine(
+        "constructAlignedChunkReadersMemTime",
+        queryStatistics.constructAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeAlignedDiskCount: %s",
-            queryStatistics.pageReadersDecodeAlignedDiskCount));
-    addLine(
+        "pageReadersDecodeAlignedDiskCount",
+        queryStatistics.pageReadersDecodeAlignedDiskCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeAlignedDiskTime: %s ms",
-            queryStatistics.pageReadersDecodeAlignedDiskTime * NS_TO_MS_FACTOR));
-    addLine(
+        "pageReadersDecodeAlignedDiskTime",
+        queryStatistics.pageReadersDecodeAlignedDiskTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeAlignedMemCount: %s",
-            queryStatistics.pageReadersDecodeAlignedMemCount));
-    addLine(
+        "pageReadersDecodeAlignedMemCount",
+        queryStatistics.pageReadersDecodeAlignedMemCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeAlignedMemTime: %s ms",
-            queryStatistics.pageReadersDecodeAlignedMemTime * NS_TO_MS_FACTOR));
-    addLine(
+        "pageReadersDecodeAlignedMemTime",
+        queryStatistics.pageReadersDecodeAlignedMemTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeNonAlignedDiskCount: %s",
-            queryStatistics.pageReadersDecodeNonAlignedDiskCount));
-    addLine(
+        "pageReadersDecodeNonAlignedDiskCount",
+        queryStatistics.pageReadersDecodeNonAlignedDiskCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeNonAlignedDiskTime: %s ms",
-            queryStatistics.pageReadersDecodeNonAlignedDiskTime * NS_TO_MS_FACTOR));
-    addLine(
+        "pageReadersDecodeNonAlignedDiskTime",
+        queryStatistics.pageReadersDecodeNonAlignedDiskTime * NS_TO_MS_FACTOR);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeNonAlignedMemCount: %s",
-            queryStatistics.pageReadersDecodeNonAlignedMemCount));
-    addLine(
+        "pageReadersDecodeNonAlignedMemCount",
+        queryStatistics.pageReadersDecodeNonAlignedMemCount);
+    addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
-        String.format(
-            "pageReadersDecodeNonAlignedMemTime: %s ms",
-            queryStatistics.pageReadersDecodeNonAlignedMemTime * NS_TO_MS_FACTOR));
+        "pageReadersDecodeNonAlignedMemTime",
+        queryStatistics.pageReadersDecodeNonAlignedMemTime * NS_TO_MS_FACTOR);
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {
@@ -353,7 +351,7 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           indentNum + 2,
           String.format(
-              "CPU Time: %s ms",
+              "CPU Time: %.3f ms",
               operatorStatistic.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
       addLine(
           singleFragmentInstanceArea,
@@ -367,10 +365,11 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           indentNum + 2,
           String.format("Next() Called Count: %s", operatorStatistic.nextCalledCount));
-      addLine(
+      addLineWithValueCheck(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("Estimated Memory Size: %s B", operatorStatistic.getMemoryInMB()));
+          "Estimated Memory Size: ",
+          operatorStatistic.getMemoryUsage());
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {
         for (Map.Entry<String, String> entry : operatorStatistic.getSpecifiedInfo().entrySet()) {

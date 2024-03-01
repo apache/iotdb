@@ -11,6 +11,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -41,6 +42,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
   private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
       new FragmentInstanceStatisticsDrawer();
+  private static final String LOG_TITLE =
+      "---------------------Intermediate result of EXPLAIN ANALYZE---------------------:";
 
   private final ScheduledFuture<?> logRecordTask;
 
@@ -106,11 +109,15 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   // We will log the intermediate result of analyze if timeout
   // It can be used to analyze deadlock problem.
   private void logIntermediateResultIfTimeout() {
-    try {
+    try (SetThreadName ignored =
+        new SetThreadName(
+            String.format(
+                "%s-Explain-Analyze-Logger",
+                operatorContext.getInstanceContext().getId().getQueryId()))) {
       List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
 
       StringBuilder logContent = new StringBuilder();
-      logContent.append("\n").append("Intermediate result of EXPLAIN ANALYZE:").append("\n");
+      logContent.append("\n").append(LOG_TITLE).append("\n");
       for (String line : analyzeResult) {
         logContent.append(line).append("\n");
       }

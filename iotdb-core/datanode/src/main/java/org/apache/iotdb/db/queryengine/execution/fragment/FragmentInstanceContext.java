@@ -295,6 +295,10 @@ public class FragmentInstanceContext extends QueryContext {
     return executionEndTime.get();
   }
 
+  public boolean isEndTimeUpdate() {
+    return executionEndTime.get() != END_TIME_INITIAL_VALUE;
+  }
+
   @Override
   public long getStartTime() {
     return executionStartTime.get();

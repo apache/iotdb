@@ -49,6 +49,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FAILED;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.merge;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeAllOperatorStatistics;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeOperatorStatisticsIfDuplicate;
 
 public class FragmentInstanceExecution {
 
@@ -140,7 +143,7 @@ public class FragmentInstanceExecution {
     return stateMachine;
   }
 
-  // Fill Fragment level info for statistics
+  // Fill Fragment-Level info for statistics
   private boolean fillFragmentInstanceStatistics(
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
@@ -152,10 +155,10 @@ public class FragmentInstanceExecution {
       return false;
     }
     statistics.setDataRegion(((DataRegion) context.getDataRegion()).getDataRegionId());
-    statistics.setDatabase(context.getDataRegion().getDatabaseName());
     statistics.setIp(IoTDBDescriptor.getInstance().getConfig().getAddressAndPort().ip);
-    statistics.setEndTimeInMS(context.getEndTime());
     statistics.setStartTimeInMS(context.getStartTime());
+    statistics.setEndTimeInMS(
+        context.isEndTimeUpdate() ? context.getEndTime() : System.currentTimeMillis());
 
     statistics.setBlockQueuedTime(context.getBlockQueueTime());
     statistics.setReadyQueuedTime(context.getReadyQueueTime());
@@ -169,7 +172,7 @@ public class FragmentInstanceExecution {
     return true;
   }
 
-  // Fill Operator level info for statistics
+  // Fill Operator-Level info for statistics
   // Return needMerge to indicate if operatorStatistics in current fragmentInstance is merged.
   private boolean fillFragmentInstanceStatistics(
       List<OperatorContext> contexts,
@@ -213,37 +216,6 @@ public class FragmentInstanceExecution {
     return needMerge;
   }
 
-  private void mergeAllOperatorStatistics(
-      Map<String, TOperatorStatistics> operatorStatisticsMap,
-      Map<String, String> leadOverloadOperators) {
-    for (Map.Entry<String, TOperatorStatistics> entry : operatorStatisticsMap.entrySet()) {
-      if (leadOverloadOperators.containsKey(entry.getValue().getOperatorType())) {
-        merge(
-            operatorStatisticsMap.get(
-                leadOverloadOperators.get(entry.getValue().getOperatorType())),
-            entry.getValue());
-      } else {
-        TOperatorStatistics operatorStatistics = entry.getValue();
-        operatorStatistics.setCount(1);
-        // Can't merge specifiedInfo of String-type, so just clear it
-        operatorStatistics.getSpecifiedInfo().clear();
-        // keep the first one in operatorStatisticsMap as the only-one leadOverloadOperator
-        leadOverloadOperators.put(
-            operatorStatistics.getOperatorType(), operatorStatistics.getPlanNodeId());
-      }
-    }
-  }
-
-  private void merge(TOperatorStatistics first, TOperatorStatistics second) {
-    first.setTotalExecutionTimeInNanos(
-        first.getTotalExecutionTimeInNanos() + second.getTotalExecutionTimeInNanos());
-    first.setNextCalledCount(first.getNextCalledCount() + second.getNextCalledCount());
-    first.setHasNextCalledCount(first.getHasNextCalledCount() + second.getHasNextCalledCount());
-    first.setInputRows(first.getInputRows() + second.getInputRows());
-    first.setMemoryInMB(first.getMemoryInMB() + second.getMemoryInMB());
-    first.setCount(first.getCount() + 1);
-  }
-
   private void setOperatorStatistics(
       TOperatorStatistics operatorStatistics, OperatorContext operatorContext) {
     operatorStatistics.setPlanNodeId(operatorContext.getPlanNodeId().toString());
@@ -253,7 +225,7 @@ public class FragmentInstanceExecution {
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setInputRows(operatorContext.getInputRows());
     operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
-    operatorStatistics.setMemoryInMB(operatorContext.getEstimatedMemorySize());
+    operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
   }
 
   // Directly build statistics from FragmentInstanceExecution, which is still running.
@@ -289,6 +261,8 @@ public class FragmentInstanceExecution {
     } else {
       statistics.setOperatorStatisticsMap(operatorStatisticsMap);
     }
+
+    mergeOperatorStatisticsIfDuplicate(statistics.getOperatorStatisticsMap());
 
     return statistics;
   }

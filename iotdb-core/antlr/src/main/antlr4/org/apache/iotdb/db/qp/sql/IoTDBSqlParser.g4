@@ -960,7 +960,7 @@ stopRepairData
 
 // Explain
 explain
-    : EXPLAIN (ANALYZE)? selectStatement (VERBOSE operator_eq boolean_literal)?
+    : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
     ;
 
 // Set System To readonly/running/error
