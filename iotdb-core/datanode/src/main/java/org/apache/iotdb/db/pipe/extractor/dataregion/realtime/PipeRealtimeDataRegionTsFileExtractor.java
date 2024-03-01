@@ -45,6 +45,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
     if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
       extractDeleteData(event);
+      return;
     }
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);

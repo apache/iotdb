@@ -96,7 +96,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
-  private boolean needExtractData;
+  private boolean shouldExtractInsertion;
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -178,10 +178,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws IllegalPathException {
-    needExtractData =
+    shouldExtractInsertion =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters).getLeft();
     // Do nothing if only extract deletion
-    if (!needExtractData) {
+    if (!shouldExtractInsertion) {
       return;
     }
 
@@ -291,9 +291,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
-    if (!needExtractData) {
+    if (!shouldExtractInsertion) {
       return;
     }
+
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
@@ -409,10 +410,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
-    if (!needExtractData || Objects.isNull(pendingQueue)) {
+    if (Objects.isNull(pendingQueue)) {
       return null;
     }
-    TsFileResource resource = pendingQueue.poll();
+
+    final TsFileResource resource = pendingQueue.poll();
     if (resource == null) {
       return null;
     }
@@ -448,7 +450,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   public synchronized boolean hasConsumedAll() {
-    return !needExtractData || (Objects.nonNull(pendingQueue) && pendingQueue.isEmpty());
+    return Objects.isNull(pendingQueue) || pendingQueue.isEmpty();
   }
 
   @Override
