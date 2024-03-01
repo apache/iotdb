@@ -67,27 +67,28 @@ public class PipeConnectorSubtaskManager {
     PipeEventCommitManager.getInstance()
         .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
 
-    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
-
-    final int connectorNum;
-
-    boolean isDataRegion =
+    final boolean isDataRegionConnector =
         StorageEngine.getInstance()
             .getAllDataRegionIds()
             .contains(new DataRegionId(environment.getRegionId()));
-    if (isDataRegion) {
+
+    final int connectorNum;
+    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    if (isDataRegionConnector) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
               Arrays.asList(
                   PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                   PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
-      attributeSortedString = attributeSortedString + "data";
+      attributeSortedString = "data_" + attributeSortedString;
     } else {
-      // Do not allow parallel connector for schema transmission to avoid disorder
+      // Do not allow parallel tasks for schema region connectors
+      // to avoid the potential disorder of the schema region data transfer
       connectorNum = 1;
-      attributeSortedString = attributeSortedString + "schema";
+      attributeSortedString = "schema_" + attributeSortedString;
     }
+
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
@@ -100,7 +101,7 @@ public class PipeConnectorSubtaskManager {
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
-            isDataRegion
+            isDataRegionConnector
                 ? PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
                 : PipeAgent.plugin().schemaRegion().reflectConnector(pipeConnectorParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
