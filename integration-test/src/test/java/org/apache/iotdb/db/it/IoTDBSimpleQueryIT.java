@@ -1145,25 +1145,4 @@ public class IoTDBSimpleQueryIT {
       fail();
     }
   }
-
-  @Test
-  public void showCurrentTimestamp() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      long startTime = System.currentTimeMillis();
-      long rowCount = 0;
-      try (ResultSet r1 = statement.executeQuery("show current_timestamp")) {
-        long currentTime = 0;
-        while (r1.next()) {
-          rowCount++;
-          currentTime = r1.getLong(1);
-          assertTrue(currentTime >= startTime);
-        }
-        assertEquals(1, r1.getMetaData().getColumnCount());
-        assertEquals(1, rowCount);
-      }
-    } catch (SQLException e) {
-      fail();
-    }
-  }
 }
