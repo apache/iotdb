@@ -35,8 +35,9 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
 
-  protected final PipeSnapshotResourceManager resourceManager;
   protected String snapshotPath;
+  protected final PipeSnapshotResourceManager resourceManager;
+
   protected ProgressIndex progressIndex;
 
   protected PipeSnapshotEvent(
@@ -105,6 +106,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
     return true;
   }
 
+  @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
     snapshotPath = ReadWriteIOUtils.readString(buffer);
   }
