@@ -31,26 +31,20 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/**
- * {@link MetaProgressIndex} is used only for meta transfer progress recording. It shall not be
- * blended or compared to {@link ProgressIndex}es other than {@link MetaProgressIndex} or {@link
- * MinimumProgressIndex}.
- */
 public class MetaProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private long index;
 
-  public MetaProgressIndex() {
-    // Empty constructor
-  }
-
   public MetaProgressIndex(long index) {
     this.index = index;
   }
 
-  // Meta extractors need to set index to iterate from the listening queue
+  private MetaProgressIndex() {
+    // Empty constructor
+  }
+
   public long getIndex() {
     return index;
   }
@@ -85,6 +79,10 @@ public class MetaProgressIndex extends ProgressIndex {
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
         return true;
+      }
+
+      if (progressIndex instanceof HybridProgressIndex) {
+        return ((HybridProgressIndex) progressIndex).isGivenProgressIndexAfterSelf(this);
       }
 
       if (!(progressIndex instanceof MetaProgressIndex)) {
@@ -155,7 +153,12 @@ public class MetaProgressIndex extends ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    return null;
+    lock.readLock().lock();
+    try {
+      return new TotalOrderSumTuple(index);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static MetaProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
