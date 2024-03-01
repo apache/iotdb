@@ -377,7 +377,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
-      Statement s = StatementGenerator.createStatement(req, clientSession.getZoneId());
+      Statement s = StatementGenerator.createStatement(req);
 
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
@@ -466,7 +466,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
-      Statement s = StatementGenerator.createStatement(req, clientSession.getZoneId());
+      Statement s = StatementGenerator.createStatement(req);
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -556,7 +556,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
-      Statement s = StatementGenerator.createStatement(req, clientSession.getZoneId());
+      Statement s = StatementGenerator.createStatement(req);
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -881,7 +881,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // cache miss
-      Statement s = StatementGenerator.createStatement(convert(req), clientSession.getZoneId());
+      Statement s = StatementGenerator.createStatement(convert(req));
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

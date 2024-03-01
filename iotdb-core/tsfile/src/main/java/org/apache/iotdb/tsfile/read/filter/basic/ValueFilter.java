@@ -88,6 +88,10 @@ public abstract class ValueFilter extends Filter {
 
   @Override
   public boolean allSatisfy(IMetadata metadata) {
+    if (metadata.hasNullValue(measurementIndex)) {
+      // null not satisfy any filter, except IS NULL
+      return false;
+    }
     Optional<Statistics<? extends Serializable>> statistics =
         metadata.getMeasurementStatistics(measurementIndex);
     return statistics.map(this::allSatisfy).orElse(false);

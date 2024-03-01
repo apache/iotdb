@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -91,6 +92,23 @@ public class ProjectNode extends SingleChildProcessNode {
   }
 
   @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.PROJECT.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(getChildren().size(), stream);
+    for (PlanNode planNode : getChildren()) {
+      planNode.serializeUseTemplate(stream, typeProvider);
+    }
+  }
+
+  public static ProjectNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new ProjectNode(planNodeId, null);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -102,11 +120,16 @@ public class ProjectNode extends SingleChildProcessNode {
       return false;
     }
     ProjectNode that = (ProjectNode) o;
-    return outputColumnNames.equals(that.outputColumnNames);
+    return Objects.equals(outputColumnNames, that.outputColumnNames);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), outputColumnNames);
+  }
+
+  @Override
+  public String toString() {
+    return "ProjectNode-" + this.getPlanNodeId();
   }
 }

@@ -28,25 +28,27 @@ import javax.annotation.Nullable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Optional;
 
 public class SessionInfo {
   private final long sessionId;
   private final String userName;
-  private final String zoneId;
+  private final ZoneId zoneId;
 
   @Nullable private final String databaseName;
 
   private ClientVersion version = ClientVersion.V_1_0;
 
-  public SessionInfo(long sessionId, String userName, String zoneId) {
+  public SessionInfo(long sessionId, String userName, ZoneId zoneId) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.databaseName = null;
   }
 
-  public SessionInfo(long sessionId, String userName, String zoneId, ClientVersion version) {
+  public SessionInfo(long sessionId, String userName, ZoneId zoneId, ClientVersion version) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
@@ -55,7 +57,7 @@ public class SessionInfo {
   }
 
   public SessionInfo(
-      long sessionId, String userName, String zoneId, @Nullable String databaseName) {
+      long sessionId, String userName, ZoneId zoneId, @Nullable String databaseName) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
@@ -70,7 +72,7 @@ public class SessionInfo {
     return userName;
   }
 
-  public String getZoneId() {
+  public ZoneId getZoneId() {
     return zoneId;
   }
 
@@ -89,13 +91,13 @@ public class SessionInfo {
   public static SessionInfo deserializeFrom(ByteBuffer buffer) {
     long sessionId = ReadWriteIOUtils.readLong(buffer);
     String userName = ReadWriteIOUtils.readString(buffer);
-    String zoneId = ReadWriteIOUtils.readString(buffer);
+    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
     return new SessionInfo(sessionId, userName, zoneId);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sessionId, stream);
     ReadWriteIOUtils.write(userName, stream);
-    ReadWriteIOUtils.write(zoneId, stream);
+    ReadWriteIOUtils.write(zoneId.getId(), stream);
   }
 }

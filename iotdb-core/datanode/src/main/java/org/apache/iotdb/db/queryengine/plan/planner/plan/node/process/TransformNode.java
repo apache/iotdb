@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,7 +39,6 @@ public class TransformNode extends SingleChildProcessNode {
 
   protected Expression[] outputExpressions;
   protected final boolean keepNull;
-  protected final ZoneId zoneId;
 
   protected final Ordering scanOrder;
 
@@ -51,25 +49,18 @@ public class TransformNode extends SingleChildProcessNode {
       PlanNode child,
       Expression[] outputExpressions,
       boolean keepNull,
-      ZoneId zoneId,
       Ordering scanOrder) {
     super(id, child);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
-    this.zoneId = zoneId;
     this.scanOrder = scanOrder;
   }
 
   public TransformNode(
-      PlanNodeId id,
-      Expression[] outputExpressions,
-      boolean keepNull,
-      ZoneId zoneId,
-      Ordering scanOrder) {
+      PlanNodeId id, Expression[] outputExpressions, boolean keepNull, Ordering scanOrder) {
     super(id);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
-    this.zoneId = zoneId;
     this.scanOrder = scanOrder;
   }
 
@@ -91,7 +82,7 @@ public class TransformNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, zoneId, scanOrder);
+    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, scanOrder);
   }
 
   @Override
@@ -102,7 +93,6 @@ public class TransformNode extends SingleChildProcessNode {
       Expression.serialize(expression, byteBuffer);
     }
     ReadWriteIOUtils.write(keepNull, byteBuffer);
-    ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
@@ -114,7 +104,6 @@ public class TransformNode extends SingleChildProcessNode {
       Expression.serialize(expression, stream);
     }
     ReadWriteIOUtils.write(keepNull, stream);
-    ReadWriteIOUtils.write(zoneId.getId(), stream);
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
@@ -125,10 +114,9 @@ public class TransformNode extends SingleChildProcessNode {
       outputExpressions[i] = Expression.deserialize(byteBuffer);
     }
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
-    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId, scanOrder);
+    return new TransformNode(planNodeId, outputExpressions, keepNull, scanOrder);
   }
 
   public final Expression[] getOutputExpressions() {
@@ -137,10 +125,6 @@ public class TransformNode extends SingleChildProcessNode {
 
   public final boolean isKeepNull() {
     return keepNull;
-  }
-
-  public final ZoneId getZoneId() {
-    return zoneId;
   }
 
   public Ordering getScanOrder() {
@@ -166,13 +150,12 @@ public class TransformNode extends SingleChildProcessNode {
     TransformNode that = (TransformNode) o;
     return keepNull == that.keepNull
         && Arrays.equals(outputExpressions, that.outputExpressions)
-        && zoneId.equals(that.zoneId)
         && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), keepNull, zoneId, scanOrder);
+    int result = Objects.hash(super.hashCode(), keepNull, scanOrder);
     result = 31 * result + Arrays.hashCode(outputExpressions);
     return result;
   }

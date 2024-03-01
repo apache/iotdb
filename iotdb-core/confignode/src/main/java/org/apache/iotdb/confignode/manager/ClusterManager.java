@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class ClusterManager {
 
@@ -72,15 +71,6 @@ public class ClusterManager {
   private void generateClusterId() {
     String clusterId = String.valueOf(UUID.randomUUID());
     UpdateClusterIdPlan updateClusterIdPlan = new UpdateClusterIdPlan(clusterId);
-    while (configManager.getConsensusManager() == null) {
-      try {
-        LOGGER.info("consensus layer is not ready, sleep 100ms...");
-        TimeUnit.MILLISECONDS.sleep(100);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for consensus layer ready.");
-      }
-    }
     try {
       configManager.getConsensusManager().write(updateClusterIdPlan);
     } catch (ConsensusException e) {

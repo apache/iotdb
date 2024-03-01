@@ -444,6 +444,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
       case 65:
         return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      case 32:
+        return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

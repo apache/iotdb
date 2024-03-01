@@ -63,7 +63,7 @@ public class InnerCompactionLogTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompactionLog() {
+  public void testCompactionLog() throws InterruptedException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);

@@ -121,7 +121,7 @@ public class AnalyzerTest {
   private Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       Statement statement = sqlParser.createStatement(sql);
-      SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault().getId(), "testdb");
+      SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb");
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 
