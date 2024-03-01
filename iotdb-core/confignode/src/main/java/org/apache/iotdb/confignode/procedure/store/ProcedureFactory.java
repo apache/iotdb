@@ -42,8 +42,10 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -88,6 +90,12 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
+        break;
+      case ADD_REGION_PEER_PROCEDURE:
+        procedure = new AddRegionPeerProcedure();
+        break;
+      case REMOVE_REGION_PEER_PROCEDURE:
+        procedure = new RemoveRegionPeerProcedure();
         break;
       case CREATE_REGION_GROUPS:
         procedure = new CreateRegionGroupsProcedure();
@@ -188,6 +196,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof AddRegionPeerProcedure) {
+      return ProcedureType.ADD_REGION_PEER_PROCEDURE;
+    } else if (procedure instanceof RemoveRegionPeerProcedure) {
+      return ProcedureType.REMOVE_REGION_PEER_PROCEDURE;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {

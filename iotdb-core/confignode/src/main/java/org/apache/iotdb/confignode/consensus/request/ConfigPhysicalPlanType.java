@@ -53,6 +53,7 @@ public enum ConfigPhysicalPlanType {
   CreateRegionGroups((short) 300),
   DeleteRegionGroups((short) 301),
   GetRegionInfoList((short) 302),
+  @Deprecated
   UpdateRegionLocation((short) 303),
   OfferRegionMaintainTasks((short) 304),
   PollRegionMaintainTask((short) 305),
@@ -60,8 +61,9 @@ public enum ConfigPhysicalPlanType {
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
-
   CountTimeSlotList((short) 310),
+  AddRegionLocation((short) 311),
+  RemoveRegionLocation((short) 312),
 
   /** Partition. */
   GetSchemaPartition((short) 400),

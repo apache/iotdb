@@ -74,8 +74,10 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
@@ -1076,16 +1078,30 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-
+    // TODO: ugly, will fix soon
     this.executor
         .getProcedures()
         .values()
         .forEach(
-            procedure -> {
-              if (procedure instanceof RegionMigrateProcedure) {
-                RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
-                if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
+            procedure1 -> {
+              if (procedure1 instanceof AddRegionPeerProcedure) {
+                AddRegionPeerProcedure procedure = (AddRegionPeerProcedure) procedure1;
+                if (procedure.getConsensusGroupId().equals(req.getRegionId())) {
+                  procedure.notifyAddPeerFinished(req);
+                }
+              }
+            });
+
+    // TODO: ugly, will fix soon
+    this.executor
+        .getProcedures()
+        .values()
+        .forEach(
+            procedure1 -> {
+              if (procedure1 instanceof RemoveRegionPeerProcedure) {
+                RemoveRegionPeerProcedure procedure = (RemoveRegionPeerProcedure) procedure1;
+                if (procedure.getConsensusGroupId().equals(req.getRegionId())) {
+                  procedure.notifyRemovePeerFinished(req);
                 }
               }
             });

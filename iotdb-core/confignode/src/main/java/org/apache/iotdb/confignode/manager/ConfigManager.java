@@ -415,6 +415,7 @@ public class ConfigManager implements IManager {
   public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // TODO: 这里需要修改report机制，改为向AddRegionPeerProcedure汇报
       procedureManager.reportRegionMigrateResult(req);
     }
     return status;
