@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.ADD_REGION_PEER_PROGRESS;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -55,6 +57,7 @@ public class AddRegionPeerProcedure
   private TDataNodeLocation destDataNode;
 
   private boolean addRegionPeerSuccess = true;
+  private String addRegionPeerResult;
 
   private final Object addRegionPeerLock = new Object();
 
@@ -84,7 +87,7 @@ public class AddRegionPeerProcedure
         case CREATE_NEW_REGION_PEER:
           handler.createNewRegionPeer(consensusGroupId, destDataNode);
           logBreakpoint(state.name());
-          setNextState(AddRegionPeerState.CREATE_NEW_REGION_PEER);
+          setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinator);
@@ -99,6 +102,8 @@ public class AddRegionPeerProcedure
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
           return Flow.NO_MORE_STATE;
+        default:
+          throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
       return Flow.NO_MORE_STATE;
@@ -106,6 +111,7 @@ public class AddRegionPeerProcedure
     return Flow.HAS_MORE_STATE;
   }
 
+  // TODO: Clear all remaining information related to 'migrate' and 'migration'
   public TSStatus waitForOneMigrationStepFinished(
       TConsensusGroupId consensusGroupId, AddRegionPeerState state) throws Exception {
     LOGGER.info(
@@ -132,6 +138,29 @@ public class AddRegionPeerProcedure
       }
     }
     return status;
+  }
+
+  public void notifyAddPeerFinished(TRegionMigrateResultReportReq req) {
+
+    LOGGER.info(
+        "{}, ConfigNode received region migration result reported by DataNode: {}",
+        ADD_REGION_PEER_PROGRESS,
+        req);
+
+    // TODO the req is used in roll back
+    synchronized (addRegionPeerLock) {
+      TSStatus migrateStatus = req.getMigrateResult();
+      // Migration failed
+      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "{}, Region migration failed in DataNode, migrateStatus: {}",
+            ADD_REGION_PEER_PROGRESS,
+            migrateStatus);
+        addRegionPeerSuccess = false;
+        addRegionPeerResult = migrateStatus.toString();
+      }
+      addRegionPeerLock.notifyAll();
+    }
   }
 
   @Override
@@ -178,5 +207,17 @@ public class AddRegionPeerProcedure
     } catch (ThriftSerDeException e) {
       LOGGER.error("Error in deserialize RemoveConfigNodeProcedure", e);
     }
+  }
+
+  public TConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
+  }
+
+  public TDataNodeLocation getCoordinator() {
+    return coordinator;
+  }
+
+  public TDataNodeLocation getDestDataNode() {
+    return destDataNode;
   }
 }

@@ -46,6 +46,7 @@ public class ConfigNodeConstant {
 
   public static final String REMOVE_DATANODE_PROCESS = "[REMOVE_DATANODE_PROCESS]";
   public static final String REGION_MIGRATE_PROCESS = "[REGION_MIGRATE_PROCESS]";
+  public static final String ADD_REGION_PEER_PROGRESS = "[ADD_REGION_PEER_PROGRESS]";
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
