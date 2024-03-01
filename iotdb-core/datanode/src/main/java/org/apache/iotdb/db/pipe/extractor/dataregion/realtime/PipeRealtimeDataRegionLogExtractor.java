@@ -49,7 +49,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
     } else if (eventToExtract instanceof PipeSchemaRegionWritePlanEvent) {
-      extractDeleteData(event);
+      extractDeletion(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(

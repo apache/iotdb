@@ -70,6 +70,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
+  protected boolean shouldExtractInsertion;
+  protected boolean shouldExtractDeletion;
+
   protected String pattern;
   private boolean isDbNameCoveredByPattern = false;
 
@@ -88,9 +91,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       new AtomicReference<>();
 
   protected boolean isForwardingPipeRequests;
-
-  protected boolean shouldExtractInsertion;
-  protected boolean shouldExtractDeletion;
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -138,10 +138,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
-    Pair<Boolean, Boolean> needExtractPair =
+    final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
-    shouldExtractInsertion = needExtractPair.getLeft();
-    shouldExtractDeletion = needExtractPair.getRight();
+    shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
+    shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
@@ -274,10 +274,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected abstract void doExtract(PipeRealtimeEvent event);
 
-  public abstract boolean isNeedListenToTsFile();
-
-  public abstract boolean isNeedListenToInsertNode();
-
   protected void extractHeartbeat(PipeRealtimeEvent event) {
     // Bind extractor so that the heartbeat event can later inform the extractor of queue size
     ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
@@ -306,21 +302,22 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
           this,
           event);
 
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
-      // pipe progress.
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect
+      // the correction of pipe progress.
 
       // ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
   }
 
-  protected void extractDeleteData(PipeRealtimeEvent event) {
+  protected void extractDeletion(PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // This would not happen, but just in case.
       // Pending is unbounded, so it should never reach capacity.
       final String errorMessage =
           String.format(
-              "extract: pending queue of %s %s " + "has reached capacity, discard TsFile event %s",
+              "extract: pending queue of %s %s "
+                  + "has reached capacity, discard deletion event %s",
               this.getClass().getSimpleName(), this, event);
       LOGGER.error(errorMessage);
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
@@ -340,8 +337,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
               + "the reference count can not be increased",
           event.getEvent());
 
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
-      // progress.
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect
+      // the correction of pipe progress.
 
       return null;
     }
@@ -353,8 +350,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     } else {
       // if the event's reference count can not be increased, it means the data represented by
       // this event is not reliable anymore. the data has been lost. we simply discard this
-      // event
-      // and report the exception to PipeRuntimeAgent.
+      // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
               "TsFile Event %s can not be supplied because "
@@ -365,6 +361,22 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       return null;
     }
+  }
+
+  public final String getPipeName() {
+    return pipeName;
+  }
+
+  public final PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
+
+  public final boolean shouldExtractInsertion() {
+    return shouldExtractInsertion;
+  }
+
+  public final boolean shouldExtractDeletion() {
+    return shouldExtractDeletion;
   }
 
   public final String getPattern() {
@@ -400,21 +412,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return isForwardingPipeRequests;
   }
 
-  public final boolean shouldExtractInsertion() {
-    return shouldExtractInsertion;
-  }
+  public abstract boolean isNeedListenToTsFile();
 
-  public final boolean shouldExtractDeletion() {
-    return shouldExtractDeletion;
-  }
-
-  public final String getPipeName() {
-    return pipeName;
-  }
-
-  public final PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
+  public abstract boolean isNeedListenToInsertNode();
 
   @Override
   public String toString() {
