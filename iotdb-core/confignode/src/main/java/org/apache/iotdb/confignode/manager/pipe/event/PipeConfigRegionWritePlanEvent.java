@@ -67,7 +67,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer planBuffer = configPhysicalPlan.serializeToByteBuffer();
     ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
-    ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_PLAN.getType(), result);
+    ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
     return result;

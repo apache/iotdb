@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PipeConfigSerializableEventType {
-  CONFIG_PLAN((byte) 1),
+  CONFIG_WRITE_PLAN((byte) 1),
   CONFIG_SNAPSHOT((byte) 2),
   ;
 
