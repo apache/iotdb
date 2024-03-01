@@ -40,8 +40,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
@@ -577,6 +579,30 @@ public class PartitionInfo implements SnapshotProcessor {
                 databasePartitionTable.updateRegionLocation(regionId, oldNode, newNode));
 
     return status;
+  }
+
+  /** The region has expanded to a new DataNode, now update the databasePartitionTable. */
+  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
+    databasePartitionTables.values().stream()
+        .filter(
+            databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
+        .forEach(
+            databasePartitionTable ->
+                databasePartitionTable.addRegionNewLocation(
+                    req.getRegionId(), req.getNewLocation()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /** The region is no longer located on a DataNode, now update the databasePartitionTable. */
+  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
+    databasePartitionTables.values().stream()
+        .filter(
+            databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
+        .forEach(
+            databasePartitionTable ->
+                databasePartitionTable.removeRegionLocation(
+                    req.getRegionId(), req.getDeprecatedLocation()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**

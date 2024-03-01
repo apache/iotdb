@@ -32,6 +32,8 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -331,6 +333,7 @@ public class DataNodeRemoveHandler {
    * @param originalDataNode old location data node
    * @param destDataNode dest data node
    */
+  @Deprecated
   public void updateRegionLocationCache(
       TConsensusGroupId regionId,
       TDataNodeLocation originalDataNode,
@@ -349,6 +352,47 @@ public class DataNodeRemoveHandler {
         status,
         getIdWithRpcEndpoint(originalDataNode),
         getIdWithRpcEndpoint(destDataNode));
+
+    // Remove the RegionGroupCache of the regionId
+    configManager.getLoadManager().removeRegionGroupCache(regionId);
+
+    // Broadcast the latest RegionRouteMap when Region migration finished
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
+    LOGGER.info(
+        "AddRegionLocation started, add region {} to {}",
+        regionId,
+        getIdWithRpcEndpoint(newLocation));
+    AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
+    TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
+    LOGGER.info(
+        "AddRegionLocation finished, add region {} to {}, result is {}",
+        regionId,
+        getIdWithRpcEndpoint(newLocation),
+        status);
+
+    // Remove the RegionGroupCache of the regionId
+    configManager.getLoadManager().removeRegionGroupCache(regionId);
+
+    // Broadcast the latest RegionRouteMap when Region migration finished
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  public void removeRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
+    LOGGER.info(
+        "RemoveRegionLocation started, add region {} to {}",
+        regionId,
+        getIdWithRpcEndpoint(deprecatedLocation));
+    RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
+    TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
+    LOGGER.info(
+        "AddRegionLocation finished, add region {} to {}, result is {}",
+        regionId,
+        getIdWithRpcEndpoint(deprecatedLocation),
+        status);
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);

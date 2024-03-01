@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.statemachine.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
@@ -188,6 +189,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof AddRegionPeerProcedure) {
+      return ProcedureType.ADD_REGION_PEER;
+    } else if (false) {
+      return null;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
