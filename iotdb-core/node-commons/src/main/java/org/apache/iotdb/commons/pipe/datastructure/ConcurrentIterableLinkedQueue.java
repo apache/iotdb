@@ -47,7 +47,7 @@ public class ConcurrentIterableLinkedQueue<E> {
   }
 
   // nodes:   [firstNode,  firstNode.next, firstNode.next.next, ..., lastNode     ]
-  // indexes: [firstIndex, firstIndex + 1, firstIndex + 1,      ..., tailIndex - 1]
+  // indexes: [firstIndex, firstIndex + 1, firstIndex + 2,      ..., tailIndex - 1]
   private final LinkedListNode<E> pilotNode = new LinkedListNode<>(null);
   private LinkedListNode<E> firstNode = pilotNode;
   private LinkedListNode<E> lastNode = pilotNode;

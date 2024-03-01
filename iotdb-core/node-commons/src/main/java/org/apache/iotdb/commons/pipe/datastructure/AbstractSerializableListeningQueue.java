@@ -82,7 +82,17 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     itr.close();
   }
 
+  // Caller should ensure that the "newFirstIndex" is less than every iterators.
   public long removeBefore(long newFirstIndex) {
+    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
+      while (itr.getNextIndex() < newFirstIndex) {
+        E element = itr.next(0);
+        if (Objects.isNull(element)) {
+          break;
+        }
+        releaseResource(element);
+      }
+    }
     return queue.tryRemoveBefore(newFirstIndex);
   }
 
