@@ -27,9 +27,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PipeSchemaSerializableEventType {
-  SCHEMA_PLAN((byte) 1),
+  SCHEMA_WRITE_PLAN((byte) 1),
   SCHEMA_SNAPSHOT((byte) 2),
   ;
+
   private static final Map<Byte, PipeSchemaSerializableEventType> TYPE_MAP = new HashMap<>();
 
   static {
@@ -53,13 +54,13 @@ public enum PipeSchemaSerializableEventType {
   }
 
   public static SerializableEvent deserialize(ByteBuffer buffer) throws IOException {
-    byte eventType = buffer.get();
+    final byte eventType = buffer.get();
     return deserialize(buffer, eventType);
   }
 
   public static SerializableEvent deserialize(ByteBuffer buffer, byte eventType)
       throws IOException {
-    SerializableEvent event;
+    final SerializableEvent event;
     switch (eventType) {
       case 1:
         event = new PipeSchemaRegionWritePlanEvent();

@@ -66,7 +66,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer planBuffer = planNode.serializeToByteBuffer();
     ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
-    ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_PLAN.getType(), result);
+    ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
     return result;
