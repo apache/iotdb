@@ -100,14 +100,26 @@ public class RegionMigrateProcedure
       switch (state) {
         case REGION_MIGRATE_PREPARE:
           logBreakpoint(state.name());
+          setNextState(RegionTransitionState.CREATE_NEW_REGION_PEER);
+          break;
+        case CREATE_NEW_REGION_PEER:
+          handler.createNewRegionPeer(consensusGroupId, destDataNode);
+          logBreakpoint(state.name());
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
-          addChildProcedure(
-              new AddRegionPeerProcedure(consensusGroupId, coordinatorForAddPeer, destDataNode));
+          tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinatorForAddPeer);
+          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
+            waitForOneMigrationStepFinished(consensusGroupId, state);
+          } else {
+            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+          }
           logBreakpoint(state.name());
-          setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
+          setNextState(RegionTransitionState.ADD_REGION_LOCATION_CACHE);
           break;
+        case ADD_REGION_LOCATION_CACHE:
+          handler.addRegionLocation(consensusGroupId, destDataNode);
+          setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
         case CHANGE_REGION_LEADER:
           handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
           logBreakpoint(state.name());
@@ -133,9 +145,9 @@ public class RegionMigrateProcedure
           logBreakpoint(state.name());
           // Remove consensus group after a node stop, which will be failed, but we will
           // continuously execute.
-          setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
+          setNextState(RegionTransitionState.REMOVE_REGION_LOCATION_CACHE);
           break;
-        case UPDATE_REGION_LOCATION_CACHE:
+        case REMOVE_REGION_LOCATION_CACHE:
           handler.removeRegionLocation(consensusGroupId, originalDataNode);
           logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;

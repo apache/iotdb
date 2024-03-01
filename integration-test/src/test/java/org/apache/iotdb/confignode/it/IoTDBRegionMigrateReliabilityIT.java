@@ -106,6 +106,18 @@ public class IoTDBRegionMigrateReliabilityIT {
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
       final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
 
+      // set breakpoint
+      HashMap<String, Runnable> keywordAction = new HashMap<>();
+      Arrays.stream(RegionTransitionState.values())
+          .forEach(
+              state ->
+                  keywordAction.put(
+                      String.valueOf(state), () -> LOGGER.info(String.valueOf(state))));
+      ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
+      LOGGER.info("breakpoint setting...");
+      service.submit(() -> logBreakpointMonitor(0, keywordAction));
+      LOGGER.info("breakpoint set");
+
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);

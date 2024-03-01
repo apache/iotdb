@@ -90,6 +90,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
         break;
+      case ADD_REGION_PEER_PROCEDURE:
+        procedure = new AddRegionPeerProcedure();
+        break;
       case CREATE_REGION_GROUPS:
         procedure = new CreateRegionGroupsProcedure();
         break;
@@ -190,7 +193,7 @@ public class ProcedureFactory implements IProcedureFactory {
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
     } else if (procedure instanceof AddRegionPeerProcedure) {
-      return ProcedureType.ADD_REGION_PEER;
+      return ProcedureType.ADD_REGION_PEER_PROCEDURE;
     } else if (false) {
       return null;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
