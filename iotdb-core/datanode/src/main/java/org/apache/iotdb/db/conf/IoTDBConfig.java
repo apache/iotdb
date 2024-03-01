@@ -258,11 +258,11 @@ public class IoTDBConfig {
 
   /** System directory, including version file for each database and metadata */
   private String systemDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Schema directory, including storage set of values. */
   private String schemaDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
@@ -270,7 +270,7 @@ public class IoTDBConfig {
 
   /** Query directory, stores temporary files of query */
   private String queryDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -307,7 +307,7 @@ public class IoTDBConfig {
 
   /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
   private String[][] tierDataDirs = {
-    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
+    {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
   private String loadTsFileDir =
@@ -317,14 +317,14 @@ public class IoTDBConfig {
   private String multiDirStrategyClassName = null;
 
   private String ratisDataRegionSnapshotDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.DATA_FOLDER_NAME
           + File.separator
           + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
 
   /** Consensus directory. */
-  private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
+  private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
   private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
 
@@ -332,7 +332,7 @@ public class IoTDBConfig {
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -492,8 +492,8 @@ public class IoTDBConfig {
   /** The max candidate file num in one cross space compaction task */
   private int fileLimitPerCrossTask = 500;
 
-  /** The max candidate file num in cross space compaction */
-  private int totalFileLimitForCrossTask = 5000;
+  /** The max candidate file num in compaction */
+  private int totalFileLimitForCompactionTask = 5000;
 
   /** The max total size of candidate files in one cross space compaction task */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
@@ -515,6 +515,9 @@ public class IoTDBConfig {
    * for nonAligned data in cross space compaction and unseq inner space compaction.
    */
   private int subCompactionTaskNum = 4;
+
+  /** The number of threads to be set up to select compaction task. */
+  private int compactionScheduleThreadNum = 4;
 
   private boolean enableTsFileValidation = false;
 
@@ -601,6 +604,12 @@ public class IoTDBConfig {
    * "defaultCluster" will be changed after join cluster
    */
   private String clusterName = "defaultCluster";
+
+  /**
+   * The cluster ID that this DataNode joined in the cluster mode. DataNode will fetch cluster ID
+   * from ConfigNode and cache it here when first time use it.
+   */
+  private String clusterId = "";
 
   /**
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
@@ -2781,8 +2790,8 @@ public class IoTDBConfig {
     return fileLimitPerCrossTask;
   }
 
-  public int getTotalFileLimitForCrossTask() {
-    return totalFileLimitForCrossTask;
+  public int getTotalFileLimitForCompactionTask() {
+    return totalFileLimitForCompactionTask;
   }
 
   public void setFileLimitPerCrossTask(int fileLimitPerCrossTask) {
@@ -2819,6 +2828,14 @@ public class IoTDBConfig {
 
   public void setSubCompactionTaskNum(int subCompactionTaskNum) {
     this.subCompactionTaskNum = subCompactionTaskNum;
+  }
+
+  public int getCompactionScheduleThreadNum() {
+    return compactionScheduleThreadNum;
+  }
+
+  public void setCompactionScheduleThreadNum(int compactionScheduleThreadNum) {
+    this.compactionScheduleThreadNum = compactionScheduleThreadNum;
   }
 
   public int getCachedMNodeSizeInPBTreeMode() {
@@ -3013,6 +3030,14 @@ public class IoTDBConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+  }
+
+  public String getClusterId() {
+    return clusterId;
+  }
+
+  public void setClusterId(String clusterId) {
+    this.clusterId = clusterId;
   }
 
   public int getDataNodeId() {

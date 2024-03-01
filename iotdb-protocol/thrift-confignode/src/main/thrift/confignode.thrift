@@ -104,6 +104,7 @@ struct TRuntimeConfiguration {
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
+  6: optional string clusterId
 }
 
 struct TDataNodeRegisterReq {
@@ -945,6 +946,9 @@ service IConfigNodeRPCService {
   /** Get the matched Databases' TDatabaseSchema */
   TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
 
+  /** Test only */
+  common.TSStatus createManyDatabases()
+
   // ======================================================
   // SchemaPartition
   // ======================================================
@@ -1212,7 +1216,10 @@ service IConfigNodeRPCService {
   common.TSStatus clearCache()
 
   /** Check and repair unsorted tsfile by compaction */
-  common.TSStatus repairData()
+  common.TSStatus startRepairData()
+
+  /** Stop repair data task */
+  common.TSStatus stopRepairData()
 
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()

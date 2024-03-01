@@ -98,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -126,12 +127,16 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  public R visitSeriesScanSource(SeriesScanSourceNode node, C context) {
     return visitSourceNode(node, context);
   }
 
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitSeriesScanSource(node, context);
+  }
+
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
-    return visitSourceNode(node, context);
+    return visitSeriesScanSource(node, context);
   }
 
   public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {

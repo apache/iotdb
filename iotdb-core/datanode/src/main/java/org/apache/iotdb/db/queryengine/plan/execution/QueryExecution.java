@@ -49,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
-import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -110,8 +109,6 @@ public class QueryExecution implements IQueryExecution {
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
 
-  private final List<PlanOptimizer> planOptimizers;
-
   private final Statement rawStatement;
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
@@ -167,7 +164,6 @@ public class QueryExecution implements IQueryExecution {
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
-    this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
@@ -356,7 +352,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+    LogicalPlanner planner = new LogicalPlanner(this.context);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(

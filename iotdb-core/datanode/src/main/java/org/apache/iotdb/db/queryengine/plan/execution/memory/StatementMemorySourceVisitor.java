@@ -48,7 +48,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -88,15 +87,16 @@ public class StatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
     LogicalQueryPlan logicalPlan =
-        new LogicalPlanner(context.getQueryContext(), new ArrayList<>())
-            .plan(context.getAnalysis());
+        new LogicalPlanner(context.getQueryContext()).plan(context.getAnalysis());
     DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
     PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
     PlanNode optimizedRootWithExchange = planner.optimize(rootWithExchange);
 
     List<String> lines =
         optimizedRootWithExchange.accept(
-            new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+            new PlanGraphPrinter(),
+            new PlanGraphPrinter.GraphContext(
+                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(

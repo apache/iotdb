@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
@@ -88,6 +89,7 @@ public class ProcedureExecutor<Env> {
     this.lastProcId.incrementAndGet();
   }
 
+  @TestOnly
   public ProcedureExecutor(final Env environment, final IProcedureStore store) {
     this(environment, store, new SimpleProcedureScheduler());
   }

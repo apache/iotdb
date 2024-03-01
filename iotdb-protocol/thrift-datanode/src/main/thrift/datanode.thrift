@@ -669,7 +669,9 @@ service IDataNodeRPCService {
 
   common.TSStatus settle(common.TSettleReq req)
 
-  common.TSStatus repairData()
+  common.TSStatus startRepairData()
+
+  common.TSStatus stopRepairData()
 
   common.TSStatus clearCache()
 
