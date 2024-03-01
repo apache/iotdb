@@ -475,15 +475,35 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     if (this.instance == null) {
       return;
     }
+    logger.info("Node {} will be shutdown soon", this.getPort());
     this.instance.destroy();
     try {
       if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
+        logger.warn("Node {} will be shutdown forcibly soon", this.getPort());
         this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error. %s", e);
+      logger.error("Waiting node to shutdown error.", e);
+      return;
     }
+    logger.info("Node {} has been shutdown", this.getPort());
+  }
+
+  @Override
+  public void stopForcibly() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      logger.info("Node {} will be shutdown forcibly soon", this.getPort());
+      this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error.", e);
+      return;
+    }
+    logger.info("Node {} has been shutdown", this.getPort());
   }
 
   @Override
