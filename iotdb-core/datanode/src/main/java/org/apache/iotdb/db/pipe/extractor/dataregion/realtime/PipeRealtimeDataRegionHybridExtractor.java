@@ -70,12 +70,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return extractData;
+    return shouldExtractInsertion;
   }
 
   @Override
   public boolean isNeedListenToInsertNode() {
-    return extractData;
+    return shouldExtractInsertion;
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {

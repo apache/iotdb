@@ -72,7 +72,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return extractData;
+    return shouldExtractInsertion;
   }
 
   @Override

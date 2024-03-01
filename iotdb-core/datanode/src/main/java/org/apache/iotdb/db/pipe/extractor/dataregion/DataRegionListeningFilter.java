@@ -41,51 +41,53 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
- * {@link PipeDataRegionFilter} is to tell the insertion and deletion for {@link PipeTask} on {@link
- * DataRegion} to collect.
+ * {@link DataRegionListeningFilter} is to tell the insertion and deletion for {@link PipeTask} on
+ * {@link DataRegion} to collect.
  */
-public class PipeDataRegionFilter {
+public class DataRegionListeningFilter {
 
-  private static final Set<PartialPath> TYPE_SET = new HashSet<>();
+  private static final Set<PartialPath> OPTION_SET = new HashSet<>();
 
   static {
     try {
-      TYPE_SET.add(new PartialPath("data.insert"));
-      TYPE_SET.add(new PartialPath("data.delete"));
+      OPTION_SET.add(new PartialPath("data.insert"));
+      OPTION_SET.add(new PartialPath("data.delete"));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
     }
   }
 
-  public static Pair<Boolean, Boolean> getDataRegionListenPair(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
-    String inclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
-    String exclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+  public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(
+      PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
+    final Set<String> listeningOptions = new HashSet<>();
 
-    Set<String> listenTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = parseOptions(inclusionStr);
-    List<PartialPath> exclusionPath = parseOptions(exclusionStr);
-    inclusionPath.forEach(
+    final List<PartialPath> inclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
+    final List<PartialPath> exclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+
+    inclusionOptions.forEach(
         inclusion ->
-            listenTypes.addAll(
-                TYPE_SET.stream()
+            listeningOptions.addAll(
+                OPTION_SET.stream()
                     .filter(path -> path.overlapWithFullPathPrefix(inclusion))
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet())));
-    exclusionPath.forEach(
+    exclusionOptions.forEach(
         exclusion ->
-            listenTypes.removeAll(
-                TYPE_SET.stream()
+            listeningOptions.removeAll(
+                OPTION_SET.stream()
                     .filter(path -> path.overlapWithFullPathPrefix(exclusion))
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet())));
 
-    return new Pair<>(listenTypes.contains("data.insert"), listenTypes.contains("data.delete"));
+    return new Pair<>(
+        listeningOptions.contains("data.insert"), listeningOptions.contains("data.delete"));
   }
 }

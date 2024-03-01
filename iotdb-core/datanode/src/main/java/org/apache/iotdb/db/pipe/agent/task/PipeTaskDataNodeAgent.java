@@ -36,8 +36,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
@@ -105,8 +105,12 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           StorageEngine.getInstance()
                   .getAllDataRegionIds()
                   .contains(new DataRegionId(consensusGroupId))
-              && (PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getLeft()
-                  || PipeDataRegionFilter.getDataRegionListenPair(extractorParameters).getRight());
+              && (DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                          extractorParameters)
+                      .getLeft()
+                  || DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                          extractorParameters)
+                      .getRight());
       final boolean needConstructSchemaRegionTask =
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()

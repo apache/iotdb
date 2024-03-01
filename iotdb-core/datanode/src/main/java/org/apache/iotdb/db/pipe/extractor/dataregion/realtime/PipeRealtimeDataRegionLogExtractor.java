@@ -111,12 +111,12 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   @Override
   public boolean isNeedListenToTsFile() {
     // Only listen to tsFiles that can't be represented by insertNodes
-    return extractData;
+    return shouldExtractInsertion;
   }
 
   @Override
   public boolean isNeedListenToInsertNode() {
-    return extractData;
+    return shouldExtractInsertion;
   }
 
   @Override

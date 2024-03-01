@@ -109,7 +109,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       // Deletion event will be assigned to extractors listened to it
       if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
         return extractors.stream()
-            .filter(PipeRealtimeDataRegionExtractor::isExtractDeletion)
+            .filter(PipeRealtimeDataRegionExtractor::shouldExtractDeletion)
             .collect(Collectors.toSet());
       }
 
@@ -195,10 +195,11 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
       // Return if the extractor only extract deletion
-      if (!extractor.isExtractData()) {
+      if (!extractor.shouldExtractInsertion()) {
         continue;
       }
-      String pattern = extractor.getPattern();
+
+      final String pattern = extractor.getPattern();
       if (
       // for example, pattern is root.a.b and device is root.a.b.c
       // in this case, the extractor can be matched without checking the measurements

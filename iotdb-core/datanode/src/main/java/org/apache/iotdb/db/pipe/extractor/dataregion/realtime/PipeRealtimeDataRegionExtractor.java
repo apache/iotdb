@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
+import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -89,9 +89,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
-  protected boolean extractData;
-
-  protected boolean extractDeletion;
+  protected boolean shouldExtractInsertion;
+  protected boolean shouldExtractDeletion;
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -140,9 +139,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     Pair<Boolean, Boolean> needExtractPair =
-        PipeDataRegionFilter.getDataRegionListenPair(parameters);
-    extractData = needExtractPair.getLeft();
-    extractDeletion = needExtractPair.getRight();
+        DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
+    shouldExtractInsertion = needExtractPair.getLeft();
+    shouldExtractDeletion = needExtractPair.getRight();
 
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
@@ -368,14 +367,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  public final boolean isExtractData() {
-    return extractData;
-  }
-
-  public final boolean isExtractDeletion() {
-    return extractDeletion;
-  }
-
   public final String getPattern() {
     return pattern;
   }
@@ -407,6 +398,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final boolean isForwardingPipeRequests() {
     return isForwardingPipeRequests;
+  }
+
+  public final boolean shouldExtractInsertion() {
+    return shouldExtractInsertion;
+  }
+
+  public final boolean shouldExtractDeletion() {
+    return shouldExtractDeletion;
   }
 
   public final String getPipeName() {

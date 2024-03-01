@@ -81,20 +81,20 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private boolean noExtract = true;
+  private boolean hasNoExtractionNeed = true;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
-    Pair<Boolean, Boolean> dataRegionListenPair =
-        PipeDataRegionFilter.getDataRegionListenPair(validator.getParameters());
-
-    if (dataRegionListenPair.getLeft().equals(false)
-        && dataRegionListenPair.getRight().equals(false)) {
+    final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+        DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+            validator.getParameters());
+    if (insertionDeletionListeningOptionPair.getLeft().equals(false)
+        && insertionDeletionListeningOptionPair.getRight().equals(false)) {
       return;
     }
-    noExtract = false;
+    hasNoExtractionNeed = false;
 
     // Check whether the pattern is legal
     validatePattern(
@@ -258,9 +258,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    if (noExtract) {
+    if (hasNoExtractionNeed) {
       return;
     }
+
     super.customize(parameters, configuration);
 
     historicalExtractor.customize(parameters, configuration);
@@ -272,9 +273,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public void start() throws Exception {
-    if (noExtract || hasBeenStarted.get()) {
+    if (hasNoExtractionNeed || hasBeenStarted.get()) {
       return;
     }
+
     super.start();
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
@@ -338,9 +340,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public Event supply() throws Exception {
-    if (noExtract) {
+    if (hasNoExtractionNeed) {
       return null;
     }
+
     Event event =
         historicalExtractor.hasConsumedAll()
             ? realtimeExtractor.supply()
@@ -359,9 +362,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public void close() throws Exception {
-    if (!hasBeenStarted.get()) {
+    if (hasNoExtractionNeed || !hasBeenStarted.get()) {
       return;
     }
+
     historicalExtractor.close();
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
