@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -559,26 +558,6 @@ public class PartitionInfo implements SnapshotProcessor {
     return databasePartitionTables.values().stream()
         .anyMatch(
             databasePartitionTable -> databasePartitionTable.containRegionGroup(regionGroupId));
-  }
-
-  /**
-   * Update the location info of given regionId.
-   *
-   * @param req UpdateRegionLocationReq
-   * @return {@link TSStatus}
-   */
-  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    TConsensusGroupId regionId = req.getRegionId();
-    TDataNodeLocation oldNode = req.getOldNode();
-    TDataNodeLocation newNode = req.getNewNode();
-    databasePartitionTables.values().stream()
-        .filter(databasePartitionTable -> databasePartitionTable.containRegionGroup(regionId))
-        .forEach(
-            databasePartitionTable ->
-                databasePartitionTable.updateRegionLocation(regionId, oldNode, newNode));
-
-    return status;
   }
 
   /** The region has expanded to a new DataNode, now update the databasePartitionTable. */

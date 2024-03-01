@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -324,40 +323,6 @@ public class DataNodeRemoveHandler {
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
-  }
-
-  /**
-   * Update region location cache
-   *
-   * @param regionId region id
-   * @param originalDataNode old location data node
-   * @param destDataNode dest data node
-   */
-  @Deprecated
-  public void updateRegionLocationCache(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode) {
-    LOGGER.info(
-        "Start to updateRegionLocationCache {} location from {} to {} when it migrate succeed",
-        regionId,
-        getIdWithRpcEndpoint(originalDataNode),
-        getIdWithRpcEndpoint(destDataNode));
-    UpdateRegionLocationPlan req =
-        new UpdateRegionLocationPlan(regionId, originalDataNode, destDataNode);
-    TSStatus status = configManager.getPartitionManager().updateRegionLocation(req);
-    LOGGER.info(
-        "UpdateRegionLocationCache finished, region:{}, result:{}, old:{}, new:{}",
-        regionId,
-        status,
-        getIdWithRpcEndpoint(originalDataNode),
-        getIdWithRpcEndpoint(destDataNode));
-
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
-
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {

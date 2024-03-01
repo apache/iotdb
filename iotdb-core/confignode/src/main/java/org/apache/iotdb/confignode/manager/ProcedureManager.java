@@ -1078,20 +1078,6 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-
-    this.executor
-        .getProcedures()
-        .values()
-        .forEach(
-            procedure -> {
-              if (procedure instanceof RegionMigrateProcedure) {
-                RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
-                if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
-                }
-              }
-            });
-
     // TODO: ugly, will fix soon
     this.executor
         .getProcedures()

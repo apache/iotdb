@@ -55,7 +55,6 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
@@ -1000,23 +999,6 @@ public class PartitionManager {
    */
   public boolean isRegionGroupExists(TConsensusGroupId regionGroupId) {
     return partitionInfo.isRegionGroupExisted(regionGroupId);
-  }
-
-  /**
-   * Update region location.
-   *
-   * @param req UpdateRegionLocationReq
-   * @return TSStatus
-   */
-  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    try {
-      return getConsensusManager().write(req);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return res;
-    }
   }
 
   public TSStatus addRegionLocation(AddRegionLocationPlan req) {

@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -30,8 +29,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +41,6 @@ import java.util.Objects;
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
-import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 /** Region migrate procedure */
 public class RegionMigrateProcedure
@@ -94,7 +90,6 @@ public class RegionMigrateProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    TSStatus tsStatus;
     DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
@@ -248,60 +243,6 @@ public class RegionMigrateProcedure
   @Override
   public int hashCode() {
     return Objects.hash(this.originalDataNode, this.destDataNode, this.consensusGroupId);
-  }
-
-  public TSStatus waitForOneMigrationStepFinished(
-      TConsensusGroupId consensusGroupId, RegionTransitionState state) throws Exception {
-
-    LOGGER.info(
-        "{}, Wait for state {} finished, regionId: {}",
-        REGION_MIGRATE_PROCESS,
-        state,
-        consensusGroupId);
-
-    TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
-    synchronized (regionMigrateLock) {
-      try {
-        // TODO set timeOut?
-        regionMigrateLock.wait();
-
-        if (!migrateSuccess) {
-          throw new ProcedureException(
-              String.format("Region migration failed, regionId: %s", consensusGroupId));
-        }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
-        Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("Waiting for region migration interruption," + e.getMessage());
-      }
-    }
-    return status;
-  }
-
-  /** DataNode report region migrate result to ConfigNode, and continue */
-  public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
-
-    LOGGER.info(
-        "{}, ConfigNode received region migration result reported by DataNode: {}",
-        REGION_MIGRATE_PROCESS,
-        req);
-
-    // TODO the req is used in roll back
-    synchronized (regionMigrateLock) {
-      TSStatus migrateStatus = req.getMigrateResult();
-      // Migration failed
-      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "{}, Region migration failed in DataNode, migrateStatus: {}",
-            REGION_MIGRATE_PROCESS,
-            migrateStatus);
-        migrateSuccess = false;
-        migrateResult = migrateStatus.toString();
-      }
-      regionMigrateLock.notifyAll();
-    }
   }
 
   public TConsensusGroupId getConsensusGroupId() {
