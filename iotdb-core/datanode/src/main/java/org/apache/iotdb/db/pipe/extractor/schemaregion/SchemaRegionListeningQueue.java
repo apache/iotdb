@@ -54,7 +54,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToNode(PlanNode node) {
-    if (PipeSchemaNodeFilter.shouldBeListenedByQueue(node)) {
+    if (SchemaRegionListeningFilter.shouldBeListenedByQueue(node)) {
       PipeSchemaRegionWritePlanEvent event;
       switch (node.getType()) {
         case PIPE_ENRICHED_WRITE:

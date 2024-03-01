@@ -52,7 +52,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = PipeSchemaNodeFilter.getPipeListenSet(parameters);
+    listenTypes = SchemaRegionListeningFilter.getPipeListenSet(parameters);
   }
 
   @Override

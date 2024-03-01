@@ -44,10 +44,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
- * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
- * collect.
+ * {@link SchemaRegionListeningFilter} is to classify the {@link PlanNode}s to help linkedList and
+ * pipe to collect.
  */
-public class PipeSchemaNodeFilter {
+public class SchemaRegionListeningFilter {
 
   private static final Map<PartialPath, List<PlanNodeType>> NODE_MAP = new HashMap<>();
 
@@ -130,7 +130,7 @@ public class PipeSchemaNodeFilter {
     return planTypes;
   }
 
-  private PipeSchemaNodeFilter() {
+  private SchemaRegionListeningFilter() {
     // Utility class
   }
 }

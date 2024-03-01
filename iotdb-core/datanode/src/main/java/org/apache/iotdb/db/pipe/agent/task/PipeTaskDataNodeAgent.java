@@ -39,7 +39,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.PipeDataRegionFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.PipeSchemaNodeFilter;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -111,7 +111,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !PipeSchemaNodeFilter.getPipeListenSet(extractorParameters).isEmpty();
+              && !SchemaRegionListeningFilter.getPipeListenSet(extractorParameters).isEmpty();
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
@@ -148,7 +148,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         Map<Integer, PipeTaskMeta> metaMap =
             pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-        if (!PipeSchemaNodeFilter.getPipeListenSet(
+        if (!SchemaRegionListeningFilter.getPipeListenSet(
                 pipeMeta.getStaticMeta().getExtractorParameters())
             .isEmpty()) {
           for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
