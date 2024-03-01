@@ -75,6 +75,7 @@ import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.CacheHitRatioMonitor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -565,6 +566,9 @@ public class DataNode implements DataNodeMBean {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
+
+    // Must init before StorageEngine
+    registerManager.register(CompactionScheduleTaskManager.getInstance());
 
     // In mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());

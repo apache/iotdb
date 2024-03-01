@@ -37,6 +37,7 @@ public class RepairTaskRecoverLogParser {
   private static final Logger LOGGER = LoggerFactory.getLogger(RepairTaskRecoverLogParser.class);
   private final Map<RepairTimePartition, Set<String>> repairedTimePartitionsWithCannotRepairFiles =
       new HashMap<>();
+  private long repairTaskStartTime = Long.MIN_VALUE;
   private RepairTimePartition currentTimePartition;
   private Set<String> currentTimePartitionCannotRepairFiles;
 
@@ -52,7 +53,9 @@ public class RepairTaskRecoverLogParser {
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
       String curLine;
       while ((curLine = reader.readLine()) != null) {
-        if (curLine.startsWith(RepairLogger.repairTimePartitionStartLogPrefix)) {
+        if (curLine.startsWith(RepairLogger.repairTaskStartTimeLogPrefix)) {
+          parseTaskStartTimeLog(curLine);
+        } else if (curLine.startsWith(RepairLogger.repairTimePartitionStartLogPrefix)) {
           parseStartTimePartitionLog(curLine.trim());
         } else if (curLine.startsWith(RepairLogger.repairTimePartitionEndLogPrefix)) {
           parseEndTimePartitionLog(curLine.trim());
@@ -62,10 +65,22 @@ public class RepairTaskRecoverLogParser {
           throw new IllegalArgumentException("Unknown format of repair log");
         }
       }
-      if (currentTimePartition != null) {
+      if (currentTimePartitionCannotRepairFiles != null
+          && !currentTimePartitionCannotRepairFiles.isEmpty()) {
         handleIncompleteRepairedTimePartition();
       }
     }
+  }
+
+  private void parseTaskStartTimeLog(String line) {
+    if (repairTaskStartTime != Long.MIN_VALUE) {
+      return;
+    }
+    String[] values = line.split(" ");
+    if (values.length != 2) {
+      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+    }
+    repairTaskStartTime = Long.parseLong(values[1]);
   }
 
   private void parseStartTimePartitionLog(String line) {
@@ -81,11 +96,12 @@ public class RepairTaskRecoverLogParser {
   }
 
   private void parseFileLog(String line) {
-    String[] values = line.split(" ");
-    if (values.length != 2) {
+    if (line.length() <= RepairLogger.cannotRepairFileLogPrefix.length()) {
       throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
     }
-    currentTimePartitionCannotRepairFiles.add(values[1]);
+    String filePath = line.substring(RepairLogger.cannotRepairFileLogPrefix.length());
+    File f = new File(filePath.trim());
+    currentTimePartitionCannotRepairFiles.add(f.getName());
   }
 
   private void parseEndTimePartitionLog(String line) {
@@ -103,6 +119,10 @@ public class RepairTaskRecoverLogParser {
         currentTimePartition.getTimePartitionId());
     repairedTimePartitionsWithCannotRepairFiles.put(
         currentTimePartition, currentTimePartitionCannotRepairFiles);
+  }
+
+  long getRepairDataTaskStartTime() {
+    return repairTaskStartTime < 0 ? System.currentTimeMillis() : repairTaskStartTime;
   }
 
   Map<RepairTimePartition, Set<String>> getRepairedTimePartitionsWithCannotRepairFiles() {

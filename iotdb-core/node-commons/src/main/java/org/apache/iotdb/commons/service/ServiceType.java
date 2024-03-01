@@ -39,6 +39,8 @@ public enum ServiceType {
   SYNC_SERVICE("Sync Service", "SyncService"),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
+  COMPACTION_SCHEDULE_SERVICE("Compaction Schedule Manager", "Compaction Schedule Manger"),
+  REPAIR_DATA_SERVICE("Repair Manager", "Repair Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", "UdfClassLoader"),

@@ -285,7 +285,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testInsertionCompactionSchedule() throws IOException {
+  public void testInsertionCompactionSchedule() throws IOException, InterruptedException {
     TsFileResource seqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, true);
@@ -334,7 +334,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testInsertionCompactionScheduleWithEmptySeqSpace() throws IOException {
+  public void testInsertionCompactionScheduleWithEmptySeqSpace()
+      throws IOException, InterruptedException {
     TsFileResource unseqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
@@ -371,7 +372,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testInsertionCompactionScheduleWithEmptySeqSpace2() throws IOException {
+  public void testInsertionCompactionScheduleWithEmptySeqSpace2()
+      throws IOException, InterruptedException {
     TsFileResource unseqResource0 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(3, 14)}, false);
@@ -415,7 +417,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testInsertionCompactionScheduleWithMultiTimePartitions() throws IOException {
+  public void testInsertionCompactionScheduleWithMultiTimePartitions()
+      throws IOException, InterruptedException {
     TsFileResource unseqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
             "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
@@ -508,7 +511,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       super(databaseName, id);
     }
 
-    public int executeInsertionCompaction() {
+    public int executeInsertionCompaction() throws InterruptedException {
       return super.executeInsertionCompaction(
           new ArrayList<>(this.getTsFileManager().getTimePartitions()));
     }

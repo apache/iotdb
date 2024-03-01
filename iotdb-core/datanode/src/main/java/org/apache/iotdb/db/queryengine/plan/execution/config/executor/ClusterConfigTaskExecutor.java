@@ -1003,14 +1003,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> repairData(boolean onCluster) {
+  public SettableFuture<ConfigTaskResult> startRepairData(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
     if (onCluster) {
       try (ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // Send request to some API server
-        tsStatus = client.repairData();
+        tsStatus = client.startRepairData();
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
@@ -1039,6 +1039,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
         }
       } catch (Exception e) {
+        tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> stopRepairData(boolean onCluster) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    if (onCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        tsStatus = client.stopRepairData();
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    } else {
+      try {
+        StorageEngine.getInstance().stopRepairData();
+        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } catch (StorageEngineException e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }
@@ -2269,7 +2297,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
               context.getSql(),
-              createContinuousQueryStatement.getZoneId(),
+              context.getZoneId().getId(),
               context.getSession() == null ? null : context.getSession().getUserName());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {

@@ -311,6 +311,7 @@ public class ConfigManager implements IManager {
 
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
+    this.consensusManager.get().start();
   }
 
   public void close() throws IOException {
@@ -1420,10 +1421,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus repairData() {
+  public TSStatus startRepairData() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.repairData())
+        ? RpcUtils.squashResponseStatusList(nodeManager.startRpairData())
+        : status;
+  }
+
+  @Override
+  public TSStatus stopRepairData() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.stopRepairData())
         : status;
   }
 

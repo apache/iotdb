@@ -25,7 +25,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
@@ -45,6 +47,8 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
@@ -181,9 +185,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
   @Test
   public void testSelectWithTooManySourceFiles()
-      throws IOException, MetadataException, WriteProcessException, InterruptedException {
-    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCrossTask();
-    SystemInfo.getInstance().setTotalFileLimitForCrossTask(1);
+      throws IOException, MetadataException, WriteProcessException, InterruptedException,
+          ExecutionException {
+    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
+    SystemInfo.getInstance().setTotalFileLimitForCompactionTask(1);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     try {
@@ -212,14 +217,20 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       // set file status to COMPACTION_CANDIDATE
       Assert.assertTrue(crossSpaceCompactionTask.setSourceFilesToCompactionCandidate());
 
-      FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-          Mockito.mock(FixedPriorityBlockingQueue.class);
-      Mockito.when(mockQueue.take())
-          .thenReturn(crossSpaceCompactionTask)
-          .thenThrow(new InterruptedException());
-      CompactionWorker worker = new CompactionWorker(0, mockQueue);
-      worker.run();
-
+      FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+          new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+      queue.put(crossSpaceCompactionTask);
+      Thread thread =
+          new Thread(
+              () -> {
+                try {
+                  AbstractCompactionTask task = queue.take();
+                  Assert.fail();
+                } catch (InterruptedException ignored) {
+                }
+              });
+      thread.start();
+      thread.join(TimeUnit.SECONDS.toMillis(2));
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       for (TsFileResource resource : seqResources) {
@@ -228,11 +239,14 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       for (TsFileResource resource : unseqResources) {
         Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
       }
+      thread.interrupt();
+      thread.join();
     } finally {
-      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxFileNumForCompaction);
+      SystemInfo.getInstance().setTotalFileLimitForCompactionTask(oldMaxFileNumForCompaction);
     }
   }
 
+  @Test
   public void testSeqFileWithDeviceIndexBeenDeletedBeforeSelection()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);

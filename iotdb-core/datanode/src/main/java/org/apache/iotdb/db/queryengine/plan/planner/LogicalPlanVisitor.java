@@ -97,7 +97,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.StringUtils;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -148,10 +147,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (queryStatement.isLastQuery()) {
       planBuilder =
           planBuilder
-              .planLast(
-                  analysis,
-                  analysis.getTimeseriesOrderingForLastQuery(),
-                  queryStatement.getSelectComponent().getZoneId())
+              .planLast(analysis, analysis.getTimeseriesOrderingForLastQuery())
               .planOffset(queryStatement.getRowOffset())
               .planLimit(queryStatement.getRowLimit());
 
@@ -221,7 +217,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getSelectExpressions(),
               analysis.getOrderByExpressions(),
               queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
               queryStatement.getResultTimeOrder());
     }
 
@@ -273,7 +268,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   whereExpression,
                   sourceTransformExpressions,
                   queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId(),
                   queryStatement.getResultTimeOrder());
     } else {
       // aggregation query
@@ -299,7 +293,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     whereExpression,
                     sourceTransformExpressions,
                     queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId(),
                     queryStatement.getResultTimeOrder());
 
         boolean outputPartial =
@@ -637,9 +630,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && null != analysis.getDataPartitionInfo()
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
-          new LogicalPlanBuilder(analysis, context)
-              .planLast(analysis, null, ZoneId.systemDefault())
-              .getRoot();
+          new LogicalPlanBuilder(analysis, context).planLast(analysis, null).getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }
 
@@ -951,7 +942,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     planBuilder =
         planBuilder
-            .planShowQueries(analysis, showQueriesStatement) // push Filter down
+            .planShowQueries(analysis) // push Filter down
             .planOffset(showQueriesStatement.getRowOffset())
             .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();

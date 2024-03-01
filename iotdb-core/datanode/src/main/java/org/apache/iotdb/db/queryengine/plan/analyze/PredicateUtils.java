@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -26,16 +28,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeExce
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.PredicateCanPushDownToSourceChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.logical.TimeFilterExistChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -43,8 +46,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PredicateUtils {
 
@@ -194,37 +199,7 @@ public class PredicateUtils {
    * @return true if the given expression contains time filter
    */
   public static boolean checkIfTimeFilterExist(Expression predicate) {
-    if (predicate instanceof TernaryExpression) {
-      return checkIfTimeFilterExist(((TernaryExpression) predicate).getFirstExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getSecondExpression())
-          || checkIfTimeFilterExist(((TernaryExpression) predicate).getThirdExpression());
-    } else if (predicate instanceof BinaryExpression) {
-      return checkIfTimeFilterExist(((BinaryExpression) predicate).getLeftExpression())
-          || checkIfTimeFilterExist(((BinaryExpression) predicate).getRightExpression());
-    } else if (predicate instanceof UnaryExpression) {
-      return checkIfTimeFilterExist(((UnaryExpression) predicate).getExpression());
-    } else if (predicate instanceof FunctionExpression) {
-      boolean timeFilterExist = false;
-      for (Expression childExpression : predicate.getExpressions()) {
-        timeFilterExist = timeFilterExist || checkIfTimeFilterExist(childExpression);
-      }
-      return timeFilterExist;
-    } else if (predicate instanceof CaseWhenThenExpression) {
-      for (Expression childExpression : predicate.getExpressions()) {
-        if (checkIfTimeFilterExist(childExpression)) {
-          return true;
-        }
-      }
-      return false;
-    } else if (predicate instanceof TimeSeriesOperand
-        || predicate instanceof ConstantOperand
-        || predicate instanceof NullOperand) {
-      return false;
-    } else if (predicate instanceof TimestampOperand) {
-      return true;
-    } else {
-      throw new UnknownExpressionTypeException(predicate.getExpressionType());
-    }
+    return new TimeFilterExistChecker().process(predicate, null);
   }
 
   /**
@@ -272,39 +247,13 @@ public class PredicateUtils {
   }
 
   /**
-   * Simplify the given predicate (Remove the TRUE expression).
+   * Simplify the given predicate (Remove the NULL and TRUE/FALSE expression).
    *
    * @param predicate given predicate
    * @return the predicate after simplifying
    */
   public static Expression simplifyPredicate(Expression predicate) {
-    if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
-      Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = simplifyPredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isLeftTrue && isRightTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      } else if (isLeftTrue) {
-        return right;
-      } else if (isRightTrue) {
-        return left;
-      }
-      return predicate;
-    } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
-      Expression left = simplifyPredicate(((BinaryExpression) predicate).getLeftExpression());
-      Expression right = simplifyPredicate(((BinaryExpression) predicate).getRightExpression());
-      boolean isLeftTrue =
-          left.isConstantOperand() && Boolean.parseBoolean(left.getExpressionString());
-      boolean isRightTrue =
-          right.isConstantOperand() && Boolean.parseBoolean(right.getExpressionString());
-      if (isRightTrue || isLeftTrue) {
-        return new ConstantOperand(TSDataType.BOOLEAN, "true");
-      }
-    }
-    return predicate;
+    return new PredicateSimplifier().process(predicate, null);
   }
 
   /**
@@ -323,6 +272,20 @@ public class PredicateUtils {
       return null;
     }
     return predicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+  }
+
+  public static Filter convertPredicateToFilter(
+      Expression predicate,
+      List<String> allMeasurements,
+      boolean isBuildPlanUseTemplate,
+      TypeProvider typeProvider) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new ConvertPredicateToFilterVisitor(),
+        new ConvertPredicateToFilterVisitor.Context(
+            allMeasurements, isBuildPlanUseTemplate, typeProvider));
   }
 
   /**
@@ -357,6 +320,12 @@ public class PredicateUtils {
     return combineConjuncts(new ArrayList<>(conjuncts));
   }
 
+  public static List<Expression> extractConjuncts(Expression predicate) {
+    Set<Expression> conjuncts = new HashSet<>();
+    extractConjuncts(predicate, conjuncts);
+    return new ArrayList<>(conjuncts);
+  }
+
   private static void extractConjuncts(Expression predicate, Set<Expression> conjuncts) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       extractConjuncts(((BinaryExpression) predicate).getLeftExpression(), conjuncts);
@@ -364,5 +333,65 @@ public class PredicateUtils {
     } else {
       conjuncts.add(predicate);
     }
+  }
+
+  /**
+   * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
+   * the given predicate. If the predicate contains multiple source symbols, return null.
+   *
+   * @param predicate given predicate
+   * @return the source symbol extracted from the given predicate
+   */
+  public static PartialPath extractPredicateSourceSymbol(Expression predicate) {
+    List<Expression> sourceExpressions = ExpressionAnalyzer.searchSourceExpressions(predicate);
+    Set<PartialPath> sourcePaths =
+        sourceExpressions.stream()
+            .map(expression -> ((TimeSeriesOperand) expression).getPath())
+            .collect(Collectors.toSet());
+    Iterator<PartialPath> pathIterator = sourcePaths.iterator();
+    MeasurementPath firstPath = (MeasurementPath) pathIterator.next();
+
+    if (sourcePaths.size() == 1) {
+      // only contain one source path, can be push down
+      return firstPath.isUnderAlignedEntity() ? firstPath.getDevicePath() : firstPath;
+    }
+
+    // sourcePaths contain more than one path, can be push down when
+    // these paths under on aligned device
+    if (!firstPath.isUnderAlignedEntity()) {
+      return null;
+    }
+    PartialPath checkedDevice = firstPath.getDevicePath();
+    while (pathIterator.hasNext()) {
+      MeasurementPath path = (MeasurementPath) pathIterator.next();
+      if (!path.isUnderAlignedEntity() || !path.getDevicePath().equals(checkedDevice)) {
+        return null;
+      }
+    }
+    return checkedDevice;
+  }
+
+  /**
+   * Check if the given predicate can be pushed down from FilterNode to ScanNode.
+   *
+   * <p>The predicate <b>cannot</b> be pushed down if it satisfies the following conditions:
+   * <li>predicate contains IS_NULL
+   *
+   * @param predicate given predicate
+   * @return true if the given predicate can be pushed down to source
+   */
+  public static boolean predicateCanPushDownToSource(Expression predicate) {
+    return new PredicateCanPushDownToSourceChecker().process(predicate, null);
+  }
+
+  /**
+   * Check if the given predicate can be pushed into ScanOperator and execute using the {@link
+   * Filter} interface.
+   *
+   * @param predicate given predicate
+   * @return true if the given predicate can be pushed into ScanOperator
+   */
+  public static boolean predicateCanPushIntoScan(Expression predicate) {
+    return new PredicatePushIntoScanChecker().process(predicate, null);
   }
 }

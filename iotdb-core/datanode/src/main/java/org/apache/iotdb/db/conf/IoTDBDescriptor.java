@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.CrossCompactionSelector;
@@ -481,6 +482,15 @@ public class IoTDBDescriptor {
                 "sub_compaction_thread_count", Integer.toString(conf.getSubCompactionTaskNum())));
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
+
+    int compactionScheduleThreadNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_schedule_thread_num",
+                Integer.toString(conf.getCompactionScheduleThreadNum())));
+    compactionScheduleThreadNum =
+        compactionScheduleThreadNum <= 0 ? 1 : compactionScheduleThreadNum;
+    conf.setCompactionScheduleThreadNum(compactionScheduleThreadNum);
 
     conf.setQueryTimeoutThreshold(
         Long.parseLong(
@@ -1081,13 +1091,21 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
+    // hot load compaction schedule task manager configurations
+    int compactionScheduleThreadNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_schedule_thread_num",
+                Integer.toString(conf.getCompactionScheduleThreadNum())));
+    compactionScheduleThreadNum =
+        compactionScheduleThreadNum <= 0 ? 1 : compactionScheduleThreadNum;
+    conf.setCompactionScheduleThreadNum(compactionScheduleThreadNum);
 
+    CompactionScheduleTaskManager.getInstance().checkAndMayApplyConfigurationChange();
+    // hot load compaction task manager configurations
     loadCompactionIsEnabledHotModifiedProps(properties);
-
     boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
-
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
-
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
     }

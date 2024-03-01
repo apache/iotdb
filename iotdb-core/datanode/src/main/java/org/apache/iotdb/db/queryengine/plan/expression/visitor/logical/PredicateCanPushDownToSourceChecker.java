@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.db.queryengine.plan.expression.visitor.logical;
 
-public class MeasurementNotExistException extends RuntimeException {
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 
-  public MeasurementNotExistException(String message) {
-    super(message);
+public class PredicateCanPushDownToSourceChecker extends LogicalAndVisitor<Void> {
+
+  @Override
+  public Boolean visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
+    if (!isNullExpression.isNot()) {
+      // IS NULL cannot be pushed down
+      return Boolean.FALSE;
+    }
+    return process(isNullExpression.getExpression(), context);
+  }
+
+  @Override
+  public Boolean visitLeafOperand(LeafOperand leafOperand, Void context) {
+    return Boolean.TRUE;
   }
 }

@@ -159,7 +159,7 @@ public class WriteBackConnector implements PipeConnector {
         .execute(
             new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
