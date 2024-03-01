@@ -267,7 +267,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       } else if (eventToSupply instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeleteData(realtimeEvent);
+        suppliedEvent = supplyDeletion(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(

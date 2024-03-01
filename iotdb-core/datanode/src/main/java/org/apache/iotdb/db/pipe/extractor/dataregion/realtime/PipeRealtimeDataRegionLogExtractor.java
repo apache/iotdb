@@ -129,7 +129,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeleteData(realtimeEvent);
+        suppliedEvent = supplyDeletion(realtimeEvent);
       } else if (realtimeEvent.increaseReferenceCount(
           PipeRealtimeDataRegionLogExtractor.class.getName())) {
         suppliedEvent = realtimeEvent.getEvent();
