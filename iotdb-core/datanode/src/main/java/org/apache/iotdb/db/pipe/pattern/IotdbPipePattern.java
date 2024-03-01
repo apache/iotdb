@@ -22,15 +22,16 @@ package org.apache.iotdb.db.pipe.pattern;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 public class IotdbPipePattern extends PipePattern {
   private static final Logger LOGGER = LoggerFactory.getLogger(IotdbPipePattern.class);
-
-  private static final String DEFAULT_PATTERN = "root.**";
 
   public IotdbPipePattern(String pattern) {
     super(pattern);
@@ -38,7 +39,7 @@ public class IotdbPipePattern extends PipePattern {
 
   @Override
   public String getDefaultPattern() {
-    return DEFAULT_PATTERN;
+    return PipeExtractorConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
   }
 
   @Override
@@ -93,6 +94,10 @@ public class IotdbPipePattern extends PipePattern {
 
   @Override
   public boolean matchesMeasurement(String device, String measurement) {
+    if (Objects.isNull(measurement) || measurement.isEmpty()) {
+      return false;
+    }
+
     try {
       PartialPath measurementPath = new PartialPath(device, measurement);
       PartialPath patternPath = new PartialPath(pattern);

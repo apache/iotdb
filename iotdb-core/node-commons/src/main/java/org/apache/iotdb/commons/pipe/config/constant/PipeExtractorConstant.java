@@ -24,9 +24,6 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
-  public static final String SOURCE_VERSION_KEY = "source.version";
-  public static final String SOURCE_VERSION_V2_VALUE = "2";
-
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
   public static final String EXTRACTOR_INCLUSION_DATA_VALUE = "data";
@@ -40,6 +37,8 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
+  public static final String EXTRACTOR_PATH_KEY = "extractor.path";
+  public static final String SOURCE_PATH_KEY = "source.path";
   public static final String EXTRACTOR_PATTERN_FORMAT_KEY = "extractor.pattern.format";
   public static final String SOURCE_PATTERN_FORMAT_KEY = "source.pattern.format";
   public static final String EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE = "prefix";

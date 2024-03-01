@@ -26,14 +26,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_VERSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_VERSION_V2_VALUE;
 
 public abstract class PipePattern {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePattern.class);
@@ -52,31 +52,46 @@ public abstract class PipePattern {
     return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
   }
 
-  /** @return not null. */
+  /**
+   * Interpret from source parameters and get a pipe pattern.
+   *
+   * @return The interpreted {@link PipePattern} which is not null.
+   */
   public static PipePattern getPipePatternFromSourceParameters(PipeParameters sourceParameters) {
+    String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
     String pattern = sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
-    if (sourceParameters.hasAttribute(SOURCE_VERSION_KEY)
-        && sourceParameters.getString(SOURCE_VERSION_KEY).equals(SOURCE_VERSION_V2_VALUE)) {
-      // Pipes with "source.version"="2" can specify the pattern format.
-      String format =
+
+    if (
+    // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path, ignoring the
+    // other 2 parameters.
+    path != null) {
+      return new IotdbPipePattern(path);
+    } else if (
+    // 2. Otherwise, If "source.pattern" is specified, it will be interpreted according to
+    // "source.pattern.format".
+    pattern != null) {
+      String patternFormat =
           sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
-      if (Objects.isNull(format)) {
-        LOGGER.info("Pattern format not specified, use iotdb format by default.");
-        return new IotdbPipePattern(pattern);
+      if (
+      // If "source.pattern.format" is not specified, use prefix format by default.
+      patternFormat == null) {
+        return new PrefixPipePattern(pattern);
       }
 
-      switch (format.toLowerCase()) {
+      switch (patternFormat.toLowerCase()) {
         case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
           return new IotdbPipePattern(pattern);
         case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
           return new PrefixPipePattern(pattern);
         default:
-          LOGGER.info("Unknown pattern format: {}, use iotdb format by default.", format);
-          return new IotdbPipePattern(pattern);
+          LOGGER.info(
+              "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
+          return new PrefixPipePattern(pattern);
       }
     } else {
-      // Pipes without "source.version" attribute always use the PREFIX format.
-      return new PrefixPipePattern(pattern);
+      // 3. If neither "source.path" nor "source.pattern" is specified, this pipe source will match
+      // all data.
+      return new IotdbPipePattern(null);
     }
   }
 

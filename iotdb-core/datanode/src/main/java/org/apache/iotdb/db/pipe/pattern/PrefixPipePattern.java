@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -28,7 +29,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.Arrays;
 
 public class PrefixPipePattern extends PipePattern {
-  private static final String DEFAULT_PATTERN = "root";
 
   public PrefixPipePattern(String pattern) {
     super(pattern);
@@ -36,7 +36,7 @@ public class PrefixPipePattern extends PipePattern {
 
   @Override
   public String getDefaultPattern() {
-    return DEFAULT_PATTERN;
+    return PipeExtractorConstant.EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE;
   }
 
   @Override
