@@ -85,6 +85,7 @@ public class AddRegionPeerProcedure
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
           TRegionMaintainTaskStatus result;
+          logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
@@ -97,6 +98,7 @@ public class AddRegionPeerProcedure
           throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
+          logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());

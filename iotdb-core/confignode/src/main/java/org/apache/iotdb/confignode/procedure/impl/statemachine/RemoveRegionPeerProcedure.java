@@ -81,6 +81,7 @@ public class RemoveRegionPeerProcedure
               handler.removeRegionPeer(
                   targetDataNode, consensusGroupId, coordinator, this.getProcId());
           TRegionMaintainTaskStatus result;
+          logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
@@ -94,6 +95,7 @@ public class RemoveRegionPeerProcedure
         case DELETE_OLD_REGION_PEER:
           tsStatus =
               handler.deleteOldRegionPeer(targetDataNode, consensusGroupId, this.getProcId());
+          logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), targetDataNode);
           } else {
