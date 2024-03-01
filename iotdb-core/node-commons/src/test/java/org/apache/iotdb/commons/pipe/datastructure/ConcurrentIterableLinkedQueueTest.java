@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
+
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;

@@ -36,10 +36,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.allLegal;
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.isEmpty;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.hasAtLeastOneOption;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.optionsAreAllLegal;
 
-public abstract class IoTDBCommonExtractor implements PipeExtractor {
+public abstract class IoTDBExtractor implements PipeExtractor {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   protected String taskID;
@@ -47,14 +47,16 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
   protected long creationTime;
   protected int regionId;
   protected PipeTaskMeta pipeTaskMeta;
+
   protected boolean isForwardingPipeRequests;
+
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator
         .validate(
-            args -> allLegal((String) args),
+            args -> optionsAreAllLegal((String) args),
             "The 'inclusion' string contains illegal path.",
             validator
                 .getParameters()
@@ -62,7 +64,7 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
                     Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
                     EXTRACTOR_INCLUSION_DEFAULT_VALUE))
         .validate(
-            args -> allLegal((String) args),
+            args -> optionsAreAllLegal((String) args),
             "The 'exclusion' string contains illegal path.",
             validator
                 .getParameters()
@@ -70,7 +72,7 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
                     Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                     EXTRACTOR_EXCLUSION_DEFAULT_VALUE))
         .validate(
-            args -> !isEmpty((String) args[0], (String) args[1]),
+            args -> hasAtLeastOneOption((String) args[0], (String) args[1]),
             "The pipe inclusion content can't be empty.",
             validator
                 .getParameters()
@@ -87,7 +89,7 @@ public abstract class IoTDBCommonExtractor implements PipeExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    PipeTaskExtractorRuntimeEnvironment environment =
+    final PipeTaskExtractorRuntimeEnvironment environment =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
     regionId = environment.getRegionId();
     pipeName = environment.getPipeName();

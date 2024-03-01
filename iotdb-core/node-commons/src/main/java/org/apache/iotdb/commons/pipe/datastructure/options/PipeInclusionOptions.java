@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.options;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -35,8 +35,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class PipeInclusionNormalizer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionNormalizer.class);
+public class PipeInclusionOptions {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
   private static final Map<String, Set<String>> SUBSTITUTION_MAP = new HashMap<>();
   private static final Set<PartialPath> LEGAL_PATHS = new HashSet<>();
 
@@ -112,11 +113,11 @@ public class PipeInclusionNormalizer {
             new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
   }
 
-  public static boolean isEmpty(String inclusionStr, String exclusionStr) {
+  public static boolean hasAtLeastOneOption(String inclusionStr, String exclusionStr) {
     try {
       Set<PartialPath> planTypes = new HashSet<>();
-      List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
-      List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+      List<PartialPath> inclusionPath = parseOptions(inclusionStr);
+      List<PartialPath> exclusionPath = parseOptions(exclusionStr);
       inclusionPath.forEach(
           inclusion ->
               planTypes.addAll(
@@ -130,20 +131,20 @@ public class PipeInclusionNormalizer {
                       .filter(path -> path.overlapWithFullPathPrefix(exclusion))
                       .collect(Collectors.toSet())));
 
-      return planTypes.isEmpty();
+      return !planTypes.isEmpty();
     } catch (IllegalPathException e) {
       LOGGER.warn(
           "Illegal path encountered when judging isEmpty() for inclusionStr {} and exclusionStr {}: ",
           inclusionStr,
           exclusionStr,
           e);
-      return true;
+      return false;
     }
   }
 
-  public static boolean allLegal(String prefixesRawStr) {
+  public static boolean optionsAreAllLegal(String prefixesRawStr) {
     try {
-      return getPartialPaths(prefixesRawStr).stream()
+      return parseOptions(prefixesRawStr).stream()
           .allMatch(
               prefix ->
                   LEGAL_PATHS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
@@ -153,8 +154,7 @@ public class PipeInclusionNormalizer {
     }
   }
 
-  public static List<PartialPath> getPartialPaths(String prefixesRawStr)
-      throws IllegalPathException {
+  public static List<PartialPath> parseOptions(String prefixesRawStr) throws IllegalPathException {
     if (prefixesRawStr.isEmpty()) {
       return Collections.emptyList();
     }
@@ -182,7 +182,7 @@ public class PipeInclusionNormalizer {
     return result;
   }
 
-  private PipeInclusionNormalizer() {
+  private PipeInclusionOptions() {
     // Utility class
   }
 }

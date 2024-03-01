@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
@@ -47,23 +47,23 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
+public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigPlanListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
   private int referenceCount = 0;
 
-  private PipeConfigPlanListeningQueue() {
+  private ConfigRegionListeningQueue() {
     super();
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
   public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
-    if (PipeConfigPlanListeningFilter.shouldPlanBeListened(plan)) {
+    if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
         case PipeEnriched:
@@ -90,7 +90,7 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
           event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
       if (super.tryListenToElement(event)) {
-        event.increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
+        event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       }
     }
   }
@@ -99,7 +99,7 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
       PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
+      event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       events.add(event);
     }
     super.listenToSnapshots(events);
@@ -111,7 +111,7 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
   // reference count is handled under consensus layer.
   public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException {
-    if (!PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
+    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       referenceCount++;
       if (referenceCount == 1) {
         open();
@@ -121,7 +121,7 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
       throws IllegalPathException, IOException {
-    if (!PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
+    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       referenceCount--;
       if (referenceCount == 0) {
         close();
@@ -139,7 +139,7 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
-      ((EnrichedEvent) result).increaseReferenceCount(PipeConfigPlanListeningQueue.class.getName());
+      ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
@@ -161,13 +161,13 @@ public class PipeConfigPlanListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// INSTANCE ///////////////////////////////
 
-  public static PipeConfigPlanListeningQueue getInstance() {
+  public static ConfigRegionListeningQueue getInstance() {
     return ConfigPlanListeningQueueHolder.INSTANCE;
   }
 
   private static class ConfigPlanListeningQueueHolder {
 
-    private static final PipeConfigPlanListeningQueue INSTANCE = new PipeConfigPlanListeningQueue();
+    private static final ConfigRegionListeningQueue INSTANCE = new ConfigRegionListeningQueue();
 
     private ConfigPlanListeningQueueHolder() {
       // empty constructor

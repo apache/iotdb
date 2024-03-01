@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -58,7 +58,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {
     // Stop leader related service for schema pipe
-    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+    SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
         .notifyLeaderUnavailable();
   }
 
@@ -67,7 +67,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     if (schemaRegion.getSchemaRegionId().equals(groupId)
         && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       // Shutdown leader related service for schema pipe
-      SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+      SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
           .notifyLeaderUnavailable();
     }
   }
@@ -75,7 +75,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void notifyLeaderReady() {
     // Activate leader related service for schema pipe
-    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+    SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
         .notifyLeaderReady();
   }
 
@@ -87,14 +87,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public boolean takeSnapshot(File snapshotDir) {
     return schemaRegion.createSnapshot(snapshotDir)
-        && SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        && SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
             .createSnapshot(snapshotDir);
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
-    SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+    SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
         .loadSnapshot(latestSnapshotRootDir);
   }
 
@@ -103,7 +103,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     try {
       TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        SchemaNodeListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
+        SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
             .tryListenToNode((PlanNode) request);
       }
       return result;

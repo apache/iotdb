@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.PipeConfigPlanListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
@@ -58,7 +58,7 @@ public class PipeTaskConfigNodeAgent extends PipeTaskAgent {
     if (consensusGroupId == Integer.MIN_VALUE
         && pipeTaskMeta.getLeaderNodeId()
             == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()
-        && !PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(
+        && !ConfigRegionListeningFilter.parseListeningPlanTypeSet(
                 pipeStaticMeta.getExtractorParameters())
             .isEmpty()) {
       final PipeConfigNodeTask pipeTask =

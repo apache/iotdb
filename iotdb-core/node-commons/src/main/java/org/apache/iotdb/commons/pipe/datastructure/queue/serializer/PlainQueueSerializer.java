@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure.serializer;
+package org.apache.iotdb.commons.pipe.datastructure.queue.serializer;
 
-import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.FileInputStream;

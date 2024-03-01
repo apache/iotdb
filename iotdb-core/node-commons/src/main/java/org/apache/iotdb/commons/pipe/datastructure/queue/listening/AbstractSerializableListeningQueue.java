@@ -17,10 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
-import org.apache.iotdb.commons.pipe.datastructure.serializer.PlainQueueSerializer;
-import org.apache.iotdb.commons.pipe.datastructure.serializer.QueueSerializer;
+import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.PlainQueueSerializer;
+import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializer;
+import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -48,20 +50,20 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractSerializableListeningQueue.class);
 
-  private final LinkedQueueSerializerType currentType;
+  private final QueueSerializerType currentType;
 
-  private final EnumMap<LinkedQueueSerializerType, Supplier<QueueSerializer<E>>> serializerMap =
-      new EnumMap<>(LinkedQueueSerializerType.class);
+  private final EnumMap<QueueSerializerType, Supplier<QueueSerializer<E>>> serializerMap =
+      new EnumMap<>(QueueSerializerType.class);
 
   protected final ConcurrentIterableLinkedQueue<E> queue = new ConcurrentIterableLinkedQueue<>();
 
   protected final AtomicBoolean isSealed = new AtomicBoolean();
 
-  protected AbstractSerializableListeningQueue(LinkedQueueSerializerType serializerType) {
+  protected AbstractSerializableListeningQueue(QueueSerializerType serializerType) {
     currentType = serializerType;
     // Always seal initially unless manually open it
     isSealed.set(true);
-    serializerMap.put(LinkedQueueSerializerType.PLAIN, PlainQueueSerializer::new);
+    serializerMap.put(QueueSerializerType.PLAIN, PlainQueueSerializer::new);
   }
 
   /////////////////////////////// Function ///////////////////////////////
@@ -134,8 +136,8 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     queue.clear();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       isSealed.set(ReadWriteIOUtils.readBool(inputStream));
-      final LinkedQueueSerializerType type =
-          LinkedQueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+      final QueueSerializerType type =
+          QueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
       if (serializerMap.containsKey(type)) {
         serializerMap
             .get(type)

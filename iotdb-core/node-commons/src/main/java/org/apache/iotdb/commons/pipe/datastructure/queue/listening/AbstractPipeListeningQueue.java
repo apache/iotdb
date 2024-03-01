@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
@@ -54,7 +55,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   private volatile boolean leaderReady = false;
 
   protected AbstractPipeListeningQueue() {
-    super(LinkedQueueSerializerType.PLAIN);
+    super(QueueSerializerType.PLAIN);
   }
 
   /////////////////////////////// Leader ready ///////////////////////////////

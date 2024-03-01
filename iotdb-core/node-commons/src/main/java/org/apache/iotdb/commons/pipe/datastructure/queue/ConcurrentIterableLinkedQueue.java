@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.queue;
 
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;

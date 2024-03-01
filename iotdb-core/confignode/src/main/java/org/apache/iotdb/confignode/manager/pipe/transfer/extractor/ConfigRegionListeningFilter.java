@@ -44,17 +44,17 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
- * {@link PipeConfigPlanListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help
- * {@link PipeConfigPlanListeningQueue} and pipe to collect, and to help receiver execute.
+ * {@link ConfigRegionListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
+ * ConfigRegionListeningQueue} and pipe to collect, and to help receiver execute.
  *
  * <p>Note that we do not transfer the rollback version of {@link CommitSetSchemaTemplatePlan}
  * because the rollback is usually useless. Consensus layer ensures that a failed plan won't be
- * written to peer, consequently won't be extracted by {@link PipeConfigPlanListeningQueue}.
+ * written to peer, consequently won't be extracted by {@link ConfigRegionListeningQueue}.
  */
-public class PipeConfigPlanListeningFilter {
+public class ConfigRegionListeningFilter {
 
   private static final Map<PartialPath, List<ConfigPhysicalPlanType>> OPTION_PLAN_MAP =
       new HashMap<>();
@@ -172,8 +172,8 @@ public class PipeConfigPlanListeningFilter {
             EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
 
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
-    List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+    List<PartialPath> inclusionPath = parseOptions(inclusionStr);
+    List<PartialPath> exclusionPath = parseOptions(exclusionStr);
     inclusionPath.forEach(
         inclusion ->
             planTypes.addAll(
@@ -194,7 +194,7 @@ public class PipeConfigPlanListeningFilter {
     return planTypes;
   }
 
-  private PipeConfigPlanListeningFilter() {
+  private ConfigRegionListeningFilter() {
     // Utility class
   }
 }

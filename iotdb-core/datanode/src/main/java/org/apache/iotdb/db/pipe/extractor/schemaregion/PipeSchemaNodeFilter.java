@@ -41,7 +41,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
  * {@link PipeSchemaNodeFilter} is to classify the {@link PlanNode}s to help linkedList and pipe to
@@ -108,8 +108,8 @@ public class PipeSchemaNodeFilter {
             EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
 
     Set<PlanNodeType> planTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
-    List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+    List<PartialPath> inclusionPath = parseOptions(inclusionStr);
+    List<PartialPath> exclusionPath = parseOptions(exclusionStr);
     inclusionPath.forEach(
         inclusion ->
             planTypes.addAll(

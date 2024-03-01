@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -58,7 +58,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady()
+    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady()
         || hasBeenStarted.get()
         || isClosed.get()) {
       return;
@@ -80,7 +80,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!SchemaNodeListeningQueue.getInstance(regionId).isLeaderReady() || isClosed.get()) {
+    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady() || isClosed.get()) {
       return null;
     }
     if (!hasBeenStarted.get()) {
@@ -91,7 +91,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return SchemaNodeListeningQueue.getInstance(regionId);
+    return SchemaRegionListeningQueue.getInstance(regionId);
   }
 
   @Override

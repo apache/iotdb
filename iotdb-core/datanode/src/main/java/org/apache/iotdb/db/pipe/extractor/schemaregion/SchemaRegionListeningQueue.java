@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
-import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
@@ -42,12 +42,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
+public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaNodeListeningQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionListeningQueue.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
-  private SchemaNodeListeningQueue() {
+  private SchemaRegionListeningQueue() {
     super();
   }
 
@@ -71,7 +71,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
           event = new PipeSchemaRegionWritePlanEvent(node, false);
       }
       if (super.tryListenToElement(event)) {
-        event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+        event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       }
     }
   }
@@ -80,7 +80,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
       PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       events.add(event);
     }
     super.listenToSnapshots(events);
@@ -97,7 +97,7 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
-      ((EnrichedEvent) result).increaseReferenceCount(SchemaNodeListeningQueue.class.getName());
+      ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
@@ -126,17 +126,17 @@ public class SchemaNodeListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////// Singleton ///////////////////////////
 
-  public static SchemaNodeListeningQueue getInstance(int regionId) {
-    return SchemaNodeListeningQueue.InstanceHolder.getOrCreateInstance(regionId);
+  public static SchemaRegionListeningQueue getInstance(int regionId) {
+    return SchemaRegionListeningQueue.InstanceHolder.getOrCreateInstance(regionId);
   }
 
   private static class InstanceHolder {
 
-    private static final Map<Integer, SchemaNodeListeningQueue> INSTANCE_MAP =
+    private static final Map<Integer, SchemaRegionListeningQueue> INSTANCE_MAP =
         new ConcurrentHashMap<>();
 
-    public static SchemaNodeListeningQueue getOrCreateInstance(int key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new SchemaNodeListeningQueue());
+    public static SchemaRegionListeningQueue getOrCreateInstance(int key) {
+      return INSTANCE_MAP.computeIfAbsent(key, k -> new SchemaRegionListeningQueue());
     }
 
     private InstanceHolder() {

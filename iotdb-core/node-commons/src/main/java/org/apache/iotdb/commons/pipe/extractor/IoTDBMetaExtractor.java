@@ -22,8 +22,8 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
-import org.apache.iotdb.commons.pipe.datastructure.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class IoTDBMetaExtractor extends IoTDBCommonExtractor {
+public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
   private List<PipeSnapshotEvent> historicalEvents = new ArrayList<>();
 

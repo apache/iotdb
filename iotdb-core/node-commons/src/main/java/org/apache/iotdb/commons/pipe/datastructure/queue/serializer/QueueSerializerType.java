@@ -17,25 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.queue.serializer;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public enum LinkedQueueSerializerType {
+public enum QueueSerializerType {
   PLAIN((byte) 1),
   ;
-  private static final Map<Byte, LinkedQueueSerializerType> TYPE_MAP = new HashMap<>();
+  private static final Map<Byte, QueueSerializerType> TYPE_MAP = new HashMap<>();
 
   static {
-    for (final LinkedQueueSerializerType type : LinkedQueueSerializerType.values()) {
+    for (final QueueSerializerType type : QueueSerializerType.values()) {
       TYPE_MAP.put(type.getType(), type);
     }
   }
 
   private final byte type;
 
-  LinkedQueueSerializerType(byte type) {
+  QueueSerializerType(byte type) {
     this.type = type;
   }
 
@@ -43,7 +43,7 @@ public enum LinkedQueueSerializerType {
     return type;
   }
 
-  public static LinkedQueueSerializerType deserialize(byte type) {
+  public static QueueSerializerType deserialize(byte type) {
     return TYPE_MAP.get(type);
   }
 }

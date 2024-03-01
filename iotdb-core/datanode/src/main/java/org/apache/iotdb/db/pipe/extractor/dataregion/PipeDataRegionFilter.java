@@ -38,7 +38,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.datastructure.PipeInclusionNormalizer.getPartialPaths;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
  * {@link PipeDataRegionFilter} is to tell the insertion and deletion for {@link PipeTask} on {@link
@@ -69,8 +69,8 @@ public class PipeDataRegionFilter {
             EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
 
     Set<String> listenTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = getPartialPaths(inclusionStr);
-    List<PartialPath> exclusionPath = getPartialPaths(exclusionStr);
+    List<PartialPath> inclusionPath = parseOptions(inclusionStr);
+    List<PartialPath> exclusionPath = parseOptions(exclusionStr);
     inclusionPath.forEach(
         inclusion ->
             listenTypes.addAll(

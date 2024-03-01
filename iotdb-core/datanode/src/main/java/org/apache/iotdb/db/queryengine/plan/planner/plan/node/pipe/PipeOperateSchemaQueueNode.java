@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaNodeListeningQueue;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -36,8 +36,8 @@ import java.util.Objects;
 
 /**
  * {@link PipeOperateSchemaQueueNode} is for pipe to open or close the {@link
- * SchemaNodeListeningQueue}. It is for written to {@link SchemaRegion} consensus layer to ensure
- * the identity of the {@link SchemaNodeListeningQueue} in all peers.
+ * SchemaRegionListeningQueue}. It is for written to {@link SchemaRegion} consensus layer to ensure
+ * the identity of the {@link SchemaRegionListeningQueue} in all peers.
  */
 public class PipeOperateSchemaQueueNode extends PlanNode {
 

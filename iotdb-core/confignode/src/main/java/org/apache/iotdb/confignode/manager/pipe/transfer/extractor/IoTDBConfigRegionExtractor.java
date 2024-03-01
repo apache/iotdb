@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
-import org.apache.iotdb.commons.pipe.datastructure.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -37,12 +37,12 @@ public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = PipeConfigPlanListeningFilter.parseListeningPlanTypeSet(parameters);
+    listenTypes = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return PipeConfigPlanListeningQueue.getInstance();
+    return ConfigRegionListeningQueue.getInstance();
   }
 
   @Override
