@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.Compatibility130;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
@@ -167,6 +168,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     }
   }
 
+  @Compatibility130
   private void checkOldProcWalDir(File newDir) {
     File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldProcedureWalFolder());
     if (oldDir.exists()) {

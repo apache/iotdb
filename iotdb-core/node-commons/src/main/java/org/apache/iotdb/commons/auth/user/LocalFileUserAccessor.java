@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.Compatibility130;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -404,6 +405,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
     }
   }
 
+  @Compatibility130
   private void checkOldUserDir(File newDir) {
     File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldUserFolder());
     if (oldDir.exists()) {
