@@ -150,7 +150,7 @@ public class SyncDataNodeClientPool {
         TimeUnit.MILLISECONDS.sleep(3200L);
       }
     } catch (InterruptedException e) {
-      LOGGER.error("Retry wait failed.", e);
+      LOGGER.warn("Retry wait failed.", e);
       Thread.currentThread().interrupt();
     }
   }

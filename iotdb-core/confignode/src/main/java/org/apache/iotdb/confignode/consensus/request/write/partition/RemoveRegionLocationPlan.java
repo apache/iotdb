@@ -29,60 +29,45 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-@Deprecated
-public class UpdateRegionLocationPlan extends ConfigPhysicalPlan {
-  /*which region*/
+public class RemoveRegionLocationPlan extends ConfigPhysicalPlan {
   TConsensusGroupId regionId;
 
-  /*remove it from the region's location*/
-  TDataNodeLocation oldNode;
+  TDataNodeLocation deprecatedLocation;
 
-  /*add it to the region's location*/
-  TDataNodeLocation newNode;
-
-  public UpdateRegionLocationPlan() {
-    super(ConfigPhysicalPlanType.UpdateRegionLocation);
+  public RemoveRegionLocationPlan() {
+    super(ConfigPhysicalPlanType.RemoveRegionLocation);
   }
 
-  /**
-   * Constructor.
-   *
-   * @param regionId update the region location
-   * @param oldNode remove the old location
-   * @param newNode add the new location
-   */
-  public UpdateRegionLocationPlan(
-      TConsensusGroupId regionId, TDataNodeLocation oldNode, TDataNodeLocation newNode) {
+  public RemoveRegionLocationPlan(
+      TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
     this();
     this.regionId = regionId;
-    this.oldNode = oldNode;
-    this.newNode = newNode;
+    this.deprecatedLocation = deprecatedLocation;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(oldNode, stream);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(newNode, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(deprecatedLocation, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
-    oldNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
-    newNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
+    deprecatedLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
+  }
+
+  @Override
+  public ConfigPhysicalPlanType getType() {
+    return super.getType();
   }
 
   public TConsensusGroupId getRegionId() {
     return regionId;
   }
 
-  public TDataNodeLocation getOldNode() {
-    return oldNode;
-  }
-
-  public TDataNodeLocation getNewNode() {
-    return newNode;
+  public TDataNodeLocation getDeprecatedLocation() {
+    return deprecatedLocation;
   }
 }

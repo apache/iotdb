@@ -73,7 +73,6 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -375,9 +374,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetRegionInfoList:
           plan = new GetRegionInfoListPlan();
-          break;
-        case UpdateRegionLocation:
-          plan = new UpdateRegionLocationPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
