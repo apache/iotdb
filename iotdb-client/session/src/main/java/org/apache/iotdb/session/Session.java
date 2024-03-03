@@ -84,10 +84,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1905,6 +1907,24 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
+    // judge if convert records to tablets.
+    // two devices are not same when:
+    // 1. they have different deviceId
+    // 2. they have same deviceId but different measurements.
+    List<List<String>> deviceMeasurementsList = new ArrayList<>();
+    for (int i = 0; i < deviceIds.size(); i++) {
+      List<String> deviceMeasurement = new ArrayList<>();
+      deviceMeasurement.add(deviceIds.get(i));
+      deviceMeasurement.addAll(measurementsList.get(i));
+      deviceMeasurementsList.add(deviceMeasurement);
+    }
+    Set<List<String>> deviceSet = new HashSet<>(deviceMeasurementsList);
+
+    if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
+      invertToTabletsAndInsert(deviceIds, times, measurementsList, typesList, valuesList, false);
+      return;
+    }
+    // insert records
     if (enableRedirection) {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
@@ -1947,6 +1967,23 @@ public class Session implements ISession {
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+    }
+    // judge if convert records to tablets.
+    // two devices are not same when:
+    // 1. they have different deviceId
+    // 2. they have same deviceId but different measurements.
+    List<List<String>> deviceMeasurementsList = new ArrayList<>();
+    for (int i = 0; i < deviceIds.size(); i++) {
+      List<String> deviceMeasurement = new ArrayList<>();
+      deviceMeasurement.add(deviceIds.get(i));
+      deviceMeasurement.addAll(measurementsList.get(i));
+      deviceMeasurementsList.add(deviceMeasurement);
+    }
+    Set<List<String>> deviceSet = new HashSet<>(deviceMeasurementsList);
+
+    if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
+      invertToTabletsAndInsert(deviceIds, times, measurementsList, typesList, valuesList, true);
+      return;
     }
     if (enableRedirection) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
@@ -2739,6 +2776,78 @@ public class Session implements ISession {
     request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
     request.addToValuesList(SessionUtils.getValueBuffer(tablet));
     request.addToSizeList(tablet.rowSize);
+  }
+
+  public void invertToTabletsAndInsert(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    while (!deviceIds.isEmpty()) {
+      Map<String, Tablet> tablets = new HashMap<>();
+      Map<String, List<String>> deviceMeasurement = new HashMap<>();
+
+      List<String> remainDeviceIds = new ArrayList<>();
+      List<Long> remainTimes = new ArrayList<>();
+      List<List<String>> remainMeasurementsList = new ArrayList<>();
+      List<List<TSDataType>> remainTypesList = new ArrayList<>();
+      List<List<Object>> remainValuesList = new ArrayList<>();
+      // Set the max rows of the tablet as the count of the most frequently occurring deviceId.
+      long maxRow =
+          deviceIds.stream()
+              .collect(Collectors.groupingBy(e -> e, Collectors.counting()))
+              .values()
+              .stream()
+              .max(Long::compare)
+              .orElse((long) deviceIds.size());
+      for (int i = 0; i < deviceIds.size(); i++) {
+        String deviceId = deviceIds.get(i);
+        if (tablets.containsKey(deviceId)) {
+          if (measurementsList.get(i) == deviceMeasurement.get(deviceId)) {
+            addRecordToTablet(
+                tablets.get(deviceId), times.get(i), measurementsList.get(i), valuesList.get(i));
+          } else {
+            remainDeviceIds.add(deviceId);
+            remainTimes.add(times.get(i));
+            remainMeasurementsList.add(measurementsList.get(i));
+            remainTypesList.add(typesList.get(i));
+            remainValuesList.add(valuesList.get(i));
+          }
+        } else {
+          List<MeasurementSchema> schemaList = new ArrayList<>();
+          for (int j = 0; j < measurementsList.get(i).size(); j++) {
+            schemaList.add(
+                new MeasurementSchema(measurementsList.get(i).get(j), typesList.get(i).get(j)));
+          }
+          Tablet tablet = new Tablet(deviceId, schemaList, (int) maxRow);
+          tablets.put(deviceId, tablet);
+          deviceMeasurement.put(deviceId, measurementsList.get(i));
+          addRecordToTablet(tablet, times.get(i), measurementsList.get(i), valuesList.get(i));
+        }
+      }
+      if (isAligned) {
+        insertAlignedTablets(tablets);
+      } else {
+        insertTablets(tablets);
+      }
+      deviceIds = remainDeviceIds;
+      times = remainTimes;
+      measurementsList = remainMeasurementsList;
+      typesList = remainTypesList;
+      valuesList = remainValuesList;
+    }
+  }
+  // add one record to  tablet.
+  public void addRecordToTablet(
+      Tablet tablet, Long timestamp, List<String> measurements, List<Object> values) {
+    int row = tablet.rowSize++;
+    tablet.addTimestamp(row, timestamp);
+    for (int i = 0; i < measurements.size(); i++) {
+      tablet.addValue(measurements.get(i), row, values.get(i));
+    }
   }
 
   /**
