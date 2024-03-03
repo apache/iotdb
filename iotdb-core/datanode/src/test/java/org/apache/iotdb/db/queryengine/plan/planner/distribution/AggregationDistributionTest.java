@@ -837,8 +837,8 @@ public class AggregationDistributionTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
     assertEquals(2, f1Root.getChildren().size());
   }
 
