@@ -86,6 +86,7 @@ public class FloatDecoderTest {
 
   @Test
   public void testRLEFloat() throws Exception {
+
     for (int i = 1; i <= 10; i++) {
       testFloatLength(TSEncoding.RLE, floatList, floatMaxPointNumber, false, i);
     }
@@ -107,6 +108,11 @@ public class FloatDecoderTest {
 
   @Test
   public void testDIFFDouble() throws Exception {
+    //    double f = 0.01;
+    //    doubleList.add(f);
+    //    doubleMaxPointNumber =
+    //    testDoubleLength(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber, false, 0);
+
     for (int i = 1; i <= 10; i++) {
       testDoubleLength(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber, false, i);
     }

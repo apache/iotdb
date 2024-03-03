@@ -26,10 +26,11 @@ public class EncodeTest {
 
   public static void main(@NotNull String[] args) throws IOException {
 
-    String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-    String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/sota_ratio";
+    String parent_dir =
+        "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
+    String output_parent_dir =
+        "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/sota_ratio";
     String input_parent_dir = parent_dir + "trans_data/";
-
 
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -55,20 +56,21 @@ public class EncodeTest {
     }
 
     output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-    output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-    output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+    output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv"); // 1
+    output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv"); // 2
     output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-    output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-    output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-    output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-    output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-    output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-    output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-    output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-    output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+    output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); // 4
+    output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv"); // 5
+    output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); // 6
+    output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv"); // 7
+    output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv"); // 8
+    output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv"); // 9
+    output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv"); // 10
+    output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv"); // 11
     output_path_list.add(output_parent_dir + "/FANYP-Sensors_ratio.csv"); // 12
     output_path_list.add(output_parent_dir + "/TRAJET-Transport_ratio.csv"); // 13
 
+//    for (int file_i = 8; file_i < 9; file_i++) {
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -119,10 +121,10 @@ public class EncodeTest {
       for (int i = 0; i < 2; i++) {
         columnIndexes.add(i, i);
       }
-      int count_csv =0;
+      int count_csv = 0;
       for (File f : tempList) {
         System.out.println(count_csv);
-        count_csv ++;
+        count_csv++;
         System.out.println(f);
         InputStream inputStream = Files.newInputStream(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -145,8 +147,7 @@ public class EncodeTest {
           }
           // Iterate over each encoding algorithm
           for (TSEncoding encoding : encodingList) {
-            Encoder encoder =
-                    TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
+            Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
             Decoder decoder = Decoder.getDecoderByType(encoding, dataType);
             long encodeTime = 0;
             long decodeTime = 0;
@@ -168,7 +169,6 @@ public class EncodeTest {
                   encoder.encode(val, buffer);
                 }
 
-
                 encoder.flush(buffer);
                 long e = System.nanoTime();
                 encodeTime += (e - s);
@@ -180,7 +180,7 @@ public class EncodeTest {
                 // test compression ratio and compressed size
                 compressed_size += compressed.length;
                 double ratioTmp =
-                        (double) compressed.length / (double) (tmp.size() * Integer.BYTES);
+                    (double) compressed.length / (double) (tmp.size() * Integer.BYTES);
                 ratio += ratioTmp;
 
                 // test uncompress time
@@ -202,15 +202,15 @@ public class EncodeTest {
               compressed_size /= repeatTime;
 
               String[] record = {
-                      f.toString(),
-                      String.valueOf(index),
-                      encoding.toString(),
-                      comp.toString(),
-                      String.valueOf(encodeTime),
-                      String.valueOf(decodeTime),
-                      String.valueOf(data.size()),
-                      String.valueOf(compressed_size),
-                      String.valueOf(ratio)
+                f.toString(),
+                String.valueOf(index),
+                encoding.toString(),
+                comp.toString(),
+                String.valueOf(encodeTime),
+                String.valueOf(decodeTime),
+                String.valueOf(data.size()),
+                String.valueOf(compressed_size),
+                String.valueOf(ratio)
               };
               System.out.println(ratio);
               writer.writeRecord(record);
