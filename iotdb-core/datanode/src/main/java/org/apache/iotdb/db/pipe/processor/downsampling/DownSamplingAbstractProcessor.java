@@ -44,7 +44,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 
 public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
   protected String dataBaseNameWithPathSeparator;
+
   protected boolean shouldSplitFile;
+  protected long memoryLimitInBytes;
 
   protected PartialPathLastObjectCache pathLastObjectCache;
 
@@ -59,7 +61,7 @@ public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
                         .getRegionId()))
             .getDatabaseName();
 
-    final long memoryLimitInBytes =
+    memoryLimitInBytes =
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE);

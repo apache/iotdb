@@ -48,12 +48,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
-
-  private String dataBaseNameWithPathSeparator;
   private long intervalInCurrentPrecision;
-  private boolean shouldSplitFile;
-
-  private PartialPathLastObjectCache partialPathLastTimeCache;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -63,28 +58,16 @@ public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    final String dataBaseName =
-        StorageEngine.getInstance()
-            .getDataRegion(
-                new DataRegionId(
-                    ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
-                        .getRegionId()))
-            .getDatabaseName();
+    super.customize(parameters, configuration);
+
     final long intervalSeconds =
         parameters.getLongOrDefault(
             PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
             PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE);
-    final long memoryLimitInBytes =
-        parameters.getLongOrDefault(
-            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
-            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE);
-    shouldSplitFile =
-        parameters.getBooleanOrDefault(
-            PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
-            PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE);
+
     LOGGER.info(
         "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
-        dataBaseName,
+        dataBaseNameWithPathSeparator,
         PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
         intervalSeconds,
         PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
@@ -92,11 +75,10 @@ public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor
         PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
         shouldSplitFile);
 
-    dataBaseNameWithPathSeparator = dataBaseName + TsFileConstant.PATH_SEPARATOR;
     intervalInCurrentPrecision =
         TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
 
-    partialPathLastTimeCache = new PartialPathLastObjectCache(memoryLimitInBytes);
+    pathLastObjectCache = new PartialPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
@@ -115,16 +97,16 @@ public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor
       final String timeSeriesSuffix =
           deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
       final Long lastSampleTime =
-          (Long) partialPathLastTimeCache.getPartialPathLastObject(timeSeriesSuffix);
+          (Long) pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime != null) {
         if (Math.abs(row.getTime() - lastSampleTime) >= intervalInCurrentPrecision) {
           hasNonNullMeasurements = true;
-          partialPathLastTimeCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
+          pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
         }
       } else {
         hasNonNullMeasurements = true;
-        partialPathLastTimeCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
+        pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
       }
     }
 
@@ -134,13 +116,6 @@ public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor
       } catch (Exception e) {
         exception.set(e);
       }
-    }
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (partialPathLastTimeCache != null) {
-      partialPathLastTimeCache.close();
     }
   }
 }
