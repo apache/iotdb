@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -44,7 +45,11 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
 
   @Override
   public TSStatus visitLoadFile(LoadTsFileStatement loadTsFileStatement, Exception context) {
-    if (context instanceof SemanticException) {
+    if (context instanceof LoadRuntimeOutOfMemoryException) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
