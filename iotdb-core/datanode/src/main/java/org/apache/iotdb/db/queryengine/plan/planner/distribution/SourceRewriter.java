@@ -184,6 +184,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // Step 1: constructs DeviceViewSplits
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
+    boolean existDeviceCrossRegion = false;
 
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
@@ -196,18 +197,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
-      if (regionReplicaSets.size() > 1) {
-        // specialProcess and existDeviceCrossRegion, use the old aggregation logic
-        if (!analysis.isExistDeviceCrossRegion()) {
-          analysis.setExistDeviceCrossRegion();
-          // `group by session, variation, count and count_if` can not use AggMergeSort, it uses old
-          // aggregation logic
-          if (!analysis.hasGroupByParameter()
-              && !hasCountIfAggregation(analysis.getDeviceViewOutputExpressions())) {
-            analysis.setUseAggMergeSort();
-          }
-        }
-        if (analysis.isDeviceViewSpecialProcess() && !analysis.isUseAggMergeSort()) {
+      if (regionReplicaSets.size() > 1 && (!existDeviceCrossRegion)) {
+        existDeviceCrossRegion = true;
+        // 1. specialProcess and existDeviceCrossRegion, use the old aggregation logic
+        // 2. `group by session, variation, count and count_if` can not use AggMergeSort, it uses
+        // old
+        // aggregation logic
+        if (analysis.isDeviceViewSpecialProcess()
+            && (analysis.hasGroupByParameter()
+                || hasCountIfAggregation(analysis.getDeviceViewOutputExpressions()))) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -217,7 +215,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
-    if (analysis.isExistDeviceCrossRegion()) {
+    if (existDeviceCrossRegion) {
       constructDeviceViewNodeListWithCrossRegion(
           deviceViewNodeList, relatedDataRegions, deviceViewSplits, node, context);
     } else {
@@ -237,7 +235,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // aggregation and some device cross region, user AggregationMergeSortNode
     // 1. generate old and new measurement idx relationship
     // 2. generate new outputColumns for each subDeviceView
-    if (analysis.isExistDeviceCrossRegion() && analysis.isDeviceViewSpecialProcess()) {
+    if (existDeviceCrossRegion && analysis.isDeviceViewSpecialProcess()) {
       Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
       List<String> newPartialOutputColumns = new ArrayList<>();
       Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
@@ -290,12 +288,15 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         transferAggregatorsRecursively(planNode, context);
       }
 
+      boolean hasGroupBy =
+          analysis.getGroupByTimeParameter() != null || analysis.hasGroupByParameter();
       AggregationMergeSortNode mergeSortNode =
           new AggregationMergeSortNode(
               context.queryContext.getQueryId().genPlanNodeId(),
               node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
-              deviceViewOutputExpressions);
+              deviceViewOutputExpressions,
+              hasGroupBy);
       deviceViewNodeList.forEach(mergeSortNode::addChild);
       return Collections.singletonList(mergeSortNode);
     } else {

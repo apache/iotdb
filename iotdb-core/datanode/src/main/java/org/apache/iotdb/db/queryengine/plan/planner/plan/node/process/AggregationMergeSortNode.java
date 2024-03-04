@@ -44,15 +44,19 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   private final Set<Expression> selectExpressions;
 
+  private boolean hasGroupBy;
+
   public AggregationMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns,
-      Set<Expression> selectExpressions) {
+      Set<Expression> selectExpressions,
+      boolean hasGroupBy) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
     this.selectExpressions = selectExpressions;
+    this.hasGroupBy = hasGroupBy;
   }
 
   public AggregationMergeSortNode(
@@ -60,11 +64,13 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns,
-      Set<Expression> selectExpressions) {
+      Set<Expression> selectExpressions,
+      boolean hasGroupBy) {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
     this.selectExpressions = selectExpressions;
+    this.hasGroupBy = hasGroupBy;
   }
 
   public OrderByParameter getMergeOrderParameter() {
@@ -75,10 +81,14 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     return this.selectExpressions;
   }
 
+  public boolean isHasGroupBy() {
+    return this.hasGroupBy;
+  }
+
   @Override
   public PlanNode clone() {
     return new AggregationMergeSortNode(
-        getPlanNodeId(), getMergeOrderParameter(), outputColumns, selectExpressions);
+        getPlanNodeId(), getMergeOrderParameter(), outputColumns, selectExpressions, hasGroupBy);
   }
 
   @Override
@@ -88,7 +98,8 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrderParameter(),
         outputColumns,
-        selectExpressions);
+        selectExpressions,
+        hasGroupBy);
   }
 
   @Override
@@ -113,6 +124,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (Expression expression : selectExpressions) {
       Expression.serialize(expression, byteBuffer);
     }
+    ReadWriteIOUtils.write(hasGroupBy, byteBuffer);
   }
 
   @Override
@@ -127,6 +139,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (Expression expression : selectExpressions) {
       Expression.serialize(expression, stream);
     }
+    ReadWriteIOUtils.write(hasGroupBy, stream);
   }
 
   public static AggregationMergeSortNode deserialize(ByteBuffer byteBuffer) {
@@ -143,8 +156,10 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       expressions.add(Expression.deserialize(byteBuffer));
       expressionSize--;
     }
+    boolean hasGroupBy = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns, expressions);
+    return new AggregationMergeSortNode(
+        planNodeId, orderByParameter, outputColumns, expressions, hasGroupBy);
   }
 
   @Override

@@ -48,13 +48,16 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
   private final List<Accumulator> accumulators;
 
   private final List<TSDataType> dataTypes;
+
   private final TsBlockBuilder tsBlockBuilder;
 
   private final boolean[] noMoreTsBlocks;
 
-  private boolean finished;
-
   private final MergeSortHeap mergeSortHeap;
+
+  private final boolean hasGroupBy;
+
+  private boolean finished;
 
   private Binary lastDevice;
 
@@ -65,12 +68,14 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
       List<Operator> children,
       List<TSDataType> dataTypes,
       List<Accumulator> accumulators,
+      boolean hasGroupBy,
       Comparator<SortKey> comparator) {
     super(operatorContext, children);
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
     this.accumulators = accumulators;
+    this.hasGroupBy = hasGroupBy;
     this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
   }
 
@@ -101,15 +106,21 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
       int cnt = 1;
       for (Accumulator accumulator : accumulators) {
         if (accumulator.getPartialResultSize() == 2) {
-          // TODO only has group by, use subColumn
-          accumulator.addIntermediate(
-              new Column[] {
-                targetBlock.getColumn(cnt++).subColumn(rowIndex),
-                targetBlock.getColumn(cnt++).subColumn(rowIndex)
-              });
+          Column first =
+              hasGroupBy
+                  ? targetBlock.getColumn(cnt++).subColumn(rowIndex)
+                  : targetBlock.getColumn(cnt++);
+          Column second =
+              hasGroupBy
+                  ? targetBlock.getColumn(cnt++).subColumn(rowIndex)
+                  : targetBlock.getColumn(cnt++);
+          accumulator.addIntermediate(new Column[] {first, second});
         } else {
-          accumulator.addIntermediate(
-              new Column[] {targetBlock.getColumn(cnt++).subColumn(rowIndex)});
+          Column column =
+              hasGroupBy
+                  ? targetBlock.getColumn(cnt++).subColumn(rowIndex)
+                  : targetBlock.getColumn(cnt++);
+          accumulator.addIntermediate(new Column[] {column});
         }
       }
 

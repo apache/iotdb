@@ -1004,6 +1004,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getSortKey())
           && (sortItem.getOrdering() == Ordering.DESC)) {
         timeAscending = false;
+        break;
       }
     }
 
@@ -1039,6 +1040,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children,
         dataTypes,
         accumulators,
+        node.isHasGroupBy(),
         getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
