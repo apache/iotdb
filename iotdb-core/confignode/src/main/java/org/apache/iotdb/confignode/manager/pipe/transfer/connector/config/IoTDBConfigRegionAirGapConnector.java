@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -60,8 +61,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   @Override
   protected byte[] generateHandShakeV2Payload() throws IOException {
     final HashMap<String, String> params = new HashMap<>();
-    // FIXME: IoTDBConfigRegionAirGapConnector does not have a cluster ID
-    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, null);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+        ConfigNode.getInstance().getConfigManager().getClusterManager().getClusterId());
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
