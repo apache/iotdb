@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConne
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public interface IoTDBThriftReceiver {
+public interface IoTDBReceiver {
+
   IoTDBConnectorRequestVersion getVersion();
 
   TPipeTransferResp receive(TPipeTransferReq req);

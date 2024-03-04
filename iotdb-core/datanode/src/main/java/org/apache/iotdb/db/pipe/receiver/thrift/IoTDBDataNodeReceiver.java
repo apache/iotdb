@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -80,9 +80,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
+public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeReceiver.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();

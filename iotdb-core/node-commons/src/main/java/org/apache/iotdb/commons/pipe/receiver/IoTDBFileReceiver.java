@@ -46,12 +46,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * {@link IoTDBFileReceiverV1} is the parent class of receiver on both configNode and DataNode,
+ * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
  * handling all the logic of parallel file receiving.
  */
-public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
+public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiverV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiver.class);
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.

@@ -35,10 +35,9 @@ public abstract class IoTDBReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReceiverAgent.class);
 
-  protected ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
+  protected ThreadLocal<IoTDBReceiver> receiverThreadLocal = new ThreadLocal<>();
 
-  protected static final Map<Byte, Supplier<IoTDBThriftReceiver>> RECEIVER_CONSTRUCTORS =
-      new HashMap<>();
+  protected static final Map<Byte, Supplier<IoTDBReceiver>> RECEIVER_CONSTRUCTORS = new HashMap<>();
 
   protected abstract void initConstructors();
 
@@ -58,7 +57,7 @@ public abstract class IoTDBReceiverAgent {
     }
   }
 
-  protected final IoTDBThriftReceiver getReceiver(byte reqVersion) {
+  protected final IoTDBReceiver getReceiver(byte reqVersion) {
     if (receiverThreadLocal.get() == null) {
       return setAndGetReceiver(reqVersion);
     }
@@ -78,7 +77,7 @@ public abstract class IoTDBReceiverAgent {
     return receiverThreadLocal.get();
   }
 
-  private IoTDBThriftReceiver setAndGetReceiver(byte reqVersion) {
+  private IoTDBReceiver setAndGetReceiver(byte reqVersion) {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       receiverThreadLocal.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
@@ -89,7 +88,7 @@ public abstract class IoTDBReceiverAgent {
   }
 
   public final void handleClientExit() {
-    final IoTDBThriftReceiver receiver = receiverThreadLocal.get();
+    final IoTDBReceiver receiver = receiverThreadLocal.get();
     if (receiver != null) {
       receiver.handleExit();
       receiverThreadLocal.remove();

@@ -37,7 +37,7 @@ public class PipeReceiverConfigNodeAgent extends IoTDBReceiverAgent {
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigReceiverV1::new);
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigNodeReceiver::new);
   }
 
   private static void cleanPipeReceiverDir(File receiverFileDir) {

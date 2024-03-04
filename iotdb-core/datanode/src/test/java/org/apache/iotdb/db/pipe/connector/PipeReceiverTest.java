@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
+import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -36,7 +36,7 @@ import java.util.Collections;
 public class PipeReceiverTest {
   @Test
   public void testIoTDBThriftReceiverV1() {
-    IoTDBThriftReceiverV1 receiver = new IoTDBThriftReceiverV1();
+    IoTDBDataNodeReceiver receiver = new IoTDBDataNodeReceiver();
     try {
       receiver.receive(
           PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
