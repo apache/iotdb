@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner;
+package org.apache.iotdb.db.queryengine.plan.planner.logical;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -25,12 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -56,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -66,11 +59,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,26 +69,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.QueryLogicalPlanUtil.querySQLs;
-import static org.apache.iotdb.db.queryengine.plan.planner.QueryLogicalPlanUtil.sqlToPlanMap;
+import static org.apache.iotdb.db.queryengine.plan.planner.logical.LogicalPlannerTestUtil.analyzeStatementToPlanNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.logical.LogicalPlannerTestUtil.parseSQLToPlanNode;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-@Ignore
-public class LogicalPlannerTest {
-
-  @Test
-  public void testQueryPlan() {
-    for (String sql : querySQLs) {
-      try {
-        Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
-      } catch (Exception e) {
-        System.err.println("Failed to generated logical plan for " + sql);
-        e.printStackTrace();
-        break;
-      }
-    }
-  }
+public class SchemaQueryLogicalPlannerTest {
 
   @Test
   public void testCreateTimeseriesPlan() {
@@ -211,7 +188,7 @@ public class LogicalPlannerTest {
 
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
           (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
+      Assert.assertEquals(createAlignedTimeSeriesNode, createAlignedTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -283,13 +260,9 @@ public class LogicalPlannerTest {
           });
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
           StatementGenerator.createStatement(req);
-      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      Analyzer analyzer =
-          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-      Analysis analysis = analyzer.analyze(createMultiTimeSeriesStatement);
-      LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
-          (CreateMultiTimeSeriesNode) planner.plan(analysis).getRootNode();
+          (CreateMultiTimeSeriesNode) analyzeStatementToPlanNode(createMultiTimeSeriesStatement);
+
       // Test serialize and deserialize
       ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
       createMultiTimeSeriesNode.serialize(byteBuffer);
@@ -304,6 +277,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
+  @SuppressWarnings("java:S5961") // suppress "too many assertions" warning
   public void testAlterTimeseriesPlan() {
     String sql = "ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'";
     try {
@@ -327,7 +301,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -356,7 +330,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -385,7 +359,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -414,7 +388,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -443,7 +417,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -482,7 +456,7 @@ public class LogicalPlannerTest {
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
           (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
+      Assert.assertEquals(alterTimeSeriesNode, alterTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -776,67 +750,5 @@ public class LogicalPlannerTest {
       e.printStackTrace();
       fail();
     }
-  }
-
-  @Test
-  public void testGroupByTagWithValueFilter() {
-    String sql = "select max_value(s1) from root.** where s1>1 group by tags(key1)";
-    try {
-      parseSQLToPlanNode(sql);
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("Only time filters are supported in GROUP BY TAGS read"));
-    }
-  }
-
-  @Test
-  public void testGroupByTagWithIllegalSpecialLimitClause() {
-    String[] inputSql =
-        new String[] {
-          "select max_value(s1) from root.** group by tags(key1) disable align",
-          "select max_value(s1) from root.** group by tags(key1) align by device",
-          "select max_value(s1) from root.** group by tags(key1) without null any",
-          "select max_value(s1) from root.** group by tags(key1) limit 1",
-          "select max_value(s1) from root.** group by([0, 10000), 5ms), tags(key1) limit 1 offset 1 slimit 1 soffset 1"
-        };
-    String[] expectedMsg =
-        new String[] {
-          "AGGREGATION doesn't support disable align clause",
-          "GROUP BY TAGS does not support align by device now",
-          "WITHOUT NULL clause is not supported yet",
-          "Limit or slimit are not supported yet in GROUP BY TAGS",
-          "Limit or slimit are not supported yet in GROUP BY TAGS",
-        };
-    for (int i = 0; i < inputSql.length; i++) {
-      try {
-        parseSQLToPlanNode(inputSql[i]);
-        fail();
-      } catch (Exception e) {
-        Assert.assertTrue(inputSql[i], e.getMessage().contains(expectedMsg[i]));
-      }
-    }
-  }
-
-  @Test
-  public void testGroupByTagWithDuplicatedAliasWithTagKey() {
-    String sql = "select max_value(s1) as key1 from root.** group by tags(key1)";
-    try {
-      parseSQLToPlanNode(sql);
-      fail();
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("Output column is duplicated with the tag key: key1"));
-    }
-  }
-
-  private PlanNode parseSQLToPlanNode(String sql) {
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Analysis analysis = analyzer.analyze(statement);
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
-    return planner.plan(analysis).getRootNode();
   }
 }

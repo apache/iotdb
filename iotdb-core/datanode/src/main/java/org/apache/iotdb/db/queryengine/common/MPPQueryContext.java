@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.time.ZoneId;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -173,5 +174,9 @@ public class MPPQueryContext {
   public Filter getGlobalTimeFilter() {
     // time filter may be stateful, so we need to copy it
     return globalTimeFilter != null ? globalTimeFilter.copy() : null;
+  }
+
+  public ZoneId getZoneId() {
+    return session.getZoneId();
   }
 }

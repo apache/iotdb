@@ -243,11 +243,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
-    // we do cq recovery async for two reasons:
-    // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+    // we do cq recovery async for performance:
+    // cq recovery may be time-consuming, we use another thread to do it in
     // make notifyLeaderChanged not blocked by it
-    // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
-    // initialized after notifyLeaderChanged finished
     threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
 
     threadPool.submit(

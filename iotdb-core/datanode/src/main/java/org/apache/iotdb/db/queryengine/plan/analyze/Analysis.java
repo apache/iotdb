@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -291,6 +292,12 @@ public class Analysis {
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Used in optimizer
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -887,5 +894,13 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
+  }
+
+  public void setFromWhere(FilterNode filterNode) {
+    this.fromWhereFilterNodes.add(NodeRef.of(filterNode));
+  }
+
+  public boolean fromWhere(FilterNode filterNode) {
+    return fromWhereFilterNodes.contains(NodeRef.of(filterNode));
   }
 }
