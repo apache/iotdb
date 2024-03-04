@@ -21,21 +21,15 @@ package org.apache.iotdb.db.pipe.processor.downsampling.tumbling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingAbstractProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
@@ -51,7 +45,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY;
 
-public class TumblingTimeSamplingProcessor implements PipeProcessor {
+public class TumblingTimeSamplingProcessor extends DownSamplingAbstractProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
 
@@ -67,8 +61,8 @@ public class TumblingTimeSamplingProcessor implements PipeProcessor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
-      throws Exception {
+  public void customize(
+      PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
     final String dataBaseName =
         StorageEngine.getInstance()
             .getDataRegion(
@@ -106,43 +100,7 @@ public class TumblingTimeSamplingProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
-      throws Exception {
-    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
-        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
-      eventCollector.collect(tabletInsertionEvent);
-      return;
-    }
-
-    final AtomicReference<String> deviceSuffix = new AtomicReference<>();
-    final AtomicReference<Exception> exception = new AtomicReference<>();
-
-    tabletInsertionEvent
-        .processRowByRow(
-            (row, rowCollector) -> {
-              // To reduce the memory usage, we use the device suffix
-              // instead of the full path as the key.
-              if (deviceSuffix.get() == null) {
-                deviceSuffix.set(row.getDeviceId().replaceFirst(dataBaseNameWithPathSeparator, ""));
-              }
-
-              processRow(row, rowCollector, deviceSuffix.get(), exception);
-            })
-        .forEach(
-            event -> {
-              try {
-                eventCollector.collect(event);
-              } catch (Exception e) {
-                exception.set(e);
-              }
-            });
-
-    if (exception.get() != null) {
-      throw exception.get();
-    }
-  }
-
-  private void processRow(
+  protected void processRow(
       Row row,
       RowCollector rowCollector,
       String deviceSuffix,
@@ -177,33 +135,6 @@ public class TumblingTimeSamplingProcessor implements PipeProcessor {
         exception.set(e);
       }
     }
-  }
-
-  /**
-   * If data comes in {@link TsFileInsertionEvent}, we will not split it into {@link
-   * TabletInsertionEvent} by default, because the data in {@link TsFileInsertionEvent} is already
-   * compressed, down-sampling will not reduce the size of data but will increase the CPU usage.
-   */
-  @Override
-  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
-      throws Exception {
-    if (shouldSplitFile) {
-      try {
-        for (final TabletInsertionEvent tabletInsertionEvent :
-            tsFileInsertionEvent.toTabletInsertionEvents()) {
-          process(tabletInsertionEvent, eventCollector);
-        }
-      } finally {
-        tsFileInsertionEvent.close();
-      }
-    } else {
-      eventCollector.collect(tsFileInsertionEvent);
-    }
-  }
-
-  @Override
-  public void process(Event event, EventCollector eventCollector) throws Exception {
-    eventCollector.collect(event);
   }
 
   @Override
