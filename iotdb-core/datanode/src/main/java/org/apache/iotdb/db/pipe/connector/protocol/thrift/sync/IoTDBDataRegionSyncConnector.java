@@ -85,16 +85,24 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       return;
     }
 
-    if (isTabletBatchModeEnabled) {
-      if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
-        doTransfer();
-      }
-    } else {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    try {
+      if (isTabletBatchModeEnabled) {
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
+          doTransfer();
+        }
       } else {
-        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        } else {
+          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        }
       }
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Failed to transfer tablet insertion event %s, because %s.",
+              tabletInsertionEvent, e.getMessage()),
+          e);
     }
   }
 
