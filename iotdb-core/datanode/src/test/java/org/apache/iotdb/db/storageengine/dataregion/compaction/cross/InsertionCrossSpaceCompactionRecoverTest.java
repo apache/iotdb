@@ -35,6 +35,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -75,8 +77,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModFileExisted()
       throws IOException, MergeException, IllegalPathException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -163,8 +165,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModNotExisted()
       throws IOException, MergeException, IllegalPathException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -253,8 +255,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithAllTargetFileExisted()
       throws IllegalPathException, IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -355,7 +357,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
   private void createTsFileByResource(TsFileResource resource) throws IOException {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
-      for (String device : resource.getDevices()) {
+      for (IDeviceID device : resource.getDevices()) {
         // write d1
         tsFileIOWriter.startChunkGroup(device);
         MeasurementSchema schema =
