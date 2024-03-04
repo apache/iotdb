@@ -270,13 +270,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
-    retryConnector.transfer(event);
 
     if (!(event instanceof PipeHeartbeatEvent)
         && !(event instanceof PipeSchemaRegionWritePlanEvent)) {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
+      return;
     }
+
+    retryConnector.transfer(event);
   }
 
   //////////////////////////// Leader cache update ////////////////////////////
