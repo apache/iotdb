@@ -135,7 +135,7 @@ public class MemTableFlushTask {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
     // sort the IDeviceID in lexicographical order
-    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
+    Collections.sort(deviceIDList);
     for (IDeviceID deviceID : deviceIDList) {
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
       // skip the empty device/chunk group
