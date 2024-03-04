@@ -488,6 +488,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void stopForcibly() {
+    if (this.instance == null) {
+      return;
+    }
     try {
       this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
