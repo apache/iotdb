@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -259,10 +260,10 @@ public class TimeSeriesMetadataCache {
     private final long tsFileVersion;
     // high 32 bit is compaction level, low 32 bit is merge count
     private final long compactionVersion;
-    private final String device;
+    private final IDeviceID device;
     private final String measurement;
 
-    public TimeSeriesMetadataCacheKey(TsFileID tsFileID, String device, String measurement) {
+    public TimeSeriesMetadataCacheKey(TsFileID tsFileID, IDeviceID device, String measurement) {
       this.regionId = tsFileID.regionId;
       this.timePartitionId = tsFileID.timePartitionId;
       this.tsFileVersion = tsFileID.fileVersion;
@@ -276,7 +277,7 @@ public class TimeSeriesMetadataCache {
         long timePartitionId,
         long tsFileVersion,
         long compactionVersion,
-        String device,
+        IDeviceID device,
         String measurement) {
       this.regionId = regionId;
       this.timePartitionId = timePartitionId;

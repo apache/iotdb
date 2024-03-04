@@ -1195,8 +1195,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
-  public Map<IDeviceID, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
-      throws IOException {
+  public Map<IDeviceID, List<TimeseriesMetadata>> getAllTimeseriesMetadata(
+      boolean needChunkMetadata) throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
