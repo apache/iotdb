@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,54 +37,54 @@ import java.util.stream.Collectors;
 public class PipeInclusionOptions {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
-  private static final Map<String, Set<String>> SUBSTITUTION_MAP = new HashMap<>();
-  private static final Set<PartialPath> LEGAL_PATHS = new HashSet<>();
+
+  private static final Set<PartialPath> OPTIONS = new HashSet<>();
+  private static final Map<String, Set<String>> ALIAS_OPTIONS_MAP = new HashMap<>();
 
   static {
     try {
-      LEGAL_PATHS.add(new PartialPath("data.insert"));
-      LEGAL_PATHS.add(new PartialPath("data.delete"));
+      OPTIONS.add(new PartialPath("data.insert"));
+      OPTIONS.add(new PartialPath("data.delete"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.database.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.database.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.database.drop"));
+      OPTIONS.add(new PartialPath("schema.database.create"));
+      OPTIONS.add(new PartialPath("schema.database.alter"));
+      OPTIONS.add(new PartialPath("schema.database.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.view.drop"));
+      OPTIONS.add(new PartialPath("schema.timeseries.view.create"));
+      OPTIONS.add(new PartialPath("schema.timeseries.view.alter"));
+      OPTIONS.add(new PartialPath("schema.timeseries.view.drop"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.ordinary.delete"));
+      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.create"));
+      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.alter"));
+      OPTIONS.add(new PartialPath("schema.timeseries.ordinary.delete"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.create"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.set"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.unset"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.alter"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.drop"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.activate"));
-      LEGAL_PATHS.add(new PartialPath("schema.timeseries.template.deactivate"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.create"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.set"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.unset"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.alter"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.drop"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.activate"));
+      OPTIONS.add(new PartialPath("schema.timeseries.template.deactivate"));
 
-      LEGAL_PATHS.add(new PartialPath("schema.ttl"));
+      OPTIONS.add(new PartialPath("schema.ttl"));
 
-      LEGAL_PATHS.add(new PartialPath("auth.role.create"));
-      LEGAL_PATHS.add(new PartialPath("auth.role.drop"));
-      LEGAL_PATHS.add(new PartialPath("auth.role.grant"));
-      LEGAL_PATHS.add(new PartialPath("auth.role.revoke"));
+      OPTIONS.add(new PartialPath("auth.role.create"));
+      OPTIONS.add(new PartialPath("auth.role.drop"));
+      OPTIONS.add(new PartialPath("auth.role.grant"));
+      OPTIONS.add(new PartialPath("auth.role.revoke"));
 
-      LEGAL_PATHS.add(new PartialPath("auth.user.create"));
-      LEGAL_PATHS.add(new PartialPath("auth.user.alter"));
-      LEGAL_PATHS.add(new PartialPath("auth.user.drop"));
-      LEGAL_PATHS.add(new PartialPath("auth.user.grant"));
-      LEGAL_PATHS.add(new PartialPath("auth.user.revoke"));
-
-    } catch (IllegalPathException ignore) {
-      // There won't be any exceptions here
+      OPTIONS.add(new PartialPath("auth.user.create"));
+      OPTIONS.add(new PartialPath("auth.user.alter"));
+      OPTIONS.add(new PartialPath("auth.user.drop"));
+      OPTIONS.add(new PartialPath("auth.user.grant"));
+      OPTIONS.add(new PartialPath("auth.user.revoke"));
+    } catch (IllegalPathException e) {
+      LOGGER.error("Illegal path encountered when initializing LEGAL_OPTIONS.", e);
     }
 
-    SUBSTITUTION_MAP.put(
+    ALIAS_OPTIONS_MAP.put(
         "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
-    SUBSTITUTION_MAP.put(
+    ALIAS_OPTIONS_MAP.put(
         "deletion",
         Collections.unmodifiableSet(
             new HashSet<>(
@@ -97,7 +96,7 @@ public class PipeInclusionOptions {
                     "schema.timeseries.template.deactivate",
                     "auth.role.drop",
                     "auth.user.drop"))));
-    SUBSTITUTION_MAP.put(
+    ALIAS_OPTIONS_MAP.put(
         "schema.deletion",
         Collections.unmodifiableSet(
             new HashSet<>(
@@ -107,65 +106,79 @@ public class PipeInclusionOptions {
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
                     "schema.timeseries.template.deactivate"))));
-    SUBSTITUTION_MAP.put(
+    ALIAS_OPTIONS_MAP.put(
         "auth.deletion",
         Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
   }
 
-  public static boolean hasAtLeastOneOption(String inclusionStr, String exclusionStr) {
+  public static boolean hasAtLeastOneOption(String inclusionString, String exclusionString) {
     try {
-      Set<PartialPath> planTypes = new HashSet<>();
-      List<PartialPath> inclusionPath = parseOptions(inclusionStr);
-      List<PartialPath> exclusionPath = parseOptions(exclusionStr);
-      inclusionPath.forEach(
-          inclusion ->
-              planTypes.addAll(
-                  LEGAL_PATHS.stream()
-                      .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                      .collect(Collectors.toSet())));
-      exclusionPath.forEach(
-          exclusion ->
-              planTypes.removeAll(
-                  LEGAL_PATHS.stream()
-                      .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                      .collect(Collectors.toSet())));
+      final Set<PartialPath> inclusion = parseOptions(inclusionString);
+      final Set<PartialPath> exclusion = parseOptions(exclusionString);
 
-      return !planTypes.isEmpty();
+      final Set<PartialPath> options = new HashSet<>();
+      inclusion.forEach(
+          option ->
+              options.addAll(
+                  OPTIONS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(option))
+                      .collect(Collectors.toSet())));
+      exclusion.forEach(
+          option ->
+              options.removeAll(
+                  OPTIONS.stream()
+                      .filter(path -> path.overlapWithFullPathPrefix(option))
+                      .collect(Collectors.toSet())));
+      return !options.isEmpty();
     } catch (IllegalPathException e) {
       LOGGER.warn(
-          "Illegal path encountered when judging isEmpty() for inclusionStr {} and exclusionStr {}: ",
-          inclusionStr,
-          exclusionStr,
+          "Illegal options (inclusion: {}, exclusion: {}) parsed "
+              + "when checking if at least one option is present: {}",
+          inclusionString,
+          exclusionString,
+          e.getMessage(),
           e);
       return false;
     }
   }
 
-  public static boolean optionsAreAllLegal(String prefixesRawStr) {
+  public static boolean optionsAreAllLegal(String options) {
     try {
-      return parseOptions(prefixesRawStr).stream()
+      return parseOptions(options).stream()
           .allMatch(
-              prefix ->
-                  LEGAL_PATHS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
+              prefix -> OPTIONS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
     } catch (IllegalPathException e) {
-      LOGGER.warn("Illegal path encountered when parsing pipe prefixStr {}: ", prefixesRawStr, e);
+      LOGGER.warn(
+          "Illegal options {} parsed when checking if all options are legal: {}",
+          options,
+          e.getMessage(),
+          e);
       return false;
     }
   }
 
-  public static List<PartialPath> parseOptions(String prefixesRawStr) throws IllegalPathException {
-    if (prefixesRawStr.isEmpty()) {
-      return Collections.emptyList();
+  public static Set<PartialPath> parseOptions(String optionsString) throws IllegalPathException {
+    if (optionsString.isEmpty()) {
+      return Collections.emptySet();
     }
 
-    List<PartialPath> result;
-    AtomicReference<IllegalPathException> exception = new AtomicReference<>();
-    result =
-        Arrays.stream(prefixesRawStr.toLowerCase().replace(" ", "").split(","))
+    final AtomicReference<IllegalPathException> exception = new AtomicReference<>();
+    final Set<PartialPath> options =
+        Arrays.stream(optionsString.toLowerCase().replace(" ", "").split(","))
+            .filter(
+                option -> {
+                  try {
+                    return ALIAS_OPTIONS_MAP.containsKey(option)
+                        || OPTIONS.contains(new PartialPath(option));
+                  } catch (IllegalPathException e) {
+                    exception.set(e);
+                    return false;
+                  }
+                })
             .flatMap(
                 prefix ->
-                    SUBSTITUTION_MAP.getOrDefault(prefix, Collections.singleton(prefix)).stream())
+                    ALIAS_OPTIONS_MAP.getOrDefault(prefix, Collections.singleton(prefix)).stream())
             .map(
                 inclusion -> {
                   try {
@@ -175,11 +188,11 @@ public class PipeInclusionOptions {
                     return new PartialPath();
                   }
                 })
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
     if (exception.get() != null) {
       throw exception.get();
     }
-    return result;
+    return options;
   }
 
   private PipeInclusionOptions() {

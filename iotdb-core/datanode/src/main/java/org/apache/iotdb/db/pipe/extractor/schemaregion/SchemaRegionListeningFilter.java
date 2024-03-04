@@ -108,8 +108,8 @@ public class SchemaRegionListeningFilter {
             EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
 
     Set<PlanNodeType> planTypes = new HashSet<>();
-    List<PartialPath> inclusionPath = parseOptions(inclusionStr);
-    List<PartialPath> exclusionPath = parseOptions(exclusionStr);
+    Set<PartialPath> inclusionPath = parseOptions(inclusionStr);
+    Set<PartialPath> exclusionPath = parseOptions(exclusionStr);
     inclusionPath.forEach(
         inclusion ->
             planTypes.addAll(

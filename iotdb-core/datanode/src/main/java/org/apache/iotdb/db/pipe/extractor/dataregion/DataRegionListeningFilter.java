@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -61,12 +60,12 @@ public class DataRegionListeningFilter {
       PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
     final Set<String> listeningOptions = new HashSet<>();
 
-    final List<PartialPath> inclusionOptions =
+    final Set<PartialPath> inclusionOptions =
         parseOptions(
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
                 EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-    final List<PartialPath> exclusionOptions =
+    final Set<PartialPath> exclusionOptions =
         parseOptions(
             parameters.getStringOrDefault(
                 Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
