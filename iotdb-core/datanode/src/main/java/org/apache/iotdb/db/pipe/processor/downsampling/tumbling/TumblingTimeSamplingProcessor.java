@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.downsampling;
+package org.apache.iotdb.db.pipe.processor.downsampling.tumbling;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -43,22 +44,22 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY;
 
-public class DownSamplingProcessor implements PipeProcessor {
+public class TumblingTimeSamplingProcessor implements PipeProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DownSamplingProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
 
   private String dataBaseNameWithPathSeparator;
   private long intervalInCurrentPrecision;
   private boolean shouldSplitFile;
 
-  private PartialPathLastTimeCache partialPathLastTimeCache;
+  private PartialPathLastObjectCache partialPathLastTimeCache;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -77,8 +78,8 @@ public class DownSamplingProcessor implements PipeProcessor {
             .getDatabaseName();
     final long intervalSeconds =
         parameters.getLongOrDefault(
-            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
-            PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE);
+            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
+            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE);
     final long memoryLimitInBytes =
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
@@ -90,7 +91,7 @@ public class DownSamplingProcessor implements PipeProcessor {
     LOGGER.info(
         "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
         dataBaseName,
-        PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY,
+        PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
         intervalSeconds,
         PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
         memoryLimitInBytes,
@@ -101,7 +102,7 @@ public class DownSamplingProcessor implements PipeProcessor {
     intervalInCurrentPrecision =
         TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
 
-    partialPathLastTimeCache = new PartialPathLastTimeCache(memoryLimitInBytes);
+    partialPathLastTimeCache = new PartialPathLastObjectCache(memoryLimitInBytes);
   }
 
   @Override
@@ -155,16 +156,17 @@ public class DownSamplingProcessor implements PipeProcessor {
 
       final String timeSeriesSuffix =
           deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
-      final Long lastSampleTime = partialPathLastTimeCache.getPartialPathLastTime(timeSeriesSuffix);
+      final Long lastSampleTime =
+          (Long) partialPathLastTimeCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime != null) {
         if (Math.abs(row.getTime() - lastSampleTime) >= intervalInCurrentPrecision) {
           hasNonNullMeasurements = true;
-          partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
+          partialPathLastTimeCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
         }
       } else {
         hasNonNullMeasurements = true;
-        partialPathLastTimeCache.setPartialPathLastTime(timeSeriesSuffix, row.getTime());
+        partialPathLastTimeCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
       }
     }
 

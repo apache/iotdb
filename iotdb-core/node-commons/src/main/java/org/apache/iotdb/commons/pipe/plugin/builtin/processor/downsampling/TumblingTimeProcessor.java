@@ -27,4 +27,4 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcess
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the Down Sampling processor.
  */
-public class DownSamplingProcessor extends PlaceHolderProcessor {}
+public class TumblingTimeProcessor extends PlaceHolderProcessor {}
