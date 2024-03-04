@@ -166,16 +166,6 @@ public class PipeInclusionOptions {
     final AtomicReference<IllegalPathException> exception = new AtomicReference<>();
     final Set<PartialPath> options =
         Arrays.stream(optionsString.toLowerCase().replace(" ", "").split(","))
-            .filter(
-                option -> {
-                  try {
-                    return ALIAS_OPTIONS_MAP.containsKey(option)
-                        || OPTIONS.contains(new PartialPath(option));
-                  } catch (IllegalPathException e) {
-                    exception.set(e);
-                    return false;
-                  }
-                })
             .flatMap(
                 prefix ->
                     ALIAS_OPTIONS_MAP.getOrDefault(prefix, Collections.singleton(prefix)).stream())
