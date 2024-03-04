@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -676,14 +677,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public Map<String, Long> getMaxTime() {
-    Map<String, Long> latestTimeForEachDevice = new HashMap<>();
+  public Map<IDeviceID, Long> getMaxTime() {
+    Map<IDeviceID, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
       // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
       long maxTime = entry.getValue().getMaxTime();
       if (maxTime != Long.MIN_VALUE) {
-        latestTimeForEachDevice.put(entry.getKey().toStringID(), maxTime);
+        latestTimeForEachDevice.put(entry.getKey(), maxTime);
       }
     }
     return latestTimeForEachDevice;

@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -95,7 +96,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
 
   private long markedPosition;
-  private String currentChunkGroupDeviceId;
+  private IDeviceID currentChunkGroupDeviceId;
 
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
@@ -171,13 +172,13 @@ public class TsFileIOWriter implements AutoCloseable {
     out.write(VERSION_NUMBER_BYTE);
   }
 
-  public int startChunkGroup(String deviceId) throws IOException {
+  public int startChunkGroup(IDeviceID deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
-    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
+    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId.toStringID());
     return chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
@@ -189,7 +190,7 @@ public class TsFileIOWriter implements AutoCloseable {
       return;
     }
     chunkGroupMetadataList.add(
-        new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
+        new ChunkGroupMetadata(currentChunkGroupDeviceId.toStringID(), chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
     out.flush();
@@ -620,7 +621,7 @@ public class TsFileIOWriter implements AutoCloseable {
     // group by series
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
         TSMIterator.sortChunkMetadata(
-            chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);
+            chunkGroupMetadataList, currentChunkGroupDeviceId.toStringID(), chunkMetadataList);
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }

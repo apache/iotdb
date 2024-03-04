@@ -107,6 +107,8 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -150,6 +152,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
@@ -587,9 +590,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
     long timePartitionId = resource.getTimePartition();
     Map<String, Long> endTimeMap = new HashMap<>();
-    for (String deviceId : resource.getDevices()) {
+    for (IDeviceID deviceId : resource.getDevices()) {
       long endTime = resource.getEndTime(deviceId);
-      endTimeMap.put(deviceId, endTime);
+      endTimeMap.put(deviceId.toStringID(), endTime);
     }
     if (config.isEnableSeparateData()) {
       lastFlushTimeMap.updateMultiDeviceFlushedTime(timePartitionId, endTimeMap);
@@ -1876,7 +1879,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+          new PlainDeviceID(singleDeviceId), globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -2086,14 +2089,14 @@ public class DataRegion implements IDataRegionForQuery {
           return false;
         }
         Pair<Long, Long> startAndEndTime =
-            tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
+            tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo.stream().map(PlainDeviceID::new).collect(Collectors.toSet()));
         if (startAndEndTime == null) {
           continue;
         }
         deviceStartTime = startAndEndTime.getLeft();
         deviceEndTime = startAndEndTime.getRight();
       } else {
-        String deviceId = device.getFullPath();
+        IDeviceID deviceId = new PlainDeviceID(device.getFullPath());
         if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;
@@ -2318,7 +2321,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void flushCallback(
-      TsFileProcessor processor, Map<String, Long> updateMap, long systemFlushTime) {
+      TsFileProcessor processor, Map<IDeviceID, Long> updateMap, long systemFlushTime) {
     if (config.isEnableSeparateData()
         && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       // update both partitionLastFlushTime and globalLastFlushTime
@@ -2754,14 +2757,14 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
   protected void updateLastFlushTime(TsFileResource newTsFileResource) {
-    for (String device : newTsFileResource.getDevices()) {
+    for (IDeviceID device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(endTime);
       if (config.isEnableSeparateData()) {
-        lastFlushTimeMap.updateOneDeviceFlushedTime(timePartitionId, device, endTime);
+        lastFlushTimeMap.updateOneDeviceFlushedTime(timePartitionId, device.toStringID(), endTime);
       }
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        lastFlushTimeMap.updateOneDeviceGlobalFlushedTime(device, endTime);
+        lastFlushTimeMap.updateOneDeviceGlobalFlushedTime(device.toStringID(), endTime);
       }
     }
   }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.memtable;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -66,5 +66,13 @@ public class PlainDeviceID implements IDeviceID {
 
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
     return new PlainDeviceID(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  @Override
+  public int compareTo(IDeviceID other) {
+    if (!(other instanceof PlainDeviceID)) {
+      throw new IllegalArgumentException();
+    }
+    return deviceID.compareTo(((PlainDeviceID) other).deviceID);
   }
 }

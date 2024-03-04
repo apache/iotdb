@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -112,10 +113,10 @@ public class ReadPointCompactionPerformer
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
-        Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
-        String device = deviceInfo.left;
+        Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
+        IDeviceID device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        queryDataSource.fillOrderIndexes(device, true);
+        queryDataSource.fillOrderIndexes(device.toStringID(), true);
 
         if (isAligned) {
           compactAlignedSeries(
@@ -146,7 +147,7 @@ public class ReadPointCompactionPerformer
   }
 
   private void compactAlignedSeries(
-      String device,
+      IDeviceID device,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
@@ -186,7 +187,7 @@ public class ReadPointCompactionPerformer
   }
 
   private void compactNonAlignedSeries(
-      String device,
+      IDeviceID device,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
@@ -240,7 +241,7 @@ public class ReadPointCompactionPerformer
    * @throws IllegalPathException if the path is illegal
    */
   public static IDataBlockReader constructReader(
-      String deviceId,
+      IDeviceID deviceId,
       List<String> measurementIds,
       List<IMeasurementSchema> measurementSchemas,
       List<String> allSensors,
@@ -250,9 +251,9 @@ public class ReadPointCompactionPerformer
       throws IllegalPathException {
     PartialPath seriesPath;
     if (isAlign) {
-      seriesPath = new AlignedPath(deviceId, measurementIds, measurementSchemas);
+      seriesPath = new AlignedPath(deviceId.toStringID(), measurementIds, measurementSchemas);
     } else {
-      seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
+      seriesPath = new MeasurementPath(deviceId.toStringID(), measurementIds.get(0), measurementSchemas.get(0));
     }
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
@@ -262,7 +263,7 @@ public class ReadPointCompactionPerformer
   public static void writeWithReader(
       AbstractCompactionWriter writer,
       IDataBlockReader reader,
-      String device,
+      IDeviceID device,
       int subTaskId,
       boolean isAligned)
       throws IOException {

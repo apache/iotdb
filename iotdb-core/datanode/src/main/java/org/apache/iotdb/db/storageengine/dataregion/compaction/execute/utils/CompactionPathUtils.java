@@ -23,17 +23,18 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static PartialPath getPath(String device, String measurement) throws IllegalPathException {
+  public static PartialPath getPath(IDeviceID device, String measurement) throws IllegalPathException {
     PartialPath path;
-    if (device.contains(TsFileConstant.BACK_QUOTE_STRING)) {
-      path = DataNodeDevicePathCache.getInstance().getPartialPath(device);
+    if (device.toStringID().contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      path = DataNodeDevicePathCache.getInstance().getPartialPath(device.toStringID());
     } else {
-      path = new PartialPath(device.split("\\."));
+      path = new PartialPath(device.toStringID().split("\\."));
     }
     return path.concatNode(measurement);
   }

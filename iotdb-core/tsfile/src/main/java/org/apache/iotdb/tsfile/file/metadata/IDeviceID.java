@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.memtable;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import java.nio.ByteBuffer;
 
 /** Device id interface. */
-public interface IDeviceID {
+public interface IDeviceID extends Comparable<IDeviceID> {
 
   /**
    * To string format.

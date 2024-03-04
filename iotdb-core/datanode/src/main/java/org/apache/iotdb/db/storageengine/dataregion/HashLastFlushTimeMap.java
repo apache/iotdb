@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +66,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    *
    * <p>It is used to update last cache.
    */
-  private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
+  private final Map<IDeviceID, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
 
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
