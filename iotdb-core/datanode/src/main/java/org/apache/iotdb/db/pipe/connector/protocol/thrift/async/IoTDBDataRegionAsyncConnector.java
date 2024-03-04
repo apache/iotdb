@@ -32,7 +32,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -68,9 +68,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
-public class IoTDBThriftAsyncConnector extends IoTDBConnector {
+public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAsyncConnector.class);
 
   private static final String THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT =
       "Failed to borrow client from client pool or exception occurred "
@@ -81,7 +81,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private IoTDBThriftAsyncClientManager clientManager;
 
-  private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
+  private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final PriorityBlockingQueue<Event> retryEventQueue =
       new PriorityBlockingQueue<>(
           11,
@@ -323,7 +323,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
       if (peekedEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) peekedEvent)
-            .decreaseReferenceCount(IoTDBThriftAsyncConnector.class.getName(), true);
+            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
       }
 
       final Event polledEvent = retryEventQueue.poll();

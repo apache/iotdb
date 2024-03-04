@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransfe
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,7 +62,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
     endPointSet = new HashSet<>(endPoints);
 
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
-      synchronized (IoTDBThriftAsyncConnector.class) {
+      synchronized (IoTDBDataRegionAsyncConnector.class) {
         if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
           ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.set(
               new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()

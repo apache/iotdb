@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -48,7 +48,7 @@ public class PipeTransferTsFileInsertionEventHandler
       LoggerFactory.getLogger(PipeTransferTsFileInsertionEventHandler.class);
 
   private final PipeTsFileInsertionEvent event;
-  private final IoTDBThriftAsyncConnector connector;
+  private final IoTDBDataRegionAsyncConnector connector;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -62,7 +62,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      PipeTsFileInsertionEvent event, IoTDBThriftAsyncConnector connector)
+      PipeTsFileInsertionEvent event, IoTDBDataRegionAsyncConnector connector)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;

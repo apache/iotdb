@@ -63,9 +63,9 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class IoTDBThriftSyncConnector extends IoTDBDataNodeSyncConnector {
+public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionSyncConnector.class);
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 

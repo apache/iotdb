@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -106,7 +106,7 @@ public class PipePluginDataNodeAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
-        IoTDBThriftAsyncConnector.class,
+        IoTDBDataRegionAsyncConnector.class,
         agent
             .dataRegion()
             .reflectConnector(

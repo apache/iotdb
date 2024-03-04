@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
@@ -194,8 +194,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(String pipeNameToDrop) {
-    if (outputPipeConnector instanceof IoTDBThriftAsyncConnector) {
-      ((IoTDBThriftAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+      ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }
   }
 
@@ -222,8 +222,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   }
 
   public int getAsyncConnectorRetryEventQueueSize() {
-    return outputPipeConnector instanceof IoTDBThriftAsyncConnector
-        ? ((IoTDBThriftAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
+    return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+        ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;
   }
 

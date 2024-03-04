@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncClientDataNodeManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.List;
 
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSyncSslConnector {
+
   @Override
   protected IoTDBThriftSyncClientManager constructClient(
       List<TEndPoint> nodeUrls,
