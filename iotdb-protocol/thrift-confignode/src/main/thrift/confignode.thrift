@@ -140,12 +140,6 @@ struct TDataNodeRemoveResp {
   2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
 }
 
-struct TRegionMigrateResultReportReq {
-  1: required common.TConsensusGroupId regionId
-  2: required common.TSStatus migrateResult
-  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
-}
-
 struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeConfiguration>
@@ -879,9 +873,6 @@ service IConfigNodeRPCService {
    *         or all DataNodes' configuration if dataNodeId is -1
    */
   TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
-
-  /** Report region migration complete */
-  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
   // Database

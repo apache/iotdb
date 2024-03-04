@@ -51,7 +51,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -74,10 +74,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
@@ -96,7 +94,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -641,7 +638,7 @@ public class ProcedureManager {
     }
 
     // select coordinator for adding peer
-    DataNodeRemoveHandler handler = new DataNodeRemoveHandler(configManager);
+    RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
     Optional<TDataNodeLocation> selectedDataNode =
         handler.filterDataNodeWithOtherRegionReplica(regionGroupId, destDataNode);
     if (!selectedDataNode.isPresent()) {
@@ -1075,36 +1072,6 @@ public class ProcedureManager {
 
   public void setEnv(ConfigNodeProcedureEnv env) {
     this.env = env;
-  }
-
-  public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    // TODO: ugly, will fix soon
-    this.executor
-        .getProcedures()
-        .values()
-        .forEach(
-            procedure1 -> {
-              if (procedure1 instanceof AddRegionPeerProcedure) {
-                AddRegionPeerProcedure procedure = (AddRegionPeerProcedure) procedure1;
-                if (procedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  procedure.notifyAddPeerFinished(req);
-                }
-              }
-            });
-
-    // TODO: ugly, will fix soon
-    this.executor
-        .getProcedures()
-        .values()
-        .forEach(
-            procedure1 -> {
-              if (procedure1 instanceof RemoveRegionPeerProcedure) {
-                RemoveRegionPeerProcedure procedure = (RemoveRegionPeerProcedure) procedure1;
-                if (procedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  procedure.notifyRemovePeerFinished(req);
-                }
-              }
-            });
   }
 
   public void addMetrics() {
