@@ -200,7 +200,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         // specialProcess and existDeviceCrossRegion, use the old aggregation logic
         if (!analysis.isExistDeviceCrossRegion()) {
           analysis.setExistDeviceCrossRegion();
-          // `group by session, variation, count; count_if` can not use AggMergeSort, it uses old
+          // `group by session, variation, count and count_if` can not use AggMergeSort, it uses old
           // aggregation logic
           if (!analysis.hasGroupByParameter()
               && !hasCountIfAggregation(analysis.getDeviceViewOutputExpressions())) {
@@ -234,22 +234,20 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return deviceViewNodeList;
     }
 
+    // aggregation and some device cross region, user AggregationMergeSortNode
+    // 1. generate old and new measurement idx relationship
+    // 2. generate new outputColumns for each subDeviceView
     if (analysis.isExistDeviceCrossRegion() && analysis.isDeviceViewSpecialProcess()) {
-      // 1. generate old and new measurement idx relationship
-      // 2. generate new outputColumns
-      // each subDeviceView
       Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
       List<String> newPartialOutputColumns = new ArrayList<>();
+      Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
 
-      Set<Expression> selectExpressions = analysis.getSelectExpressions();
-      int[] newAggregationIdx = new int[selectExpressions.size()];
-
-      int i = 0, idxSum = 0;
-      for (Expression expression : selectExpressions) {
+      int i = 0, newIdxSum = 0;
+      for (Expression expression : deviceViewOutputExpressions) {
         if (i == 0) {
           newPartialOutputColumns.add(expression.getOutputSymbol());
           i++;
-          idxSum++;
+          newIdxSum++;
           continue;
         }
         FunctionExpression aggExpression = (FunctionExpression) expression;
@@ -271,23 +269,19 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           }
           newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
         }
-
-        newAggregationIdx[i] = actualPartialAggregationNames.size();
-        if (actualPartialAggregationNames.size() > 1) {
-          newMeasurementIdxMap.put(i, Arrays.asList(idxSum++, idxSum++));
-        } else {
-          newMeasurementIdxMap.put(i, Collections.singletonList(idxSum++));
-        }
-        i++;
+        newMeasurementIdxMap.put(
+            i++,
+            actualPartialAggregationNames.size() > 1
+                ? Arrays.asList(newIdxSum++, newIdxSum++)
+                : Collections.singletonList(newIdxSum++));
       }
 
       for (String device : node.getDevices()) {
-        List<Integer> oldMeasurementList = node.getDeviceToMeasurementIndexesMap().get(device);
-        List<Integer> newMeasurementList = new ArrayList<>();
-        for (int idx : oldMeasurementList) {
-          newMeasurementList.addAll(newMeasurementIdxMap.get(idx));
-        }
-        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementList);
+        List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
+        List<Integer> newMeasurementIdxList = new ArrayList<>();
+        oldMeasurementIdxList.forEach(
+            idx -> newMeasurementIdxList.addAll(newMeasurementIdxMap.get(idx)));
+        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
       }
 
       for (PlanNode planNode : deviceViewNodeList) {
@@ -301,8 +295,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
               context.queryContext.getQueryId().genPlanNodeId(),
               node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
-              selectExpressions,
-              newAggregationIdx);
+              deviceViewOutputExpressions);
       deviceViewNodeList.forEach(mergeSortNode::addChild);
       return Collections.singletonList(mergeSortNode);
     } else {
@@ -403,20 +396,21 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private void transferAggregatorsRecursively(PlanNode planNode, DistributionPlanContext context) {
+    List<AggregationDescriptor> descriptorList = null;
     if (planNode instanceof SeriesAggregationSourceNode) {
-      SeriesAggregationSourceNode scanSourceNode = (SeriesAggregationSourceNode) planNode;
-      for (AggregationDescriptor descriptor : scanSourceNode.getAggregationDescriptorList()) {
+      descriptorList = ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList();
+    } else if (planNode instanceof AggregationNode) {
+      descriptorList = ((AggregationNode) planNode).getAggregationDescriptorList();
+    }
+
+    if (descriptorList != null) {
+      for (AggregationDescriptor descriptor : descriptorList) {
         descriptor.setStep(AggregationStep.PARTIAL);
         updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
       }
-    } else if (planNode instanceof AggregationNode) {
-      AggregationNode aggregationNode = (AggregationNode) planNode;
-      // TODO set partial
     }
 
-    for (PlanNode child : planNode.getChildren()) {
-      transferAggregatorsRecursively(child, context);
-    }
+    planNode.getChildren().forEach(child -> transferAggregatorsRecursively(child, context));
   }
 
   private boolean hasCountIfAggregation(Set<Expression> selectExpressions) {

@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -43,7 +45,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
-  private List<Accumulator> accumulators;
+  private final List<Accumulator> accumulators;
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -52,29 +54,24 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
 
   private boolean finished;
 
-  private final TimeComparator timeComparator;
+  private final MergeSortHeap mergeSortHeap;
 
-  private final Comparator<Binary> deviceComparator;
+  private Binary lastDevice;
 
-  private long currentTime;
-
-  private final int[] readIndex;
+  private long lastTime;
 
   public AggregationMergeSortOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       List<TSDataType> dataTypes,
       List<Accumulator> accumulators,
-      TimeComparator timeComparator,
-      Comparator<Binary> deviceComparator) {
+      Comparator<SortKey> comparator) {
     super(operatorContext, children);
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
     this.accumulators = accumulators;
-    this.timeComparator = timeComparator;
-    this.deviceComparator = deviceComparator;
-    this.readIndex = new int[inputTsBlocks.length];
+    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
   }
 
   @Override
@@ -88,79 +85,65 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     }
 
     tsBlockBuilder.reset();
-    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    while (!mergeSortHeap.isEmpty()) {
+      MergeSortKey mergeSortKey = mergeSortHeap.poll();
+      TsBlock targetBlock = mergeSortKey.tsBlock;
+      int rowIndex = mergeSortKey.rowIndex;
+      Binary currentDevice = targetBlock.getColumn(0).getBinary(rowIndex);
+      long currentTime = targetBlock.getTimeByIndex(rowIndex);
+      if (lastDevice != null && (!currentDevice.equals(lastDevice) || currentTime != lastTime)) {
+        outputResultToTsBlock();
+      }
 
-    while (true) {
-      Binary currentDevice = null;
-      boolean hashChildFinished = false;
+      lastDevice = currentDevice;
+      lastTime = currentTime;
 
-      for (int idx = 0; idx < inputTsBlocks.length; idx++) {
-        TsBlock tsBlock = inputTsBlocks[idx];
-        if (noMoreTsBlocks[idx]) {
-          continue;
-        }
-
-        if (tsBlock == null || readIndex[idx] >= tsBlock.getPositionCount()) {
-          hashChildFinished = true;
-          inputTsBlocks[idx] = null;
-          readIndex[idx] = 0;
-          currentDevice = null;
-          break;
-        }
-
-        // if group by time, columnIndex may be greater than 0
-        Binary device = tsBlock.getColumn(0).getBinary(readIndex[idx]);
-        if (currentDevice == null || deviceComparator.compare(device, currentDevice) < 0) {
-          currentDevice = device;
+      int cnt = 1;
+      for (Accumulator accumulator : accumulators) {
+        if (accumulator.getPartialResultSize() == 2) {
+          // TODO only has group by, use subColumn
+          accumulator.addIntermediate(
+              new Column[] {
+                targetBlock.getColumn(cnt++).subColumn(rowIndex),
+                targetBlock.getColumn(cnt++).subColumn(rowIndex)
+              });
+        } else {
+          accumulator.addIntermediate(
+              new Column[] {targetBlock.getColumn(cnt++).subColumn(rowIndex)});
         }
       }
 
-      if (hashChildFinished) {
+      if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
+        inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
         break;
+      } else {
+        mergeSortKey.rowIndex++;
+        mergeSortHeap.push(mergeSortKey);
       }
 
-      for (int idx = 0; idx < inputTsBlocks.length; idx++) {
-        TsBlock tsBlock = inputTsBlocks[idx];
-        if (noMoreTsBlocks[idx]) {
-          continue;
-        }
-
-        Binary device = tsBlock.getColumn(0).getBinary(readIndex[idx]);
-        if (device.equals(currentDevice)) {
-          currentTime = tsBlock.getTimeColumn().getLong(readIndex[idx]);
-          int cnt = 1;
-          for (Accumulator accumulator : accumulators) {
-            if (accumulator.getPartialResultSize() == 2) {
-              // TODO only has group by, use subColumn
-              accumulator.addIntermediate(
-                  new Column[] {
-                    tsBlock.getColumn(cnt++).subColumn(readIndex[idx]),
-                    tsBlock.getColumn(cnt++).subColumn(readIndex[idx])
-                  });
-            } else {
-              accumulator.addIntermediate(
-                  new Column[] {tsBlock.getColumn(cnt++).subColumn(readIndex[idx])});
-            }
-          }
-          readIndex[idx]++;
-        }
-      }
-
-      timeBuilder.writeLong(currentTime);
-      valueColumnBuilders[0].writeBinary(currentDevice);
-      for (int i = 1; i < dataTypes.size(); i++) {
-        accumulators.get(i - 1).outputFinal(valueColumnBuilders[i]);
-      }
-      tsBlockBuilder.declarePosition();
-      accumulators.forEach(Accumulator::reset);
-
+      // break if time is out or tsBlockBuilder is full
       if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
         break;
       }
     }
 
+    if (mergeSortHeap.isEmpty()) {
+      outputResultToTsBlock();
+    }
+
     return tsBlockBuilder.build();
+  }
+
+  private void outputResultToTsBlock() {
+    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    timeBuilder.writeLong(lastTime);
+    valueColumnBuilders[0].writeBinary(lastDevice);
+    for (int i = 1; i < dataTypes.size(); i++) {
+      accumulators.get(i - 1).outputFinal(valueColumnBuilders[i]);
+    }
+    tsBlockBuilder.declarePosition();
+    accumulators.forEach(Accumulator::reset);
   }
 
   @Override
@@ -241,6 +224,18 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
     inputTsBlocks[currentChildIndex] = null;
     children.get(currentChildIndex).close();
     children.set(currentChildIndex, null);
+  }
+
+  @Override
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return noMoreTsBlocks[currentChildIndex]
+        || !isEmpty(currentChildIndex)
+        || children.get(currentChildIndex) == null;
+  }
+
+  @Override
+  protected void processCurrentInputTsBlock(int currentInputIndex) {
+    mergeSortHeap.push(new MergeSortKey(inputTsBlocks[currentInputIndex], 0, currentInputIndex));
   }
 
   @Override

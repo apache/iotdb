@@ -99,7 +99,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuter
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MultiColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
@@ -283,6 +282,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
@@ -977,7 +977,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         children,
         dataTypes,
-        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+        getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override
@@ -994,28 +994,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
-    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
-    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
-    genSortInformation(
-        node.getOutputColumnNames(),
-        dataTypes,
-        sortItemList,
-        sortItemIndexList,
-        sortItemDataTypeList);
+    if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
+      throw new IllegalArgumentException(
+          "Only order by device align by device support AggregationMergeSortNode.");
+    }
 
     boolean timeAscending = true;
-    TimeComparator timeComparator = ASC_TIME_COMPARATOR;
-    Comparator<Binary> deviceComparator = ASC_BINARY_COMPARATOR;
     for (SortItem sortItem : sortItemList) {
-      if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getSortKey())) {
-        if (sortItem.getOrdering() == Ordering.DESC) {
-          timeAscending = false;
-          timeComparator = DESC_TIME_COMPARATOR;
-        }
-      } else if ("Device".equalsIgnoreCase(sortItem.getSortKey())) {
-        if (sortItem.getOrdering() == Ordering.DESC) {
-          deviceComparator = DESC_BINARY_COMPARATOR;
-        }
+      if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getSortKey())
+          && (sortItem.getOrdering() == Ordering.DESC)) {
+        timeAscending = false;
       }
     }
 
@@ -1038,8 +1026,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
     return new AggregationMergeSortOperator(
-        operatorContext, children, dataTypes, accumulators, timeComparator, deviceComparator);
+        operatorContext,
+        children,
+        dataTypes,
+        accumulators,
+        getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override
@@ -1068,7 +1068,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         children,
         dataTypes,
-        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList),
+        getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList),
         node.getTopValue(),
         !sortItemList.isEmpty()
             && sortItemList.get(0).getSortKey().equalsIgnoreCase(OrderByKey.TIME)
@@ -1962,7 +1962,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         child,
         dataTypes,
         filePrefix,
-        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+        getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override

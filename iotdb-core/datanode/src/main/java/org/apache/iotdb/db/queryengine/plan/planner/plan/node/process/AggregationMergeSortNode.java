@@ -44,19 +44,15 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   private final Set<Expression> selectExpressions;
 
-  private final int[] newAggregationIdx;
-
   public AggregationMergeSortNode(
       PlanNodeId id,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns,
-      Set<Expression> selectExpressions,
-      int[] newAggregationIdx) {
+      Set<Expression> selectExpressions) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
     this.selectExpressions = selectExpressions;
-    this.newAggregationIdx = newAggregationIdx;
   }
 
   public AggregationMergeSortNode(
@@ -64,13 +60,11 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns,
-      Set<Expression> selectExpressions,
-      int[] newAggregationIdx) {
+      Set<Expression> selectExpressions) {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
     this.selectExpressions = selectExpressions;
-    this.newAggregationIdx = newAggregationIdx;
   }
 
   public OrderByParameter getMergeOrderParameter() {
@@ -84,11 +78,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
   @Override
   public PlanNode clone() {
     return new AggregationMergeSortNode(
-        getPlanNodeId(),
-        getMergeOrderParameter(),
-        outputColumns,
-        selectExpressions,
-        newAggregationIdx);
+        getPlanNodeId(), getMergeOrderParameter(), outputColumns, selectExpressions);
   }
 
   @Override
@@ -98,8 +88,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrderParameter(),
         outputColumns,
-        selectExpressions,
-        null);
+        selectExpressions);
   }
 
   @Override
@@ -155,8 +144,7 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       expressionSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(
-        planNodeId, orderByParameter, outputColumns, expressions, null);
+    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns, expressions);
   }
 
   @Override
