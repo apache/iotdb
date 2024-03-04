@@ -109,7 +109,9 @@ public class QueryDataSource {
     int index = 0;
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
-          .computeIfAbsent(resource.getOrderTime(new PlainDeviceID(deviceId), ascending), key -> new ArrayList<>())
+          .computeIfAbsent(
+              resource.getOrderTime(new PlainDeviceID(deviceId), ascending),
+              key -> new ArrayList<>())
           .add(index++);
     }
 

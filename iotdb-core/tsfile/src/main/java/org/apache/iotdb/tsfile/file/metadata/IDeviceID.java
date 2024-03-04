@@ -32,4 +32,6 @@ public interface IDeviceID extends Comparable<IDeviceID> {
   String toStringID();
 
   void serialize(ByteBuffer byteBuffer);
+
+  int memorySize();
 }

@@ -531,8 +531,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Get leaf MetadataIndexPair which contains path */
-  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(IDeviceID device, String measurement)
-      throws IOException {
+  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(
+      IDeviceID device, String measurement) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
@@ -555,8 +555,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   // This method is only used for TsFile
-  public List<ITimeSeriesMetadata> readITimeseriesMetadata(IDeviceID device, Set<String> measurements)
-      throws IOException {
+  public List<ITimeSeriesMetadata> readITimeseriesMetadata(
+      IDeviceID device, Set<String> measurements) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
@@ -1256,7 +1256,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* This method will not only deserialize the TimeseriesMetadata, but also all the chunk metadata list meanwhile. */
-  private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(IDeviceID device) throws IOException {
+  private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(IDeviceID device)
+      throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);

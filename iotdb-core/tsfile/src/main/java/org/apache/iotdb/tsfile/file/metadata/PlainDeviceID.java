@@ -64,6 +64,11 @@ public class PlainDeviceID implements IDeviceID {
     ReadWriteIOUtils.write(deviceID, byteBuffer);
   }
 
+  @Override
+  public int memorySize() {
+    return deviceID.length();
+  }
+
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
     return new PlainDeviceID(ReadWriteIOUtils.readString(byteBuffer));
   }

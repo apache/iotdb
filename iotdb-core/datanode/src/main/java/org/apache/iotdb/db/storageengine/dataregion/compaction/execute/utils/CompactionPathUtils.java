@@ -29,7 +29,8 @@ public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
 
-  public static PartialPath getPath(IDeviceID device, String measurement) throws IllegalPathException {
+  public static PartialPath getPath(IDeviceID device, String measurement)
+      throws IllegalPathException {
     PartialPath path;
     if (device.toStringID().contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(device.toStringID());

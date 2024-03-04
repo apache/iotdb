@@ -253,7 +253,9 @@ public class ReadPointCompactionPerformer
     if (isAlign) {
       seriesPath = new AlignedPath(deviceId.toStringID(), measurementIds, measurementSchemas);
     } else {
-      seriesPath = new MeasurementPath(deviceId.toStringID(), measurementIds.get(0), measurementSchemas.get(0));
+      seriesPath =
+          new MeasurementPath(
+              deviceId.toStringID(), measurementIds.get(0), measurementSchemas.get(0));
     }
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);

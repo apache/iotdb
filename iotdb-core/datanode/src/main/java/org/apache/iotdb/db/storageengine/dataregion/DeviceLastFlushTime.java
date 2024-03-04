@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public class DeviceLastFlushTime implements ILastFlushTime {
 
-  Map<String, Long> deviceLastFlushTimeMap = new HashMap<>();
+  Map<IDeviceID, Long> deviceLastFlushTimeMap = new HashMap<>();
 
   @Override
-  public long getLastFlushTime(String deviceId) {
+  public long getLastFlushTime(IDeviceID deviceId) {
     if (deviceLastFlushTimeMap.containsKey(deviceId)) {
       return deviceLastFlushTimeMap.get(deviceId);
     }
@@ -35,7 +37,7 @@ public class DeviceLastFlushTime implements ILastFlushTime {
   }
 
   @Override
-  public void updateLastFlushTime(String deviceId, long time) {
+  public void updateLastFlushTime(IDeviceID deviceId, long time) {
     deviceLastFlushTimeMap.merge(deviceId, time, Math::max);
   }
 

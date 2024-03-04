@@ -241,7 +241,8 @@ public class CompactionUtils {
           // value chunk metadata can be skipped
           continue;
         }
-        resource.updateStartTime(deviceId.toStringID(), chunkMetadata.getStatistics().getStartTime());
+        resource.updateStartTime(
+            deviceId.toStringID(), chunkMetadata.getStatistics().getStartTime());
         resource.updateEndTime(deviceId.toStringID(), chunkMetadata.getStatistics().getEndTime());
       }
     }
