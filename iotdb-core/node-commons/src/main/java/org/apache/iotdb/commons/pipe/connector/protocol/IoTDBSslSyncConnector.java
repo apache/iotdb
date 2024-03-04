@@ -45,9 +45,9 @@ import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOT
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 
-public abstract class IoTDBSyncSslConnector extends IoTDBConnector {
+public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncSslConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSslSyncConnector.class);
 
   protected IoTDBThriftSyncClientManager clientManager;
 

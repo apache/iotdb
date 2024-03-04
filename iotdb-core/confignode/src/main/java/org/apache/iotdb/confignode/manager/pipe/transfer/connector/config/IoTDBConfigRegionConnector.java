@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSyncSslConnector;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBThriftSyncClientConfigNodeManager;
@@ -51,7 +51,7 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTDBConfigRegionConnector extends IoTDBSyncSslConnector {
+public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
 
