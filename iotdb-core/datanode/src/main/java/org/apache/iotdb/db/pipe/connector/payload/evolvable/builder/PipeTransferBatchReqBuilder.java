@@ -107,9 +107,9 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   /**
-   * Try offer event into cache if the given event is not duplicated.
+   * Try offer {@link Event} into cache if the given {@link Event} is not duplicated.
    *
-   * @param event the given event
+   * @param event the given {@link Event}
    * @return true if the batch can be transferred
    */
   public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {

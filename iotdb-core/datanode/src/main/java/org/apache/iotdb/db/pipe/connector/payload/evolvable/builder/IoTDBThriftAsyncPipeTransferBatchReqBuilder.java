@@ -30,11 +30,7 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
     super(parameters);
   }
 
-  public List<Long> deepcopyRequestCommitIds() {
+  public List<Long> deepCopyRequestCommitIds() {
     return new ArrayList<>(requestCommitIds);
-  }
-
-  public long getLastCommitId() {
-    return requestCommitIds.isEmpty() ? -1 : requestCommitIds.get(requestCommitIds.size() - 1);
   }
 }

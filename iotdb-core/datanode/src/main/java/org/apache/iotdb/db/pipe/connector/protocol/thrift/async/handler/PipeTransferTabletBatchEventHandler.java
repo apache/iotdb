@@ -53,7 +53,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       IoTDBDataRegionAsyncConnector connector)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
-    requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
+    requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
     events = batchBuilder.deepCopyEvents();
     req = batchBuilder.toTPipeTransferReq();
 
