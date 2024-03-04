@@ -51,6 +51,7 @@ struct TCreatePeerReq {
 struct TMaintainPeerReq {
   1: required common.TConsensusGroupId regionId
   2: required common.TDataNodeLocation destNode
+  3: required i64 taskId
 }
 
 struct TFragmentInstanceId {
@@ -556,6 +557,11 @@ service IDataNodeRPCService {
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
   common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
+
+  /**
+   * Get the result of a region maintainance task
+   */
+  common.TSStatus getRegionMaintainResult(i64 taskId)
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled

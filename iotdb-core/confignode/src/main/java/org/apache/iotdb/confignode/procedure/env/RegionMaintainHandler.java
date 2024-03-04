@@ -59,9 +59,9 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
-public class DataNodeRemoveHandler {
+public class RegionMaintainHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionMaintainHandler.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -70,7 +70,7 @@ public class DataNodeRemoveHandler {
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
-  public DataNodeRemoveHandler(ConfigManager configManager) {
+  public RegionMaintainHandler(ConfigManager configManager) {
     this.configManager = configManager;
   }
 
@@ -234,12 +234,15 @@ public class DataNodeRemoveHandler {
    * @return TSStatus
    */
   public TSStatus addRegionPeer(
-      TDataNodeLocation destDataNode, TConsensusGroupId regionId, TDataNodeLocation coordinator) {
+      long procedureId,
+      TDataNodeLocation destDataNode,
+      TConsensusGroupId regionId,
+      TDataNodeLocation coordinator) {
     TSStatus status;
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode);
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode, procedureId);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
@@ -268,11 +271,13 @@ public class DataNodeRemoveHandler {
   public TSStatus removeRegionPeer(
       TDataNodeLocation originalDataNode,
       TConsensusGroupId regionId,
-      TDataNodeLocation coordinator) {
+      TDataNodeLocation coordinator,
+      long procedureId) {
     TSStatus status;
 
     // Send removeRegionPeer request to the rpcClientDataNode
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
+    TMaintainPeerReq maintainPeerReq =
+        new TMaintainPeerReq(regionId, originalDataNode, procedureId);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
@@ -298,10 +303,11 @@ public class DataNodeRemoveHandler {
    * @return TSStatus
    */
   public TSStatus deleteOldRegionPeer(
-      TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
+      TDataNodeLocation originalDataNode, TConsensusGroupId regionId, long procedureId) {
 
     TSStatus status;
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
+    TMaintainPeerReq maintainPeerReq =
+        new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
     status =
         configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
@@ -323,6 +329,13 @@ public class DataNodeRemoveHandler {
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
+  }
+
+  public void waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
+
+    while (true) {
+
+    }
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {

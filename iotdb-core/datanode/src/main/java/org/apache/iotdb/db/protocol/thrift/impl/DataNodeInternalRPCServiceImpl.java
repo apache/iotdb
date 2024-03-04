@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -1616,6 +1617,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
     status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
+  }
+
+  @Override
+  public TSStatus getRegionMaintainResult(long taskId) throws TException {
+    return RegionMigrateService.getRegionMaintainResult(taskId);
   }
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {

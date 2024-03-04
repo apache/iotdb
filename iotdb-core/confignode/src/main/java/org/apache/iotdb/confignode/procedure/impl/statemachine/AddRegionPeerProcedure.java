@@ -21,17 +21,20 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -81,7 +84,7 @@ public class AddRegionPeerProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case CREATE_NEW_REGION_PEER:
@@ -90,7 +93,8 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          TSStatus tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinator);
+          TSStatus tsStatus =
+              handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             waitForOneMigrationStepFinished(consensusGroupId, state);
           } else {
@@ -114,6 +118,10 @@ public class AddRegionPeerProcedure
   // TODO: Clear all remaining information related to 'migrate' and 'migration'
   public TSStatus waitForOneMigrationStepFinished(
       TConsensusGroupId consensusGroupId, AddRegionPeerState state) throws Exception {
+    while (true) {
+      SyncDataNodeClientPool.getInstance().sendSyncRequestToDataNodeWithRetry()
+      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
+    }
     LOGGER.info(
         "{}, Wait for state {} finished, regionId: {}",
         REGION_MIGRATE_PROCESS,
