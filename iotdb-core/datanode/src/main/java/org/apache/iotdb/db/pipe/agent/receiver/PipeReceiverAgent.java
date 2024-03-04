@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.agent.receiver;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBReceiverDataNodeAgent;
+import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiverAgent;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -37,17 +37,17 @@ public class PipeReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);
 
-  private final IoTDBReceiverDataNodeAgent thriftAgent;
+  private final IoTDBDataNodeReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;
   private final IoTDBLegacyPipeReceiverAgent legacyAgent;
 
   public PipeReceiverAgent() {
-    thriftAgent = new IoTDBReceiverDataNodeAgent();
+    thriftAgent = new IoTDBDataNodeReceiverAgent();
     airGapAgent = new IoTDBAirGapReceiverAgent();
     legacyAgent = new IoTDBLegacyPipeReceiverAgent();
   }
 
-  public IoTDBReceiverDataNodeAgent thrift() {
+  public IoTDBDataNodeReceiverAgent thrift() {
     return thriftAgent;
   }
 

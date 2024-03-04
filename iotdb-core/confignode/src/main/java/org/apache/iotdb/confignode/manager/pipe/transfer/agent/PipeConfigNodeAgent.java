@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipePluginConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.PipeReceiverConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.IoTDBConfigNodeReceiverAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime.PipeRuntimeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -32,14 +32,14 @@ public class PipeConfigNodeAgent {
   private final PipeTaskConfigNodeAgent pipeTaskConfigNodeAgent;
   private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
   private final PipeRuntimeConfigNodeAgent pipeRuntimeConfigNodeAgent;
-  private final PipeReceiverConfigNodeAgent pipeReceiverConfigNodeAgent;
+  private final IoTDBConfigNodeReceiverAgent ioTDBConfigNodeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
     pipeTaskConfigNodeAgent = new PipeTaskConfigNodeAgent();
     pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent(null);
     pipeRuntimeConfigNodeAgent = new PipeRuntimeConfigNodeAgent();
-    pipeReceiverConfigNodeAgent = new PipeReceiverConfigNodeAgent();
+    ioTDBConfigNodeReceiverAgent = new IoTDBConfigNodeReceiverAgent();
   }
 
   /** The singleton holder of {@link PipeConfigNodeAgent}. */
@@ -75,11 +75,11 @@ public class PipeConfigNodeAgent {
   }
 
   /**
-   * Get the singleton instance of {@link PipeReceiverConfigNodeAgent}.
+   * Get the singleton instance of {@link IoTDBConfigNodeReceiverAgent}.
    *
-   * @return the singleton instance of {@link PipeReceiverConfigNodeAgent}
+   * @return the singleton instance of {@link IoTDBConfigNodeReceiverAgent}
    */
-  public static PipeReceiverConfigNodeAgent receiver() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipeReceiverConfigNodeAgent;
+  public static IoTDBConfigNodeReceiverAgent receiver() {
+    return PipeConfigNodeAgentHolder.HANDLE.ioTDBConfigNodeReceiverAgent;
   }
 }
