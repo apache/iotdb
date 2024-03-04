@@ -22,10 +22,13 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -37,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -77,9 +81,22 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   @Override
-  protected byte[] getHandShakeBytes() throws IOException {
+  protected byte[] generateHandShakeV1Payload() throws IOException {
     return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  protected byte[] generateHandShakeV2Payload() throws IOException {
+    final HashMap<String, String> params = new HashMap<>();
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+        PipeAgent.runtime().getClusterIdIfPossible());
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
   protected void doTransfer(

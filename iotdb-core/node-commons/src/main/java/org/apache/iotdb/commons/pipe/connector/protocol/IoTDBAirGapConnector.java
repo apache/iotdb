@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteRespo
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
@@ -52,7 +51,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
-  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+  protected static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   protected final List<Socket> sockets = new ArrayList<>();
   protected final List<Boolean> isSocketAlive = new ArrayList<>();
@@ -135,8 +134,12 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      if (!send(socket, getHandShakeBytes())) {
-        throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
+      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+      if (!send(socket, generateHandShakeV2Payload())
+          && !send(socket, generateHandShakeV1Payload())) {
+        throw new PipeConnectionException(
+            "Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
@@ -153,7 +156,9 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         String.format("All target servers %s are not available.", nodeUrls));
   }
 
-  protected abstract byte[] getHandShakeBytes() throws IOException;
+  protected abstract byte[] generateHandShakeV1Payload() throws IOException;
+
+  protected abstract byte[] generateHandShakeV2Payload() throws IOException;
 
   @Override
   public void heartbeat() {

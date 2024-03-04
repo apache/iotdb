@@ -21,10 +21,12 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
@@ -49,9 +52,21 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       LoggerFactory.getLogger(IoTDBConfigRegionAirGapConnector.class);
 
   @Override
-  protected byte[] getHandShakeBytes() throws IOException {
+  protected byte[] generateHandShakeV1Payload() throws IOException {
     return PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  protected byte[] generateHandShakeV2Payload() throws IOException {
+    final HashMap<String, String> params = new HashMap<>();
+    // FIXME: IoTDBConfigRegionAirGapConnector does not have a cluster ID
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, null);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
   @Override
