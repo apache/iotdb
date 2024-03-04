@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapCommonConnector;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
@@ -43,9 +43,10 @@ import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.util.Arrays;
 
-public class IoTDBAirGapConfigConnector extends IoTDBAirGapCommonConnector {
+public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConfigConnector.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConfigRegionAirGapConnector.class);
 
   @Override
   protected byte[] getHandShakeBytes() throws IOException {

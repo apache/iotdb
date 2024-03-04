@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -49,9 +48,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
-public abstract class IoTDBAirGapCommonConnector extends IoTDBConnector {
+public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapCommonConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 

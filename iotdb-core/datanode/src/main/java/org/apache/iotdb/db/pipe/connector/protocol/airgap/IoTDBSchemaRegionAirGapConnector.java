@@ -39,8 +39,9 @@ import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.util.Arrays;
 
-public class IoTDBAirGapSchemaConnector extends IoTDBAirGapDataNodeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapSchemaConnector.class);
+public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBSchemaRegionAirGapConnector.class);
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
