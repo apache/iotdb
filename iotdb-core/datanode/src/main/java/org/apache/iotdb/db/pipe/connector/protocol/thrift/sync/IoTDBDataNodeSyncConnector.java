@@ -24,17 +24,55 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncClientDataNodeManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeSyncConnector.class);
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+
+    final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+
+    validator.validate(
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+            givenNodeUrls, new TEndPoint(iotdbConfig.getRpcAddress(), iotdbConfig.getRpcPort())));
+  }
 
   @Override
   protected IoTDBThriftSyncClientManager constructClient(
@@ -49,9 +87,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
   protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
-    final TPipeTransferResp resp;
+    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
+    final TPipeTransferResp resp;
     try {
       resp =
           clientAndStatus
@@ -63,16 +101,17 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer pipe write schema plan event, because %s.",
-              e.getMessage()),
+              "Network error when transfer schema region write plan (%s), because %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), e.getMessage()),
           e);
     }
+
     final TSStatus status = resp.getStatus();
     receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
-            "Transfer PipeWriteSchemaPlanEvent %s error, result status %s",
-            pipeSchemaRegionWritePlanEvent, status),
+            "Transfer schema region write plan %s error, result status %s.",
+            pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
         pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
   }
 }

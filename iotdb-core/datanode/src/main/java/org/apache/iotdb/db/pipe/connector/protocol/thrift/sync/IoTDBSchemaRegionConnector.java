@@ -72,9 +72,9 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+  private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = pipeSchemaRegionSnapshotEvent.getSnapshot();
+    final File snapshot = snapshotEvent.getSnapshot();
     final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer file piece by piece
@@ -105,7 +105,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
-                  "Network error when transfer snapshot %s, because %s.", snapshot, e.getMessage()),
+                  "Network error when transfer schema region snapshot %s, because %s.",
+                  snapshot, e.getMessage()),
               e);
         }
 
@@ -117,14 +118,15 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
             == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info("Redirect snapshot file position to {}.", position);
+          LOGGER.info("Redirect schema region file position to {}.", position);
           continue;
         }
 
         receiverStatusHandler.handleReceiverStatus(
             resp.getStatus(),
             String.format(
-                "Transfer snapshot %s error, result status %s.", snapshot, resp.getStatus()),
+                "Transfer schema region snapshot %s error, result status %s.",
+                snapshot, resp.getStatus()),
             snapshot.toString());
       }
     }
@@ -141,14 +143,18 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format("Network error when seal file %s, because %s.", snapshot, e.getMessage()),
+          String.format(
+              "Network error when seal schema region snapshot file %s, because %s.",
+              snapshot, e.getMessage()),
           e);
     }
 
     receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
-        String.format("Seal file %s error, result status %s.", snapshot, resp.getStatus()),
+        String.format(
+            "Seal schema region snapshot snapshot %s file error, result status %s.",
+            snapshot, resp.getStatus()),
         snapshot.toString());
-    LOGGER.info("Successfully transferred file {}.", snapshot);
+    LOGGER.info("Successfully transferred schema region snapshot {}.", snapshot);
   }
 }

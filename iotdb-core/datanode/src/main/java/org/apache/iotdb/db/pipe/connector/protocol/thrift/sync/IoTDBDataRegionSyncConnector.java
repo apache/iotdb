@@ -19,14 +19,10 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -41,7 +37,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -58,44 +53,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionSyncConnector.class);
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
-
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    super.validate(validator);
-
-    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
-    final PipeParameters parameters = validator.getParameters();
-
-    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
-
-    validator.validate(
-        empty -> {
-          try {
-            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
-            return !NodeUrlUtils.containsLocalAddress(
-                givenNodeUrls.stream()
-                    .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
-                    .map(TEndPoint::getIp)
-                    .collect(Collectors.toList()));
-          } catch (UnknownHostException e) {
-            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-            return false;
-          }
-        },
-        String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
-            givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
-  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)

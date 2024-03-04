@@ -99,6 +99,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
             CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
+
     clientManager =
         constructClient(nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
