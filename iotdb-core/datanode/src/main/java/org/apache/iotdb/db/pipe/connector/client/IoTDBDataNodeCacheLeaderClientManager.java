@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 interface IoTDBDataNodeCacheLeaderClientManager {
 
-  LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
+  LeaderCacheManager LEADER_CACHE_MANAGER = new LeaderCacheManager();
 
   class LeaderCacheManager {
 
