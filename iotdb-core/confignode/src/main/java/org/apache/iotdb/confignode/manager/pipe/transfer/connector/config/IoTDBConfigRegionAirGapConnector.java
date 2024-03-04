@@ -57,13 +57,13 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBAirGapConfigConnector can't transfer TabletInsertionEvent.");
+        "IoTDBConfigRegionAirGapConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBAirGapConfigConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBConfigRegionAirGapConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -77,7 +77,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
-          "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+          "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
+          event);
     }
   }
 
@@ -90,8 +91,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
       throw new PipeException(
           String.format(
-              "Transfer PipeWriteConfigPlanEvent %s error. Socket: %s.",
-              pipeConfigRegionWritePlanEvent, socket));
+              "Transfer config region write plan %s error. Socket: %s.",
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket));
     }
   }
 
@@ -120,7 +121,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
           throw new PipeException(
-              String.format("Transfer snapshot %s error. Socket %s.", snapshot, socket));
+              String.format(
+                  "Transfer config region snapshot %s error. Socket %s.", snapshot, socket));
         } else {
           position += readLength;
         }
@@ -133,9 +135,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
             snapshot.getName(), snapshot.length()))) {
       throw new PipeException(
-          String.format("Seal snapshot %s error. Socket %s.", snapshot, socket));
+          String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket));
     } else {
-      LOGGER.info("Successfully transferred snapshot {}.", snapshot);
+      LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
     }
   }
 }

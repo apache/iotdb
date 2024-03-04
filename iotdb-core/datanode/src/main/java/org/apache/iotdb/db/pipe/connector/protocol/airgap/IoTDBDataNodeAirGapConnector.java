@@ -19,17 +19,63 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+
+    final PipeConfig pipeConfig = PipeConfig.getInstance();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+
+    validator.validate(
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the air gap receiver on DataNode itself
+            return !(pipeConfig.getPipeAirGapReceiverEnabled()
+                && NodeUrlUtils.containsLocalAddress(
+                    givenNodeUrls.stream()
+                        .filter(
+                            tEndPoint ->
+                                tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
+                        .map(TEndPoint::getIp)
+                        .collect(Collectors.toList())));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+            givenNodeUrls,
+            new TEndPoint(
+                IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                pipeConfig.getPipeAirGapReceiverPort())));
+  }
+
   @Override
   protected byte[] getHandShakeBytes() throws IOException {
     return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
@@ -45,8 +91,8 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
             pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
       throw new PipeException(
           String.format(
-              "Transfer PipeWriteSchemaPlanEvent %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent, socket));
+              "Transfer data node write plan %s error. Socket: %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket));
     }
   }
 }

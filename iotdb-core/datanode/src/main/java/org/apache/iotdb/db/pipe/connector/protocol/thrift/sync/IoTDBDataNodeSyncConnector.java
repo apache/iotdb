@@ -70,7 +70,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
           }
         },
         String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, "
+                + "or unknown host when checking pipe sink IP.",
             givenNodeUrls, new TEndPoint(iotdbConfig.getRpcAddress(), iotdbConfig.getRpcPort())));
   }
 
@@ -101,7 +102,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer schema region write plan (%s), because %s.",
+              "Network error when transfer schema region write plan %s, because %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), e.getMessage()),
           e);
     }
@@ -110,7 +111,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     receiverStatusHandler.handleReceiverStatus(
         status,
         String.format(
-            "Transfer schema region write plan %s error, result status %s.",
+            "Transfer data node write plan %s error, result status %s.",
             pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
         pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
   }

@@ -40,19 +40,20 @@ import java.net.Socket;
 import java.util.Arrays;
 
 public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSchemaRegionAirGapConnector.class);
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBAirGapSchemaConnector can't transfer TabletInsertionEvent.");
+        "IoTDBSchemaRegionAirGapConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBAirGapSchemaConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBSchemaRegionAirGapConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -66,7 +67,8 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       doTransfer(socket, (PipeSchemaRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
-          "IoTDBAirGapSchemaConnector does not support transferring generic event: {}.", event);
+          "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
+          event);
     }
   }
 
@@ -95,7 +97,8 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
           throw new PipeException(
-              String.format("Transfer snapshot %s error. Socket %s.", snapshot, socket));
+              String.format(
+                  "Transfer schema region snapshot %s error. Socket %s.", snapshot, socket));
         } else {
           position += readLength;
         }
@@ -108,9 +111,9 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
             snapshot.getName(), snapshot.length()))) {
       throw new PipeException(
-          String.format("Seal snapshot %s error. Socket %s.", snapshot, socket));
+          String.format("Seal schema region snapshot %s error. Socket %s.", snapshot, socket));
     } else {
-      LOGGER.info("Successfully transferred snapshot {}.", snapshot);
+      LOGGER.info("Successfully transferred schema region snapshot {}.", snapshot);
     }
   }
 }

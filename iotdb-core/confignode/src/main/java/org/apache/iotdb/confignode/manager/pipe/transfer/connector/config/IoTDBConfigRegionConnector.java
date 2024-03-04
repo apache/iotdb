@@ -105,7 +105,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer config region write plan (%s), because %s.",
+              "Network error when transfer config region write plan %s, because %s.",
               writePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
           e);
     }
@@ -198,7 +198,9 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
     receiverStatusHandler.handleReceiverStatus(
         resp.getStatus(),
-        String.format("Seal snapshot file %s error, result status %s.", snapshot, resp.getStatus()),
+        String.format(
+            "Seal config region snapshot file %s error, result status %s.",
+            snapshot, resp.getStatus()),
         snapshot.toString());
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
   }
