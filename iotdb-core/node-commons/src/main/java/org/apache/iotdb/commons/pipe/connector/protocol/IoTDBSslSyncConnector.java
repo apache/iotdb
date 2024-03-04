@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -48,7 +48,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSslSyncConnector.class);
 
-  protected IoTDBThriftSyncClientManager clientManager;
+  protected IoTDBSyncClientManager clientManager;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -104,7 +104,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
         constructClient(nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
-  protected abstract IoTDBThriftSyncClientManager constructClient(
+  protected abstract IoTDBSyncClientManager constructClient(
       List<TEndPoint> nodeUrls,
       boolean useSSL,
       String trustStorePath,

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
@@ -45,9 +46,11 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientManager {
+public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
+    implements IoTDBDataNodeCacheLeaderClientManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncClientManager.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBDataNodeAsyncClientManager.class);
 
   private final Set<TEndPoint> endPointSet;
 
@@ -56,7 +59,7 @@ public class IoTDBThriftAsyncClientManager extends IoTDBThriftLeaderCacheClientM
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
-  public IoTDBThriftAsyncClientManager(List<TEndPoint> endPoints, boolean useLeaderCache) {
+  public IoTDBDataNodeAsyncClientManager(List<TEndPoint> endPoints, boolean useLeaderCache) {
     super(endPoints, useLeaderCache);
 
     endPointSet = new HashSet<>(endPoints);

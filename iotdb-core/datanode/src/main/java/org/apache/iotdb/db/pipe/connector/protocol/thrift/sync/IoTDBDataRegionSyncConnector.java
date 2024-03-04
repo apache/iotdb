@@ -21,9 +21,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncLeaderCacheClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -151,7 +150,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransfer() {
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
+    Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {
       resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
@@ -173,16 +172,14 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
     InsertNode insertNode;
-    Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = null;
+    Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
     final TPipeTransferResp resp;
 
     try {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
 
       if (insertNode != null) {
-        clientAndStatus =
-            ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
-                .getClient(insertNode.getDevicePath().getFullPath());
+        clientAndStatus = clientManager.getClient(insertNode.getDevicePath().getFullPath());
         resp =
             clientAndStatus
                 .getLeft()
@@ -215,16 +212,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             pipeInsertNodeTabletInsertionEvent, status),
         pipeInsertNodeTabletInsertionEvent.toString());
     if (insertNode != null && status.isSetRedirectNode()) {
-      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
-          .updateLeaderCache(insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
+      clientManager.updateLeaderCache(
+          insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
-            .getClient(pipeRawTabletInsertionEvent.getDeviceId());
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
+        clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId());
     final TPipeTransferResp resp;
 
     try {
@@ -252,15 +248,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             pipeRawTabletInsertionEvent, status),
         pipeRawTabletInsertionEvent.toString());
     if (status.isSetRedirectNode()) {
-      ((IoTDBThriftSyncLeaderCacheClientManager) clientManager)
-          .updateLeaderCache(pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
+      clientManager.updateLeaderCache(
+          pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

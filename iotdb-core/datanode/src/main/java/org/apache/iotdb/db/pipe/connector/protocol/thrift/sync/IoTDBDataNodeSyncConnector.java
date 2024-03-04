@@ -21,13 +21,13 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.client.IoTDBThriftSyncClientDataNodeManager;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeSyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -47,6 +47,8 @@ import java.util.stream.Collectors;
 public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeSyncConnector.class);
+
+  protected IoTDBDataNodeSyncClientManager clientManager;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -76,19 +78,21 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
   }
 
   @Override
-  protected IoTDBThriftSyncClientManager constructClient(
+  protected IoTDBSyncClientManager constructClient(
       List<TEndPoint> nodeUrls,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache) {
-    return new IoTDBThriftSyncClientDataNodeManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+    clientManager =
+        new IoTDBDataNodeSyncClientManager(
+            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+    return clientManager;
   }
 
   protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     final TPipeTransferResp resp;
     try {

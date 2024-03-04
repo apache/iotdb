@@ -20,33 +20,55 @@
 package org.apache.iotdb.db.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
-public abstract class IoTDBThriftSyncLeaderCacheClientManager extends IoTDBThriftSyncClientManager {
+public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
+    implements IoTDBDataNodeCacheLeaderClientManager {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBThriftSyncLeaderCacheClientManager.class);
-  private final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
-  private final boolean useLeaderCache;
+      LoggerFactory.getLogger(IoTDBDataNodeSyncClientManager.class);
 
-  protected IoTDBThriftSyncLeaderCacheClientManager(
+  public IoTDBDataNodeSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd);
-    this.useLeaderCache = useLeaderCache;
+    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
   }
 
-  public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient(String deviceId) {
+  @Override
+  protected PipeTransferDataNodeHandshakeV1Req buildHandshakeV1Req() throws IOException {
+    return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  @Override
+  protected PipeTransferHandshakeV2Req buildHandshakeV2Req(Map<String, String> params)
+      throws IOException {
+    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
+  }
+
+  @Override
+  protected String getClusterId() {
+    return PipeAgent.runtime().getClusterIdIfPossible();
+  }
+
+  public Pair<IoTDBSyncClient, Boolean> getClient(String deviceId) {
     final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
     return useLeaderCache
             && endPoint != null

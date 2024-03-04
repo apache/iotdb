@@ -22,13 +22,13 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBThriftSyncClientConfigNodeManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.client.IoTDBConfigNodeSyncClientManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
@@ -56,14 +56,13 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);
 
   @Override
-  protected IoTDBThriftSyncClientManager constructClient(
+  protected IoTDBSyncClientManager constructClient(
       List<TEndPoint> nodeUrls,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache) {
-    return new IoTDBThriftSyncClientConfigNodeManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd);
+    return new IoTDBConfigNodeSyncClientManager(nodeUrls, useSSL, trustStorePath, trustStorePwd);
   }
 
   @Override
@@ -91,7 +90,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   }
 
   private void doTransfer(PipeConfigRegionWritePlanEvent writePlanEvent) throws PipeException {
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     final TPipeTransferResp resp;
     try {
@@ -122,7 +121,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   private void doTransfer(PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final File snapshot = snapshotEvent.getSnapshot();
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

@@ -17,21 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.client;
+package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftClientManager;
 
 import java.util.List;
 
-abstract class IoTDBThriftLeaderCacheClientManager extends IoTDBThriftClientManager {
+public abstract class IoTDBClientManager {
+
+  protected final List<TEndPoint> endPointList;
+  protected long currentClientIndex = 0;
 
   protected final boolean useLeaderCache;
-  protected static final LeaderCacheManager leaderCacheManager = new LeaderCacheManager();
 
-  protected IoTDBThriftLeaderCacheClientManager(
-      List<TEndPoint> endPointList, boolean useLeaderCache) {
-    super(endPointList);
+  protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
+    this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
   }
 }

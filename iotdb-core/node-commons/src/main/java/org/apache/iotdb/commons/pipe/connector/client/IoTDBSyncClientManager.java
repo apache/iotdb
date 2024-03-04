@@ -41,10 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientManager
-    implements Closeable {
+public abstract class IoTDBSyncClientManager extends IoTDBClientManager implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncClientManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncClientManager.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
@@ -52,12 +51,16 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   private final String trustStorePath;
   private final String trustStorePwd;
 
-  protected final Map<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>>
-      endPoint2ClientAndStatus = new ConcurrentHashMap<>();
+  protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
+      new ConcurrentHashMap<>();
 
-  protected IoTDBThriftSyncClientManager(
-      List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
-    super(endPoints);
+  protected IoTDBSyncClientManager(
+      List<TEndPoint> endPoints,
+      boolean useSSL,
+      String trustStorePath,
+      String trustStorePwd,
+      boolean useLeaderCache) {
+    super(endPoints, useLeaderCache);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -70,7 +73,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
     // reconstruct all dead clients
-    for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
       if (Boolean.TRUE.equals(entry.getValue().getRight())) {
         continue;
@@ -80,8 +83,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
     }
 
     // check whether any clients are available
-    for (final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus :
-        endPoint2ClientAndStatus.values()) {
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
       }
@@ -92,8 +94,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
-    final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
-        endPoint2ClientAndStatus.get(endPoint);
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
 
     if (clientAndStatus.getLeft() != null) {
       try {
@@ -112,10 +113,10 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
   }
 
   private void initClientAndStatus(
-      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+      Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
-          new IoTDBThriftSyncConnectorClient(
+          new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
@@ -136,8 +137,7 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
     }
   }
 
-  public void sendHandshakeReq(
-      Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+  public void sendHandshakeReq(Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
     try {
       final HashMap<String, String> params = new HashMap<>();
       params.put(
@@ -192,12 +192,12 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
 
   protected abstract String getClusterId();
 
-  public Pair<IoTDBThriftSyncConnectorClient, Boolean> getClient() {
+  public Pair<IoTDBSyncClient, Boolean> getClient() {
     final int clientSize = endPointList.size();
     // Round-robin, find the next alive client
     for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
       final int clientIndex = (int) (currentClientIndex++ % clientSize);
-      final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus =
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
           endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return clientAndStatus;
@@ -209,10 +209,10 @@ public abstract class IoTDBThriftSyncClientManager extends IoTDBThriftClientMana
 
   @Override
   public void close() {
-    for (final Map.Entry<TEndPoint, Pair<IoTDBThriftSyncConnectorClient, Boolean>> entry :
+    for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
       final TEndPoint endPoint = entry.getKey();
-      final Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus = entry.getValue();
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = entry.getValue();
 
       if (clientAndStatus == null) {
         continue;

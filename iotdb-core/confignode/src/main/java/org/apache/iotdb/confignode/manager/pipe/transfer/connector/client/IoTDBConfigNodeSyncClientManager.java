@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncClientManager;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
@@ -31,11 +31,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class IoTDBThriftSyncClientConfigNodeManager extends IoTDBThriftSyncClientManager {
+public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
 
-  public IoTDBThriftSyncClientConfigNodeManager(
+  public IoTDBConfigNodeSyncClientManager(
       List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd);
+    super(endPoints, useSSL, trustStorePath, trustStorePwd, false);
   }
 
   @Override
