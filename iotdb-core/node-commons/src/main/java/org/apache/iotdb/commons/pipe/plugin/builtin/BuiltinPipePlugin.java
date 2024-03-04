@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.websocket.WebSocke
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.DownSamplingProcessor;
 
@@ -51,6 +52,7 @@ public enum BuiltinPipePlugin {
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
+  AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),

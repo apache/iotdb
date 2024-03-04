@@ -33,6 +33,23 @@ public class PipeProcessorConstant {
   public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;
   public static final String PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY =
       "processor.down-sampling.memory-limit-in-bytes";
+
+  public static final String PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY =
+      "processor.output.max-delay-seconds";
+  public static final long PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE = 120;
+  public static final String PROCESSOR_OUTPUT_DATABASE_KEY = "processor.output.database";
+  public static final String PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE = "";
+  public static final String PROCESSOR_OUTPUT_MEASUREMENTS_KEY = "processor.output.measurements";
+  public static final String PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE = "";
+  public static final String PROCESSOR_AGGREGATORS_KEY = "processor.aggregators";
+  public static final String PROCESSOR_AGGREGATORS_DEFAULT_VALUE =
+      "avg, peak, rms, var, skew, kurt, ff, cf, pf, mf";
+  public static final String PROCESSOR_SLIDING_BOUNDARY_TIME_KEY =
+      "processor.sliding.boundary-time";
+  public static final long PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_SLIDING_SECONDS_KEY = "processor.sliding.seconds";
+  public static final long PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE = 120;
+
   public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
 
   private PipeProcessorConstant() {
