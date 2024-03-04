@@ -680,6 +680,11 @@ public class IoTConsensusServerImpl {
     return tmpConfiguration;
   }
 
+  public void resetConfiguration(List<Peer> newConfiguration) {
+    configuration.clear();
+    configuration.addAll(newConfiguration);
+  }
+
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     if (request instanceof ComparableConsensusRequest) {
