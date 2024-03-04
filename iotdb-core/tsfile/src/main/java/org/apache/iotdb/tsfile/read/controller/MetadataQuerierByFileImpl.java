@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -110,7 +111,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
       String selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      List<String> devices = this.tsFileReader.getAllDevices();
+      List<IDeviceID> devices = this.tsFileReader.getAllDevices();
       String[] deviceNames = devices.toArray(new String[0]);
       if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
         continue;

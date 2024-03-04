@@ -191,7 +191,7 @@ public class TsFileIOWriter implements AutoCloseable {
       return;
     }
     chunkGroupMetadataList.add(
-        new ChunkGroupMetadata(currentChunkGroupDeviceId.toStringID(), chunkMetadataList));
+        new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
     out.flush();
@@ -453,8 +453,8 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   // device -> ChunkMetadataList
-  public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
-    Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
+  public Map<IDeviceID, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
+    Map<IDeviceID, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       deviceChunkMetadataMap
@@ -537,9 +537,9 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @return DeviceTimeseriesMetadataMap
    */
-  public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new TreeMap<>();
-    Map<String, Map<String, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
+  public Map<IDeviceID, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+    Map<IDeviceID, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new TreeMap<>();
+    Map<IDeviceID, Map<String, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         chunkMetadataMap
@@ -548,7 +548,7 @@ public class TsFileIOWriter implements AutoCloseable {
             .add(chunkMetadata);
       }
     }
-    for (String device : chunkMetadataMap.keySet()) {
+    for (IDeviceID device : chunkMetadataMap.keySet()) {
       Map<String, List<IChunkMetadata>> seriesToChunkMetadataMap = chunkMetadataMap.get(device);
       for (Map.Entry<String, List<IChunkMetadata>> entry : seriesToChunkMetadataMap.entrySet()) {
         try {

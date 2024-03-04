@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -474,12 +475,13 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
 
   protected TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
       throws IOException {
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
+    Map<IDeviceID, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
         tsFileIOWriter.getDeviceTimeseriesMetadataMap();
     tsFileIOWriter.endFile();
     TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
-    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
-      String device = entry.getKey();
+    for (Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+        deviceTimeseriesMetadataMap.entrySet()) {
+      IDeviceID device = entry.getKey();
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
         tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
