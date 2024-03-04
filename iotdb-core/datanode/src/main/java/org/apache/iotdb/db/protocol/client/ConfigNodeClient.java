@@ -129,7 +129,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.PooledObject;
@@ -195,7 +195,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public void connect(TEndPoint endpoint) throws TException {
     try {
       transport =
-          RpcTransportFactory.INSTANCE.getTransport(
+          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               // As there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs());
       if (!transport.isOpen()) {

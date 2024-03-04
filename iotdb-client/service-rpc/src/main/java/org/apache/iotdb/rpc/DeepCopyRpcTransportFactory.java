@@ -21,26 +21,26 @@ package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TTransportFactory;
 
-public class RpcTransportFactory extends BaseRpcTransportFactory {
+public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
 
-  public static RpcTransportFactory INSTANCE;
+  public static DeepCopyRpcTransportFactory INSTANCE;
 
   static {
     reInit();
   }
 
-  private RpcTransportFactory(TTransportFactory inner) {
+  private DeepCopyRpcTransportFactory(TTransportFactory inner) {
     super(inner);
   }
 
   public static void reInit() {
     INSTANCE =
         USE_SNAPPY
-            ? new RpcTransportFactory(
+            ? new DeepCopyRpcTransportFactory(
                 new TimeoutChangeableTSnappyFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, false))
-            : new RpcTransportFactory(
+                    thriftDefaultBufferSize, thriftMaxFrameSize, true))
+            : new DeepCopyRpcTransportFactory(
                 new TElasticFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, false));
+                    thriftDefaultBufferSize, thriftMaxFrameSize, true));
   }
 }
