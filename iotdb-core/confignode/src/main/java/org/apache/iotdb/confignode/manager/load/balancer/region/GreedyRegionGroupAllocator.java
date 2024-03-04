@@ -50,6 +50,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     // Build weightList order by number of regions allocated asc
@@ -87,8 +88,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                     freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
 
     // Sort weightList
-    List<TDataNodeLocation> result =
-        priorityMap.entrySet().stream()
+   return priorityMap.entrySet().stream()
             .sorted(
                 comparingByValue(
                     (o1, o2) ->
@@ -99,16 +99,5 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                             : (int) (o2.getRight() - o1.getRight())))
             .map(entry -> entry.getKey().deepCopy())
             .collect(Collectors.toList());
-
-    // Record weightList
-    for (TDataNodeLocation dataNodeLocation : result) {
-      LOGGER.info(
-          "[RegionGroupWeightList] DataNodeId: {}, RegionCount: {}, FreeDiskSpace: {}",
-          dataNodeLocation.getDataNodeId(),
-          priorityMap.get(dataNodeLocation).getLeft(),
-          priorityMap.get(dataNodeLocation).getRight());
-    }
-
-    return result;
   }
 }

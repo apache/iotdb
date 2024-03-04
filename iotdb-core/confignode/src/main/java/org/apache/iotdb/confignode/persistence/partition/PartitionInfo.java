@@ -692,6 +692,22 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    if (databasePartitionTables.containsKey(database)) {
+      return databasePartitionTables.get(database).getAllReplicaSets(type);
+    } else {
+      return new ArrayList<>();
+    }
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId

@@ -62,6 +62,7 @@ public class GreedyRegionGroupAllocatorTest {
               availableDataNodeMap,
               freeSpaceMap,
               allocatedRegionGroups,
+              allocatedRegionGroups,
               TEST_REPLICATION_FACTOR,
               new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
       allocatedRegionGroups.add(newRegionGroup);
@@ -107,6 +108,7 @@ public class GreedyRegionGroupAllocatorTest {
             availableDataNodeMap,
             freeSpaceMap,
             allocatedRegionGroups,
+            allocatedRegionGroups,
             TEST_REPLICATION_FACTOR,
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
     allocatedRegionGroups.add(newRegionGroup);
@@ -125,6 +127,7 @@ public class GreedyRegionGroupAllocatorTest {
         ALLOCATOR.generateOptimalRegionReplicasDistribution(
             availableDataNodeMap,
             freeSpaceMap,
+            allocatedRegionGroups,
             allocatedRegionGroups,
             TEST_REPLICATION_FACTOR,
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));

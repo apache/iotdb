@@ -711,6 +711,18 @@ public class PartitionManager {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(database, type);
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
