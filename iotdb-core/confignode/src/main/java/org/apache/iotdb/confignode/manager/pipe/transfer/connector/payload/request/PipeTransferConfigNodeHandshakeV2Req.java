@@ -28,9 +28,13 @@ import java.util.Map;
 
 public class PipeTransferConfigNodeHandshakeV2Req extends PipeTransferHandshakeV2Req {
 
+  private PipeTransferConfigNodeHandshakeV2Req() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.CONFIGNODE_HANDSHAKE_V2;
+    return PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

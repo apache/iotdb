@@ -28,9 +28,13 @@ import java.util.Map;
 
 public class PipeTransferDataNodeHandshakeV2Req extends PipeTransferHandshakeV2Req {
 
+  private PipeTransferDataNodeHandshakeV2Req() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.DATANODE_HANDSHAKE_V2;
+    return PipeRequestType.HANDSHAKE_DATANODE_V2;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

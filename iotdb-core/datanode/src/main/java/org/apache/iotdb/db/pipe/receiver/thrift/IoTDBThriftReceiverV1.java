@@ -110,10 +110,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case DATANODE_HANDSHAKE_V1:
+          case HANDSHAKE_DATANODE_V1:
             return handleTransferHandshakeV1(
                 PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
-          case DATANODE_HANDSHAKE_V2:
+          case HANDSHAKE_DATANODE_V2:
             return handleTransferHandshakeV2(
                 PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
@@ -143,8 +143,8 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
             // Config Requests will first be received by the DataNode receiver,
             // then transferred to configNode receiver to execute.
-          case CONFIGNODE_HANDSHAKE_V1:
-          case CONFIGNODE_HANDSHAKE_V2:
+          case HANDSHAKE_CONFIGNODE_V1:
+          case HANDSHAKE_CONFIGNODE_V2:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:

@@ -26,6 +26,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.io.IOException;
 
 public class PipeTransferSchemaSnapshotPieceReq extends PipeTransferFilePieceReq {
+
+  private PipeTransferSchemaSnapshotPieceReq() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
     return PipeRequestType.TRANSFER_SCHEMA_SNAPSHOT_PIECE;

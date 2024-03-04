@@ -296,7 +296,7 @@ public abstract class IoTDBFileReceiverV1 implements IoTDBThriftReceiver {
         new PipeTransferHandshakeV1Req() {
           @Override
           protected PipeRequestType getPlanType() {
-            return PipeRequestType.DATANODE_HANDSHAKE_V1;
+            return PipeRequestType.HANDSHAKE_DATANODE_V1;
           }
         }.convertToTPipeTransferReq(timestampPrecision));
   }

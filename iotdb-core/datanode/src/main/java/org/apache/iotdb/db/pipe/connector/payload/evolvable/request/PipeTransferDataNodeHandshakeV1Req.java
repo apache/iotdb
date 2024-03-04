@@ -27,9 +27,13 @@ import java.io.IOException;
 
 public class PipeTransferDataNodeHandshakeV1Req extends PipeTransferHandshakeV1Req {
 
+  private PipeTransferDataNodeHandshakeV1Req() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.DATANODE_HANDSHAKE_V1;
+    return PipeRequestType.HANDSHAKE_DATANODE_V1;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

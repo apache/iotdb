@@ -26,6 +26,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.io.IOException;
 
 public class PipeTransferTsFileSealReq extends PipeTransferFileSealReq {
+
+  private PipeTransferTsFileSealReq() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
     return PipeRequestType.TRANSFER_TS_FILE_SEAL;
