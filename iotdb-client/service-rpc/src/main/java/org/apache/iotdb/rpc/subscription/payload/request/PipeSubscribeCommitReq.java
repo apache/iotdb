@@ -91,10 +91,10 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       return false;
     }
     PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
-    return committerKeyAndCommitIds.equals(that.committerKeyAndCommitIds)
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.committerKeyAndCommitIds, that.committerKeyAndCommitIds)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override

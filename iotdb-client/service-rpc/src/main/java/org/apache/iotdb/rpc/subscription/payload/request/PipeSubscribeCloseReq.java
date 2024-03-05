@@ -17,42 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
 import java.io.IOException;
 import java.util.Objects;
 
-public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
+public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeCommitResp`, called by the subscription
-   * server.
+   * Serialize the incoming parameters into `PipeSubscribeCloseReq`, called by the subscription
+   * client.
    */
-  public static PipeSubscribeCommitResp toTPipeSubscribeResp(TSStatus status) throws IOException {
-    final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
+  public static PipeSubscribeCloseReq toTPipeSubscribeReq() throws IOException {
+    final PipeSubscribeCloseReq req = new PipeSubscribeCloseReq();
 
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
+    req.type = PipeSubscribeRequestType.CLOSE.getType();
 
-    return resp;
+    return req;
   }
 
-  /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
-  public static PipeSubscribeCommitResp fromTPipeSubscribeResp(TPipeSubscribeResp commitResp) {
-    final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribeCloseReq fromTPipeSubscribeReq(TPipeSubscribeReq closeReq) {
+    final PipeSubscribeCloseReq req = new PipeSubscribeCloseReq();
 
-    resp.status = commitResp.status;
-    resp.version = commitResp.version;
-    resp.type = commitResp.type;
-    resp.body = commitResp.body;
+    req.version = closeReq.version;
+    req.type = closeReq.type;
+    req.body = closeReq.body;
 
-    return resp;
+    return req;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -65,15 +62,14 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeCommitResp that = (PipeSubscribeCommitResp) obj;
-    return Objects.equals(this.status, that.status)
-        && this.version == that.version
+    PipeSubscribeCloseReq that = (PipeSubscribeCloseReq) obj;
+    return this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, version, type, body);
+    return Objects.hash(version, type, body);
   }
 }

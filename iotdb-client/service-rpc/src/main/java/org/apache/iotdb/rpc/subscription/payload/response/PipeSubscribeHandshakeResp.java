@@ -95,11 +95,11 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       return false;
     }
     PipeSubscribeHandshakeResp that = (PipeSubscribeHandshakeResp) obj;
-    return endPoints.equals(that.endPoints)
-        && status == that.status
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.endPoints, that.endPoints)
+        && Objects.equals(this.status, that.status)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override

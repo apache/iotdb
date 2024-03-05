@@ -81,10 +81,10 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
       return false;
     }
     PipeSubscribeSubscribeReq that = (PipeSubscribeSubscribeReq) obj;
-    return topicNames.equals(that.topicNames)
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.topicNames, that.topicNames)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override

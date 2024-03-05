@@ -17,39 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-public class EnrichedTablets {
+public class ConsumerConfig {
 
-  private transient String topicName;
-  private transient List<Tablet> tablets = new ArrayList<>();
+  private transient String consumerGroupID;
+  private transient String consumerClientID;
+
+  // TODO: more configs
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(topicName, stream);
-    ReadWriteIOUtils.write(tablets.size(), stream);
-    for (Tablet tablet : tablets) {
-      tablet.serialize(stream);
-    }
+    ReadWriteIOUtils.write(consumerGroupID, stream);
+    ReadWriteIOUtils.write(consumerClientID, stream);
   }
 
-  public static EnrichedTablets deserialize(ByteBuffer buffer) {
-    EnrichedTablets enrichedTablets = new EnrichedTablets();
-    enrichedTablets.topicName = ReadWriteIOUtils.readString(buffer);
-    int size = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < size; ++i) {
-      enrichedTablets.tablets.add(Tablet.deserialize(buffer));
-    }
-    return enrichedTablets;
+  public static ConsumerConfig deserialize(ByteBuffer buffer) {
+    ConsumerConfig consumerConfig = new ConsumerConfig();
+    consumerConfig.consumerGroupID = ReadWriteIOUtils.readString(buffer);
+    consumerConfig.consumerClientID = ReadWriteIOUtils.readString(buffer);
+    return consumerConfig;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -62,14 +55,13 @@ public class EnrichedTablets {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    EnrichedTablets that = (EnrichedTablets) obj;
-    return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.tablets, that.tablets);
+    ConsumerConfig that = (ConsumerConfig) obj;
+    return Objects.equals(this.consumerGroupID, that.consumerGroupID)
+        && Objects.equals(this.consumerClientID, that.consumerClientID);
   }
 
   @Override
   public int hashCode() {
-    // TODO: Tablet hashCode
-    return Objects.hash(topicName, tablets);
+    return Objects.hash(consumerGroupID, consumerClientID);
   }
 }

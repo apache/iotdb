@@ -63,7 +63,9 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
       return false;
     }
     PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
-    return version == that.version && type == that.type && body.equals(that.body);
+    return this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override

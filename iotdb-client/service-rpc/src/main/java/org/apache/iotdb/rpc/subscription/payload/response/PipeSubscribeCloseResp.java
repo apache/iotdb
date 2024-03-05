@@ -25,17 +25,16 @@ import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import java.io.IOException;
 import java.util.Objects;
 
-public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
+public class PipeSubscribeCloseResp extends TPipeSubscribeResp {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeHeartbeatResp`, called by the subscription
+   * Serialize the incoming parameters into `PipeSubscribeCloseResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHeartbeatResp toTPipeSubscribeResp(TSStatus status)
-      throws IOException {
-    final PipeSubscribeHeartbeatResp resp = new PipeSubscribeHeartbeatResp();
+  public static PipeSubscribeCloseResp toTPipeSubscribeResp(TSStatus status) throws IOException {
+    final PipeSubscribeCloseResp resp = new PipeSubscribeCloseResp();
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
@@ -45,14 +44,13 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
   }
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
-  public static PipeSubscribeHeartbeatResp fromTPipeSubscribeResp(
-      TPipeSubscribeResp heartbeatResp) {
-    final PipeSubscribeHeartbeatResp resp = new PipeSubscribeHeartbeatResp();
+  public static PipeSubscribeCloseResp fromTPipeSubscribeResp(TPipeSubscribeResp closeResp) {
+    final PipeSubscribeCloseResp resp = new PipeSubscribeCloseResp();
 
-    resp.status = heartbeatResp.status;
-    resp.version = heartbeatResp.version;
-    resp.type = heartbeatResp.type;
-    resp.body = heartbeatResp.body;
+    resp.status = closeResp.status;
+    resp.version = closeResp.version;
+    resp.type = closeResp.type;
+    resp.body = closeResp.body;
 
     return resp;
   }
@@ -67,7 +65,7 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHeartbeatResp that = (PipeSubscribeHeartbeatResp) obj;
+    PipeSubscribeCloseResp that = (PipeSubscribeCloseResp) obj;
     return Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type

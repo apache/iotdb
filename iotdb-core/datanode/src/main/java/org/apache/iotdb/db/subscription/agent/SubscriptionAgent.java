@@ -22,13 +22,23 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
@@ -44,18 +54,24 @@ public class SubscriptionAgent {
   public final TPipeSubscribeResp handle(TPipeSubscribeReq req) {
     // TODO: handle request version
     final byte reqVersion = req.getVersion();
-    final short rawRequestType = req.getType();
-    if (PipeSubscribeRequestType.isValidatedRequestType(rawRequestType)) {
-      switch (PipeSubscribeRequestType.valueOf(rawRequestType)) {
+    final short reqType = req.getType();
+    if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
+      switch (PipeSubscribeRequestType.valueOf(reqType)) {
         case HANDSHAKE:
           return handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq.fromTPipeSubscribeReq(req));
         case HEARTBEAT:
           return handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq.fromTPipeSubscribeReq(req));
         case SUBSCRIBE:
+          return handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq.fromTPipeSubscribeReq(req));
         case UNSUBSCRIBE:
+          return handlePipeSubscribeUnsubscribe(
+              PipeSubscribeUnsubscribeReq.fromTPipeSubscribeReq(req));
         case POLL:
+          return handlePipeSubscribePoll(PipeSubscribePollReq.fromTPipeSubscribeReq(req));
         case COMMIT:
+          return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
         case CLOSE:
+          return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
         default:
           break;
       }
@@ -64,7 +80,7 @@ public class SubscriptionAgent {
     final TSStatus status =
         RpcUtils.getStatus(
             TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("Unknown PipeSubscribeRequestType %s.", rawRequestType));
+            String.format("Unknown PipeSubscribeRequestType %s.", reqType));
     LOGGER.warn("Unknown PipeSubscribeRequestType, response status = {}.", status);
     return new TPipeSubscribeResp(
         status,
@@ -85,11 +101,49 @@ public class SubscriptionAgent {
   }
 
   private PipeSubscribeHeartbeatResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
-    // set thread local id info
-
-    // getDataNodeConfiguration
     try {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private PipeSubscribeSubscribeResp handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq req) {
+    try {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private PipeSubscribeUnsubscribeResp handlePipeSubscribeUnsubscribe(
+      PipeSubscribeUnsubscribeReq req) {
+    try {
+      return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private PipeSubscribePollResp handlePipeSubscribePoll(PipeSubscribePollReq req) {
+    try {
+      return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private PipeSubscribeCommitResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
+    try {
+      return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private PipeSubscribeCloseResp handlePipeSubscribeClose(PipeSubscribeCloseReq req) {
+    try {
+      return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
       return null;
     }

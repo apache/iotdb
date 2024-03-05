@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,10 +29,7 @@ import java.util.Objects;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
-  private transient String consumerGroupID;
-
-  // TODO: enrich with consumer config
-  private transient String consumerClientID;
+  private transient ConsumerConfig consumerConfig;
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -41,19 +37,17 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(
-      String consumerClientID, String consumerGroupID) throws IOException {
+  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(ConsumerConfig consumerConfig)
+      throws IOException {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
-    req.consumerClientID = consumerClientID;
-    req.consumerGroupID = consumerGroupID;
+    req.consumerConfig = consumerConfig;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(consumerClientID, outputStream);
-      ReadWriteIOUtils.write(consumerGroupID, outputStream);
+      consumerConfig.serialize(outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -64,8 +58,7 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
-    req.consumerClientID = ReadWriteIOUtils.readString(handshakeReq.body);
-    req.consumerGroupID = ReadWriteIOUtils.readString(handshakeReq.body);
+    req.consumerConfig = ConsumerConfig.deserialize(handshakeReq.body);
 
     req.version = handshakeReq.version;
     req.type = handshakeReq.type;
@@ -85,15 +78,14 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
       return false;
     }
     PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
-    return consumerGroupID.equals(that.consumerGroupID)
-        && consumerClientID.equals(that.consumerClientID)
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.consumerConfig, that.consumerConfig)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consumerGroupID, consumerClientID, version, type, body);
+    return Objects.hash(consumerConfig, version, type, body);
   }
 }

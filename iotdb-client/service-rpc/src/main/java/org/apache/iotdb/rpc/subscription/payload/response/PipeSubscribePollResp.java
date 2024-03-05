@@ -90,11 +90,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
       return false;
     }
     PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
-    return enrichedTabletsList.equals(that.enrichedTabletsList)
-        && status == that.status
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.enrichedTabletsList, that.enrichedTabletsList)
+        && Objects.equals(this.status, that.status)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override

@@ -68,10 +68,10 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
       return false;
     }
     PipeSubscribeSubscribeResp that = (PipeSubscribeSubscribeResp) obj;
-    return status == that.status
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(this.status, that.status)
+        && this.version == that.version
+        && this.type == that.type
+        && Objects.equals(this.body, that.body);
   }
 
   @Override
