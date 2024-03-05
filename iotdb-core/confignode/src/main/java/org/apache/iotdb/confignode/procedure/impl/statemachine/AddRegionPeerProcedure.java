@@ -21,13 +21,11 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -35,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +43,6 @@ import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.ADD_REGION_PEER_PROGRESS;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -95,14 +91,17 @@ public class AddRegionPeerProcedure
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
+          TRegionMaintainTaskStatus result;
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
+            result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
             throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
-          logBreakpoint(state.name());
-          setNextState(UPDATE_REGION_LOCATION_CACHE);
-          break;
+          if (result == TRegionMaintainTaskStatus.SUCCESS) {
+            setNextState(UPDATE_REGION_LOCATION_CACHE);
+            break;
+          }
+          throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
           return Flow.NO_MORE_STATE;
@@ -116,37 +115,6 @@ public class AddRegionPeerProcedure
   }
 
   // TODO: Clear all remaining information related to 'migrate' and 'migration'
-  public TSStatus waitForOneMigrationStepFinished(
-      TConsensusGroupId consensusGroupId, AddRegionPeerState state) throws Exception {
-    while (true) {
-      SyncDataNodeClientPool.getInstance().sendSyncRequestToDataNodeWithRetry()
-      Thread.sleep(ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
-    }
-    LOGGER.info(
-        "{}, Wait for state {} finished, regionId: {}",
-        REGION_MIGRATE_PROCESS,
-        state,
-        consensusGroupId);
-
-    TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
-    synchronized (addRegionPeerLock) {
-      try {
-        addRegionPeerLock.wait();
-
-        if (!addRegionPeerSuccess) {
-          throw new ProcedureException(
-              String.format("Region migration failed, regionId: %s", consensusGroupId));
-        }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
-        Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("Waiting for region migration interruption," + e.getMessage());
-      }
-    }
-    return status;
-  }
 
   public void notifyAddPeerFinished(TRegionMigrateResultReportReq req) {
 

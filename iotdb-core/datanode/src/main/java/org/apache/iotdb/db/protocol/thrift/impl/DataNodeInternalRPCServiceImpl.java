@@ -1620,7 +1620,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus getRegionMaintainResult(long taskId) throws TException {
+  public TRegionMigrateResultReportReq getRegionMaintainResult(long taskId) throws TException {
     return RegionMigrateService.getRegionMaintainResult(taskId);
   }
 

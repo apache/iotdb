@@ -22,8 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -70,8 +76,14 @@ public class RegionMaintainHandler {
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
+
   public RegionMaintainHandler(ConfigManager configManager) {
     this.configManager = configManager;
+    dataNodeClientManager =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   public static String getIdWithRpcEndpoint(TDataNodeLocation location) {
@@ -331,10 +343,18 @@ public class RegionMaintainHandler {
     return status;
   }
 
-  public void waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
-
+  public TRegionMaintainTaskStatus waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     while (true) {
-
+      try (SyncDataNodeInternalServiceClient dataNodeClient =
+          dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
+        TRegionMigrateResultReportReq report = dataNodeClient.getRegionMaintainResult(taskId);
+        if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
+          return report.getTaskStatus();
+        }
+        Thread.sleep(1000);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

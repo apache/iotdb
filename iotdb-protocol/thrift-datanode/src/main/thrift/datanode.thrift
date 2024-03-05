@@ -561,7 +561,7 @@ service IDataNodeRPCService {
   /**
    * Get the result of a region maintainance task
    */
-  common.TSStatus getRegionMaintainResult(i64 taskId)
+  common.TRegionMigrateResultReportReq getRegionMaintainResult(i64 taskId)
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
@@ -86,66 +87,39 @@ public class RemoveRegionPeerProcedure
           tsStatus =
               handler.removeRegionPeer(
                   targetDataNode, consensusGroupId, coordinator, this.getProcId());
+          TRegionMaintainTaskStatus result;
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
+            result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
-          logBreakpoint(state.name());
+          if (result != TRegionMaintainTaskStatus.SUCCESS) {
+            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+          }
           setNextState(DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
           tsStatus =
               handler.deleteOldRegionPeer(targetDataNode, consensusGroupId, this.getProcId());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
+            result = handler.waitTaskFinish(this.getProcId(), targetDataNode);
+          } else {
+            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
           }
-          logBreakpoint(state.name());
-          // Remove consensus group after a node stop, which will be failed, but we will
-          // continuously execute.
+          if (result != TRegionMaintainTaskStatus.SUCCESS) {
+            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
+          }
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;
         case REMOVE_REGION_LOCATION_CACHE:
           handler.removeRegionLocation(consensusGroupId, targetDataNode);
           logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;
-        default:
-          throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
       return Flow.NO_MORE_STATE;
     }
     return Flow.HAS_MORE_STATE;
-  }
-
-  public TSStatus waitForOneMigrationStepFinished(
-      TConsensusGroupId consensusGroupId, RemoveRegionPeerState state) throws Exception {
-
-    LOGGER.info(
-        "{}, Wait for state {} finished, regionId: {}",
-        REGION_MIGRATE_PROCESS,
-        state,
-        consensusGroupId);
-
-    TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
-    synchronized (removeRegionPeerLock) {
-      try {
-        // TODO set timeOut?
-        removeRegionPeerLock.wait();
-
-        if (!removeRegionPeerSuccess) {
-          throw new ProcedureException(
-              String.format("Region migration failed, regionId: %s", consensusGroupId));
-        }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
-        Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("Waiting for region migration interruption," + e.getMessage());
-      }
-    }
-    return status;
   }
 
   public void notifyRemovePeerFinished(TRegionMigrateResultReportReq req) {

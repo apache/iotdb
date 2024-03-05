@@ -421,7 +421,6 @@ public class RegionMigrateService implements IService {
       // deleteRegion: delete region data
       runResult = deleteRegion();
 
-      // TODO: 似乎没有必要向cn汇报，cn并未预期这里回报结果
       if (isFailed(runResult)) {
         taskFail(
             taskId,
@@ -506,8 +505,9 @@ public class RegionMigrateService implements IService {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage(
         String.format("Region: %s, state: %s, executed succeed", tRegionId, migrateState));
-    TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
-    req.setTaskStatus(TRegionMaintainTaskStatus.SUCCESS);
+    TRegionMigrateResultReportReq req =
+        new TRegionMigrateResultReportReq(TRegionMaintainTaskStatus.SUCCESS);
+    req.setRegionId(tRegionId).setMigrateResult(status);
     taskResultMap.put(taskId, req);
   }
 
@@ -519,9 +519,10 @@ public class RegionMigrateService implements IService {
       TSStatus status) {
     Map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason = new HashMap<>();
     failedNodeAndReason.put(failedNode, failedType);
-    TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
+    TRegionMigrateResultReportReq req =
+        new TRegionMigrateResultReportReq(TRegionMaintainTaskStatus.FAIL);
+    req.setRegionId(tRegionId).setMigrateResult(status);
     req.setFailedNodeAndReason(failedNodeAndReason);
-    req.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
     taskResultMap.put(taskId, req);
   }
 

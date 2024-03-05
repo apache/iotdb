@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,6 +53,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBRegionMigrateReliabilityIT {
   private static final Logger LOGGER =
@@ -292,15 +294,28 @@ public class IoTDBRegionMigrateReliabilityIT {
 
   private static void awaitUntilSuccess(
       Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
-    Awaitility.await()
-        .atMost(1, TimeUnit.MINUTES)
-        .until(
-            () -> {
-              Map<Integer, Set<Integer>> newRegionMap =
-                  getRegionMap(statement.executeQuery(SHOW_REGIONS));
-              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-            });
+    AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
+    try {
+      Awaitility.await()
+              .atMost(1, TimeUnit.MINUTES)
+              .until(
+                      () -> {
+                        Map<Integer, Set<Integer>> newRegionMap =
+                                getRegionMap(statement.executeQuery(SHOW_REGIONS));
+                        Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+                        lastTimeDataNodes.set(dataNodes);
+                        return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+                      });
+    } catch (ConditionTimeoutException e) {
+//      Set<Integer> expectation = new Set<>(lastTimeDataNodes);
+      String actualSetStr = lastTimeDataNodes.get().toString();
+      lastTimeDataNodes.get().remove(originalDataNode);
+      lastTimeDataNodes.get().add(destDataNode);
+      String expectSetStr = lastTimeDataNodes.toString();
+      LOGGER.info("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
+      throw e;
+    }
+
   }
 
   /** Check whether the original DataNode's region file has been deleted. */
