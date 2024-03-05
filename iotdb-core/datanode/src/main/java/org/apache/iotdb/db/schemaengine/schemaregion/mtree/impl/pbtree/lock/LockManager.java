@@ -23,7 +23,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class LockManager {
@@ -31,28 +30,6 @@ public class LockManager {
   private final LockPool lockPool = new LockPool();
 
   private final StampedWriterPreferredLock readWriteLock = new StampedWriterPreferredLock();
-
-  public long stampedReadLock(ICachedMNode node) {
-    AtomicLong stamp = new AtomicLong();
-    takeMNodeLock(node, lock -> stamp.set(lock.stampedReadLock()));
-    return stamp.get();
-  }
-
-  public void stampedReadUnlock(ICachedMNode node, long stamp) {
-    checkAndReleaseMNodeLock(node, lock -> lock.stampedReadUnlock(stamp));
-  }
-
-  public void threadReadLock(ICachedMNode node) {
-    takeMNodeLock(node, StampedWriterPreferredLock::threadReadLock);
-  }
-
-  public void threadReadLock(ICachedMNode node, boolean prior) {
-    takeMNodeLock(node, lock -> lock.threadReadLock(prior));
-  }
-
-  public void threadReadUnlock(ICachedMNode node) {
-    checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::threadReadUnlock);
-  }
 
   public void writeLock(ICachedMNode node) {
     takeMNodeLock(node, StampedWriterPreferredLock::writeLock);

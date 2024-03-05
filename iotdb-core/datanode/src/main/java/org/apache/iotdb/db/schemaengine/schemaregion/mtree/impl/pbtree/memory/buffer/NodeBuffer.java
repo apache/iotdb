@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -99,7 +100,7 @@ public class NodeBuffer implements INodeBuffer {
       // the cacheEntry may be set to volatile concurrently, the unVolatile node should not be
       // added
       // to nodeBuffer, which prevent the duplicated collecting on subTree
-      if (!cacheEntry.isVolatile()) {
+      if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.NonVolatile) {
         put(cacheEntry, parent);
       }
     }

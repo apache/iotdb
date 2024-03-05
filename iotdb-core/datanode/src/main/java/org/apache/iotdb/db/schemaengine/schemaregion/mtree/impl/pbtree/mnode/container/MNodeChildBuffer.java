@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
 import org.apache.iotdb.commons.schema.MergeSortIterator;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import javax.annotation.Nonnull;
@@ -76,6 +77,9 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
     }
     if (receivingBuffer != null) {
       flushingBuffer.putAll(receivingBuffer);
+      for (Map.Entry<String, ICachedMNode> entry : receivingBuffer.entrySet()) {
+        entry.getValue().getCacheEntry().setVolatileStatus(SchemaConstant.VolatileStatus.Flushing);
+      }
       receivingBuffer.clear();
     }
   }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IM
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.MemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.MockSchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 
 import java.io.File;
@@ -55,8 +56,8 @@ public class PBTreeFactory {
       SchemaRegionCachedMetric metric,
       Runnable flushCallback)
       throws MetadataException, IOException {
-    SchemaFile schemaFile = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
-    schemaFile.setMetric(metric);
+    MockSchemaFile schemaFile = new MockSchemaFile(storageGroup);
+    schemaFile.init();
     return createCachedMTreeStore(
         schemaRegionId, regionStatistics, metric, flushCallback, schemaFile);
   }

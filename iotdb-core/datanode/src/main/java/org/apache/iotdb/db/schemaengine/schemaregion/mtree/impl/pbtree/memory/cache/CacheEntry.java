@@ -18,22 +18,25 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  private volatile boolean isVolatile = false;
+  private volatile SchemaConstant.VolatileStatus volatileStatus =
+      SchemaConstant.VolatileStatus.NonVolatile;
 
   private final AtomicInteger pinSemaphore = new AtomicInteger(0);
 
   private final AtomicInteger volatileDescendantSemaphore = new AtomicInteger(0);
 
-  public boolean isVolatile() {
-    return isVolatile;
+  public SchemaConstant.VolatileStatus getVolatileStatus() {
+    return volatileStatus;
   }
 
-  public void setVolatile(boolean aVolatile) {
-    isVolatile = aVolatile;
+  public void setVolatileStatus(SchemaConstant.VolatileStatus volatileStatus) {
+    this.volatileStatus = volatileStatus;
   }
 
   public void pin() {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
@@ -133,7 +134,7 @@ public class MemoryManager implements IMemoryManager {
   public void updateCacheStatusAfterAppend(ICachedMNode node) {
     pinMNodeWithMemStatusUpdate(node);
     CacheEntry cacheEntry = getCacheEntry(node);
-    cacheEntry.setVolatile(true);
+    cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.New);
     memoryStatistics.addVolatileNode();
     // the ancestors must be processed first since the volatileDescendant judgement is of higher
     // priority than
@@ -158,11 +159,14 @@ public class MemoryManager implements IMemoryManager {
 
     CacheEntry cacheEntry = getCacheEntry(node);
     synchronized (cacheEntry) {
-      if (cacheEntry.isVolatile()) {
+      if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
+        if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Flushing) {
+          cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.Update);
+        }
         return;
       }
       // the status change affects the subTre collect in nodeBuffer
-      cacheEntry.setVolatile(true);
+      cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.Update);
       memoryStatistics.addVolatileNode();
       if (!cacheEntry.hasVolatileDescendant()) {
         nodeCache.removeFromNodeCache(cacheEntry);
@@ -195,7 +199,8 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry.incVolatileDescendant();
         }
 
-        if (!isStatusChange || cacheEntry.isVolatile()) {
+        if (!isStatusChange
+            || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
           return;
         }
       }
@@ -216,7 +221,8 @@ public class MemoryManager implements IMemoryManager {
     while (!current.isDatabase()) {
       synchronized (cacheEntry) {
         cacheEntry.decVolatileDescendant();
-        if (cacheEntry.hasVolatileDescendant() || cacheEntry.isVolatile()) {
+        if (cacheEntry.hasVolatileDescendant()
+            || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
           return;
         }
 
@@ -350,8 +356,7 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
-            if (status == ITERATE_UPDATE_BUFFER
-                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
+            if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
               if (cacheEntry.hasVolatileDescendant()
                   && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
                 // these two factor judgement is not redundant because the #hasVolatileDescendant is
@@ -363,11 +368,18 @@ public class MemoryManager implements IMemoryManager {
                 unlockImmediately = false;
                 return;
               } else {
+                if (status == ITERATE_UPDATE_BUFFER) {
+                  container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(
+                      node.getName());
+                } else {
+                  container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
+                }
+                nodeBuffer.addUpdatedNodeToBuffer(node);
                 continue;
               }
             }
 
-            cacheEntry.setVolatile(false);
+            cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
             memoryStatistics.removeVolatileNode();
             if (status == ITERATE_UPDATE_BUFFER) {
               container.moveMNodeFromUpdateChildBufferToCache(node.getName());
@@ -418,7 +430,7 @@ public class MemoryManager implements IMemoryManager {
             String.format(
                 "There should not exist descendant under this node %s", node.getFullPath()));
       }
-      if (cacheEntry.isVolatile()) {
+      if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
         addAncestorsToCache(node);
         memoryStatistics.removeVolatileNode();
         if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
@@ -456,33 +468,28 @@ public class MemoryManager implements IMemoryManager {
         if (node == null) {
           break;
         }
-        lockManager.threadReadLock(node.getParent(), true);
-        try {
-          cacheEntry = getCacheEntry(node);
-          // the operation that may change the cache status of a node should be synchronized
-          synchronized (cacheEntry) {
-            if (cacheEntry.isPinned()
-                || cacheEntry.isVolatile()
-                || cacheEntry.hasVolatileDescendant()) {
-              // since the node could be moved from cache to buffer after being taken from cache
-              // this check here is necessary to ensure that the node could truly be evicted
-              continue;
-            }
-
-            getBelongedContainer(node).evictMNode(node.getName());
-            if (node.isMeasurement()) {
-              String alias = node.getAsMeasurementMNode().getAlias();
-              if (alias != null) {
-                node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
-              }
-            }
-            nodeCache.removeFromNodeCache(getCacheEntry(node));
-            node.setCacheEntry(null);
-            evictedMNodes.add(node);
-            isSuccess = true;
+        cacheEntry = getCacheEntry(node);
+        // the operation that may change the cache status of a node should be synchronized
+        synchronized (cacheEntry) {
+          if (cacheEntry.isPinned()
+              || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile
+              || cacheEntry.hasVolatileDescendant()) {
+            // since the node could be moved from cache to buffer after being taken from cache
+            // this check here is necessary to ensure that the node could truly be evicted
+            continue;
           }
-        } finally {
-          lockManager.threadReadUnlock(node.getParent());
+
+          getBelongedContainer(node).evictMNode(node.getName());
+          if (node.isMeasurement()) {
+            String alias = node.getAsMeasurementMNode().getAlias();
+            if (alias != null) {
+              node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
+            }
+          }
+          nodeCache.removeFromNodeCache(getCacheEntry(node));
+          node.setCacheEntry(null);
+          evictedMNodes.add(node);
+          isSuccess = true;
         }
       }
 

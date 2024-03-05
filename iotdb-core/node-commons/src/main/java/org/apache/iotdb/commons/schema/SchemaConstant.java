@@ -123,4 +123,11 @@ public class SchemaConstant {
   public static boolean isStorageGroupType(byte type) {
     return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
+
+  public enum VolatileStatus {
+    NonVolatile,
+    New,
+    Update,
+    Flushing
+  }
 }

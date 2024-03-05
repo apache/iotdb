@@ -334,6 +334,24 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public synchronized void moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(String name) {
+    ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
+    if (updatedChildBuffer == null) {
+      updatedChildBuffer = new MNodeUpdateChildBuffer();
+    }
+    updatedChildBuffer.put(name, node);
+  }
+
+  @Override
+  public synchronized void moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(String name) {
+    ICachedMNode node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
+    if (updatedChildBuffer == null) {
+      updatedChildBuffer = new MNodeUpdateChildBuffer();
+    }
+    updatedChildBuffer.put(name, node);
+  }
+
+  @Override
   public synchronized void moveMNodeFromNewChildBufferToCache(String name) {
     ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
     if (childCache == null) {
