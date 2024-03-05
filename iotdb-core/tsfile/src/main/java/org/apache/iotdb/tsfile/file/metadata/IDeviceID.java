@@ -33,5 +33,7 @@ public interface IDeviceID extends Comparable<IDeviceID> {
 
   void serialize(ByteBuffer byteBuffer);
 
+  byte[] getBytes();
+
   int memorySize();
 }

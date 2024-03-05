@@ -612,6 +612,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    // TODO:[WAL]
     WALWriteUtils.write(isSignalMemTable(), buffer);
     if (isSignalMemTable()) {
       return;
@@ -647,7 +648,6 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < memTableMapSize; ++i) {
 
       IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
-
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {

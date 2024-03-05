@@ -54,7 +54,6 @@ public class PlainDeviceID implements IDeviceID {
     return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
   }
 
-  @Override
   public String toStringID() {
     return deviceID;
   }
@@ -62,6 +61,11 @@ public class PlainDeviceID implements IDeviceID {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(deviceID, byteBuffer);
+  }
+
+  @Override
+  public byte[] getBytes() {
+    return deviceID.getBytes();
   }
 
   @Override
