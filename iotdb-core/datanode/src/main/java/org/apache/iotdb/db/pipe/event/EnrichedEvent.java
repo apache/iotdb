@@ -175,10 +175,6 @@ public abstract class EnrichedEvent implements Event {
     return pipeName;
   }
 
-  public final PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
-
   /**
    * Get the pattern of this event.
    *
