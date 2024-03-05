@@ -52,7 +52,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 // If the index is invalid, the queue is seen as cleared before and thus
                 // needs snapshot re-transferring
                 || !getListeningQueue()
-                    .isValidIndex(((MetaProgressIndex) progressIndex).getIndex() + 1)
+                    .isGivenNextIndexValid(((MetaProgressIndex) progressIndex).getIndex() + 1)
             ? getNextIndexAfterSnapshot()
             : ((MetaProgressIndex) progressIndex).getIndex() + 1;
     itr = getListeningQueue().newIterator(index);

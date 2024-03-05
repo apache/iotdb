@@ -194,6 +194,21 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  /**
+   * Check if the given index is valid. An index is valid if it is between {@link
+   * ConcurrentIterableLinkedQueue#firstIndex} and {@link ConcurrentIterableLinkedQueue#tailIndex}.
+   * If the queue is empty, the given index is valid if it is equal to {@link
+   * ConcurrentIterableLinkedQueue#firstIndex}.
+   */
+  public boolean isNextIndexValid(long nextIndex) {
+    lock.readLock().lock();
+    try {
+      return firstIndex <= nextIndex && nextIndex <= tailIndex;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public boolean hasAnyIterators() {
     return !iteratorSet.isEmpty();
   }

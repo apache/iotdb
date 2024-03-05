@@ -70,7 +70,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
         default:
           event = new PipeSchemaRegionWritePlanEvent(node, false);
       }
-      if (super.tryListenToElement(event)) {
+      if (tryListen(event)) {
         event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       }
     }

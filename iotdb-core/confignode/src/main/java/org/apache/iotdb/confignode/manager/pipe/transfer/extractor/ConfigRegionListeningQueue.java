@@ -89,7 +89,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
         default:
           event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
-      if (super.tryListenToElement(event)) {
+      if (tryListen(event)) {
         event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       }
     }

@@ -50,45 +50,35 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractSerializableListeningQueue.class);
 
-  private final QueueSerializerType currentType;
-
-  private final EnumMap<QueueSerializerType, Supplier<QueueSerializer<E>>> serializerMap =
+  private final QueueSerializerType serializerType;
+  private final EnumMap<QueueSerializerType, Supplier<QueueSerializer<E>>> serializers =
       new EnumMap<>(QueueSerializerType.class);
 
   protected final ConcurrentIterableLinkedQueue<E> queue = new ConcurrentIterableLinkedQueue<>();
 
-  protected final AtomicBoolean isSealed = new AtomicBoolean();
+  protected final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   protected AbstractSerializableListeningQueue(QueueSerializerType serializerType) {
-    currentType = serializerType;
-    // Always seal initially unless manually open it
-    isSealed.set(true);
-    serializerMap.put(QueueSerializerType.PLAIN, PlainQueueSerializer::new);
+    this.serializerType = serializerType;
+    serializers.put(QueueSerializerType.PLAIN, PlainQueueSerializer::new);
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public boolean tryListenToElement(E element) {
-    if (isSealed.get()) {
+  protected synchronized boolean tryListen(E element) {
+    if (isClosed.get()) {
       return false;
     }
     queue.add(element);
     return true;
   }
 
-  public ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long index) {
-    return queue.iterateFrom(index);
-  }
-
-  public void returnIterator(ConcurrentIterableLinkedQueue<E>.DynamicIterator itr) {
-    itr.close();
-  }
-
   // Caller should ensure that the "newFirstIndex" is less than every iterators.
-  public long removeBefore(long newFirstIndex) {
-    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
-      while (itr.getNextIndex() < newFirstIndex) {
-        E element = itr.next(0);
+  public synchronized long removeBefore(long newFirstIndex) {
+    try (final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator =
+        queue.iterateFromEarliest()) {
+      while (iterator.getNextIndex() < newFirstIndex) {
+        final E element = iterator.next(0);
         if (Objects.isNull(element)) {
           break;
         }
@@ -98,48 +88,62 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     return queue.tryRemoveBefore(newFirstIndex);
   }
 
-  public boolean isValidIndex(long index) {
+  public synchronized boolean isGivenNextIndexValid(long nextIndex) {
     // The "tailIndex" is permitted to listen to the next incoming element
-    return queue.getFirstIndex() <= index && queue.getTailIndex() >= index;
+    return queue.isNextIndexValid(nextIndex);
+  }
+
+  public synchronized ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long nextIndex) {
+    return queue.iterateFrom(nextIndex);
+  }
+
+  public synchronized void returnIterator(
+      ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator) {
+    iterator.close();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public boolean serializeToFile(File snapshotName) throws IOException {
+  public synchronized boolean serializeToFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to serialize to file, because file [{}] is already exist.",
+          "Failed to serialize to file, because file {} is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      ReadWriteIOUtils.write(isSealed.get(), fileOutputStream);
-      ReadWriteIOUtils.write(currentType.getType(), fileOutputStream);
-      return serializerMap
-          .get(currentType)
-          .get()
-          .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
+      ReadWriteIOUtils.write(isClosed.get(), fileOutputStream);
+      ReadWriteIOUtils.write(serializerType.getType(), fileOutputStream);
+      if (serializers.containsKey(serializerType)) {
+        return serializers
+            .get(serializerType)
+            .get()
+            .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
+      } else {
+        throw new UnsupportedOperationException(
+            "Unknown serializer type: " + serializerType.getType());
+      }
     }
   }
 
-  public void deserializeFromFile(File snapshotName) throws IOException {
+  public synchronized void deserializeFromFile(File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to deserialize from file, file [{}] does not exist.",
+          "Failed to deserialize from file, file {} does not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
 
     queue.clear();
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
-      isSealed.set(ReadWriteIOUtils.readBool(inputStream));
+      isClosed.set(ReadWriteIOUtils.readBool(inputStream));
       final QueueSerializerType type =
           QueueSerializerType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-      if (serializerMap.containsKey(type)) {
-        serializerMap
+      if (serializers.containsKey(type)) {
+        serializers
             .get(type)
             .get()
             .loadQueueFromFile(inputStream, queue, this::deserializeFromByteBuffer);
@@ -164,15 +168,17 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   /////////////////////////////// Open & Close ///////////////////////////////
 
   public synchronized void open() {
-    isSealed.set(false);
+    isClosed.set(false);
   }
 
   @Override
   public synchronized void close() throws IOException {
-    isSealed.set(true);
-    try (ConcurrentIterableLinkedQueue<E>.DynamicIterator itr = queue.iterateFromEarliest()) {
+    isClosed.set(true);
+
+    try (final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator =
+        queue.iterateFromEarliest()) {
       while (true) {
-        E element = itr.next(0);
+        final E element = iterator.next(0);
         if (Objects.isNull(element)) {
           break;
         }
@@ -184,7 +190,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   protected abstract void releaseResource(E element);
 
-  public boolean isOpened() {
-    return !isSealed.get();
+  public synchronized boolean isOpened() {
+    return !isClosed.get();
   }
 }
