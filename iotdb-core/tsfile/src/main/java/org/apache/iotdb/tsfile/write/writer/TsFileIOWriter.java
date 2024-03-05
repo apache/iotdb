@@ -621,7 +621,7 @@ public class TsFileIOWriter implements AutoCloseable {
     // group by series
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
         TSMIterator.sortChunkMetadata(
-            chunkGroupMetadataList, currentChunkGroupDeviceId.toStringID(), chunkMetadataList);
+            chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);
     if (tempOutput == null) {
       tempOutput = new LocalTsFileOutput(new FileOutputStream(chunkMetadataTempFile));
     }

@@ -96,7 +96,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void loadChunkMetaDatas(List<Path> paths) throws IOException {
     // group measurements by device
-    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
+    TreeMap<IDeviceID, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
       if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
         deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
@@ -105,14 +105,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     }
     int count = 0;
     boolean enough = false;
-    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+    for (Map.Entry<IDeviceID, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       if (enough) {
         break;
       }
-      String selectedDevice = deviceMeasurements.getKey();
+      IDeviceID selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
       List<IDeviceID> devices = this.tsFileReader.getAllDevices();
-      String[] deviceNames = devices.toArray(new String[0]);
+      IDeviceID[] deviceNames = devices.toArray(new IDeviceID[0]);
       if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
         continue;
       }
@@ -172,14 +172,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     // group measurements by device
 
-    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
+    TreeMap<IDeviceID, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
       deviceMeasurementsMap
           .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
           .add(path.getMeasurement());
     }
-    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
-      String selectedDevice = deviceMeasurements.getKey();
+    for (Map.Entry<IDeviceID, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      IDeviceID selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
 
       // measurement -> ChunkMetadata list
