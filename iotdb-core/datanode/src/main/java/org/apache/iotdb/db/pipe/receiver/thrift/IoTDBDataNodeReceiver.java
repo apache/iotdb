@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -317,10 +316,5 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     return result.status;
-  }
-
-  @Override
-  public IoTDBConnectorRequestVersion getVersion() {
-    return IoTDBConnectorRequestVersion.VERSION_1;
   }
 }
