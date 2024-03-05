@@ -19,6 +19,61 @@
 
 package org.apache.iotdb.rpc.subscription.payload.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-public class PipeSubscribeCommitResp extends TPipeSubscribeResp {}
+import java.io.IOException;
+import java.util.Objects;
+
+public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
+
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeCommitResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeCommitResp toTPipeSubscribeResp(TSStatus status) throws IOException {
+    final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
+
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
+
+    return resp;
+  }
+
+  /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
+  public static PipeSubscribeCommitResp fromTPipeSubscribeResp(TPipeSubscribeResp commitResp) {
+    final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
+
+    resp.status = commitResp.status;
+    resp.version = commitResp.version;
+    resp.type = commitResp.type;
+    resp.body = commitResp.body;
+
+    return resp;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeCommitResp that = (PipeSubscribeCommitResp) obj;
+    return status == that.status
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(status, version, type, body);
+  }
+}

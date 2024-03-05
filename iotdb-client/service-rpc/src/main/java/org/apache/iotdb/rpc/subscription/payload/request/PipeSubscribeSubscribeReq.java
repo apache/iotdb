@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
 
@@ -46,7 +47,7 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
     req.topicNames = topicNames;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
-    req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
+    req.type = PipeSubscribeRequestType.SUBSCRIBE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.writeStringList(topicNames, outputStream);
@@ -67,5 +68,27 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
     req.body = subscribeReq.body;
 
     return req;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeSubscribeReq that = (PipeSubscribeSubscribeReq) obj;
+    return topicNames.equals(that.topicNames)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicNames, version, type, body);
   }
 }

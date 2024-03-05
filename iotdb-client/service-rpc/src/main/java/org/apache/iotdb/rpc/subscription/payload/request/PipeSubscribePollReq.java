@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
@@ -46,7 +47,7 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
     req.topicNames = topicNames;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
-    req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
+    req.type = PipeSubscribeRequestType.POLL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.writeStringList(topicNames, outputStream);
@@ -57,15 +58,37 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
+  public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq pollReq) {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
     req.topicNames = ReadWriteIOUtils.readStringList(req.body);
 
-    req.version = subscribeReq.version;
-    req.type = subscribeReq.type;
-    req.body = subscribeReq.body;
+    req.version = pollReq.version;
+    req.type = pollReq.type;
+    req.body = pollReq.body;
 
     return req;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribePollReq that = (PipeSubscribePollReq) obj;
+    return topicNames.equals(that.topicNames)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicNames, version, type, body);
   }
 }

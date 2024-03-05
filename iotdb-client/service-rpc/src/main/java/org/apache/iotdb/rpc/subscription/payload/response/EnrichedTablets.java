@@ -30,8 +30,8 @@ import java.util.List;
 
 public class EnrichedTablets {
 
-  private String topicName;
-  private List<Tablet> tablets = new ArrayList<>();
+  private transient String topicName;
+  private transient List<Tablet> tablets = new ArrayList<>();
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);

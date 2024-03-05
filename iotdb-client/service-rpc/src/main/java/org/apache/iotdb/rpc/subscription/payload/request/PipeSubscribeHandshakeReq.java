@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
@@ -71,5 +72,28 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
     req.body = handshakeReq.body;
 
     return req;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
+    return consumerGroupID.equals(that.consumerGroupID)
+        && consumerClientID.equals(that.consumerClientID)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(consumerGroupID, consumerClientID, version, type, body);
   }
 }

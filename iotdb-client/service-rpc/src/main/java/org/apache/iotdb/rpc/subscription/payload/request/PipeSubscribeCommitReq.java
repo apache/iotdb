@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
@@ -47,7 +48,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     req.committerKeyAndCommitIds = committerKeyAndCommitIds;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
-    req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
+    req.type = PipeSubscribeRequestType.COMMIT.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), outputStream);
@@ -62,7 +63,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
+  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     int size = ReadWriteIOUtils.readInt(req.body);
@@ -72,10 +73,32 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
     }
 
-    req.version = subscribeReq.version;
-    req.type = subscribeReq.type;
-    req.body = subscribeReq.body;
+    req.version = commitReq.version;
+    req.type = commitReq.type;
+    req.body = commitReq.body;
 
     return req;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
+    return committerKeyAndCommitIds.equals(that.committerKeyAndCommitIds)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(committerKeyAndCommitIds, version, type, body);
   }
 }

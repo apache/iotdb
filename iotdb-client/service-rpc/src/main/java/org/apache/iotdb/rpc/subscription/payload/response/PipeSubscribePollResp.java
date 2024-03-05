@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
@@ -48,7 +49,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(enrichedTabletsList.size(), outputStream);
@@ -76,5 +77,28 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.body = pollResp.body;
 
     return resp;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
+    return enrichedTabletsList.equals(that.enrichedTabletsList)
+        && status == that.status
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(enrichedTabletsList, status, version, type, body);
   }
 }

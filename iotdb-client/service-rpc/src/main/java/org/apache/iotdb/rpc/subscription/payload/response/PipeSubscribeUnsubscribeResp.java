@@ -19,6 +19,63 @@
 
 package org.apache.iotdb.rpc.subscription.payload.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-public class PipeSubscribeUnsubscribeResp extends TPipeSubscribeResp {}
+import java.io.IOException;
+import java.util.Objects;
+
+public class PipeSubscribeUnsubscribeResp extends TPipeSubscribeResp {
+
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeUnsubscribeResp`, called by the
+   * subscription server.
+   */
+  public static PipeSubscribeUnsubscribeResp toTPipeSubscribeResp(TSStatus status)
+      throws IOException {
+    final PipeSubscribeUnsubscribeResp resp = new PipeSubscribeUnsubscribeResp();
+
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
+
+    return resp;
+  }
+
+  /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
+  public static PipeSubscribeUnsubscribeResp fromTPipeSubscribeResp(
+      TPipeSubscribeResp unsubscribeResp) {
+    final PipeSubscribeUnsubscribeResp resp = new PipeSubscribeUnsubscribeResp();
+
+    resp.status = unsubscribeResp.status;
+    resp.version = unsubscribeResp.version;
+    resp.type = unsubscribeResp.type;
+    resp.body = unsubscribeResp.body;
+
+    return resp;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeUnsubscribeResp that = (PipeSubscribeUnsubscribeResp) obj;
+    return status == that.status
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(status, version, type, body);
+  }
+}

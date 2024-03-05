@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
@@ -81,5 +82,28 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
     resp.body = handshakeResp.body;
 
     return resp;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeHandshakeResp that = (PipeSubscribeHandshakeResp) obj;
+    return endPoints.equals(that.endPoints)
+        && status == that.status
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(endPoints, status, version, type, body);
   }
 }

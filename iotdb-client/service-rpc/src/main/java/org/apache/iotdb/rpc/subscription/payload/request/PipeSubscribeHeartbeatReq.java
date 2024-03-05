@@ -21,4 +21,53 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
-public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {}
+import java.io.IOException;
+import java.util.Objects;
+
+public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
+
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
+   * client.
+   */
+  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq() throws IOException {
+    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+
+    req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
+    req.type = PipeSubscribeRequestType.HEARTBEAT.getType();
+
+    return req;
+  }
+
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(TPipeSubscribeReq heartbeatReq) {
+    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+
+    req.version = heartbeatReq.version;
+    req.type = heartbeatReq.type;
+    req.body = heartbeatReq.body;
+
+    return req;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
+    return version == that.version && type == that.type && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(version, type, body);
+  }
+}

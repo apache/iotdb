@@ -106,6 +106,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -2568,8 +2569,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) throws TException {
-    return null;
+  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) {
+    return SubscriptionAgent.getInstance().handle(req);
   }
 
   @Override
