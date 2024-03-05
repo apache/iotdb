@@ -89,20 +89,16 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
         default:
           event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
-      if (tryListen(event)) {
-        event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
-      }
+      tryListen(event);
     }
   }
 
   public void tryListenToSnapshots(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
-      PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
-      events.add(event);
+      events.add(new PipeConfigRegionSnapshotEvent(snapshotPath));
     }
-    super.listenToSnapshots(events);
+    listenToSnapshots(events);
   }
 
   /////////////////////////////// Reference count ///////////////////////////////

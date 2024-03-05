@@ -61,7 +61,10 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   private long getNextIndexAfterSnapshot() {
     Pair<Long, List<PipeSnapshotEvent>> eventPair = getListeningQueue().findAvailableSnapshots();
     // TODO: Trigger snapshot if not exists
-    long index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
+    long index =
+        !Objects.isNull(eventPair.getLeft()) || eventPair.getLeft() == Long.MIN_VALUE
+            ? eventPair.getLeft() + 1
+            : 0;
     historicalEvents = eventPair.getRight();
     return index;
   }

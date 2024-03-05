@@ -70,20 +70,16 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
         default:
           event = new PipeSchemaRegionWritePlanEvent(node, false);
       }
-      if (tryListen(event)) {
-        event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
-      }
+      tryListen(event);
     }
   }
 
   public void tryListenToSnapshot(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
-      PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
-      events.add(event);
+      events.add(new PipeSchemaRegionSnapshotEvent(snapshotPath));
     }
-    super.listenToSnapshots(events);
+    listenToSnapshots(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
