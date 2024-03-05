@@ -244,8 +244,7 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public TSStatus resetPeerList(ConsensusGroupId groupId, List<Peer> peers)
-      throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
 

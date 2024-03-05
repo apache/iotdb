@@ -150,11 +150,10 @@ public interface IConsensus {
    *
    * @param groupId the consensus group
    * @param peers the new peer list
-   * @return reset result
    * @throws ConsensusException when resetPeerList doesn't success with other reasons
    * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    */
-  TSStatus resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
+  void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
 
   // management API
 
