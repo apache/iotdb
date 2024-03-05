@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionListeningQueue.class);
-  private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
+  private static final String SNAPSHOT_FILE_NAME = "pipe_sr_listening_queue.bin";
 
   private SchemaRegionListeningQueue() {
     super();

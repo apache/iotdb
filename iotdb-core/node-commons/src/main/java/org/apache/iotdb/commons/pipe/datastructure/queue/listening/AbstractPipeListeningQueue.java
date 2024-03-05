@@ -49,7 +49,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
 
-  private static final String SNAPSHOT_PREFIX = ".snapshot";
+  private static final String SNAPSHOT_SUFFIX = ".snapshot";
 
   // The cache of the snapshot events list and the tail index of the queue
   // when the snapshot events are generated.
@@ -129,7 +129,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public final synchronized boolean serializeToFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file {} is already exist.",
@@ -151,7 +151,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   @Override
   public final synchronized void deserializeFromFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot, snapshot file {} is not exist.",
@@ -172,12 +172,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
           }
           ByteBuffer buffer = ByteBuffer.allocate(capacity);
           channel.read(buffer);
-          PipeSnapshotEvent event = (PipeSnapshotEvent) deserializeFromByteBuffer(buffer);
-          event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
-          queueTailIndex2SnapshotsCache.getRight().add(event);
+          queueTailIndex2SnapshotsCache
+              .getRight()
+              .add((PipeSnapshotEvent) deserializeFromByteBuffer(buffer));
         }
       }
     }
+
     super.deserializeFromFile(snapshotName);
   }
 

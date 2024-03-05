@@ -52,7 +52,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
 
-  private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
+  private static final String SNAPSHOT_FILE_NAME = "pipe_cr_listening_queue.bin";
 
   private int referenceCount = 0;
 
@@ -62,7 +62,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
+  public synchronized void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
@@ -70,6 +70,9 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
           tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
           return;
         case UnsetTemplate:
+          // Different clusters have different template ids, so we need to
+          // convert template id to template name, in order to make the event
+          // in receiver side executable.
           try {
             event =
                 new PipeConfigRegionWritePlanEvent(
@@ -82,7 +85,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
                     isGeneratedByPipe);
           } catch (MetadataException e) {
-            LOGGER.warn("Failed to collect UnsetTemplatePlan because ", e);
+            LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
             return;
           }
           break;
@@ -93,7 +96,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     }
   }
 
-  public void tryListenToSnapshots(List<String> snapshotPaths) {
+  public synchronized void tryListenToSnapshots(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
       events.add(new PipeConfigRegionSnapshotEvent(snapshotPath));
@@ -102,6 +105,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   }
 
   /////////////////////////////// Reference count ///////////////////////////////
+
+  // TODO: move to pipe runtime agent
 
   // ConfigNodeQueue does not need extra protection of consensus, because the
   // reference count is handled under consensus layer.
@@ -126,6 +131,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
+
   @Override
   protected ByteBuffer serializeToByteBuffer(Event event) {
     return ((SerializableEvent) event).serializeToByteBuffer();
@@ -135,6 +141,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
+      // We assume the caller of this method will put the deserialize result into a queue,
+      // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
@@ -146,12 +154,12 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 

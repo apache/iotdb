@@ -155,6 +155,8 @@ public class ConfigRegionListeningFilter {
       return false;
     }
 
+    // PipeEnriched & UnsetTemplate are not listened directly,
+    // but their inner plan or converted plan are listened.
     return type.equals(ConfigPhysicalPlanType.PipeEnriched)
         || type.equals(ConfigPhysicalPlanType.UnsetTemplate)
         || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
