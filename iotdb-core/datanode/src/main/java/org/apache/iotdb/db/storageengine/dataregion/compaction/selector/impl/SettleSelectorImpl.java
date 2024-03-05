@@ -207,18 +207,18 @@ public class SettleSelectorImpl implements ISettleSelector {
       // check expired device by ttl
       long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
-      boolean isDeleted = !deviceTimeIndex.isDeviceAlive(device, deviceTTL);
-      if (!isDeleted) {
-        // check deleted device by mods
-        isDeleted =
-            isDeviceDeletedByMods(
-                modifications,
-                device,
-                deviceTimeIndex.getStartTime(device),
-                deviceTimeIndex.getEndTime(device));
-      }
+      boolean isDeleted =
+          !deviceTimeIndex.isDeviceAlive(device, deviceTTL)
+              || isDeviceDeletedByMods(
+                  modifications,
+                  device,
+                  deviceTimeIndex.getStartTime(device),
+                  deviceTimeIndex.getEndTime(device));
+
       if (hasSetTTL) {
         if (!isDeleted) {
+          // For devices with TTL set, all data must expire in order to meet the conditions for
+          // being selected.
           return DirtyStatus.NOT_SATISFIED;
         }
         long outdatedTimeDiff = currentTime - deviceTimeIndex.getEndTime(device);

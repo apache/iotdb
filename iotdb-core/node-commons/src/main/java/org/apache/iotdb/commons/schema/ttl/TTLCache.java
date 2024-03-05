@@ -78,11 +78,8 @@ public class TTLCache {
   }
 
   /**
-   * If the path to be removed is internal node, then just reset its ttl. Else, find the sub path
-   * and remove it. Eg: The original ttl cache tree is as following: root / \ ** db / \ a b \ device
-   * <br>
-   * If unset ttl to root.db.b, then just reset node b ttl to NULL_TTL <br>
-   * If unset ttl to root.db.b.device, then remove sub path d.device
+   * Unset ttl and remove all useless nodes. If the path to be removed is internal node, then just
+   * reset its ttl. Else, find the sub path and remove it.
    *
    * @param nodes path to be removed
    */
@@ -100,16 +97,16 @@ public class TTLCache {
     }
     CacheNode parent = ttlCacheTree;
     int index = 0;
-    boolean flag;
+    boolean usefulFlag;
     CacheNode parentOfSubPathToBeRemoved = null;
     for (int i = 1; i < nodes.length; i++) {
-      flag = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
+      usefulFlag = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
       CacheNode child = parent.getChild(nodes[i]);
       if (child == null) {
         // there is no matching path on ttl cache tree
         return;
       }
-      if (flag) {
+      if (usefulFlag) {
         parentOfSubPathToBeRemoved = parent;
         index = i;
       }
@@ -169,8 +166,8 @@ public class TTLCache {
   }
 
   /**
-   * Return the ttl of path leaf node. If the path leaf node does not exist, it means that the TTL
-   * is not set, and return NULL_TTL.
+   * Return the ttl of path. If the path does not exist, it means that the TTL is not set, and
+   * return NULL_TTL.
    */
   public long getNodeTTL(String[] nodes) {
     CacheNode node = ttlCacheTree;
