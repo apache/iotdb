@@ -150,13 +150,15 @@ public class CompactionScheduleTaskManager implements IService {
       }
       try {
         compactionScheduleTaskThreadPool.shutdownNow();
-        compactionScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
+        if (!compactionScheduleTaskThreadPool.awaitTermination(
+            milliseconds, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException();
+        }
       } catch (InterruptedException e) {
         logger.warn(
             "compaction schedule task thread pool can not be closed in {} ms", milliseconds);
         Thread.currentThread().interrupt();
       }
-      waitForThreadPoolTerminated();
     } finally {
       lock.unlock();
     }
