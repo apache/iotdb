@@ -539,39 +539,20 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public TSStatus resetPeerList(ConsensusGroupId groupId, List<Peer> peers)
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup group = getGroupInfo(raftGroupId);
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup group = getGroupInfo(raftGroupId);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    TSStatus writeResult = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    for (Peer peer : peers) {
-      RaftPeer peerToRemove = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
-      // pre-condition: peer is a member of groupId
-      if (!group.getPeers().contains(peerToRemove)) {
-        throw new PeerAlreadyInConsensusGroupException(groupId, peer);
-      }
-      // update group peer information
-      List<RaftPeer> newConfig =
-          group.getPeers().stream()
-              .filter(raftPeer -> !raftPeer.equals(peerToRemove))
-              .collect(Collectors.toList());
-      RaftClientReply reply = sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
-      if (!reply.isSuccess()) {
-        throw new RatisRequestFailedException(reply.getException());
-      }
-      try {
-        writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
-      } catch (Exception e) {
-        throw new RatisRequestFailedException(e);
-      }
-    }
-    return writeResult;
+    final List<RaftPeer> newGroupPeers = Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+    final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
+
+    sendReconfiguration(newGroup);
   }
 
   /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
