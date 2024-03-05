@@ -51,7 +51,6 @@ import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -539,8 +538,7 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers)
-      throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
@@ -549,7 +547,8 @@ class RatisConsensus implements IConsensus {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    final List<RaftPeer> newGroupPeers = Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+    final List<RaftPeer> newGroupPeers =
+        Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
     sendReconfiguration(newGroup);

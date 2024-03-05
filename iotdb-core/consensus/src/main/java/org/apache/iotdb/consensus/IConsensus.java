@@ -149,8 +149,8 @@ public interface IConsensus {
    * so it will only be less but not more.
    *
    * @param groupId the consensus group
-   * @param peers   the new peer list
-   * @throws ConsensusException              when resetPeerList doesn't success with other reasons
+   * @param peers the new peer list
+   * @throws ConsensusException when resetPeerList doesn't success with other reasons
    * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    */
   void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
