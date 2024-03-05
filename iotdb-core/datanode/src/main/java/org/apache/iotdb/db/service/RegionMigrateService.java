@@ -130,9 +130,9 @@ public class RegionMigrateService implements IService {
    * @return if the submit task succeed
    */
   public synchronized boolean submitDeleteOldRegionPeerTask(TMaintainPeerReq req) {
-
     boolean submitSucceed = true;
     try {
+      taskResultMap.put(req.getTaskId(), unfinishedResult);
       regionMigratePool.submit(
           new DeleteOldRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {

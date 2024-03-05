@@ -297,17 +297,17 @@ public class IoTDBRegionMigrateReliabilityIT {
     AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
     try {
       Awaitility.await()
-              .atMost(1, TimeUnit.MINUTES)
-              .until(
-                      () -> {
-                        Map<Integer, Set<Integer>> newRegionMap =
-                                getRegionMap(statement.executeQuery(SHOW_REGIONS));
-                        Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-                        lastTimeDataNodes.set(dataNodes);
-                        return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-                      });
+          .atMost(1, TimeUnit.MINUTES)
+          .until(
+              () -> {
+                Map<Integer, Set<Integer>> newRegionMap =
+                    getRegionMap(statement.executeQuery(SHOW_REGIONS));
+                Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+                lastTimeDataNodes.set(dataNodes);
+                return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+              });
     } catch (ConditionTimeoutException e) {
-//      Set<Integer> expectation = new Set<>(lastTimeDataNodes);
+      //      Set<Integer> expectation = new Set<>(lastTimeDataNodes);
       String actualSetStr = lastTimeDataNodes.get().toString();
       lastTimeDataNodes.get().remove(originalDataNode);
       lastTimeDataNodes.get().add(destDataNode);
@@ -315,7 +315,6 @@ public class IoTDBRegionMigrateReliabilityIT {
       LOGGER.info("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
       throw e;
     }
-
   }
 
   /** Check whether the original DataNode's region file has been deleted. */

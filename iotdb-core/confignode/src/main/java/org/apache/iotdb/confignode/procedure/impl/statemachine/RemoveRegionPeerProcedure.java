@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +114,8 @@ public class RemoveRegionPeerProcedure
           handler.removeRegionLocation(consensusGroupId, targetDataNode);
           logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;
+        default:
+          throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
       return Flow.NO_MORE_STATE;
