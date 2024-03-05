@@ -164,19 +164,18 @@ public class ConfigRegionListeningFilter {
 
   public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
-    String inclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
-    String exclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
-
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
-    Set<PartialPath> inclusionPath = parseOptions(inclusionStr);
-    Set<PartialPath> exclusionPath = parseOptions(exclusionStr);
-    inclusionPath.forEach(
+    Set<PartialPath> inclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
+    Set<PartialPath> exclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+    inclusionOptions.forEach(
         inclusion ->
             planTypes.addAll(
                 OPTION_PLAN_MAP.keySet().stream()
@@ -184,7 +183,7 @@ public class ConfigRegionListeningFilter {
                     .map(OPTION_PLAN_MAP::get)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
-    exclusionPath.forEach(
+    exclusionOptions.forEach(
         exclusion ->
             planTypes.removeAll(
                 OPTION_PLAN_MAP.keySet().stream()
@@ -192,7 +191,6 @@ public class ConfigRegionListeningFilter {
                     .map(OPTION_PLAN_MAP::get)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
-
     return planTypes;
   }
 
