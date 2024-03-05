@@ -165,6 +165,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   /////////////////////////////// INSTANCE ///////////////////////////////
 
+  // TODO: move to pipe runtime agent
+
   public static ConfigRegionListeningQueue getInstance() {
     return ConfigPlanListeningQueueHolder.INSTANCE;
   }

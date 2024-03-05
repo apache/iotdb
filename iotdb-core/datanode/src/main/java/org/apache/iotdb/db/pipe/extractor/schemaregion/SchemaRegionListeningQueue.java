@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionListeningQueue.class);
+
   private static final String SNAPSHOT_FILE_NAME = "pipe_sr_listening_queue.bin";
 
   private SchemaRegionListeningQueue() {
@@ -53,7 +54,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void tryListenToNode(PlanNode node) {
+  public synchronized void tryListenToNode(PlanNode node) {
     if (SchemaRegionListeningFilter.shouldBeListenedByQueue(node)) {
       PipeSchemaRegionWritePlanEvent event;
       switch (node.getType()) {
@@ -74,7 +75,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
-  public void tryListenToSnapshot(List<String> snapshotPaths) {
+  public synchronized void tryListenToSnapshot(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
       events.add(new PipeSchemaRegionSnapshotEvent(snapshotPath));
@@ -93,6 +94,8 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      // We assume the caller of this method will put the deserialize result into a queue,
+      // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
@@ -103,7 +106,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(File snapshotDir) {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
@@ -112,7 +115,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
-  public void loadSnapshot(File snapshotDir) {
+  public synchronized void loadSnapshot(File snapshotDir) {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
@@ -121,6 +124,8 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   }
 
   /////////////////////////// Singleton ///////////////////////////
+
+  // TODO: move to pipe runtime
 
   public static SchemaRegionListeningQueue getInstance(int regionId) {
     return SchemaRegionListeningQueue.InstanceHolder.getOrCreateInstance(regionId);
