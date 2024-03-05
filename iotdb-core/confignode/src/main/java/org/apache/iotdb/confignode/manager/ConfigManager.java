@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.mq.MQManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -102,6 +103,7 @@ import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
@@ -118,6 +120,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -131,6 +134,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -165,6 +169,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -246,6 +252,9 @@ public class ConfigManager implements IManager {
   /** Manage quotas */
   private final ClusterQuotaManager clusterQuotaManager;
 
+  /** MQ */
+  private final MQManager mqManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -265,6 +274,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
+    PipeMQInfo pipeMQInfo = new PipeMQInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -298,6 +308,7 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
     this.pipeManager = new PipeManager(this, pipeInfo);
+    this.mqManager = new MQManager(this, pipeMQInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -1014,6 +1025,11 @@ public class ConfigManager implements IManager {
   @Override
   public PipeManager getPipeManager() {
     return pipeManager;
+  }
+
+  @Override
+  public MQManager getMQManager() {
+    return mqManager;
   }
 
   @Override
@@ -1820,6 +1836,38 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
         : new TGetAllPipeInfoResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createTopic(TCreateTopicReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQTopicCoordinator().createTopic(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropTopic(String topicName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQTopicCoordinator().dropTopic(topicName)
+        : status;
+  }
+
+  @Override
+  public TShowTopicResp showTopic(TShowTopicReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQTopicCoordinator().showTopic(req)
+        : new TShowTopicResp().setStatus(status);
+  }
+
+  @Override
+  public TGetAllTopicInfoResp getAllTopicInfo() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQTopicCoordinator().getAllTopicInfo()
+        : new TGetAllTopicInfoResp(status, Collections.emptyList());
   }
 
   @Override

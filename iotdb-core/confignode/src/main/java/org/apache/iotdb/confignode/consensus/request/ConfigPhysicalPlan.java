@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -426,6 +427,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeEnriched:
           plan = new PipeEnrichedPlan();
+          break;
+        case CreateTopic:
+          plan = new CreateTopicPlan();
+          break;
+        case DropTopic:
+          plan = new DropTopicPlan();
+          break;
+        case ShowTopic:
+          plan = new ShowTopicPlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

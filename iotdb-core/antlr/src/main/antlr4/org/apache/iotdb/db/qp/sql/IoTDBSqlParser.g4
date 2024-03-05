@@ -56,6 +56,8 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
+    // TOPIC
+    | createPipeMQTopic | dropPipeMQTopic | showPipeMQTopic | showPipeMQTopics
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -611,6 +613,30 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
+// Topic =========================================================================================
+createPipeMQTopic
+    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    ;
+
+topicAttributesClause
+    : WITH LR_BRACKET topicAttributeClause (COMMA topicAttributeClause)* RR_BRACKET
+    ;
+
+topicAttributeClause
+    : topicKey=STRING_LITERAL OPERATOR_SEQ topicValue=STRING_LITERAL
+    ;
+
+dropPipeMQTopic
+    : DROP TOPIC topicName=identifier
+    ;
+
+showPipeMQTopic
+    : SHOW TOPIC topicName=identifier
+    ;
+
+showPipeMQTopics
+    : SHOW TOPICS
+    ;
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths

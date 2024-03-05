@@ -82,6 +82,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowPipeMQTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -489,6 +492,19 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopPipe(StopPipeStatement stopPipeStatement, C context) {
     return visitStatement(stopPipeStatement, context);
+  }
+
+  public R visitCreatePipeMQTopic(
+      CreatePipeMQTopicStatement createPipeMQTopicStatement, C context) {
+    return visitStatement(createPipeMQTopicStatement, context);
+  }
+
+  public R visitDropPipeMQTopic(DropPipeMQTopicStatement dropPipeMQTopicStatement, C context) {
+    return visitStatement(dropPipeMQTopicStatement, context);
+  }
+
+  public R visitShowPipeMQTopics(ShowPipeMQTopicsStatement showPipeMQTopicsStatement, C context) {
+    return visitStatement(showPipeMQTopicsStatement, context);
   }
 
   public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {

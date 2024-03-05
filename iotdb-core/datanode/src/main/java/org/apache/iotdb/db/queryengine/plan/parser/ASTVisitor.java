@@ -168,6 +168,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -3751,6 +3753,59 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitCreatePipeMQTopic(IoTDBSqlParser.CreatePipeMQTopicContext ctx) {
+    final CreatePipeMQTopicStatement createPipeMQTopicStatement =
+        new CreatePipeMQTopicStatement(StatementType.CREATE_PIPE_MQ_TOPIC);
+
+    if (ctx.topicName != null) {
+      createPipeMQTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in CREATE PIPE MQ TOPIC, please enter topicName.");
+    }
+
+    if (ctx.topicAttributesClause() != null) {
+      createPipeMQTopicStatement.setTopicAttributes(
+          parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+    } else {
+      createPipeMQTopicStatement.setTopicAttributes(new HashMap<>());
+    }
+
+    return createPipeMQTopicStatement;
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<IoTDBSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (IoTDBSqlParser.TopicAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          parseStringLiteral(context.topicKey.getText()),
+          parseStringLiteral(context.topicValue.getText()));
+    }
+    return collectorMap;
+  }
+
+  @Override
+  public Statement visitDropPipeMQTopic(IoTDBSqlParser.DropPipeMQTopicContext ctx) {
+    final DropPipeMQTopicStatement dropPipeMQTopicStatement =
+        new DropPipeMQTopicStatement(StatementType.DROP_PIPE_MQ_TOPIC);
+
+    if (ctx.topicName != null) {
+      dropPipeMQTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP PIPE MQ TOPIC, please enter topicName.");
+    }
+
+    return dropPipeMQTopicStatement;
+  }
+
+  @Override
+  public Statement visitShowPipeMQTopics(IoTDBSqlParser.ShowPipeMQTopicsContext ctx) {
+    return new ShowPipePluginsStatement();
   }
 
   @Override

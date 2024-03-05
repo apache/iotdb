@@ -73,6 +73,9 @@ public enum DataNodeRequestType {
   PIPE_PUSH_SINGLE_META,
   PIPE_HEARTBEAT,
 
+  // Pipe MQ
+  PIPE_MQ_TOPIC_PUSH_SINGLE_META,
+
   // CQ
   EXECUTE_CQ,
 

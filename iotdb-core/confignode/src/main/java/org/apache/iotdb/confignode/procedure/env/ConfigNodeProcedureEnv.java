@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -716,6 +717,31 @@ public class ConfigNodeProcedureEnv {
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
     return clientHandler.getResponseMap();
+  }
+
+  public List<TSStatus> pushSinglePipeMQTopicOnDataNode(PipeMQTopicMeta pipeMQTopicMeta) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushPipeMQTopicMetaReq request =
+        new TPushPipeMQTopicMetaReq(pipeMQTopicMeta.serialize());
+
+    final AsyncClientHandler<TPushPipeMQTopicMetaReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_MQ_TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> dropSinglePipeMQTopicOnDataNode(String pipeMQTopicNameToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushPipeMQTopicMetaReq request = new TPushPipeMQTopicMetaReq(pipeMQTopicNameToDrop);
+
+    final AsyncClientHandler<TPushPipeMQTopicMetaReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_MQ_TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
   }
 
   public LockQueue getNodeLock() {

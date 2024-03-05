@@ -205,6 +205,11 @@ public enum ConfigPhysicalPlanType {
 
   /** Pipe PayLoad. */
   PipeEnriched((short) 1700),
+
+  /** Pipe MQ */
+  CreateTopic((short) 1800),
+  DropTopic((short) 1801),
+  ShowTopic((short) 1802),
   ;
 
   private final short planType;

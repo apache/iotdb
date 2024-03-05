@@ -17,28 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.manager.pipe.mq;
 
-public enum PipeTaskOperation {
-  CREATE_PIPE("createPipe"),
-  START_PIPE("startPipe"),
-  STOP_PIPE("stopPipe"),
-  DROP_PIPE("dropPipe"),
-  ALTER_PIPE("alterPipe"),
-  HANDLE_LEADER_CHANGE("handleLeaderChange"),
-  SYNC_PIPE_META("syncPipeMeta"),
-  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
-  CREATE_TOPIC("createTopic"),
-  DROP_TOPIC("dropTopic"),
-  ALTER_TOPIC("alterTopic");
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
+import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
 
-  private final String name;
+public class MQManager {
 
-  PipeTaskOperation(String name) {
-    this.name = name;
+  private final PipeMQTopicCoordinator pipeMQTopicCoordinator;
+
+  public MQManager(ConfigManager configManager, PipeMQInfo pipeMQInfo) {
+    this.pipeMQTopicCoordinator = new PipeMQTopicCoordinator(configManager, pipeMQInfo);
   }
 
-  public String getName() {
-    return name;
+  public PipeMQTopicCoordinator getPipeMQTopicCoordinator() {
+    return pipeMQTopicCoordinator;
   }
 }

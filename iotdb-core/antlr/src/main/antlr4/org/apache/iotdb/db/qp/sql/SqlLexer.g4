@@ -802,6 +802,14 @@ TOP
     : T O P
     ;
 
+TOPIC
+    : T O P I C
+    ;
+
+TOPICS
+    : T O P I C S
+    ;
+
 TRACING
     : T R A C I N G
     ;

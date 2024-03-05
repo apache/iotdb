@@ -56,6 +56,9 @@ import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.AlterPipeMQTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.CreatePipeMQTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.DropPipeMQTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -89,6 +92,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -907,6 +911,59 @@ public class ProcedureManager {
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus createTopic(TCreateTopicReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new CreatePipeMQTopicProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropTopic(String topicName) {
+    try {
+      long procedureId = executor.submitProcedure(new DropPipeMQTopicProcedure(topicName));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new AlterPipeMQTopicProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 

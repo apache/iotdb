@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -77,6 +78,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -119,6 +121,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
@@ -901,6 +905,30 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getAllPipeInfo(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus createTopic(TCreateTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropTopic(String topicName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropTopic(topicName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowTopicResp showTopic(TShowTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTopic(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetAllTopicInfoResp getAllTopicInfo() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getAllTopicInfo(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

@@ -17,28 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.state.pipe.mq;
 
-public enum PipeTaskOperation {
-  CREATE_PIPE("createPipe"),
-  START_PIPE("startPipe"),
-  STOP_PIPE("stopPipe"),
-  DROP_PIPE("dropPipe"),
-  ALTER_PIPE("alterPipe"),
-  HANDLE_LEADER_CHANGE("handleLeaderChange"),
-  SYNC_PIPE_META("syncPipeMeta"),
-  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
-  CREATE_TOPIC("createTopic"),
-  DROP_TOPIC("dropTopic"),
-  ALTER_TOPIC("alterTopic");
-
-  private final String name;
-
-  PipeTaskOperation(String name) {
-    this.name = name;
-  }
-
-  public String getName() {
-    return name;
-  }
+public enum OperatePipeMQState {
+  LOCK,
+  OPERATE_ON_CONFIG_NODES,
+  OPERATE_ON_DATA_NODES,
+  UNLOCK
 }

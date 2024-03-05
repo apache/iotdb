@@ -227,6 +227,8 @@ keyWords
     | TO
     | TOLERANCE
     | TOP
+    | TOPIC
+    | TOPICS
     | TRACING
     | TRIGGER
     | TRIGGERS

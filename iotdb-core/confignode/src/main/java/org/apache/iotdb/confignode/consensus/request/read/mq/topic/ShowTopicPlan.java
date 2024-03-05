@@ -17,28 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.consensus.request.read.mq.topic;
 
-public enum PipeTaskOperation {
-  CREATE_PIPE("createPipe"),
-  START_PIPE("startPipe"),
-  STOP_PIPE("stopPipe"),
-  DROP_PIPE("dropPipe"),
-  ALTER_PIPE("alterPipe"),
-  HANDLE_LEADER_CHANGE("handleLeaderChange"),
-  SYNC_PIPE_META("syncPipeMeta"),
-  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
-  CREATE_TOPIC("createTopic"),
-  DROP_TOPIC("dropTopic"),
-  ALTER_TOPIC("alterTopic");
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-  private final String name;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  PipeTaskOperation(String name) {
-    this.name = name;
+public class ShowTopicPlan extends ConfigPhysicalPlan {
+
+  public ShowTopicPlan() {
+    super(ConfigPhysicalPlanType.ShowTopic);
   }
 
-  public String getName() {
-    return name;
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    // Empty method, since it is not needed now
   }
 }
