@@ -203,6 +203,7 @@ import org.apache.iotdb.udf.api.UDTF;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -1718,7 +1719,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowPipeReq tShowPipeReq = new TShowPipeReq();
-      if (showPipesStatement.getPipeName() != null) {
+      if (!StringUtils.isEmpty(showPipesStatement.getPipeName())) {
         tShowPipeReq.setPipeName(showPipesStatement.getPipeName());
       }
       if (showPipesStatement.getWhereClause()) {
