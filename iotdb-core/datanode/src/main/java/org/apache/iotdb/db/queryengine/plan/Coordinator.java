@@ -144,6 +144,7 @@ public class Coordinator {
           new MPPQueryContext(
               sql,
               globalQueryId,
+              queryId,
               session,
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
@@ -190,15 +191,6 @@ public class Coordinator {
 
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
-  }
-
-  public IQueryExecution getQueryExecution(QueryId queryId) {
-    for (IQueryExecution queryExecution : queryExecutionMap.values()) {
-      if (queryExecution.getQueryId().equals(queryId.getId())) {
-        return queryExecution;
-      }
-    }
-    return null;
   }
 
   public List<IQueryExecution> getAllQueryExecutions() {

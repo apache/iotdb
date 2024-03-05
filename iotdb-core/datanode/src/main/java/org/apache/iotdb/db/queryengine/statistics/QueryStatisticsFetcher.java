@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.statistics;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -48,27 +47,25 @@ public class QueryStatisticsFetcher {
   private static final int LOCAL_HOST_PORT =
       IoTDBDescriptor.getInstance().getConfig().getInternalPort();
 
-  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      internalServiceClientManager =
-          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-              .createClientManager(
-                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
-
   private QueryStatisticsFetcher() {
     // allowed to do nothing
   }
 
   public static Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> fetchAllStatistics(
-      List<FragmentInstance> instances) throws FragmentInstanceFetchException {
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
+      throws FragmentInstanceFetchException {
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> fragmentInstanceStatistics =
         new HashMap<>();
     for (FragmentInstance instance : instances) {
-      fragmentInstanceStatistics.put(instance.getId(), fetchStatistics(instance));
+      fragmentInstanceStatistics.put(instance.getId(), fetchStatistics(instance, clientManager));
     }
     return fragmentInstanceStatistics;
   }
 
-  private static TFetchFragmentInstanceStatisticsResp fetchStatistics(FragmentInstance instance)
+  private static TFetchFragmentInstanceStatisticsResp fetchStatistics(
+      FragmentInstance instance,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
       throws FragmentInstanceFetchException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
 
@@ -80,8 +77,7 @@ public class QueryStatisticsFetcher {
       fragmentInstanceStatistics =
           FragmentInstanceManager.getInstance().getFragmentInstanceStatistics(instance.getId());
     } else {
-      try (SyncDataNodeInternalServiceClient client =
-          internalServiceClientManager.borrowClient(endPoint)) {
+      try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         fragmentInstanceStatistics =
             client.fetchFragmentInstanceStatistics(
                 new TFetchFragmentInstanceStatisticsReq(instance.getId().toThrift()));

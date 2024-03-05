@@ -70,6 +70,11 @@ public class FragmentInstanceExecution {
   private final long timeoutInMs;
 
   private final MPPDataExchangeManager exchangeManager;
+
+  // This lock is used to guarantee the atomicity of buildStatistics() and the set of
+  // statisticsRemoved,
+  // so that fetchStatistics() in FragmentInstanceManager won't get the statistics which was just
+  // cleared.
   private final ReadWriteLock statisticsLock = new ReentrantReadWriteLock();
   private boolean staticsRemoved = false;
 

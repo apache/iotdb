@@ -61,6 +61,12 @@ public class FragmentInstanceStatisticsDrawer {
         planHeader,
         0,
         String.format(
+            "Logical Optimization Cost: %.3f ms",
+            context.getLogicalOptimizationCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
             "Distribution Plan Cost: %.3f ms",
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
   }

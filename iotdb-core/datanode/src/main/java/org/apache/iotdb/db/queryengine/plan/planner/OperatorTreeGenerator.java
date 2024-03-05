@@ -3190,6 +3190,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 ExplainAnalyzeOperator.class.getSimpleName());
-    return new ExplainAnalyzeOperator(operatorContext, operator, node.isVerbose());
+    return new ExplainAnalyzeOperator(
+        operatorContext, operator, node.getQueryId(), node.isVerbose());
   }
 }

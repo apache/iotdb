@@ -131,7 +131,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     PlanNode root = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
     root =
         new ExplainAnalyzeNode(
-            context.getQueryId().genPlanNodeId(), root, explainAnalyzeStatement.isVerbose());
+            context.getQueryId().genPlanNodeId(),
+            root,
+            explainAnalyzeStatement.isVerbose(),
+            context.getLocalQueryId());
     context.getTypeProvider().setType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
     return root;
   }

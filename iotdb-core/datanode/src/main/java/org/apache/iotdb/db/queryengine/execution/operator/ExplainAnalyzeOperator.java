@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
@@ -63,17 +66,19 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       new FragmentInstanceStatisticsDrawer();
   private static final String LOG_TITLE =
       "---------------------Intermediate result of EXPLAIN ANALYZE---------------------:";
-
   private final ScheduledFuture<?> logRecordTask;
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
-  public ExplainAnalyzeOperator(OperatorContext operatorContext, Operator child, boolean verbose) {
+  public ExplainAnalyzeOperator(
+      OperatorContext operatorContext, Operator child, long queryId, boolean verbose) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
-    QueryExecution queryExecution =
-        (QueryExecution)
-            Coordinator.getInstance()
-                .getQueryExecution(operatorContext.getInstanceContext().getId().getQueryId());
+    Coordinator coordinator = Coordinator.getInstance();
+
+    this.clientManager = coordinator.getInternalServiceClientManager();
+
+    QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     fragmentInstanceStatisticsDrawer.renderPlanStatistics(queryExecution.getContext());
     this.logRecordTask =
@@ -107,7 +112,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
 
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
-        QueryStatisticsFetcher.fetchAllStatistics(instances);
+        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
     List<StatisticLine> statisticLines =
         fragmentInstanceStatisticsDrawer.renderFragmentInstances(instances, allStatistics, verbose);
 

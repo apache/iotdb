@@ -32,14 +32,17 @@ import java.util.List;
 public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final boolean verbose;
 
-  public ExplainAnalyzeNode(PlanNodeId id, PlanNode child, boolean verbose) {
+  private final long queryId;
+
+  public ExplainAnalyzeNode(PlanNodeId id, PlanNode child, boolean verbose, long queryId) {
     super(id, child);
     this.verbose = verbose;
+    this.queryId = queryId;
   }
 
   @Override
   public PlanNode clone() {
-    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose);
+    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId);
   }
 
   @Override
@@ -62,16 +65,22 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.EXPLAIN_ANALYZE.serialize(stream);
     ReadWriteIOUtils.write(verbose, stream);
+    ReadWriteIOUtils.write(queryId, stream);
   }
 
   public static ExplainAnalyzeNode deserialize(ByteBuffer byteBuffer) {
     boolean verbose = ReadWriteIOUtils.readBool(byteBuffer);
+    long queryId = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ExplainAnalyzeNode(planNodeId, null, verbose);
+    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId);
   }
 
   public boolean isVerbose() {
     return verbose;
+  }
+
+  public long getQueryId() {
+    return queryId;
   }
 
   @Override

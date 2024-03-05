@@ -24,6 +24,7 @@ public class QueryPlanStatistics {
   private long fetchPartitionCost;
   private long fetchSchemaCost;
   private long logicalPlanCost;
+  private long logicalOptimizationCost;
   private long distributionPlanCost;
 
   public void setAnalyzeCost(long analyzeCost) {
@@ -46,6 +47,10 @@ public class QueryPlanStatistics {
     this.distributionPlanCost = distributionPlanCost;
   }
 
+  public void setLogicalOptimizationCost(long logicalOptimizationCost) {
+    this.logicalOptimizationCost = logicalOptimizationCost;
+  }
+
   public long getAnalyzeCost() {
     return analyzeCost;
   }
@@ -64,5 +69,9 @@ public class QueryPlanStatistics {
 
   public long getDistributionPlanCost() {
     return distributionPlanCost;
+  }
+
+  public long getLogicalOptimizationCost() {
+    return logicalOptimizationCost;
   }
 }

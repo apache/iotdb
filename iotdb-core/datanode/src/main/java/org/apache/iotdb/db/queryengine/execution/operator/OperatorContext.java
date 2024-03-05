@@ -54,6 +54,9 @@ public class OperatorContext {
   private long totalExecutionTimeInNanos = 0L;
   private long nextCalledCount = 0L;
   private long hasNextCalledCount = 0L;
+
+  // SpecifiedInfo is used to record some custom information for the operator,
+  // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
   private Map<String, String> specifiedInfo = null;
   private long inputRows = 0;
   private long estimatedMemorySize;

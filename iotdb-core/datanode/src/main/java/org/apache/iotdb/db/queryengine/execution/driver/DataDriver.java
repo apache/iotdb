@@ -104,11 +104,8 @@ public class DataDriver extends Driver {
       this.init = true;
     } finally {
       ((DataDriverContext) driverContext).clearSourceOperators();
-      long currentTime = System.nanoTime();
-      driverContext
-          .getFragmentInstanceContext()
-          .setInitQueryDataSourceCost(currentTime - startTime);
-      QUERY_EXECUTION_METRICS.recordExecutionCost(QUERY_RESOURCE_INIT, currentTime - startTime);
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
+          QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
     }
   }
 

@@ -137,6 +137,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (!queryContext.isExplainAnalyze()) {
           // EXPLAIN ANALYZE will use these instances, so we can't clear them
           instance.getFragment().clearUselessField();
+        } else {
+          // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+          instance.getFragment().clearTypeProvider();
         }
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);

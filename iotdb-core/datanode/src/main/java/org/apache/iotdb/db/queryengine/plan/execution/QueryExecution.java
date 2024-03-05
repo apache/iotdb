@@ -355,14 +355,10 @@ public class QueryExecution implements IQueryExecution {
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context);
-    long startTime = System.nanoTime();
     this.logicalPlan = planner.plan(this.analysis);
-    if (isQuery()) {
-      context.setLogicalPlanCost(System.nanoTime() - startTime);
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
-      }
+    if (isQuery() && logger.isDebugEnabled()) {
+      logger.debug(
+          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
     checkTimeOutForQuery();

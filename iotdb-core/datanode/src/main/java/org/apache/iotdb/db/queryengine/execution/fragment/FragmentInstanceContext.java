@@ -98,8 +98,8 @@ public class FragmentInstanceContext extends QueryContext {
   private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
 
   private long initQueryDataSourceCost = 0;
-  private long readyQueueTime = 0;
-  private long blockQueueTime = 0;
+  private final AtomicLong readyQueueTime = new AtomicLong(0);
+  private final AtomicLong blockQueueTime = new AtomicLong(0);
   private long unclosedSeqFileNum = 0;
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
@@ -342,6 +342,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
+    long startTime = System.nanoTime();
     if (sourcePaths == null) {
       return;
     }
@@ -373,6 +374,7 @@ public class FragmentInstanceContext extends QueryContext {
         addUsedFilesForQuery(sharedQueryDataSource);
       }
     } finally {
+      setInitQueryDataSourceCost(System.nanoTime() - startTime);
       dataRegion.readUnlock();
     }
   }
@@ -589,19 +591,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void addReadyQueuedTime(long time) {
-    readyQueueTime += time;
+    readyQueueTime.addAndGet(time);
   }
 
   public void addBlockQueuedTime(long time) {
-    blockQueueTime += time;
+    blockQueueTime.addAndGet(time);
   }
 
   public long getReadyQueueTime() {
-    return readyQueueTime;
+    return readyQueueTime.get();
   }
 
   public long getBlockQueueTime() {
-    return blockQueueTime;
+    return blockQueueTime.get();
   }
 
   public long getClosedSeqFileNum() {
