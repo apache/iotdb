@@ -17,8 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.meta;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
-
-public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {}
+public class ConsumerConfig {}

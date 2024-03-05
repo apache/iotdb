@@ -17,25 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.response;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum PipeSubscribeRequestType {
-  HANDSHAKE((short) 0),
-  HEARTBEAT((short) 1),
-  POLL((short) 2),
-  COMMIT((short) 3),
-  CLOSE((short) 4),
-  SUBSCRIBE((short) 5),
-  UNSUBSCRIBE((short) 6),
+public enum PipeSubscribeResponseType {
+  ACK((short) 0),
+
+  POLL_TABLET_INSERT_NODE((short) 3),
+  POLL_TABLET_RAW((short) 4),
+  POLL_TABLET_BINARY((short) 5),
   ;
 
   private final short type;
 
-  PipeSubscribeRequestType(short type) {
+  PipeSubscribeResponseType(short type) {
     this.type = type;
   }
 
@@ -43,8 +41,8 @@ public enum PipeSubscribeRequestType {
     return type;
   }
 
-  private static final Map<Short, PipeSubscribeRequestType> TYPE_MAP =
-      Arrays.stream(PipeSubscribeRequestType.values())
+  private static final Map<Short, PipeSubscribeResponseType> TYPE_MAP =
+      Arrays.stream(PipeSubscribeResponseType.values())
           .collect(
               HashMap::new,
               (typeMap, pipeRequestType) -> typeMap.put(pipeRequestType.getType(), pipeRequestType),
@@ -54,7 +52,7 @@ public enum PipeSubscribeRequestType {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static PipeSubscribeRequestType valueOf(short type) {
+  public static PipeSubscribeResponseType valueOf(short type) {
     return TYPE_MAP.get(type);
   }
 }

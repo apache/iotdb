@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 public enum PipeSubscribeRequestVersion {
   VERSION_1((byte) 1),

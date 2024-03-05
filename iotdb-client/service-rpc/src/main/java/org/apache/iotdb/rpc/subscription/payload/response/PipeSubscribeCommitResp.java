@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 

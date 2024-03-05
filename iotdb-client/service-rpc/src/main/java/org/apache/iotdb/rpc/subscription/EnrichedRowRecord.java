@@ -17,8 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {}
+import java.util.List;
+
+public class EnrichedRowRecord {
+
+  private String topicName;
+  private RowRecord record;
+  private List<String> columnNameList;
+  private List<String> columnTypeList;
+
+  // TODO: translate EnrichedTablets to EnrichedRowRecord
+}

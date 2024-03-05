@@ -17,19 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload.response;
 
-public enum PipeSubscribeResponseVersion {
-  VERSION_1((byte) 1),
-  ;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-  private final byte version;
-
-  PipeSubscribeResponseVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
-  }
-}
+public class PipeSubscribeUnsubscribeResp extends TPipeSubscribeResp {}

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -61,10 +61,8 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /**
-   * Deserialize `PipeSubscribeCommitReq` to obtain parameters, called by the subscription server.
-   */
-  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(PipeSubscribeCommitReq subscribeReq) {
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     int size = ReadWriteIOUtils.readInt(req.body);

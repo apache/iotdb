@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -29,19 +29,19 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
+public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
   private transient List<String> topicNames = new ArrayList<>();;
 
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeSubscribeReq`, called by the subscription
+   * Serialize the incoming parameters into `PipeSubscribePollReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeSubscribeReq toTPipeSubscribeReq(List<String> topicNames)
+  public static PipeSubscribePollReq toTPipeSubscribeReq(List<String> topicNames)
       throws IOException {
-    final PipeSubscribeSubscribeReq req = new PipeSubscribeSubscribeReq();
+    final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
     req.topicNames = topicNames;
 
@@ -56,13 +56,9 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /**
-   * Deserialize `PipeSubscribeSubscribeReq` to obtain parameters, called by the subscription
-   * server.
-   */
-  public static PipeSubscribeSubscribeReq fromTPipeSubscribeReq(
-      PipeSubscribeSubscribeReq subscribeReq) {
-    final PipeSubscribeSubscribeReq req = new PipeSubscribeSubscribeReq();
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
+    final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
     req.topicNames = ReadWriteIOUtils.readStringList(req.body);
 

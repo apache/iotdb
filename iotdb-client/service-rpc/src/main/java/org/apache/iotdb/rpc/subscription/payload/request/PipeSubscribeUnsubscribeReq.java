@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -56,12 +56,8 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /**
-   * Deserialize `PipeSubscribeUnsubscribeReq` to obtain parameters, called by the subscription
-   * server.
-   */
-  public static PipeSubscribeUnsubscribeReq fromTPipeSubscribeReq(
-      PipeSubscribeUnsubscribeReq subscribeReq) {
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribeUnsubscribeReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
     req.topicNames = ReadWriteIOUtils.readStringList(req.body);

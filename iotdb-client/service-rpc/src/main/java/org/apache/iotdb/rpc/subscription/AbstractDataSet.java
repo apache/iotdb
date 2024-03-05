@@ -17,8 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+public interface AbstractDataSet {
 
-public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {}
+  EnrichedRowRecord next();
+
+  boolean hasNext();
+}

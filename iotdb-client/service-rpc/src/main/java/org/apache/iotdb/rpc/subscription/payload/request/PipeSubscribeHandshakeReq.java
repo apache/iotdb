@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -29,8 +29,10 @@ import java.nio.ByteBuffer;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
-  private transient String consumerClientID;
   private transient String consumerGroupID;
+
+  // TODO: enrich with consumer config
+  private transient String consumerClientID;
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -57,12 +59,8 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /**
-   * Deserialize `PipeSubscribeHandshakeReq` to obtain parameters, called by the subscription
-   * server.
-   */
-  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(
-      PipeSubscribeHandshakeReq handshakeReq) {
+  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
+  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
     req.consumerClientID = ReadWriteIOUtils.readString(handshakeReq.body);

@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
+
   private transient List<TEndPoint> endPoints = new ArrayList<>();
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -39,12 +41,13 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(List<TEndPoint> endPoints)
-      throws IOException {
+  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
+      TSStatus status, List<TEndPoint> endPoints) throws IOException {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
     resp.endPoints = endPoints;
 
+    resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.ACK.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -60,12 +63,9 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
     return resp;
   }
 
-  /**
-   * Deserialize `PipeSubscribeHandshakeResp` to obtain parameters, called by the subscription
-   * client.
-   */
+  /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeHandshakeResp fromTPipeSubscribeResp(
-      PipeSubscribeHandshakeResp handshakeResp) {
+      TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
     int size = ReadWriteIOUtils.readInt(handshakeResp.body);
@@ -75,6 +75,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       resp.endPoints.add(new TEndPoint(ip, port));
     }
 
+    resp.status = handshakeResp.status;
     resp.version = handshakeResp.version;
     resp.type = handshakeResp.type;
     resp.body = handshakeResp.body;
