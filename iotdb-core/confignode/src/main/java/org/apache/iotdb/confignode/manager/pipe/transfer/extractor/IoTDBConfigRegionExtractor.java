@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
-import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -30,7 +30,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.HashSet;
 import java.util.Set;
 
-public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
+public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
 
   @Override

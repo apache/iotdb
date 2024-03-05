@@ -33,7 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
+public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
+
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
   private List<PipeSnapshotEvent> historicalEvents = new ArrayList<>();
 
@@ -82,7 +83,7 @@ public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
                         pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
         event.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
       }
-      event.increaseReferenceCount(IoTDBMetaExtractor.class.getName());
+      event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
     }
 
@@ -101,7 +102,7 @@ public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     targetEvent.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
-    targetEvent.increaseReferenceCount(IoTDBMetaExtractor.class.getName());
+    targetEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return targetEvent;
   }
 

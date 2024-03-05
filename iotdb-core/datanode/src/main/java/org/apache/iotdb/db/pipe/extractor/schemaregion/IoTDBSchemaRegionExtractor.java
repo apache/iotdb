@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
+public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   private Set<PlanNodeType> listenTypes = new HashSet<>();
   private static final ConcurrentMap<Integer, Integer> referenceCountMap =
       new ConcurrentHashMap<>();
