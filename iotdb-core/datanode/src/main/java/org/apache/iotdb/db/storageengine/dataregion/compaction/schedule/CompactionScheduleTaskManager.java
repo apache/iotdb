@@ -289,10 +289,10 @@ public class CompactionScheduleTaskManager implements IService {
 
     public Future<Void> submitRepairScanTask(RepairTimePartitionScanTask scanTask) {
       lock.lock();
-      if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
-        return null;
-      }
       try {
+        if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
+          return null;
+        }
         Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
         submitRepairScanTaskFutures.add(future);
         return future;

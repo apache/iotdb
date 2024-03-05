@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -47,6 +46,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       throws IOException {
     super(file, maxMetadataSize);
     this.type = type;
+    // wrap the TsFileOutput to limit compaction write rate
+    super.out = new CompactionTsFileOutput(super.out);
   }
 
   public void markStartingWritingAligned() {
@@ -65,7 +66,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     }
     chunkWriter.writeToFileWriter(this);
     long writtenDataSize = this.getPos() - beforeOffset;
-    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
@@ -81,7 +81,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
-    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
@@ -103,13 +102,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.ALIGNED, writtenDataSize);
-    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
   }
 
   @Override
   public int checkMetadataSizeAndMayFlush() throws IOException {
     int size = super.checkMetadataSizeAndMayFlush();
-    acquireWrittenDataSizeWithCompactionWriteRateLimiter(size);
     CompactionMetrics.getInstance().recordWriteInfo(type, CompactionIoDataType.METADATA, size);
     return size;
   }
@@ -119,23 +116,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
-    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
-  }
-
-  private void acquireWrittenDataSizeWithCompactionWriteRateLimiter(long writtenDataSize) {
-    while (writtenDataSize > 0) {
-      if (writtenDataSize > Integer.MAX_VALUE) {
-        CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire(Integer.MAX_VALUE);
-        writtenDataSize -= Integer.MAX_VALUE;
-      } else {
-        CompactionTaskManager.getInstance()
-            .getMergeWriteRateLimiter()
-            .acquire((int) writtenDataSize);
-        return;
-      }
-    }
   }
 
   public boolean isEmptyTargetFile() {
