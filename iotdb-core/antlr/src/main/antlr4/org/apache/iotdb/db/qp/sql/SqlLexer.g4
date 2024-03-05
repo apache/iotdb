@@ -438,10 +438,6 @@ MIGRATE
     : M I G R A T E
     ;
 
-MODIFY
-    : M O D I F Y
-    ;
-
 NAN
     : N A N
     ;

@@ -83,10 +83,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     pipeManager
         .getPipePluginCoordinator()
         .getPipePluginInfo()
-        .checkPipePluginExistence(
-            createPipeRequest.getExtractorAttributes(),
-            createPipeRequest.getProcessorAttributes(),
-            createPipeRequest.getConnectorAttributes());
+        .checkBeforeCreatePipe(createPipeRequest);
     pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
 
     return false;
@@ -290,27 +287,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     CreatePipeProcedureV2 that = (CreatePipeProcedureV2) o;
-    return this.createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName())
-        && this.createPipeRequest
-            .getExtractorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getExtractorAttributes().toString())
-        && this.createPipeRequest
-            .getProcessorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getProcessorAttributes().toString())
-        && this.createPipeRequest
-            .getConnectorAttributes()
-            .toString()
-            .equals(that.createPipeRequest.getConnectorAttributes().toString());
+    return createPipeRequest.getPipeName().equals(that.createPipeRequest.getPipeName());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        createPipeRequest.getPipeName(),
-        createPipeRequest.getExtractorAttributes(),
-        createPipeRequest.getProcessorAttributes(),
-        createPipeRequest.getConnectorAttributes());
+    return Objects.hash(createPipeRequest.getPipeName());
   }
 }

@@ -760,9 +760,10 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
+   * @throws IllegalStateException if current pipe status is illegal.
    */
   protected boolean checkBeforeDropPipe(
-      PipeMeta existedPipeMeta, String pipeName, long creationTime) {
+      PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
     if (existedPipeMeta == null) {
       LOGGER.info(
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
@@ -789,8 +790,10 @@ public abstract class PipeTaskAgent {
    * Check if we need to drop pipe tasks.
    *
    * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
+   * @throws IllegalStateException if current pipe status is illegal.
    */
-  protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName) {
+  protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName)
+      throws IllegalStateException {
     if (existedPipeMeta == null) {
       LOGGER.info(
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
