@@ -1019,8 +1019,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 getAggregationTypeByFuncName(aggregationName),
                 Collections.singletonList(
                     context.getTypeProvider().getType(functionExpression.getOutputSymbol())),
-                null,
-                null,
+                functionExpression.getExpressions(),
+                functionExpression.getFunctionAttributes(),
                 timeAscending,
                 false);
         accumulators.add(accumulator);

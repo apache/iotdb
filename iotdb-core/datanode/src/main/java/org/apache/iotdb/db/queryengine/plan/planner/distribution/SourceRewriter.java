@@ -94,6 +94,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyze
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_IF;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.DIFF;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
@@ -199,13 +200,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1 && (!existDeviceCrossRegion)) {
         existDeviceCrossRegion = true;
-        // 1. specialProcess and existDeviceCrossRegion, use the old aggregation logic
-        // 2. `group by session, variation, count and count_if` can not use AggMergeSort, it uses
-        // old
-        // aggregation logic
-        if (analysis.isDeviceViewSpecialProcess()
-            && (analysis.hasGroupByParameter()
-                || hasCountIfAggregation(analysis.getDeviceViewOutputExpressions()))) {
+        if (aggregationCannotUseMergeSort()) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -310,6 +305,31 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
   }
 
+  /**
+   * aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used with
+   * group by parameter (session, variation, count), use the old aggregation logic
+   */
+  private boolean aggregationCannotUseMergeSort() {
+    if (!analysis.isDeviceViewSpecialProcess()) {
+      return false;
+    }
+
+    if (analysis.hasGroupByParameter()) {
+      return true;
+    }
+
+    for (Expression expression : analysis.getDeviceViewOutputExpressions()) {
+      if (expression instanceof FunctionExpression) {
+        String functionName = ((FunctionExpression) expression).getFunctionName();
+        if (COUNT_IF.equalsIgnoreCase(functionName) || DIFF.equalsIgnoreCase(functionName)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   private void constructDeviceViewNodeListWithCrossRegion(
       List<PlanNode> deviceViewNodeList,
       Set<TRegionReplicaSet> relatedDataRegions,
@@ -397,21 +417,29 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private void transferAggregatorsRecursively(PlanNode planNode, DistributionPlanContext context) {
+    List<AggregationDescriptor> descriptorList = getAggregationDescriptors(planNode);
+    if (descriptorList != null) {
+      for (AggregationDescriptor descriptor : descriptorList) {
+        descriptor.setStep(
+            planNode instanceof SlidingWindowAggregationNode
+                ? AggregationStep.INTERMEDIATE
+                : AggregationStep.PARTIAL);
+        updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
+      }
+    }
+    planNode.getChildren().forEach(child -> transferAggregatorsRecursively(child, context));
+  }
+
+  private List<AggregationDescriptor> getAggregationDescriptors(PlanNode planNode) {
     List<AggregationDescriptor> descriptorList = null;
     if (planNode instanceof SeriesAggregationSourceNode) {
       descriptorList = ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList();
     } else if (planNode instanceof AggregationNode) {
       descriptorList = ((AggregationNode) planNode).getAggregationDescriptorList();
+    } else if (planNode instanceof SlidingWindowAggregationNode) {
+      descriptorList = ((SlidingWindowAggregationNode) planNode).getAggregationDescriptorList();
     }
-
-    if (descriptorList != null) {
-      for (AggregationDescriptor descriptor : descriptorList) {
-        descriptor.setStep(AggregationStep.PARTIAL);
-        updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
-      }
-    }
-
-    planNode.getChildren().forEach(child -> transferAggregatorsRecursively(child, context));
+    return descriptorList;
   }
 
   private boolean hasCountIfAggregation(Set<Expression> selectExpressions) {
