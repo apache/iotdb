@@ -40,19 +40,21 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
-  private Set<PlanNodeType> listenTypes = new HashSet<>();
+
+  private Set<PlanNodeType> listendTypeSet = new HashSet<>();
+
   private static final ConcurrentMap<Integer, Integer> referenceCountMap =
       new ConcurrentHashMap<>();
 
   // "IsClosed" is an extra flag to avoid supply and auto start after close.
   // When a schema extractor is closed it cannot be restarted and may need a new one.
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = SchemaRegionListeningFilter.getPipeListenSet(parameters);
+    listendTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
@@ -60,11 +62,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // Delay the start process to schema region leader ready
     if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady()
         || hasBeenStarted.get()
-        || isClosed.get()) {
+        || hasBeenClosed.get()) {
       return;
     }
     // Typically if this is empty the PipeTask won't be created, this is just in case
-    if (!listenTypes.isEmpty()
+    if (!listendTypeSet.isEmpty()
         && (referenceCountMap.compute(
                 regionId, (id, count) -> Objects.nonNull(count) ? count + 1 : 1)
             == 1)) {
@@ -80,7 +82,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady() || isClosed.get()) {
+    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady() || hasBeenClosed.get()) {
       return null;
     }
     if (!hasBeenStarted.get()) {
@@ -95,18 +97,19 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean isListenType(Event event) {
-    return listenTypes.contains(((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
+  protected boolean isTypeListened(Event event) {
+    return listendTypeSet.contains(
+        ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
   }
 
   @Override
   public synchronized void close() throws Exception {
-    isClosed.set(true);
+    hasBeenClosed.set(true);
     if (!hasBeenStarted.get()) {
       return;
     }
     super.close();
-    if (!listenTypes.isEmpty()) {
+    if (!listendTypeSet.isEmpty()) {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper has no schema pipe after
       // one successful sync
       referenceCountMap.compute(regionId, (id, count) -> Objects.nonNull(count) ? count - 1 : 0);

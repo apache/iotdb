@@ -96,7 +96,7 @@ public class SchemaRegionListeningFilter {
     }
   }
 
-  public static Set<PlanNodeType> getPipeListenSet(PipeParameters parameters)
+  public static Set<PlanNodeType> parseListeningPlanTypeSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
     String inclusionStr =
         parameters.getStringOrDefault(

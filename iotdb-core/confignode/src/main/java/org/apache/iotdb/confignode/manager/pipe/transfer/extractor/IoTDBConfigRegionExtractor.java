@@ -31,13 +31,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
-  private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
+
+  private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
@@ -46,8 +47,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean isListenType(Event event) {
-    return listenTypes.contains(
+  protected boolean isTypeListened(Event event) {
+    return listenedTypeSet.contains(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
   }
 }

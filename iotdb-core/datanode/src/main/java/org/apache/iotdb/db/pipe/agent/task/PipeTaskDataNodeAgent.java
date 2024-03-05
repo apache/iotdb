@@ -115,7 +115,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.getPipeListenSet(extractorParameters).isEmpty();
+              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
+                  .isEmpty();
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
@@ -152,7 +153,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         Map<Integer, PipeTaskMeta> metaMap =
             pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-        if (!SchemaRegionListeningFilter.getPipeListenSet(
+        if (!SchemaRegionListeningFilter.parseListeningPlanTypeSet(
                 pipeMeta.getStaticMeta().getExtractorParameters())
             .isEmpty()) {
           for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
