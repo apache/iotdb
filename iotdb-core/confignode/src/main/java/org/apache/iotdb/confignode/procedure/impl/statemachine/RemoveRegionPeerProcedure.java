@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -42,7 +41,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -53,10 +51,6 @@ public class RemoveRegionPeerProcedure
   private TConsensusGroupId consensusGroupId;
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;
-
-  private boolean removeRegionPeerSuccess = true;
-  private String removeRegionPeerResult;
-  private final Object removeRegionPeerLock = new Object();
 
   public RemoveRegionPeerProcedure() {
     super();
@@ -123,36 +117,9 @@ public class RemoveRegionPeerProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  public void notifyRemovePeerFinished(TRegionMigrateResultReportReq req) {
-    LOGGER.info(
-        "{}, ConfigNode received region migration result reported by DataNode: {}",
-        REGION_MIGRATE_PROCESS,
-        req);
-
-    // TODO the req is used in roll back
-    synchronized (removeRegionPeerLock) {
-      TSStatus migrateStatus = req.getMigrateResult();
-      // Migration failed
-      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "{}, Region migration failed in DataNode, migrateStatus: {}",
-            REGION_MIGRATE_PROCESS,
-            migrateStatus);
-        removeRegionPeerSuccess = false;
-        removeRegionPeerResult = migrateStatus.toString();
-      }
-      removeRegionPeerLock.notifyAll();
-    }
-  }
-
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveRegionPeerState state)
       throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected boolean isRollbackSupported(RemoveRegionPeerState state) {
-    return false;
-  }
 
   @Override
   protected RemoveRegionPeerState getState(int stateId) {

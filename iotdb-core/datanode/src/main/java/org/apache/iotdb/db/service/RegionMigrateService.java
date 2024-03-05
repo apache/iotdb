@@ -65,6 +65,7 @@ public class RegionMigrateService implements IService {
   private RegionMigratePool regionMigratePool;
 
   // Map<taskId, taskStatus>
+  // TODO：暂时无法处理一个procedure中向同一个datanode提交多个异步任务的情况
   private static final ConcurrentHashMap<Long, TRegionMigrateResultReportReq> taskResultMap =
       new ConcurrentHashMap<>();
   private static final TRegionMigrateResultReportReq unfinishedResult =

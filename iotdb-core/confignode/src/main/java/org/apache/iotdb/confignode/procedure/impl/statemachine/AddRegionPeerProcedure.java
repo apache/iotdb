@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -42,7 +41,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.ADD_REGION_PEER_PROGRESS;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -54,11 +52,6 @@ public class AddRegionPeerProcedure
   private TDataNodeLocation coordinator;
 
   private TDataNodeLocation destDataNode;
-
-  private boolean addRegionPeerSuccess = true;
-  private String addRegionPeerResult;
-
-  private final Object addRegionPeerLock = new Object();
 
   public AddRegionPeerProcedure() {
     super();
@@ -116,34 +109,6 @@ public class AddRegionPeerProcedure
 
   // TODO: Clear all remaining information related to 'migrate' and 'migration'
 
-  public void notifyAddPeerFinished(TRegionMigrateResultReportReq req) {
-
-    LOGGER.info(
-        "{}, ConfigNode received region migration result reported by DataNode: {}",
-        ADD_REGION_PEER_PROGRESS,
-        req);
-
-    // TODO the req is used in roll back
-    synchronized (addRegionPeerLock) {
-      TSStatus migrateStatus = req.getMigrateResult();
-      // Migration failed
-      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "{}, Region migration failed in DataNode, migrateStatus: {}",
-            ADD_REGION_PEER_PROGRESS,
-            migrateStatus);
-        addRegionPeerSuccess = false;
-        addRegionPeerResult = migrateStatus.toString();
-      }
-      addRegionPeerLock.notifyAll();
-    }
-  }
-
-  @Override
-  protected boolean isRollbackSupported(AddRegionPeerState state) {
-    return false;
-  }
-
   @Override
   protected void rollbackState(
       ConfigNodeProcedureEnv configNodeProcedureEnv, AddRegionPeerState addRegionPeerState)
@@ -191,9 +156,5 @@ public class AddRegionPeerProcedure
 
   public TDataNodeLocation getCoordinator() {
     return coordinator;
-  }
-
-  public TDataNodeLocation getDestDataNode() {
-    return destDataNode;
   }
 }

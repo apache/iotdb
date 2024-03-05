@@ -52,8 +52,6 @@ public class RegionMigrateProcedure
   private static final int RETRY_THRESHOLD = 5;
 
   /** Wait region migrate finished */
-  private final Object regionMigrateLock = new Object();
-
   private TConsensusGroupId consensusGroupId;
 
   private TDataNodeLocation originalDataNode;
@@ -62,8 +60,6 @@ public class RegionMigrateProcedure
 
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
-
-  private boolean migrateSuccess = true;
 
   private String migrateResult = "";
 
