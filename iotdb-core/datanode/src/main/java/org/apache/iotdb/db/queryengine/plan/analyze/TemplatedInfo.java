@@ -65,7 +65,6 @@ public class TemplatedInfo {
   private Map<String, IMeasurementSchema> schemaMap;
   // not serialize
   private Map<String, List<InputLocation>> layoutMap;
-  private int maxTsBlockLineNum = -1;
 
   public TemplatedInfo(
       List<String> measurementList,

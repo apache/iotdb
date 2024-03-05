@@ -181,7 +181,7 @@ public class TopKOperator implements ProcessOperator {
       batchFinished = false;
       TsBlock currentTsBlock = getOperator(i).nextWithTimer();
       if (currentTsBlock == null || currentTsBlock.isEmpty()) {
-        return null;
+        continue;
       }
 
       boolean skipCurrentBatch = false;

@@ -48,6 +48,9 @@ public class TsBlockBuilder {
   // This could be any other small number.
   private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 8;
 
+  public static final int MAX_LINE_NUMBER =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
@@ -56,8 +59,6 @@ public class TsBlockBuilder {
   private List<TSDataType> types;
   private TsBlockBuilderStatus tsBlockBuilderStatus;
   private int declaredPositions;
-  private int maxTsBlockLineNumber =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   private TsBlockBuilder() {}
 
@@ -264,7 +265,7 @@ public class TsBlockBuilder {
   }
 
   public boolean isFull() {
-    return declaredPositions >= maxTsBlockLineNumber || tsBlockBuilderStatus.isFull();
+    return declaredPositions >= MAX_LINE_NUMBER || tsBlockBuilderStatus.isFull();
   }
 
   public boolean isEmpty() {
@@ -273,16 +274,6 @@ public class TsBlockBuilder {
 
   public int getPositionCount() {
     return declaredPositions;
-  }
-
-  public int getMaxTsBlockLineNumber() {
-    return this.maxTsBlockLineNumber;
-  }
-
-  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
-    if (maxTsBlockLineNumber > 0) {
-      this.maxTsBlockLineNumber = maxTsBlockLineNumber;
-    }
   }
 
   public long getSizeInBytes() {
