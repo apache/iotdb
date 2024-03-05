@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMetaKeeper;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMetaKeeper;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -84,7 +85,7 @@ public class PipeMQInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe %s, the pipe with the same name has been created",
+            "Failed to create pipe topic %s, the topic with the same name has been created",
             createTopicReq.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);
@@ -108,6 +109,28 @@ public class PipeMQInfo implements SnapshotProcessor {
     // No matter whether the topic exists, we allow the drop operation executed on all nodes to
     // ensure the consistency.
     // DO NOTHING HERE!
+  }
+
+  public void validateBeforeAlteringTopic(TAlterTopicReq alterTopicReq) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeAlteringTopicInternal(alterTopicReq);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeAlteringTopicInternal(TAlterTopicReq alterTopicReq) throws PipeException {
+    if (isTopicExisted(alterTopicReq.getTopicName())) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            "Failed to alter pipe topic %s, the pipe topic with the same name is not existed",
+            alterTopicReq.getTopicName());
+    LOGGER.warn(exceptionMessage);
+    throw new PipeException(exceptionMessage);
   }
 
   public boolean isTopicExisted(String topicName) {

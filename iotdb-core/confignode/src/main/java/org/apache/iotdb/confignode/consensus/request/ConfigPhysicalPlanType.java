@@ -210,6 +210,7 @@ public enum ConfigPhysicalPlanType {
   CreateTopic((short) 1800),
   DropTopic((short) 1801),
   ShowTopic((short) 1802),
+  AlterTopic((short) 1803),
   ;
 
   private final short planType;

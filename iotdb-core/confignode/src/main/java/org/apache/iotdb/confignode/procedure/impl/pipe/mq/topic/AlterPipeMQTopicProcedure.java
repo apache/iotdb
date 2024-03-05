@@ -19,14 +19,22 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.AbstractOperatePipeMQProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.task.AlterPipeProcedureV2;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
 
 public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
@@ -34,6 +42,9 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
   private TAlterTopicReq alterTopicReq;
 
+  private PipeMQTopicMeta updatedPipeMQTopicMeta;
+
+  private PipeMQTopicMeta pipeMQTopicMeta;
 
   public AlterPipeMQTopicProcedure() {
     super();
@@ -59,43 +70,71 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
     pipeMQTopicCoordinator.lock();
 
     // check if the topic exists
-// todo
+    // todo
     try {
       pipeMQTopicCoordinator.getPipeMQInfo().validateBeforeAlteringTopic(alterTopicReq);
     } catch (PipeException e) {
       // if the pipe  is a built-in plugin, we should not drop it
-      LOGGER.error("AlterPipeMQTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
+      LOGGER.error(
+          "AlterPipeMQTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
       throw e;
     }
   }
 
   @Override
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("AlterPipeMQTopicProcedure: executeFromOperateOnConfigNodes, try to alter topic");
 
+    updatedPipeMQTopicMeta =
+        new PipeMQTopicMeta(
+            alterTopicReq.getTopicName(),
+            System.currentTimeMillis(),
+            new HashMap<>(alterTopicReq.getTopicAttributes()));
+
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new AlterPipeMQTopicPlan(updatedPipeMQTopicMeta));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
+    }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info(
+        "AlterPipeMQTopicProcedure: executeFromOperateOnDataNodes({})",
+        alterTopicReq.getTopicName());
 
+    // do nothing
   }
 
   @Override
   protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-
+    LOGGER.info("AlterPipeMQTopicProcedure: executeFromUnlock({})", alterTopicReq.getTopicName());
+    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
   }
 
   @Override
   protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
-
+    LOGGER.info("AlterPipeMQTopicProcedure: rollbackFromLock({})", alterTopicReq.getTopicName());
+    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-
+    // do nothing
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-
+    // do nothing
   }
 }

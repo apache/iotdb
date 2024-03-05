@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -70,6 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMQTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
@@ -719,11 +719,11 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
-  public List<TSStatus> pushSinglePipeMQTopicOnDataNode(PipeMQTopicMeta pipeMQTopicMeta) {
+  public List<TSStatus> pushSinglePipeMQTopicOnDataNode(ByteBuffer pipeMQTopicMeta) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMQTopicMetaReq request =
-        new TPushPipeMQTopicMetaReq(pipeMQTopicMeta.serialize());
+        new TPushPipeMQTopicMetaReq().setTopicMeta(pipeMQTopicMeta);
 
     final AsyncClientHandler<TPushPipeMQTopicMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
@@ -735,7 +735,8 @@ public class ConfigNodeProcedureEnv {
   public List<TSStatus> dropSinglePipeMQTopicOnDataNode(String pipeMQTopicNameToDrop) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPushPipeMQTopicMetaReq request = new TPushPipeMQTopicMetaReq(pipeMQTopicNameToDrop);
+    final TPushPipeMQTopicMetaReq request =
+        new TPushPipeMQTopicMetaReq().setTopicNameToDrop(pipeMQTopicNameToDrop);
 
     final AsyncClientHandler<TPushPipeMQTopicMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(

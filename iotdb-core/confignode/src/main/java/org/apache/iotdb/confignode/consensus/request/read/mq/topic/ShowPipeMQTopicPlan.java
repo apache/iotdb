@@ -26,9 +26,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ShowTopicPlan extends ConfigPhysicalPlan {
+public class ShowPipeMQTopicPlan extends ConfigPhysicalPlan {
 
-  public ShowTopicPlan() {
+  public ShowPipeMQTopicPlan() {
     super(ConfigPhysicalPlanType.ShowTopic);
   }
 

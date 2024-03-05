@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.commons.pipe.mq.meta;
 
+import org.apache.iotdb.commons.pipe.mq.config.PipeMQTopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Set;
 
 public class PipeMQTopicMeta {
@@ -33,7 +36,7 @@ public class PipeMQTopicMeta {
   private long creationTime;
 
   private Set<String> subscribedConsumerGroupIDs;
-  private final PipeMQTopicConfig config;
+  private PipeMQTopicConfig config;
 
   private PipeMQTopicMeta() {
     // Empty constructor
@@ -42,6 +45,12 @@ public class PipeMQTopicMeta {
   public PipeMQTopicMeta(String topicName, PipeMQTopicConfig config) {
     this.topicName = topicName;
     this.config = config;
+  }
+
+  public PipeMQTopicMeta(String topicName, long creationTime, Map<String, String> topicAttributes) {
+    this.topicName = topicName;
+    this.creationTime = creationTime;
+    this.config = new PipeMQTopicConfig(topicAttributes);
   }
 
   public String getTopicName() {
@@ -78,21 +87,46 @@ public class PipeMQTopicMeta {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
 
-    config.serialize(outputStream);
+    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
+    for (Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
   }
 
-  public static PipeMQTopicMeta deserialize(FileInputStream fileInputStream) throws IOException {
-    final PipeMQTopicMeta pipeMQTopicMeta = new PipeMQTopicMeta();
+  public void serialize(FileOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(topicName, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
 
-    pipeMQTopicMeta.topicName = ReadWriteIOUtils.readString(fileInputStream);
-    pipeMQTopicMeta.creationTime = ReadWriteIOUtils.readLong(fileInputStream);
-
-    int size = ReadWriteIOUtils.readInt(fileInputStream);
-    for (int i = 0; i < size; i++) {
-      pipeMQTopicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(fileInputStream));
+    ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
+    for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
+      ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
 
-    pipeMQTopicMeta.config = PipeMQTopicConfig.deserialize(fileInputStream);
+    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
+    for (Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+  }
+
+  public static PipeMQTopicMeta deserialize(InputStream inputStream) throws IOException {
+    final PipeMQTopicMeta pipeMQTopicMeta = new PipeMQTopicMeta();
+
+    pipeMQTopicMeta.topicName = ReadWriteIOUtils.readString(inputStream);
+    pipeMQTopicMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
+
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      pipeMQTopicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(inputStream));
+    }
+
+    size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      final String key = ReadWriteIOUtils.readString(inputStream);
+      final String value = ReadWriteIOUtils.readString(inputStream);
+      pipeMQTopicMeta.config.getAttributes().put(key, value);
+    }
 
     return pipeMQTopicMeta;
   }

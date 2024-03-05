@@ -757,7 +757,8 @@ struct TShowTopicResp {
 
 struct TShowTopicInfo {
     1: required string topicName
-    2: optional map<string, string> topicAttributes
+    2: required i64 creationTime
+    3: optional string topicAttributes
 }
 
 struct TAlterTopicReq {

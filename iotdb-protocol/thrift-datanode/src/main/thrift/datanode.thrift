@@ -423,6 +423,11 @@ struct TPushSinglePipeMetaReq {
   2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
 }
 
+struct TPushPipeMQTopicMetaReq {
+   1: optional binary topicMeta // Should not set both to null.
+   2: optional string topicNameToDrop
+}
+
 struct TConstructViewSchemaBlackListReq{
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree

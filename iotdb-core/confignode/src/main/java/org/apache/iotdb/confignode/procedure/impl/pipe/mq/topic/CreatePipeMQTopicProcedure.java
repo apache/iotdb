@@ -37,6 +37,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreatePipeMQTopicProcedure.class);
@@ -63,8 +65,7 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
     pipeMQTopicCoordinator.lock();
 
-    // check if the topic exists
-
+    // 1. check if the topic exists
     try {
       pipeMQTopicCoordinator.getPipeMQInfo().validateBeforeCreatingTopic(createTopicReq);
     } catch (PipeException e) {
@@ -77,6 +78,13 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
       pipeMQTopicCoordinator.unlock();
       throw e;
     }
+
+    // 2. create the topic meta
+    pipeMQTopicMeta =
+        new PipeMQTopicMeta(
+            createTopicReq.getTopicName(),
+            System.currentTimeMillis(),
+            createTopicReq.getTopicAttributes());
   }
 
   @Override
@@ -85,11 +93,12 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
         "CreatePipeMQTopicProcedure: executeFromOperateOnConfigNodes({})",
         pipeMQTopicMeta.getTopicName());
 
-    final CreatePipeMQTopicPlan createPipeMQTopicPlan = new CreatePipeMQTopicPlan(pipeMQTopicMeta);
-
     TSStatus response;
     try {
-      response = env.getConfigManager().getConsensusManager().write(createPipeMQTopicPlan);
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new CreatePipeMQTopicPlan(pipeMQTopicMeta));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -106,10 +115,15 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
         "CreatePipeMQTopicProcedure: executeFromOperateOnDataNodes({})",
         pipeMQTopicMeta.getTopicName());
 
-    if (RpcUtils.squashResponseStatusList(env.pushSinglePipeMQTopicOnDataNode(pipeMQTopicMeta))
-            .getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return;
+    try {
+      if (RpcUtils.squashResponseStatusList(
+                  env.pushSinglePipeMQTopicOnDataNode(pipeMQTopicMeta.serialize()))
+              .getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize the pipe mq topic meta due to: ", e);
     }
 
     throw new PipeException(
@@ -155,7 +169,7 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
                 env.dropSinglePipeMQTopicOnDataNode(pipeMQTopicMeta.getTopicName()))
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ProcedureException(
+      throw new PipeException(
           String.format(
               "Failed to rollback pipe mq topic [%s] on data nodes",
               pipeMQTopicMeta.getTopicName()));

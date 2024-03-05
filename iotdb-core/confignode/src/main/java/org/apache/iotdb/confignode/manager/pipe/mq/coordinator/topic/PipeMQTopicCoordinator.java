@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.pipe.mq.PipeMQTopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
@@ -79,10 +79,10 @@ public class PipeMQTopicCoordinator {
 
   public TShowTopicResp showTopic(TShowTopicReq req) {
     try {
-      return configManager
-          .getConsensusManager()
-          .read(new ShowTopicPlan())
-          .convertToThriftResponse();
+      return ((PipeMQTopicTableResp)
+              configManager.getConsensusManager().read(new ShowPipeMQTopicPlan()))
+          .filter(req.getTopicName())
+          .convertToTShowTopicResp();
     } catch (Exception e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -93,7 +93,8 @@ public class PipeMQTopicCoordinator {
 
   public TGetAllTopicInfoResp getAllTopicInfo() {
     try {
-      return ((PipeMQTopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
+      return ((PipeMQTopicTableResp)
+              configManager.getConsensusManager().read(new ShowPipeMQTopicPlan()))
           .convertToTGetAllTopicInfoResp();
     } catch (Exception e) {
       LOGGER.error("Failed to get all topic info.", e);

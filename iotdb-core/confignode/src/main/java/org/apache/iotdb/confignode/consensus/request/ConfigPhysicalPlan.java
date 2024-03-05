@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -76,6 +76,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -429,13 +432,16 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new PipeEnrichedPlan();
           break;
         case CreateTopic:
-          plan = new CreateTopicPlan();
+          plan = new CreatePipeMQTopicPlan();
           break;
         case DropTopic:
-          plan = new DropTopicPlan();
+          plan = new DropPipeMQTopicPlan();
           break;
         case ShowTopic:
-          plan = new ShowTopicPlan();
+          plan = new ShowPipeMQTopicPlan();
+          break;
+        case AlterTopic:
+          plan = new AlterPipeMQTopicPlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

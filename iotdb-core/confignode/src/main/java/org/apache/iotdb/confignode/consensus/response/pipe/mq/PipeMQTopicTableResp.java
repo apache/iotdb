@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.consensus.response.pipe.mq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
@@ -31,12 +33,37 @@ import java.util.List;
 
 public class PipeMQTopicTableResp implements DataSet {
   private final TSStatus status;
-
   private final List<PipeMQTopicMeta> allPipeMQTopicMeta;
 
   public PipeMQTopicTableResp(TSStatus status, List<PipeMQTopicMeta> allPipeMQTopicMeta) {
     this.status = status;
     this.allPipeMQTopicMeta = allPipeMQTopicMeta;
+  }
+
+  public PipeMQTopicTableResp filter(String topicName) {
+    if (topicName == null) {
+      return this;
+    } else {
+      final List<PipeMQTopicMeta> filteredPipeMQTopicMeta = new ArrayList<>();
+      for (PipeMQTopicMeta pipeMQTopicMeta : allPipeMQTopicMeta) {
+        if (pipeMQTopicMeta.getTopicName().equals(topicName)) {
+          filteredPipeMQTopicMeta.add(pipeMQTopicMeta);
+          break;
+        }
+      }
+      return new PipeMQTopicTableResp(status, filteredPipeMQTopicMeta);
+    }
+  }
+
+  public TShowTopicResp convertToTShowTopicResp() {
+    final List<TShowTopicInfo> showPipeInfoList = new ArrayList<>();
+
+    for (PipeMQTopicMeta pipeMQTopicMeta : allPipeMQTopicMeta) {
+      showPipeInfoList.add(
+          new TShowTopicInfo(pipeMQTopicMeta.getTopicName(), pipeMQTopicMeta.getCreationTime())
+              .setTopicAttributes(pipeMQTopicMeta.getConfig().toString()));
+    }
+    return new TShowTopicResp(status);
   }
 
   public TGetAllTopicInfoResp convertToTGetAllTopicInfoResp() throws IOException {
