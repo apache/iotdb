@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -65,7 +66,7 @@ public class ConfigRegionListeningQueueTest {
   @Test
   public void testSnapshot() throws TException, IOException, AuthException {
     ConfigRegionListeningQueue.getInstance().open();
-    ConfigRegionListeningQueue.getInstance().notifyLeaderReady();
+    PipeConfigNodeAgent.runtime().notifyLeaderReady();
 
     DatabaseSchemaPlan plan1 =
         new DatabaseSchemaPlan(

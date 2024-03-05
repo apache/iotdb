@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -229,7 +230,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.removeMetrics();
 
       // Shutdown leader related service for config pipe
-      ConfigRegionListeningQueue.getInstance().notifyLeaderUnavailable();
+      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
     }
   }
 
@@ -252,7 +253,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.addMetrics();
 
     // Activate leader related service for config pipe
-    ConfigRegionListeningQueue.getInstance().notifyLeaderReady();
+    PipeConfigNodeAgent.runtime().notifyLeaderReady();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
@@ -287,7 +288,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public void stop() {
     // Shutdown leader related service for config pipe
-    ConfigRegionListeningQueue.getInstance().notifyLeaderUnavailable();
+    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
   }
 
   @Override

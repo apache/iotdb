@@ -34,9 +34,12 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeRuntimeConfigNodeAgent implements IService {
+public class PipeConfigNodeRuntimeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeConfigNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeRuntimeAgent.class);
+
+  private final PipeConfigRegionStatusListener configRegionStatusListener =
+      new PipeConfigRegionStatusListener();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
@@ -73,6 +76,20 @@ public class PipeRuntimeConfigNodeAgent implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.PIPE_RUNTIME_CONFIG_NODE_AGENT;
+  }
+
+  //////////////////////////// Leader Status Listener ////////////////////////////
+
+  public void notifyLeaderReady() {
+    configRegionStatusListener.notifyLeaderReady();
+  }
+
+  public void notifyLeaderUnavailable() {
+    configRegionStatusListener.notifyLeaderUnavailable();
+  }
+
+  public boolean isLeaderReady() {
+    return configRegionStatusListener.isLeaderReady();
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////

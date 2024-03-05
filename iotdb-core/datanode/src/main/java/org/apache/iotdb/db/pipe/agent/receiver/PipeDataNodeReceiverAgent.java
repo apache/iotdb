@@ -32,16 +32,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-/** {@link PipeReceiverAgent} is the entry point of all pipe receivers' logic. */
-public class PipeReceiverAgent {
+/** {@link PipeDataNodeReceiverAgent} is the entry point of all pipe receivers' logic. */
+public class PipeDataNodeReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeReceiverAgent.class);
 
   private final IoTDBDataNodeReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;
   private final IoTDBLegacyPipeReceiverAgent legacyAgent;
 
-  public PipeReceiverAgent() {
+  public PipeDataNodeReceiverAgent() {
     thriftAgent = new IoTDBDataNodeReceiverAgent();
     airGapAgent = new IoTDBAirGapReceiverAgent();
     legacyAgent = new IoTDBLegacyPipeReceiverAgent();
@@ -80,6 +80,6 @@ public class PipeReceiverAgent {
         IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs();
     Arrays.stream(pipeReceiverFileDirs)
         .map(File::new)
-        .forEach(PipeReceiverAgent::cleanPipeReceiverDir);
+        .forEach(PipeDataNodeReceiverAgent::cleanPipeReceiverDir);
   }
 }

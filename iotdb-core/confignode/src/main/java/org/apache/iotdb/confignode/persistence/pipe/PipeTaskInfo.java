@@ -777,7 +777,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void dropPipeOnConfigTaskAgent(String pipeName) {
     // Operate tasks only after leader gets ready
-    if (!ConfigRegionListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return;
     }
     TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
@@ -794,7 +794,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
     // Operate tasks only after leader gets ready
-    if (!ConfigRegionListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return;
     }
     // The new agent meta has separated status to enable control by diff
@@ -822,7 +822,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public void handlePipeMetaChangesOnConfigTaskAgent() {
     // Operate tasks only after leader get ready
-    if (!ConfigRegionListeningQueue.getInstance().isLeaderReady()) {
+    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return;
     }
     List<PipeMeta> pipeMetas = new ArrayList<>();

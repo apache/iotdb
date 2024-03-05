@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -67,7 +69,7 @@ public class SchemaRegionListeningQueueTest {
   @Test
   public void testSnapshot() throws TException, IOException, AuthException, IllegalPathException {
     SchemaRegionListeningQueue.getInstance(0).open();
-    SchemaRegionListeningQueue.getInstance(0).notifyLeaderReady();
+    PipeAgent.runtime().notifyLeaderReady(new SchemaRegionId(0));
 
     CreateTimeSeriesNode node1 =
         new CreateTimeSeriesNode(

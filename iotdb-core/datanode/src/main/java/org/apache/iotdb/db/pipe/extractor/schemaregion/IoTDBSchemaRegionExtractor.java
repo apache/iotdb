@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -60,7 +61,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady()
+    if (!PipeAgent.runtime().isLeaderReady(new SchemaRegionId(regionId))
         || hasBeenStarted.get()
         || hasBeenClosed.get()) {
       return;
@@ -82,7 +83,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady() || hasBeenClosed.get()) {
+    if (!PipeAgent.runtime().isLeaderReady(new SchemaRegionId(regionId)) || hasBeenClosed.get()) {
       return null;
     }
     if (!hasBeenStarted.get()) {

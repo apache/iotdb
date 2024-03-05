@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -47,13 +48,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeRuntimeDataNodeAgent implements IService {
+public class PipeDataNodeRuntimeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
   private final AtomicReference<String> clusterId = new AtomicReference<>(null);
+
+  private final PipeSchemaRegionStatusListener schemaRegionStatusListener =
+      new PipeSchemaRegionStatusListener();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -123,6 +127,20 @@ public class PipeRuntimeDataNodeAgent implements IService {
       }
     }
     return clusterId.get();
+  }
+
+  ////////////////////// Leader Status Listener //////////////////////
+
+  public void notifyLeaderReady(SchemaRegionId schemaRegionId) {
+    schemaRegionStatusListener.notifyLeaderReady(schemaRegionId);
+  }
+
+  public void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
+    schemaRegionStatusListener.notifyLeaderUnavailable(schemaRegionId);
+  }
+
+  public boolean isLeaderReady(SchemaRegionId schemaRegionId) {
+    return schemaRegionStatusListener.isLeaderReady(schemaRegionId);
   }
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////

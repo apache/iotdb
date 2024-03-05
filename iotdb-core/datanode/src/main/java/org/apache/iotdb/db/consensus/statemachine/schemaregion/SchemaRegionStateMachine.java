@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -58,8 +59,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {
     // Stop leader related service for schema pipe
-    SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
-        .notifyLeaderUnavailable();
+    PipeAgent.runtime().notifyLeaderUnavailable(schemaRegion.getSchemaRegionId());
   }
 
   @Override
@@ -67,16 +67,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     if (schemaRegion.getSchemaRegionId().equals(groupId)
         && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       // Shutdown leader related service for schema pipe
-      SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
-          .notifyLeaderUnavailable();
+      PipeAgent.runtime().notifyLeaderUnavailable(schemaRegion.getSchemaRegionId());
     }
   }
 
   @Override
   public void notifyLeaderReady() {
     // Activate leader related service for schema pipe
-    SchemaRegionListeningQueue.getInstance(schemaRegion.getSchemaRegionId().getId())
-        .notifyLeaderReady();
+    PipeAgent.runtime().notifyLeaderReady(schemaRegion.getSchemaRegionId());
   }
 
   @Override

@@ -74,9 +74,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PipeTaskDataNodeAgent extends PipeTaskAgent {
+public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -189,7 +189,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
                 schemaRegionId -> {
                   int id = schemaRegionId.getId();
                   if (!newFirstIndexMap.containsKey(id)
-                      && SchemaRegionListeningQueue.getInstance(id).isLeaderReady()
+                      && PipeAgent.runtime().isLeaderReady(schemaRegionId)
                       && SchemaRegionListeningQueue.getInstance(id).isOpened()) {
                     try {
                       SchemaRegionConsensusImpl.getInstance()
@@ -244,7 +244,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final Optional<Logger> logger =
           PipeResourceManager.log()
               .schedule(
-                  PipeTaskDataNodeAgent.class,
+                  PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                   PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                   pipeMetaKeeper.getPipeMetaCount());
@@ -282,7 +282,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final Optional<Logger> logger =
           PipeResourceManager.log()
               .schedule(
-                  PipeTaskDataNodeAgent.class,
+                  PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                   PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                   pipeMetaKeeper.getPipeMetaCount());

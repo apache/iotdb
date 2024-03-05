@@ -52,7 +52,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
 
-  private static final String SNAPSHOT_FILE_NAME = "pipe_cr_listening_queue.bin";
+  private static final String SNAPSHOT_FILE_NAME = "pipe_config_region_listening_queue.bin";
 
   private int referenceCount = 0;
 
