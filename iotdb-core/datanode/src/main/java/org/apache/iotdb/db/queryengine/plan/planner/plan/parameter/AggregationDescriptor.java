@@ -34,7 +34,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
@@ -111,13 +110,8 @@ public class AggregationDescriptor {
 
   public List<List<String>> getInputColumnNamesList() {
     if (step.isInputRaw()) {
-      List<String> inputColumnNames =
-          SqlConstant.COUNT_IF.equalsIgnoreCase(aggregationFuncName)
-              ? Collections.singletonList(inputExpressions.get(0).getExpressionString())
-              : inputExpressions.stream()
-                  .map(Expression::getExpressionString)
-                  .collect(Collectors.toList());
-      return Collections.singletonList(inputColumnNames);
+      return Collections.singletonList(
+          Collections.singletonList(inputExpressions.get(0).getExpressionString()));
     }
 
     return Collections.singletonList(getInputColumnNames());
@@ -171,9 +165,6 @@ public class AggregationDescriptor {
         case VAR_SAMP:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.VAR_SAMP));
           break;
-        case MAX_BY:
-          outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
-          break;
         default:
           outputAggregationNames.add(aggregationFuncName);
       }
@@ -192,7 +183,7 @@ public class AggregationDescriptor {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1)
    */
-  public String getParametersString() {
+  protected String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {
@@ -230,27 +221,6 @@ public class AggregationDescriptor {
             .append("\"");
       }
     }
-  }
-
-  public List<String> getInputExpressionsAsStringList() {
-    if (TAggregationType.COUNT_IF.equals(aggregationType)) {
-      return inputExpressions.stream()
-          .map(Expression::getExpressionString)
-          .collect(Collectors.toList());
-    }
-    return Collections.singletonList(getInputString(inputExpressions));
-  }
-
-  protected String getInputString(List<Expression> expressions) {
-    StringBuilder builder = new StringBuilder();
-    if (!(expressions.size() == 0)) {
-      builder.append(expressions.get(0).getExpressionString());
-      for (int i = 1; i < expressions.size(); ++i) {
-        builder.append(", ").append(expressions.get(i).getExpressionString());
-      }
-    }
-    appendAttributes(builder);
-    return builder.toString();
   }
 
   public List<Expression> getInputExpressions() {

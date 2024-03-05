@@ -43,20 +43,21 @@ public class ConcatExpressionWithSuffixPathsVisitor
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
-    if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
-      // We just process first input Expression of Count_IF,
-      // keep other input Expressions as origin
-      extendedExpressions.add(process(functionExpression.getExpressions().get(0), context));
-      List<Expression> children = functionExpression.getExpressions();
-      for (int i = 1; i < children.size(); i++) {
-        extendedExpressions.add(Collections.singletonList(children.get(i)));
-      }
-    } else {
-      functionExpression
-          .getExpressions()
-          .forEach(expression -> extendedExpressions.add(process(expression, context)));
-    }
+    for (Expression suffixExpression : functionExpression.getExpressions()) {
+      extendedExpressions.add(process(suffixExpression, context));
 
+      // We just process first input Expression of AggregationFunction,
+      // keep other input Expressions as origin
+      // If AggregationFunction need more than one input series,
+      // we need to reconsider the process of it
+      if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        List<Expression> children = functionExpression.getExpressions();
+        for (int i = 1; i < children.size(); i++) {
+          extendedExpressions.add(Collections.singletonList(children.get(i)));
+        }
+        break;
+      }
+    }
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
     return reconstructFunctionExpressions(functionExpression, childExpressionsList);

@@ -136,7 +136,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1136,14 +1135,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               sourceTransformExpressions.add(countTimeSourceExpression);
             }
           } else {
-            // We just process first input Expression of COUNT_IF,
+            // We just process first input Expression of AggregationFunction,
             // keep other input Expressions as origin
-            if (SqlConstant.COUNT_IF.equalsIgnoreCase(
-                ((FunctionExpression) expression).getFunctionName())) {
-              sourceTransformExpressions.add(expression.getExpressions().get(0));
-            } else {
-              sourceTransformExpressions.addAll(expression.getExpressions());
-            }
+            // If AggregationFunction need more than one input series,
+            // we need to reconsider the process of it
+            sourceTransformExpressions.add(expression.getExpressions().get(0));
           }
         }
 
@@ -1215,13 +1211,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       } else {
         for (Expression aggExpression : analysis.getAggregationExpressions()) {
-          // for COUNT_IF, only the first Expression of input need to transform
-          if (SqlConstant.COUNT_IF.equalsIgnoreCase(
-              ((FunctionExpression) aggExpression).getFunctionName())) {
-            sourceTransformExpressions.add(aggExpression.getExpressions().get(0));
-          } else {
-            sourceTransformExpressions.addAll(aggExpression.getExpressions());
-          }
+          // for AggregationExpression, only the first Expression of input need to transform
+          sourceTransformExpressions.add(aggExpression.getExpressions().get(0));
         }
       }
 

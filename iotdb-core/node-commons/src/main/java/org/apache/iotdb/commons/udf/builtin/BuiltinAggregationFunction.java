@@ -44,8 +44,7 @@ public enum BuiltinAggregationFunction {
   STDDEV_SAMP("stddev_samp"),
   VARIANCE("variance"),
   VAR_POP("var_pop"),
-  VAR_SAMP("var_samp"),
-  MAX_BY("max_by");
+  VAR_SAMP("var_samp");
 
   private final String functionName;
 
@@ -92,7 +91,6 @@ public enum BuiltinAggregationFunction {
       case "variance":
       case "var_pop":
       case "var_samp":
-      case "max_by":
         return false;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + name);
@@ -123,7 +121,6 @@ public enum BuiltinAggregationFunction {
       case "variance":
       case "var_pop":
       case "var_samp":
-      case "max_by":
         return true;
       case "count_if":
       case "count_time":

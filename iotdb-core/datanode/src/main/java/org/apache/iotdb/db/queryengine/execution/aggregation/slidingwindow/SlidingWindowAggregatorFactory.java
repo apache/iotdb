@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -46,9 +45,6 @@ public class SlidingWindowAggregatorFactory {
   private static final Map<TSDataType, Comparator<Column>> minComparators =
       new EnumMap<>(TSDataType.class);
   private static final Map<TSDataType, Comparator<Column>> extremeComparators =
-      new EnumMap<>(TSDataType.class);
-
-  private static final Map<TSDataType, Comparator<Column>> maxByComparators =
       new EnumMap<>(TSDataType.class);
 
   static {
@@ -119,29 +115,11 @@ public class SlidingWindowAggregatorFactory {
           }
           return -1;
         });
-    // Intermediate Value of maxBy is a byte array: | y | xNull | x |
-    maxByComparators.put(
-        TSDataType.INT32,
-        Comparator.comparingInt(
-            o -> BytesUtils.bytesToInt(o.getBinary(0).getValues(), Long.BYTES)));
-    maxByComparators.put(
-        TSDataType.INT64,
-        Comparator.comparingLong(
-            o ->
-                BytesUtils.bytesToLongFromOffset(
-                    o.getBinary(0).getValues(), Long.BYTES, Long.BYTES)));
-    maxByComparators.put(
-        TSDataType.FLOAT,
-        Comparator.comparing(o -> BytesUtils.bytesToFloat(o.getBinary(0).getValues(), Long.BYTES)));
-    maxByComparators.put(
-        TSDataType.DOUBLE,
-        Comparator.comparingDouble(
-            o -> BytesUtils.bytesToDouble(o.getBinary(0).getValues(), Long.BYTES)));
   }
 
   public static SlidingWindowAggregator createSlidingWindowAggregator(
       TAggregationType aggregationType,
-      List<TSDataType> dataTypes,
+      TSDataType dataType,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
       boolean ascending,
@@ -149,7 +127,7 @@ public class SlidingWindowAggregatorFactory {
       AggregationStep step) {
     Accumulator accumulator =
         AccumulatorFactory.createAccumulator(
-            aggregationType, dataTypes, inputExpressions, inputAttributes, ascending);
+            aggregationType, dataType, inputExpressions, inputAttributes, ascending);
     switch (aggregationType) {
       case SUM:
       case AVG:
@@ -164,13 +142,13 @@ public class SlidingWindowAggregatorFactory {
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, maxComparators.get(dataTypes.get(0)));
+            accumulator, inputLocationList, step, maxComparators.get(dataType));
       case MIN_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, minComparators.get(dataTypes.get(0)));
+            accumulator, inputLocationList, step, minComparators.get(dataType));
       case EXTREME:
         return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, extremeComparators.get(dataTypes.get(0)));
+            accumulator, inputLocationList, step, extremeComparators.get(dataType));
       case MIN_TIME:
       case FIRST_VALUE:
         return !ascending
@@ -181,9 +159,6 @@ public class SlidingWindowAggregatorFactory {
         return !ascending
             ? new NormalQueueSlidingWindowAggregator(accumulator, inputLocationList, step)
             : new EmptyQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
-      case MAX_BY:
-        return new MonotonicQueueSlidingWindowAggregator(
-            accumulator, inputLocationList, step, maxByComparators.get(dataTypes.get(1)));
       case COUNT_IF:
         throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
       case TIME_DURATION:
