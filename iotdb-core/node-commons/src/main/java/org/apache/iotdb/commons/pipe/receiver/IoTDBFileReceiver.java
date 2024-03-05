@@ -248,89 +248,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  protected final TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
-    try {
-      if (!isWritingFileAvailable()) {
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Failed to seal file, because writing file %s is not available.",
-                    req.getFileName()));
-        LOGGER.warn(status.getMessage());
-        return new TPipeTransferResp(status);
-      }
-
-      if (!isFileExistedAndNameCorrect(req.getFileName())) {
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Failed to seal file %s, but writing file is %s.",
-                    req.getFileName(), writingFile));
-        LOGGER.warn(status.getMessage());
-        return new TPipeTransferResp(status);
-      }
-
-      if (!isWritingFileOffsetCorrect(req.getFileLength())) {
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Failed to seal file %s, because the length of file is not correct. "
-                        + "The original file has length %s, but receiver file has length %s.",
-                    req.getFileName(), req.getFileLength(), writingFileWriter.length()));
-        LOGGER.warn(status.getMessage());
-        return new TPipeTransferResp(status);
-      }
-
-      final String fileAbsolutePath = writingFile.getAbsolutePath();
-
-      // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
-      // the process of loading tsfile when parsing tsfile.
-      //
-      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
-      // name as the current tsfile, it will bypass the judgment logic of
-      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
-      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
-      // Close exception.
-      writingFileWriter.getFD().sync();
-      writingFileWriter.close();
-      writingFileWriter = null;
-
-      // writingFile will be deleted after load if no exception occurs
-      writingFile = null;
-
-      final TSStatus status = loadFile(req, fileAbsolutePath);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
-      } else {
-        LOGGER.warn(
-            "Failed to seal file {}, because {}. Receiver id is {}.",
-            fileAbsolutePath,
-            status.getMessage(),
-            receiverId.get());
-      }
-      return new TPipeTransferResp(status);
-    } catch (IOException e) {
-      LOGGER.warn(
-          String.format(
-              "Failed to seal file %s from req %s. Receiver id is %d.",
-              writingFile, req, receiverId.get()),
-          e);
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
-    } finally {
-      // If the writing file is not sealed successfully, the writing file will be deleted.
-      // All pieces of the writing file should be retransmitted by the sender.
-      closeCurrentWritingFileWriter();
-      deleteCurrentWritingFile();
-    }
-  }
-
   protected final void updateWritingFileIfNeeded(String fileName) throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
       return;
@@ -418,6 +335,89 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return offsetCorrect;
   }
 
+  protected final TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
+    try {
+      if (!isWritingFileAvailable()) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file, because writing file %s is not available.",
+                    req.getFileName()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      if (!isFileExistedAndNameCorrect(req.getFileName())) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, but writing file is %s.",
+                    req.getFileName(), writingFile));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      if (!isWritingFileOffsetCorrect(req.getFileLength())) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, because the length of file is not correct. "
+                        + "The original file has length %s, but receiver file has length %s.",
+                    req.getFileName(), req.getFileLength(), writingFileWriter.length()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      final String fileAbsolutePath = writingFile.getAbsolutePath();
+
+      // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // the process of loading tsfile when parsing tsfile.
+      //
+      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // name as the current tsfile, it will bypass the judgment logic of
+      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
+      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
+      // Close exception.
+      writingFileWriter.getFD().sync();
+      writingFileWriter.close();
+      writingFileWriter = null;
+
+      // writingFile will be deleted after load if no exception occurs
+      writingFile = null;
+
+      final TSStatus status = loadFile(req, fileAbsolutePath);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
+      } else {
+        LOGGER.warn(
+            "Failed to seal file {}, because {}. Receiver id is {}.",
+            fileAbsolutePath,
+            status.getMessage(),
+            receiverId.get());
+      }
+      return new TPipeTransferResp(status);
+    } catch (IOException e) {
+      LOGGER.warn(
+          String.format(
+              "Failed to seal file %s from req %s. Receiver id is %d.",
+              writingFile, req, receiverId.get()),
+          e);
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } finally {
+      // If the writing file is not sealed successfully, the writing file will be deleted.
+      // All pieces of the writing file should be retransmitted by the sender.
+      closeCurrentWritingFileWriter();
+      deleteCurrentWritingFile();
+    }
+  }
+
   private boolean isWritingFileAvailable() {
     final boolean isWritingFileAvailable =
         writingFile != null && writingFile.exists() && writingFileWriter != null;
@@ -433,7 +433,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected abstract TSStatus loadFile(
-      final PipeTransferFileSealReq req, final String fileAbsolutePath) throws Exception;
+      final PipeTransferFileSealReq req, final String fileAbsolutePath) throws IOException;
 
   @Override
   public synchronized void handleExit() {
