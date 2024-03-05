@@ -270,11 +270,11 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       return false;
     }
     PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
-    return tablet.equals(that.tablet)
+    return Objects.equals(tablet, that.tablet)
         && isAligned == that.isAligned
         && version == that.version
         && type == that.type
-        && (body == null || that.body == null ? body == that.body : body.equals(that.body));
+        && Objects.equals(body, that.body);
   }
 
   @Override

@@ -26,6 +26,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.io.IOException;
 
 public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReq {
+
+  private PipeTransferConfigSnapshotSealReq() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
     return PipeRequestType.TRANSFER_CONFIG_SNAPSHOT_SEAL;

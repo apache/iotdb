@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageCon
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -53,7 +53,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final Socket socket;
   private final long receiverId;
 
-  private final IoTDBThriftReceiverAgent agent;
+  private final IoTDBDataNodeReceiverAgent agent;
 
   private boolean isELanguagePayload;
 

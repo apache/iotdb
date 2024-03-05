@@ -93,7 +93,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       return borrowClient();
     }
 
-    final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
+    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
     if (endPoint == null) {
       return borrowClient();
     }
@@ -236,6 +236,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       endPointSet.add(endPoint);
     }
 
-    leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
+    LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 }

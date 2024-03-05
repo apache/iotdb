@@ -69,7 +69,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   }
 
   public Pair<IoTDBSyncClient, Boolean> getClient(String deviceId) {
-    final TEndPoint endPoint = leaderCacheManager.getLeaderEndPoint(deviceId);
+    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
     return useLeaderCache
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
@@ -90,7 +90,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         reconstructClient(endPoint);
       }
 
-      leaderCacheManager.updateLeaderEndPoint(deviceId, endPoint);
+      LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to update leader cache for device {} with endpoint {}:{}.",

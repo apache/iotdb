@@ -30,14 +30,19 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-public class PipeReceiverConfigNodeAgent extends IoTDBReceiverAgent {
+public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverConfigNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiverAgent.class);
 
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigReceiverV1::new);
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigNodeReceiver::new);
+  }
+
+  public void cleanPipeReceiverDir() {
+    cleanPipeReceiverDir(
+        new File(ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir()));
   }
 
   private static void cleanPipeReceiverDir(File receiverFileDir) {
@@ -54,11 +59,5 @@ public class PipeReceiverConfigNodeAgent extends IoTDBReceiverAgent {
     } catch (IOException e) {
       LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
     }
-  }
-
-  public void cleanPipeReceiverDir() {
-    String pipeReceiverFileDir =
-        ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
-    cleanPipeReceiverDir(new File(pipeReceiverFileDir));
   }
 }

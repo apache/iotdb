@@ -22,10 +22,11 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
-public class IoTDBThriftReceiverAgent extends IoTDBReceiverAgent {
+public class IoTDBDataNodeReceiverAgent extends IoTDBReceiverAgent {
+
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
-        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBThriftReceiverV1::new);
+        IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBDataNodeReceiver::new);
   }
 }

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -65,9 +65,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
+public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigReceiverV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiver.class);
 
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
@@ -89,10 +89,10 @@ public class IoTDBConfigReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case CONFIGNODE_HANDSHAKE_V1:
+          case HANDSHAKE_CONFIGNODE_V1:
             return handleTransferHandshakeV1(
                 PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
-          case CONFIGNODE_HANDSHAKE_V2:
+          case HANDSHAKE_CONFIGNODE_V2:
             return handleTransferHandshakeV2(
                 PipeTransferConfigNodeHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_CONFIG_PLAN:

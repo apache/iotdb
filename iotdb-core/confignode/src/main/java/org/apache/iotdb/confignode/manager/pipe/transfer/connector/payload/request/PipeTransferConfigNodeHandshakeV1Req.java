@@ -26,9 +26,14 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.io.IOException;
 
 public class PipeTransferConfigNodeHandshakeV1Req extends PipeTransferHandshakeV1Req {
+
+  private PipeTransferConfigNodeHandshakeV1Req() {
+    // Empty constructor
+  }
+
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.CONFIGNODE_HANDSHAKE_V1;
+    return PipeRequestType.HANDSHAKE_CONFIGNODE_V1;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

@@ -145,10 +145,10 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
       return false;
     }
     PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
-    return insertNode.equals(that.insertNode)
+    return Objects.equals(insertNode, that.insertNode)
         && version == that.version
         && type == that.type
-        && (body == null || that.body == null ? body == that.body : body.equals(that.body));
+        && Objects.equals(body, that.body);
   }
 
   @Override

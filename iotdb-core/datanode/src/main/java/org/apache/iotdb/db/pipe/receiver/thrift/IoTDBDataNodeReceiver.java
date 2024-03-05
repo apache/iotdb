@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
-import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiverV1;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -80,9 +80,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
+public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeReceiver.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
@@ -110,10 +110,10 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         switch (PipeRequestType.valueOf(rawRequestType)) {
-          case DATANODE_HANDSHAKE_V1:
+          case HANDSHAKE_DATANODE_V1:
             return handleTransferHandshakeV1(
                 PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
-          case DATANODE_HANDSHAKE_V2:
+          case HANDSHAKE_DATANODE_V2:
             return handleTransferHandshakeV2(
                 PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
@@ -143,8 +143,8 @@ public class IoTDBThriftReceiverV1 extends IoTDBFileReceiverV1 {
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
             // Config Requests will first be received by the DataNode receiver,
             // then transferred to configNode receiver to execute.
-          case CONFIGNODE_HANDSHAKE_V1:
-          case CONFIGNODE_HANDSHAKE_V2:
+          case HANDSHAKE_CONFIGNODE_V1:
+          case HANDSHAKE_CONFIGNODE_V2:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
