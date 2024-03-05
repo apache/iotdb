@@ -88,19 +88,17 @@ public abstract class AbstractCompactionEstimator {
       return fileInfoCache.get(resource);
     }
     File file = new File(resource.getTsFilePath());
-    synchronized (globalFileInfoCacheForFailedCompaction) {
-      if (globalFileInfoCacheForFailedCompaction.containsKey(file)) {
-        FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(file);
-        fileInfoCache.put(resource, fileInfo);
-        return fileInfo;
-      }
-      try (TsFileSequenceReader reader =
-          new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
-        FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
-        fileInfoCache.put(resource, fileInfo);
-        globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
-        return fileInfo;
-      }
+    if (globalFileInfoCacheForFailedCompaction.containsKey(file)) {
+      FileInfo fileInfo = globalFileInfoCacheForFailedCompaction.get(file);
+      fileInfoCache.put(resource, fileInfo);
+      return fileInfo;
+    }
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
+      FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
+      fileInfoCache.put(resource, fileInfo);
+      globalFileInfoCacheForFailedCompaction.put(file, fileInfo);
+      return fileInfo;
     }
   }
 
@@ -171,8 +169,6 @@ public abstract class AbstractCompactionEstimator {
     if (resource == null || resource.getTsFile() == null) {
       return;
     }
-    synchronized (globalFileInfoCacheForFailedCompaction) {
-      globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
-    }
+    globalFileInfoCacheForFailedCompaction.remove(resource.getTsFile());
   }
 }
