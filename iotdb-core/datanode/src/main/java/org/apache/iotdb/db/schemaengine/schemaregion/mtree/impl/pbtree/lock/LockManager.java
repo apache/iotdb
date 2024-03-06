@@ -19,53 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-
-import java.util.LinkedList;
-import java.util.List;
-import java.util.function.Consumer;
-
 public class LockManager {
 
-  private final LockPool lockPool = new LockPool();
-
   private final StampedWriterPreferredLock readWriteLock = new StampedWriterPreferredLock();
-
-  public void writeLock(ICachedMNode node) {
-    takeMNodeLock(node, StampedWriterPreferredLock::writeLock);
-  }
-
-  public void writeUnlock(ICachedMNode node) {
-    checkAndReleaseMNodeLock(node, StampedWriterPreferredLock::writeUnlock);
-  }
-
-  private void takeMNodeLock(
-      ICachedMNode node, Consumer<StampedWriterPreferredLock> lockOperation) {
-    LockEntry lockEntry;
-    synchronized (this) {
-      lockEntry = node.getLockEntry();
-      if (lockEntry == null) {
-        lockEntry = lockPool.borrowLock();
-        node.setLockEntry(lockEntry);
-      }
-      lockEntry.pin();
-    }
-    lockOperation.accept(lockEntry.getLock());
-  }
-
-  private void checkAndReleaseMNodeLock(
-      ICachedMNode node, Consumer<StampedWriterPreferredLock> unLockOperation) {
-    synchronized (this) {
-      LockEntry lockEntry = node.getLockEntry();
-      StampedWriterPreferredLock lock = lockEntry.getLock();
-      unLockOperation.accept(lock);
-      lockEntry.unpin();
-      if (lock.isFree() && !lockEntry.isPinned()) {
-        node.setLockEntry(null);
-        lockPool.returnLock(lockEntry);
-      }
-    }
-  }
 
   public long globalStampedReadLock() {
     return readWriteLock.stampedReadLock();
@@ -93,36 +49,5 @@ public class LockManager {
 
   public void globalWriteUnlock() {
     readWriteLock.writeUnlock();
-  }
-
-  private static class LockPool {
-    private static final int LOCK_POOL_CAPACITY = 400;
-
-    private final List<LockEntry> lockList = new LinkedList<>();
-
-    private LockPool() {
-      for (int i = 0; i < LOCK_POOL_CAPACITY; i++) {
-        lockList.add(new LockEntry());
-      }
-    }
-
-    private LockEntry borrowLock() {
-      synchronized (lockList) {
-        if (lockList.isEmpty()) {
-          return new LockEntry();
-        } else {
-          return lockList.remove(0);
-        }
-      }
-    }
-
-    private void returnLock(LockEntry lockEntry) {
-      synchronized (lockList) {
-        if (lockList.size() == LOCK_POOL_CAPACITY) {
-          return;
-        }
-        lockList.add(0, lockEntry);
-      }
-    }
   }
 }

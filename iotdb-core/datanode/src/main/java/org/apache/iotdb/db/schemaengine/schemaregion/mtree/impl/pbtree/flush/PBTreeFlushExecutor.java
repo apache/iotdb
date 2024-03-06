@@ -148,8 +148,6 @@ public class PBTreeFlushExecutor {
           "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
       memoryManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
       throw e;
-    } finally {
-      lockManager.writeUnlock(subtreeRoot);
     }
 
     Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
@@ -183,8 +181,6 @@ public class PBTreeFlushExecutor {
             "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
-      } finally {
-        lockManager.writeUnlock(subtreeRoot);
       }
 
       volatileSubtreeStack.push(collectedVolatileSubtrees.iterator());
@@ -201,7 +197,6 @@ public class PBTreeFlushExecutor {
       while (subtreeIterator.hasNext()) {
         node = subtreeIterator.next();
         memoryManager.updateCacheStatusAfterFlushFailure(node);
-        lockManager.writeUnlock(node);
       }
     }
   }

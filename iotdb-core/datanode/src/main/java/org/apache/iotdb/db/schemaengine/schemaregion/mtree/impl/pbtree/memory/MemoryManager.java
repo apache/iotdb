@@ -84,7 +84,7 @@ public class MemoryManager implements IMemoryManager {
   }
 
   public void initRootStatus(ICachedMNode root) {
-    pinMNodeWithMemStatusUpdate(root, SchemaConstant.VolatileStatus.Update);
+    pinMNodeWithMemStatusUpdate(root, SchemaConstant.VolatileStatus.NonVolatile);
   }
 
   /**
@@ -277,7 +277,6 @@ public class MemoryManager implements IMemoryManager {
 
           // prevent this node being added to nodeBuffer during flush
           // unlock in PBTreeFlushExecutor
-          lockManager.writeLock(node);
 
           // if there's flush failure, such node and ancestors will be removed from cache again by
           // #updateCacheStatusAfterFlushFailure
@@ -343,47 +342,20 @@ public class MemoryManager implements IMemoryManager {
 
         // prevent this node being added buffer during the following check and potential flush
         // unlock in PBTreeFlushExecutor
-        lockManager.writeLock(node);
 
-        boolean unlockImmediately = true;
+        // update cache status after persist
+        // when process one node, all of its buffered child should be moved to cache
+        // except those with volatile children
+        cacheEntry = getCacheEntry(node);
 
-        try {
-          // update cache status after persist
-          // when process one node, all of its buffered child should be moved to cache
-          // except those with volatile children
-          cacheEntry = getCacheEntry(node);
-
-          synchronized (cacheEntry) {
-            if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
-              if (status == ITERATE_UPDATE_BUFFER) {
-                container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(
-                    node.getName());
-              } else {
-                container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
-              }
-              nodeBuffer.addUpdatedNodeToBuffer(node);
-              if (cacheEntry.hasVolatileDescendant()
-                  && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-                // these two factor judgement is not redundant because the #hasVolatileDescendant is
-                // on a higher priority than #container.hasChildren
-
-                // nodes with volatile children should be treated as root of volatile subtree and
-                // return for flush
-                nextSubtree = node;
-                unlockImmediately = false;
-                return;
-              }
-              continue;
-            }
-
-            cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
-            memoryStatistics.removeVolatileNode();
+        synchronized (cacheEntry) {
+          if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
             if (status == ITERATE_UPDATE_BUFFER) {
-              container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+              container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(node.getName());
             } else {
-              container.moveMNodeFromNewChildBufferToCache(node.getName());
+              container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
             }
-
+            nodeBuffer.addUpdatedNodeToBuffer(node);
             if (cacheEntry.hasVolatileDescendant()
                 && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
               // these two factor judgement is not redundant because the #hasVolatileDescendant is
@@ -392,19 +364,34 @@ public class MemoryManager implements IMemoryManager {
               // nodes with volatile children should be treated as root of volatile subtree and
               // return for flush
               nextSubtree = node;
-              unlockImmediately = false;
               return;
             }
+            continue;
+          }
 
-            // there's no direct volatile subtree under this node, thus there's no need to flush it
-            // add the node and its ancestors to cache
-            nodeCache.addToNodeCache(cacheEntry, node);
-            addAncestorsToCache(node);
+          cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
+          memoryStatistics.removeVolatileNode();
+          if (status == ITERATE_UPDATE_BUFFER) {
+            container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+          } else {
+            container.moveMNodeFromNewChildBufferToCache(node.getName());
           }
-        } finally {
-          if (unlockImmediately) {
-            lockManager.writeUnlock(node);
+
+          if (cacheEntry.hasVolatileDescendant()
+              && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+            // these two factor judgement is not redundant because the #hasVolatileDescendant is
+            // on a higher priority than #container.hasChildren
+
+            // nodes with volatile children should be treated as root of volatile subtree and
+            // return for flush
+            nextSubtree = node;
+            return;
           }
+
+          // there's no direct volatile subtree under this node, thus there's no need to flush it
+          // add the node and its ancestors to cache
+          nodeCache.addToNodeCache(cacheEntry, node);
+          addAncestorsToCache(node);
         }
       }
     }

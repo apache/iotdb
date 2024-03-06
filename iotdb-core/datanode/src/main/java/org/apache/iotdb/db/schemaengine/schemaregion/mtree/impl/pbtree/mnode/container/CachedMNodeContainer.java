@@ -335,38 +335,42 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(String name) {
-    ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
+    ICachedMNode node = getNewChildBuffer().getFlushingBuffer().get(name);
     if (updatedChildBuffer == null) {
       updatedChildBuffer = new MNodeUpdateChildBuffer();
     }
     updatedChildBuffer.put(name, node);
+    getNewChildBuffer().removeFromFlushingBuffer(name);
   }
 
   @Override
   public synchronized void moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(String name) {
-    ICachedMNode node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
+    ICachedMNode node = getUpdatedChildBuffer().getFlushingBuffer().get(name);
     if (updatedChildBuffer == null) {
       updatedChildBuffer = new MNodeUpdateChildBuffer();
     }
     updatedChildBuffer.put(name, node);
+    getUpdatedChildBuffer().removeFromFlushingBuffer(name);
   }
 
   @Override
   public synchronized void moveMNodeFromNewChildBufferToCache(String name) {
-    ICachedMNode node = getNewChildBuffer().removeFromFlushingBuffer(name);
+    ICachedMNode node = getNewChildBuffer().getFlushingBuffer().get(name);
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
     childCache.put(name, node);
+    getNewChildBuffer().removeFromFlushingBuffer(name);
   }
 
   @Override
   public synchronized void moveMNodeFromUpdateChildBufferToCache(String name) {
-    ICachedMNode node = getUpdatedChildBuffer().removeFromFlushingBuffer(name);
+    ICachedMNode node = getUpdatedChildBuffer().getFlushingBuffer().get(name);
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
     }
     childCache.put(name, node);
+    getUpdatedChildBuffer().removeFromFlushingBuffer(name);
   }
 
   @Override
@@ -453,8 +457,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
 
     protected int decide() {
-      throw new IllegalStateException(
-          "There shall not exist two node with the same name separately in newChildBuffer and updateChildBuffer");
+      return 1;
     }
 
     protected int compare(ICachedMNode left, ICachedMNode right) {

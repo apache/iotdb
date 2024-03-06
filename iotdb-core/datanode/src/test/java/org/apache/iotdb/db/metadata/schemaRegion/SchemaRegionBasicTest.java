@@ -988,6 +988,9 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             Arrays.asList(
                 "root.test.d1.s", "root.test.dac.device1.s", "root.test.dac.device1.d1.s"));
     int expectedSize = 3;
+    if(expectedSize != result.size()){
+      System.out.println();
+    }
     Assert.assertEquals(expectedSize, result.size());
     Set<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
