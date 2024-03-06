@@ -61,7 +61,9 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
   public static PipeSubscribeSubscribeReq fromTPipeSubscribeReq(TPipeSubscribeReq subscribeReq) {
     final PipeSubscribeSubscribeReq req = new PipeSubscribeSubscribeReq();
 
-    req.topicNames = ReadWriteIOUtils.readStringList(req.body);
+    if (subscribeReq.body.hasRemaining()) {
+      req.topicNames = ReadWriteIOUtils.readStringList(subscribeReq.body);
+    }
 
     req.version = subscribeReq.version;
     req.type = subscribeReq.type;

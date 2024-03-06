@@ -22,7 +22,6 @@ package org.apache.iotdb.rpc.subscription.payload.response;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-import java.io.IOException;
 import java.util.Objects;
 
 public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
@@ -33,8 +32,7 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeSubscribeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(TSStatus status)
-      throws IOException {
+  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(TSStatus status) {
     final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
 
     resp.status = status;

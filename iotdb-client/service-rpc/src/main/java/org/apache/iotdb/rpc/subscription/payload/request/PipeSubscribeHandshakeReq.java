@@ -29,7 +29,11 @@ import java.util.Objects;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
-  private transient ConsumerConfig consumerConfig;
+  private transient ConsumerConfig consumerConfig = new ConsumerConfig();
+
+  public ConsumerConfig getConsumerConfig() {
+    return consumerConfig;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -58,7 +62,9 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
-    req.consumerConfig = ConsumerConfig.deserialize(handshakeReq.body);
+    if (handshakeReq.body.hasRemaining()) {
+      req.consumerConfig = ConsumerConfig.deserialize(handshakeReq.body);
+    }
 
     req.version = handshakeReq.version;
     req.type = handshakeReq.type;

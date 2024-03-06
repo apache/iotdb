@@ -66,11 +66,13 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
-    int size = ReadWriteIOUtils.readInt(req.body);
-    for (int i = 0; i < size; ++i) {
-      String committerKey = ReadWriteIOUtils.readString(req.body);
-      int commitId = ReadWriteIOUtils.readInt(req.body);
-      req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
+    if (commitReq.body.hasRemaining()) {
+      int size = ReadWriteIOUtils.readInt(commitReq.body);
+      for (int i = 0; i < size; ++i) {
+        String committerKey = ReadWriteIOUtils.readString(commitReq.body);
+        int commitId = ReadWriteIOUtils.readInt(commitReq.body);
+        req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
+      }
     }
 
     req.version = commitReq.version;

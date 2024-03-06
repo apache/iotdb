@@ -19,9 +19,18 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -42,14 +51,24 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscri
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class SubscriptionAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionAgent.class);
+
+  private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
+
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   public final TPipeSubscribeResp handle(TPipeSubscribeReq req) {
     // TODO: handle request version
@@ -79,7 +98,7 @@ public class SubscriptionAgent {
 
     final TSStatus status =
         RpcUtils.getStatus(
-            TSStatusCode.PIPE_TYPE_ERROR,
+            TSStatusCode.SUBSCRIPTION_TYPE_ERROR,
             String.format("Unknown PipeSubscribeRequestType %s.", reqType));
     LOGGER.warn("Unknown PipeSubscribeRequestType, response status = {}.", status);
     return new TPipeSubscribeResp(
@@ -88,19 +107,43 @@ public class SubscriptionAgent {
         PipeSubscribeResponseType.ACK.getType());
   }
 
-  private PipeSubscribeHandshakeResp handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq req) {
-    // set thread local id info
-
-    // getDataNodeConfiguration
-    try {
+  private TPipeSubscribeResp handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq req) {
+    // set consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      consumerConfigThreadLocal.set(req.getConsumerConfig());
+      LOGGER.info(
+          "Subscription: consumer handshake successfully, consumer config: {}",
+          req.getConsumerConfig());
+    } else if (!consumerConfig.equals(req.getConsumerConfig())) {
+      // TODO: corner case
+      LOGGER.warn(
+          "Subscription: inconsistent consumer config, old consumer config: {}, new consumer config: {}",
+          consumerConfig,
+          req.getConsumerConfig());
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.SUCCESS_STATUS, new ArrayList<>());
-    } catch (Exception e) {
-      return null;
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, "inconsistent consumer config"));
+    }
+
+    // get DN configs
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TDataNodeConfigurationResp dataNodeConfigurationResp =
+          configNodeClient.getDataNodeConfiguration(-1);
+      Map<Integer, TEndPoint> endPoints =
+          dataNodeConfigurationResp.dataNodeConfigurationMap.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, endPoints);
+    } catch (ClientManagerException | TException e) {
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage()));
     }
   }
 
-  private PipeSubscribeHeartbeatResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
     try {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
@@ -108,7 +151,7 @@ public class SubscriptionAgent {
     }
   }
 
-  private PipeSubscribeSubscribeResp handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq req) {
     try {
       return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
@@ -116,8 +159,7 @@ public class SubscriptionAgent {
     }
   }
 
-  private PipeSubscribeUnsubscribeResp handlePipeSubscribeUnsubscribe(
-      PipeSubscribeUnsubscribeReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(PipeSubscribeUnsubscribeReq req) {
     try {
       return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
@@ -125,7 +167,7 @@ public class SubscriptionAgent {
     }
   }
 
-  private PipeSubscribePollResp handlePipeSubscribePoll(PipeSubscribePollReq req) {
+  private TPipeSubscribeResp handlePipeSubscribePoll(PipeSubscribePollReq req) {
     try {
       return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
     } catch (Exception e) {
@@ -133,7 +175,7 @@ public class SubscriptionAgent {
     }
   }
 
-  private PipeSubscribeCommitResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
     try {
       return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
@@ -141,13 +183,17 @@ public class SubscriptionAgent {
     }
   }
 
-  private PipeSubscribeCloseResp handlePipeSubscribeClose(PipeSubscribeCloseReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeClose(PipeSubscribeCloseReq req) {
     try {
       return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
     } catch (Exception e) {
       return null;
     }
   }
+
+  //////////////////////////// utility ////////////////////////////
+
+  private boolean checkConsumerConfigThreadLocal() {}
 
   //////////////////////////// singleton ////////////////////////////
 

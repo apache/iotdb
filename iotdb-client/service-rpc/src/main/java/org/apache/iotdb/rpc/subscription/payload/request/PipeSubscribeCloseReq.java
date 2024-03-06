@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
-import java.io.IOException;
 import java.util.Objects;
 
 public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
@@ -32,7 +31,7 @@ public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeCloseReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeCloseReq toTPipeSubscribeReq() throws IOException {
+  public static PipeSubscribeCloseReq toTPipeSubscribeReq() {
     final PipeSubscribeCloseReq req = new PipeSubscribeCloseReq();
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();

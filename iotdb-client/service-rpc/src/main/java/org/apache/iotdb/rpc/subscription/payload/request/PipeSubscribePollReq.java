@@ -61,7 +61,9 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
   public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq pollReq) {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
-    req.topicNames = ReadWriteIOUtils.readStringList(req.body);
+    if (pollReq.body.hasRemaining()) {
+      req.topicNames = ReadWriteIOUtils.readStringList(pollReq.body);
+    }
 
     req.version = pollReq.version;
     req.type = pollReq.type;

@@ -20,6 +20,8 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -42,7 +44,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<EnrichedTablets> enrichedTabletsList) throws IOException {
+      TSStatus status, List<EnrichedTablets> enrichedTabletsList) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     resp.enrichedTabletsList = enrichedTabletsList;
@@ -57,6 +59,8 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
         enrichedTablets.serialize(outputStream);
       }
       resp.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
     }
 
     return resp;
@@ -66,9 +70,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    int size = ReadWriteIOUtils.readInt(pollResp.body);
-    for (int i = 0; i < size; ++i) {
-      resp.enrichedTabletsList.add(EnrichedTablets.deserialize(pollResp.body));
+    if (pollResp.body.hasRemaining()) {
+      int size = ReadWriteIOUtils.readInt(pollResp.body);
+      for (int i = 0; i < size; ++i) {
+        resp.enrichedTabletsList.add(EnrichedTablets.deserialize(pollResp.body));
+      }
     }
 
     resp.status = pollResp.status;

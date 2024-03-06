@@ -64,4 +64,14 @@ public class ConsumerConfig {
   public int hashCode() {
     return Objects.hash(consumerGroupID, consumerClientID);
   }
+
+  @Override
+  public String toString() {
+    return "ConsumerConfig{"
+        + "consumerGroupID='"
+        + consumerGroupID
+        + "', consumerClientID="
+        + consumerClientID
+        + "}";
+  }
 }
