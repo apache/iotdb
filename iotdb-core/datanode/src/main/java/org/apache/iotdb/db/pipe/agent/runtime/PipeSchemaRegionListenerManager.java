@@ -33,38 +33,38 @@ public class PipeSchemaRegionListenerManager {
   private final Map<SchemaRegionId, PipeSchemaRegionListener> id2StatusMap =
       new ConcurrentHashMap<>();
 
-  public SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
+  public synchronized SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
     return id2StatusMap.computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .listeningQueue;
   }
 
-  public int increaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
+  public synchronized int increaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
     return id2StatusMap
         .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .listeningQueueReferenceCount
         .incrementAndGet();
   }
 
-  public int decreaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
+  public synchronized int decreaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
     return id2StatusMap
         .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .listeningQueueReferenceCount
-        .decrementAndGet();
+        .updateAndGet(v -> v > 0 ? v - 1 : 0);
   }
 
-  public void notifyLeaderReady(SchemaRegionId schemaRegionId) {
+  public synchronized void notifyLeaderReady(SchemaRegionId schemaRegionId) {
     id2StatusMap
         .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .notifyLeaderReady();
   }
 
-  public void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
+  public synchronized void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
     id2StatusMap
         .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .notifyLeaderUnavailable();
   }
 
-  public boolean isLeaderReady(SchemaRegionId schemaRegionId) {
+  public synchronized boolean isLeaderReady(SchemaRegionId schemaRegionId) {
     return id2StatusMap
         .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .isLeaderReady();
