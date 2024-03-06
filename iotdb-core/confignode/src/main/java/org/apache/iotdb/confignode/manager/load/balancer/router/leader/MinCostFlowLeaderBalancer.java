@@ -355,22 +355,23 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
 
     databaseRegionGroupMap.forEach(
-        (database, regionGroupIds) -> regionGroupIds.forEach(
-            regionGroupId -> {
-              boolean matchLeader = false;
-              for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
-                  currentEdge >= 0;
-                  currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
-                MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
-                if (edge.destNode != S_NODE && edge.capacity == 0) {
-                  matchLeader = true;
-                  result.put(regionGroupId, sDNodeReflect.get(database).get(edge.destNode));
-                }
-              }
-              if (!matchLeader) {
-                result.put(regionGroupId, regionLeaderMap.getOrDefault(regionGroupId, -1));
-              }
-            }));
+        (database, regionGroupIds) ->
+            regionGroupIds.forEach(
+                regionGroupId -> {
+                  boolean matchLeader = false;
+                  for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
+                      currentEdge >= 0;
+                      currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
+                    MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
+                    if (edge.destNode != S_NODE && edge.capacity == 0) {
+                      matchLeader = true;
+                      result.put(regionGroupId, sDNodeReflect.get(database).get(edge.destNode));
+                    }
+                  }
+                  if (!matchLeader) {
+                    result.put(regionGroupId, regionLeaderMap.getOrDefault(regionGroupId, -1));
+                  }
+                }));
 
     return result;
   }

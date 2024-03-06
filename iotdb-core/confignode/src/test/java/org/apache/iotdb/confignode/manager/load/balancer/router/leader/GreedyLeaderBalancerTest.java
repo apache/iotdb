@@ -76,8 +76,8 @@ public class GreedyLeaderBalancerTest {
     }
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(new TreeMap<>(),
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+        BALANCER.generateOptimalLeaderDistribution(
+            new TreeMap<>(), regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(
         (regionGroupId, leaderId) ->
@@ -129,8 +129,8 @@ public class GreedyLeaderBalancerTest {
     }
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(new TreeMap<>(),
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+        BALANCER.generateOptimalLeaderDistribution(
+            new TreeMap<>(), regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(
         (regionGroupId, leaderId) ->

@@ -812,13 +812,12 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
     Map<String, List<TConsensusGroupId>> result = new TreeMap<>();
-    databasePartitionTables
-        .forEach(
-            (database, databasePartitionTable) -> {
-              if (databasePartitionTable.isNotPreDeleted()) {
-                result.put(database, databasePartitionTable.getAllRegionGroupIds(type));
-              }
-            });
+    databasePartitionTables.forEach(
+        (database, databasePartitionTable) -> {
+          if (databasePartitionTable.isNotPreDeleted()) {
+            result.put(database, databasePartitionTable.getAllRegionGroupIds(type));
+          }
+        });
     return result;
   }
 

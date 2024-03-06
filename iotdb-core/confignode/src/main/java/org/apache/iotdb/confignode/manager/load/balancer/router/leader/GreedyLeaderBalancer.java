@@ -47,7 +47,7 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
 
   @Override
   public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
-    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
+      Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
       Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Set<Integer> disabledDataNodeSet) {

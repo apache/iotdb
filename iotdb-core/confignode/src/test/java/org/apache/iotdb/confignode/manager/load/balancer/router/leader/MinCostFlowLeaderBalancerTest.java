@@ -29,7 +29,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public class MinCostFlowLeaderBalancerTest {
 
@@ -91,8 +89,8 @@ public class MinCostFlowLeaderBalancerTest {
 
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(databaseRegionGroupMap,
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+        BALANCER.generateOptimalLeaderDistribution(
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
     // Each DataNode occurs exactly once
@@ -129,8 +127,8 @@ public class MinCostFlowLeaderBalancerTest {
 
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(databaseRegionGroupMap,
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+        BALANCER.generateOptimalLeaderDistribution(
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Assert.assertEquals(1, leaderDistribution.size());
     Assert.assertEquals(1, new HashSet<>(leaderDistribution.values()).size());
     // Leader remains the same
@@ -183,17 +181,13 @@ public class MinCostFlowLeaderBalancerTest {
 
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(databaseRegionGroupMap,
-            regionReplicaSetMap, regionLeaderMap, new HashSet<>());
+        BALANCER.generateOptimalLeaderDistribution(
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, new HashSet<>());
     // All RegionGroup got a leader
     Assert.assertEquals(regionGroupNum, leaderDistribution.size());
 
     Map<Integer, Integer> leaderCounter = new ConcurrentHashMap<>();
-    leaderDistribution
-        .values()
-        .forEach(
-            leaderId ->
-                leaderCounter.merge(leaderId, 1, Integer::sum));
+    leaderDistribution.values().forEach(leaderId -> leaderCounter.merge(leaderId, 1, Integer::sum));
     // Every DataNode has leader
     Assert.assertEquals(dataNodeNum, leaderCounter.size());
     // Every DataNode has exactly regionGroupNum / dataNodeNum leaders

@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class GreedyCopySetRegionGroupAllocatorTest {
 
@@ -133,7 +134,13 @@ public class GreedyCopySetRegionGroupAllocatorTest {
                     .computeIfAbsent(databaseId, empty -> new TreeMap<>())
                     .merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
               });
-      LOGGER.info("After allocate RegionGroup: {}", index);
+      LOGGER.info(
+          "After allocate RegionGroup: {}, Database: {}, plan: {}",
+          index,
+          databaseId,
+          greedyCopySetRegionGroup.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
         LOGGER.info("Database {}: {}", i, greedyCopySetDatabaseRegionCounter.get(i));
       }

@@ -264,8 +264,8 @@ public class LeaderBalancerComparisonTest {
     Map<TConsensusGroupId, Integer> lastDistribution = new ConcurrentHashMap<>(regionLeaderMap);
     for (int rounds = 0; rounds < 1000; rounds++) {
       Map<TConsensusGroupId, Integer> currentDistribution =
-          leaderBalancer.generateOptimalLeaderDistribution(new TreeMap<>(),
-              regionReplicaSetMap, lastDistribution, disabledDataNodeSet);
+          leaderBalancer.generateOptimalLeaderDistribution(
+              new TreeMap<>(), regionReplicaSetMap, lastDistribution, disabledDataNodeSet);
       if (currentDistribution.equals(lastDistribution)) {
         // The leader distribution is stable
         result.rounds = rounds;
