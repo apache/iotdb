@@ -50,7 +50,7 @@ public class EnrichedTablets {
   }
 
   public static EnrichedTablets deserialize(ByteBuffer buffer) {
-    EnrichedTablets enrichedTablets = new EnrichedTablets();
+    final EnrichedTablets enrichedTablets = new EnrichedTablets();
     enrichedTablets.topicName = ReadWriteIOUtils.readString(buffer);
     int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {

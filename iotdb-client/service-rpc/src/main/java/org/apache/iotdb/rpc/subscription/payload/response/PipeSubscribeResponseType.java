@@ -25,7 +25,6 @@ import java.util.Map;
 
 public enum PipeSubscribeResponseType {
   ACK((short) 0),
-
   POLL_TABLETS((short) 1),
   ;
 
