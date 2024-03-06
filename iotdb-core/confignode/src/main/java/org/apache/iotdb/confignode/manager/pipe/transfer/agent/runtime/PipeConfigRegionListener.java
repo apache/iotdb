@@ -34,7 +34,7 @@ public class PipeConfigRegionListener {
 
   private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
 
-  public ConfigRegionListeningQueue listener() {
+  public synchronized ConfigRegionListeningQueue listener() {
     return listeningQueue;
   }
 
