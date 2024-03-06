@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueu
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeSchemaRegionListenerManager {
 
@@ -35,6 +36,20 @@ public class PipeSchemaRegionListenerManager {
   public SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
     return id2StatusMap.computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .listeningQueue;
+  }
+
+  public int increaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
+    return id2StatusMap
+        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+        .listeningQueueReferenceCount
+        .incrementAndGet();
+  }
+
+  public int decreaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
+    return id2StatusMap
+        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+        .listeningQueueReferenceCount
+        .decrementAndGet();
   }
 
   public void notifyLeaderReady(SchemaRegionId schemaRegionId) {
@@ -58,6 +73,7 @@ public class PipeSchemaRegionListenerManager {
   private static class PipeSchemaRegionListener {
 
     private final SchemaRegionListeningQueue listeningQueue = new SchemaRegionListeningQueue();
+    private final AtomicInteger listeningQueueReferenceCount = new AtomicInteger(0);
 
     private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
 
