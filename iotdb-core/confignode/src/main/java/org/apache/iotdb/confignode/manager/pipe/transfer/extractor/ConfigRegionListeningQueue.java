@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -34,7 +33,6 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.thrift.TException;
@@ -53,12 +51,6 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_config_region_listening_queue.bin";
-
-  private int referenceCount = 0;
-
-  private ConfigRegionListeningQueue() {
-    super();
-  }
 
   /////////////////////////////// Function ///////////////////////////////
 
@@ -104,32 +96,6 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     listenToSnapshots(events);
   }
 
-  /////////////////////////////// Reference count ///////////////////////////////
-
-  // TODO: move to pipe runtime agent
-
-  // ConfigNodeQueue does not need extra protection of consensus, because the
-  // reference count is handled under consensus layer.
-  public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
-      throws IllegalPathException {
-    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
-      referenceCount++;
-      if (referenceCount == 1) {
-        open();
-      }
-    }
-  }
-
-  public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
-      throws IllegalPathException, IOException {
-    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
-      referenceCount--;
-      if (referenceCount == 0) {
-        close();
-      }
-    }
-  }
-
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
   @Override
@@ -161,22 +127,5 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   @Override
   public synchronized void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-  }
-
-  /////////////////////////////// INSTANCE ///////////////////////////////
-
-  // TODO: move to pipe runtime agent
-
-  public static ConfigRegionListeningQueue getInstance() {
-    return ConfigPlanListeningQueueHolder.INSTANCE;
-  }
-
-  private static class ConfigPlanListeningQueueHolder {
-
-    private static final ConfigRegionListeningQueue INSTANCE = new ConfigRegionListeningQueue();
-
-    private ConfigPlanListeningQueueHolder() {
-      // empty constructor
-    }
   }
 }

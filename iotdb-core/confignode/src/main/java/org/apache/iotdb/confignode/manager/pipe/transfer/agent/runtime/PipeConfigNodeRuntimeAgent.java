@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -27,10 +28,13 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -38,8 +42,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeRuntimeAgent.class);
 
-  private final PipeConfigRegionStatusListener configRegionStatusListener =
-      new PipeConfigRegionStatusListener();
+  private final PipeConfigRegionListener regionListener = new PipeConfigRegionListener();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
@@ -78,18 +81,31 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     return ServiceType.PIPE_RUNTIME_CONFIG_NODE_AGENT;
   }
 
-  //////////////////////////// Leader Status Listener ////////////////////////////
+  //////////////////////////// Region Listener ////////////////////////////
+
+  public ConfigRegionListeningQueue listener() {
+    return regionListener.listener();
+  }
+
+  public void increaseListenerReference(PipeParameters parameters) throws IllegalPathException {
+    regionListener.increaseReference(parameters);
+  }
+
+  public void decreaseListenerReference(PipeParameters parameters)
+      throws IllegalPathException, IOException {
+    regionListener.decreaseReference(parameters);
+  }
 
   public void notifyLeaderReady() {
-    configRegionStatusListener.notifyLeaderReady();
+    regionListener.notifyLeaderReady();
   }
 
   public void notifyLeaderUnavailable() {
-    configRegionStatusListener.notifyLeaderUnavailable();
+    regionListener.notifyLeaderUnavailable();
   }
 
   public boolean isLeaderReady() {
-    return configRegionStatusListener.isLeaderReady();
+    return regionListener.isLeaderReady();
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////

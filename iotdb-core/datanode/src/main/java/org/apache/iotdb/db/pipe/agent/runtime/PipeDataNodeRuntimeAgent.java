@@ -56,8 +56,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
   private final AtomicReference<String> clusterId = new AtomicReference<>(null);
 
-  private final PipeSchemaRegionStatusListener schemaRegionStatusListener =
-      new PipeSchemaRegionStatusListener();
+  private final PipeSchemaRegionListener schemaRegionStatusListener =
+      new PipeSchemaRegionListener();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();

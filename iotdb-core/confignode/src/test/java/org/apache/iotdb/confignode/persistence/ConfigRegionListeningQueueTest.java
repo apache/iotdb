@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -57,7 +56,7 @@ public class ConfigRegionListeningQueueTest {
 
   @AfterClass
   public static void cleanup() throws IOException {
-    ConfigRegionListeningQueue.getInstance().close();
+    PipeConfigNodeAgent.runtime().listener().close();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -65,7 +64,7 @@ public class ConfigRegionListeningQueueTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, AuthException {
-    ConfigRegionListeningQueue.getInstance().open();
+    PipeConfigNodeAgent.runtime().listener().open();
     PipeConfigNodeAgent.runtime().notifyLeaderReady();
 
     DatabaseSchemaPlan plan1 =
@@ -83,19 +82,19 @@ public class ConfigRegionListeningQueueTest {
                 false,
                 new ArrayList<>()));
 
-    ConfigRegionListeningQueue.getInstance().tryListenToPlan(plan1, false);
-    ConfigRegionListeningQueue.getInstance().tryListenToPlan(plan2, false);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan1, false);
+    PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan2, false);
 
     // tryListenToSnapshots() cannot be tested here since we cannot operate the reference count of
     // the original or deserialized events
 
-    ConfigRegionListeningQueue.getInstance().processTakeSnapshot(snapshotDir);
-    ConfigRegionListeningQueue.getInstance().close();
+    PipeConfigNodeAgent.runtime().listener().processTakeSnapshot(snapshotDir);
+    PipeConfigNodeAgent.runtime().listener().close();
 
-    ConfigRegionListeningQueue.getInstance().processLoadSnapshot(snapshotDir);
-    Assert.assertTrue(ConfigRegionListeningQueue.getInstance().isOpened());
+    PipeConfigNodeAgent.runtime().listener().processLoadSnapshot(snapshotDir);
+    Assert.assertTrue(PipeConfigNodeAgent.runtime().listener().isOpened());
     ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
-        ConfigRegionListeningQueue.getInstance().newIterator(0);
+        PipeConfigNodeAgent.runtime().listener().newIterator(0);
 
     Event event1 = itr.next(0);
     Assert.assertEquals(plan1, ((PipeConfigRegionWritePlanEvent) event1).getConfigPhysicalPlan());

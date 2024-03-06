@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
@@ -132,7 +131,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       writeLogForSimpleConsensus(plan);
     }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ConfigRegionListeningQueue.getInstance().tryListenToPlan(plan, false);
+      PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false);
     }
     return result;
   }
@@ -374,7 +373,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               // Recover the linked queue.
               // Note that the "nextPlan"s may contain create and drop pipe operations
               // and will affect whether the queue listen to the plans.
-              ConfigRegionListeningQueue.getInstance().tryListenToPlan(nextPlan, false);
+              PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
