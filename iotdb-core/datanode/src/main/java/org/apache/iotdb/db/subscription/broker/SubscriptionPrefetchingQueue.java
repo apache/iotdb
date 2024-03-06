@@ -19,33 +19,20 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.util.List;
-import java.util.Map;
-
-public class SubscriptionDispatcher {
+public class SubscriptionPrefetchingQueue {
 
   private String brokerID; // consumer group ID
 
-  private SubscriptionSinkQueueManager sinkQueueManager;
+  private String topic;
 
-  private List<TabletInsertionEvent> tabletInsertionEvents;
+  private EnrichedDeque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
 
-  private List<TsFileInsertionEvent> tsFileInsertionEvents;
+  private EnrichedDeque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
 
-  private Map<String, Iterable<Tablet>> topicNameToTablets;
-
-  private EnrichedTablets parseTabletInsertionEvents() {
-    for (TabletInsertionEvent tabletInsertionEvent : tabletInsertionEvents) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        Tablet tablet =
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvents).convertToTablet();
-      }
-    }
-  }
+  public Iterable<Tablet> fetch() {}
 }

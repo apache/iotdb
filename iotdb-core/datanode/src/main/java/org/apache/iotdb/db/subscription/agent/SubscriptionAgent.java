@@ -135,6 +135,7 @@ public class SubscriptionAgent {
     SubscriptionConsumerAgent.getInstance().createConsumer(consumerConfig);
 
     // get DN configs
+    // TODO: cached and listen changes
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TDataNodeConfigurationResp dataNodeConfigurationResp =

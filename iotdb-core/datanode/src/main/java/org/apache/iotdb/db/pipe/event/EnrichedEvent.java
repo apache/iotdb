@@ -60,6 +60,12 @@ public abstract class EnrichedEvent implements Event {
 
   protected boolean shouldReportOnCommit = false;
 
+  protected String topic;
+
+  public String getTopic() {
+    return topic;
+  }
+
   protected EnrichedEvent(
       String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
     referenceCount = new AtomicInteger(0);
