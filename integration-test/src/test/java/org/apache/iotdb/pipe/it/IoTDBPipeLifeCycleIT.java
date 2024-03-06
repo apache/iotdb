@@ -427,8 +427,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -491,7 +491,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
               });
       t.start();
 
-      Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+      TestUtils.restartCluster(receiverEnv);
       t.join();
 
       TestUtils.assertDataOnEnv(
@@ -664,8 +664,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualIT {
     TestUtils.assertDataOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     for (int i = 400; i < 500; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(

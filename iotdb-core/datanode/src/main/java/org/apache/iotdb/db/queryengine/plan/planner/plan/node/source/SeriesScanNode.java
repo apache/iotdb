@@ -48,27 +48,10 @@ import java.util.Objects;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SeriesSourceNode {
+public class SeriesScanNode extends SeriesScanSourceNode {
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
-
-  // The order to traverse the data.
-  // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
-  // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private Ordering scanOrder = Ordering.ASC;
-
-  // push down predicate for current series, could be null if doesn't exist
-  @Nullable private Expression pushDownPredicate;
-
-  // push down limit for result set. The default value is -1, which means no limit
-  private long pushDownLimit;
-
-  // push down offset for result set. The default value is 0
-  private long pushDownOffset;
-
-  // The id of DataRegion where the node will run
-  private TRegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath) {
     super(id);
@@ -76,8 +59,8 @@ public class SeriesScanNode extends SeriesSourceNode {
   }
 
   public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, Ordering scanOrder) {
-    this(id, seriesPath);
-    this.scanOrder = scanOrder;
+    super(id, scanOrder);
+    this.seriesPath = seriesPath;
   }
 
   public SeriesScanNode(
@@ -87,10 +70,8 @@ public class SeriesScanNode extends SeriesSourceNode {
       long pushDownLimit,
       long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, scanOrder);
-    this.pushDownLimit = pushDownLimit;
-    this.pushDownOffset = pushDownOffset;
-    this.regionReplicaSet = dataRegionReplicaSet;
+    super(id, scanOrder, pushDownLimit, pushDownOffset, dataRegionReplicaSet);
+    this.seriesPath = seriesPath;
   }
 
   public SeriesScanNode(
@@ -101,80 +82,12 @@ public class SeriesScanNode extends SeriesSourceNode {
       long pushDownLimit,
       long pushDownOffset,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, scanOrder);
-    this.pushDownPredicate = pushDownPredicate;
-    this.pushDownLimit = pushDownLimit;
-    this.pushDownOffset = pushDownOffset;
-    this.regionReplicaSet = dataRegionReplicaSet;
-  }
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return regionReplicaSet;
-  }
-
-  @Override
-  public void setRegionReplicaSet(TRegionReplicaSet dataRegion) {
-    this.regionReplicaSet = dataRegion;
-  }
-
-  public long getPushDownLimit() {
-    return pushDownLimit;
-  }
-
-  public long getPushDownOffset() {
-    return pushDownOffset;
-  }
-
-  public void setPushDownLimit(long pushDownLimit) {
-    this.pushDownLimit = pushDownLimit;
-  }
-
-  public void setPushDownOffset(long pushDownOffset) {
-    this.pushDownOffset = pushDownOffset;
-  }
-
-  public Ordering getScanOrder() {
-    return scanOrder;
-  }
-
-  public void setScanOrder(Ordering scanOrder) {
-    this.scanOrder = scanOrder;
+    super(id, scanOrder, pushDownPredicate, pushDownLimit, pushDownOffset, dataRegionReplicaSet);
+    this.seriesPath = seriesPath;
   }
 
   public MeasurementPath getSeriesPath() {
     return seriesPath;
-  }
-
-  @Nullable
-  @Override
-  public Expression getPushDownPredicate() {
-    return pushDownPredicate;
-  }
-
-  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
-    this.pushDownPredicate = pushDownPredicate;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("no child is allowed for SeriesScanNode");
   }
 
   @Override
@@ -186,7 +99,7 @@ public class SeriesScanNode extends SeriesSourceNode {
         getPushDownPredicate(),
         getPushDownLimit(),
         getPushDownOffset(),
-        this.regionReplicaSet);
+        getRegionReplicaSet());
   }
 
   @Override
@@ -265,24 +178,12 @@ public class SeriesScanNode extends SeriesSourceNode {
       return false;
     }
     SeriesScanNode that = (SeriesScanNode) o;
-    return pushDownLimit == that.pushDownLimit
-        && pushDownOffset == that.pushDownOffset
-        && seriesPath.equals(that.seriesPath)
-        && scanOrder == that.scanOrder
-        && Objects.equals(pushDownPredicate, that.pushDownPredicate)
-        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+    return seriesPath.equals(that.seriesPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(),
-        seriesPath,
-        scanOrder,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath);
   }
 
   @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -42,15 +43,28 @@ import java.util.Arrays;
 
 public class CompactionOverlapCheckTest extends AbstractCompactionTest {
 
+  long initChunkSizeLowerBound =
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+  long initChunkPointNumLowerBound =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkSizeLowerBoundInCompaction(initChunkSizeLowerBound);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkPointNumLowerBoundInCompaction(initChunkPointNumLowerBound);
   }
 
   @Test

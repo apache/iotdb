@@ -224,6 +224,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "LATEST",
       "LIKE",
       "MAX_BY",
+      "MIN_BY",
       "METADATA",
       "MOVE",
       "MIN_TIME",

@@ -29,14 +29,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 
 import org.junit.Test;
@@ -136,7 +138,7 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof FullOuterTimeJoinNode);
@@ -152,7 +154,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -169,7 +171,7 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
             instanceof FullOuterTimeJoinNode);
@@ -185,7 +187,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -218,9 +220,22 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof FullOuterTimeJoinNode);
     assertTrue(
         f1Root
@@ -234,9 +249,13 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -247,23 +266,26 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof AggregationNode);
     assertTrue(
+        f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0)
+            instanceof ProjectNode);
+    assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof FullOuterTimeJoinNode);
     assertTrue(
         f1Root
@@ -277,6 +299,51 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
+            instanceof SeriesSourceNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof FullOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
@@ -290,23 +357,14 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
-                .get(0)
                 .getChildren()
                 .get(1)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
-    assertTrue(f2Root.getChildren().get(1) instanceof FullOuterTimeJoinNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(1) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(2) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(3) instanceof SeriesScanNode);
   }
 
   @Test
@@ -417,7 +475,7 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -445,7 +503,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -467,7 +525,7 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -495,7 +553,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -533,9 +591,24 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -561,9 +634,13 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -576,21 +653,6 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof SingleDeviceViewNode);
     assertTrue(
@@ -598,13 +660,28 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
                 .get(0)
                 .getChildren()
                 .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -626,6 +703,8 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
@@ -640,26 +719,15 @@ public class AlignedByDeviceTest {
                 .getChildren()
                 .get(0)
                 .getChildren()
-                .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
                 .get(0)
                 .getChildren()
                 .get(1)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f2Root instanceof ShuffleSinkNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
-    assertTrue(f2Root.getChildren().get(1) instanceof FullOuterTimeJoinNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(1) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(2) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(3) instanceof SeriesScanNode);
   }
 
   @Test
@@ -758,7 +826,7 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof FullOuterTimeJoinNode);
@@ -774,7 +842,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -791,7 +859,7 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
             instanceof FullOuterTimeJoinNode);
@@ -807,7 +875,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -841,9 +909,22 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof FullOuterTimeJoinNode);
     assertTrue(
         f1Root
@@ -855,6 +936,51 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof SeriesSourceNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof FullOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
                 .getChildren()
                 .get(0)
             instanceof SeriesSourceNode);
@@ -870,23 +996,28 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
                 .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
+                .get(1)
             instanceof ExchangeNode);
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof AggregationNode);
     assertTrue(
+        f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0)
+            instanceof ProjectNode);
+    assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
             instanceof FullOuterTimeJoinNode);
     assertTrue(
         f1Root
@@ -900,6 +1031,51 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
+            instanceof SeriesSourceNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof FullOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
@@ -913,24 +1089,15 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
-                .get(0)
                 .getChildren()
                 .get(1)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(1) instanceof SeriesScanNode);
     assertTrue(f3Root instanceof IdentitySinkNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f3Root.getChildren().get(1) instanceof SeriesScanNode);
   }
 
   @Test
@@ -1045,7 +1212,7 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -1073,7 +1240,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -1095,7 +1262,7 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -1123,7 +1290,7 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof SeriesSourceNode);
+            instanceof SeriesScanNode);
     assertTrue(
         f1Root
                 .getChildren()
@@ -1140,9 +1307,9 @@ public class AlignedByDeviceTest {
                 .get(1)
             instanceof ExchangeNode);
     assertTrue(f2Root instanceof ShuffleSinkNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof SeriesSourceNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof SeriesScanNode);
     assertTrue(f3Root instanceof ShuffleSinkNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof SeriesSourceNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof SeriesScanNode);
 
     // test of MULTI_SERIES
     sql =
@@ -1163,9 +1330,24 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -1191,6 +1373,57 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
+            instanceof SeriesSourceNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof FullOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
@@ -1206,21 +1439,8 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
                 .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
+                .get(1)
             instanceof ExchangeNode);
     assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof SingleDeviceViewNode);
     assertTrue(
@@ -1228,13 +1448,28 @@ public class AlignedByDeviceTest {
             instanceof AggregationNode);
     assertTrue(
         f1Root.getChildren().get(0).getChildren().get(1).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         f1Root
                 .getChildren()
                 .get(0)
                 .getChildren()
                 .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+            instanceof LeftOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
                 .getChildren()
                 .get(0)
                 .getChildren()
@@ -1256,6 +1491,57 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
+                .getChildren()
+                .get(0)
+            instanceof SeriesSourceNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof ExchangeNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+            instanceof FullOuterTimeJoinNode);
+    assertTrue(
+        f1Root
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(0)
+                .getChildren()
+                .get(1)
+                .getChildren()
+                .get(0)
             instanceof SeriesSourceNode);
     assertTrue(
         f1Root
@@ -1271,26 +1557,15 @@ public class AlignedByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root
-                .getChildren()
-                .get(0)
                 .getChildren()
                 .get(1)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(2)
             instanceof ExchangeNode);
     assertTrue(f2Root instanceof ShuffleSinkNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f2Root.getChildren().get(1) instanceof SeriesScanNode);
     assertTrue(f3Root instanceof ShuffleSinkNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(f3Root.getChildren().get(1) instanceof SeriesScanNode);
   }
 
   @Test

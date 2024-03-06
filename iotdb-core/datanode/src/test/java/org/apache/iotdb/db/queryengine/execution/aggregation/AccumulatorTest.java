@@ -909,4 +909,37 @@ public class AccumulatorTest {
     maxByAccumulator.outputFinal(finalResult);
     Assert.assertEquals(-99, finalResult.build().getInt(0));
   }
+
+  @Test
+  public void minByAccumulatorTest() {
+    Accumulator minByAccumulator =
+        AccumulatorFactory.createBuiltinAccumulator(
+            TAggregationType.MIN_BY,
+            Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE),
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    Assert.assertEquals(TSDataType.TEXT, minByAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.INT32, minByAccumulator.getFinalType());
+    // Returns null if there's no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    minByAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    ColumnBuilder finalResult = new IntColumnBuilder(null, 1);
+    minByAccumulator.outputFinal(finalResult);
+    Assert.assertTrue(finalResult.build().isNull(0));
+
+    Column[] timeAndValueColumn = getTimeAndTwoValueColumns(1, 0);
+    minByAccumulator.addInput(timeAndValueColumn, null);
+    Assert.assertFalse(minByAccumulator.hasFinalResult());
+    intermediateResult[0] = new BinaryColumnBuilder(null, 1);
+    minByAccumulator.outputIntermediate(intermediateResult);
+
+    // add intermediate result as input
+    minByAccumulator.addIntermediate(new Column[] {intermediateResult[0].build()});
+    finalResult = new IntColumnBuilder(null, 1);
+    minByAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(0, finalResult.build().getInt(0));
+  }
 }

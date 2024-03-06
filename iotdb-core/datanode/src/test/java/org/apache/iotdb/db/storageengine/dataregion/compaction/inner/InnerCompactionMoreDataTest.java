@@ -150,7 +150,8 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   // test file compaction larger than 1024 sensor
   @Test
-  public void testSensorWithTwoOrThreeNode() throws MetadataException, IOException {
+  public void testSensorWithTwoOrThreeNode()
+      throws MetadataException, IOException, InterruptedException {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);

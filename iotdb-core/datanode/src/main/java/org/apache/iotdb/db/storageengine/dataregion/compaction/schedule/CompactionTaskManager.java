@@ -74,7 +74,7 @@ public class CompactionTaskManager implements IService {
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(
+      new CompactionTaskQueue(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
   // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
@@ -210,6 +210,10 @@ public class CompactionTaskManager implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.COMPACTION_SERVICE;
+  }
+
+  public boolean isWaitingQueueFull() {
+    return candidateCompactionTaskQueue.size() == candidateCompactionTaskQueue.getMaxSize();
   }
 
   /**

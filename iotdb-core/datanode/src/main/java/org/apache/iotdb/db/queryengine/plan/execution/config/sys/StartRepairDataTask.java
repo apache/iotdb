@@ -22,21 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class RepairDataTask implements IConfigTask {
+public class StartRepairDataTask implements IConfigTask {
 
-  private final RepairDataStatement repairDataStatement;
+  private final StartRepairDataStatement startRepairDataStatement;
 
-  public RepairDataTask(RepairDataStatement repairDataStatement) {
-    this.repairDataStatement = repairDataStatement;
+  public StartRepairDataTask(StartRepairDataStatement startRepairDataStatement) {
+    this.startRepairDataStatement = startRepairDataStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.repairData(repairDataStatement.isOnCluster());
+    return configTaskExecutor.startRepairData(startRepairDataStatement.isOnCluster());
   }
 }
