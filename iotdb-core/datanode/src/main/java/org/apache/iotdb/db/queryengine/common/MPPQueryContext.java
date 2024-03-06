@@ -80,6 +80,20 @@ public class MPPQueryContext {
   public MPPQueryContext(
       String sql,
       QueryId queryId,
+      SessionInfo session,
+      TEndPoint localDataBlockEndpoint,
+      TEndPoint localInternalEndpoint) {
+    this(queryId);
+    this.sql = sql;
+    this.session = session;
+    this.localDataBlockEndpoint = localDataBlockEndpoint;
+    this.localInternalEndpoint = localInternalEndpoint;
+    this.initResultNodeContext();
+  }
+
+  public MPPQueryContext(
+      String sql,
+      QueryId queryId,
       long localQueryId,
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
