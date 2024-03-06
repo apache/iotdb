@@ -723,8 +723,12 @@ public class WALBuffer extends AbstractWALBuffer {
                     file, FileChannel.open(file.toPath(), StandardOpenOption.READ))
                 .getMemTablesId();
           } catch (IOException e) {
-            logger.error("Fail to read memTable ids from the wal file {}.", id);
-            return new HashSet<>();
+            logger.warn(
+                "Fail to read memTable ids from the wal file {} of wal node {}.",
+                id,
+                identifier,
+                e);
+            return Collections.emptySet();
           }
         });
   }
