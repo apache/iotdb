@@ -40,7 +40,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
@@ -179,7 +178,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
       newFirstIndexMap.forEach(
           (schemaId, index) ->
-              SchemaRegionListeningQueue.getInstance(schemaId).removeBefore(index));
+              PipeAgent.runtime().schemaListener(new SchemaRegionId(schemaId)).removeBefore(index));
 
       // Close queues of no sending PipeMetas if sync is successful
       if (exceptionMessages.isEmpty()) {
@@ -187,10 +186,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             .getAllSchemaRegionIds()
             .forEach(
                 schemaRegionId -> {
-                  int id = schemaRegionId.getId();
-                  if (!newFirstIndexMap.containsKey(id)
-                      && PipeAgent.runtime().isLeaderReady(schemaRegionId)
-                      && SchemaRegionListeningQueue.getInstance(id).isOpened()) {
+                  if (!newFirstIndexMap.containsKey(schemaRegionId.getId())
+                      && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
+                      && PipeAgent.runtime().schemaListener(schemaRegionId).isOpened()) {
                     try {
                       SchemaRegionConsensusImpl.getInstance()
                           .write(

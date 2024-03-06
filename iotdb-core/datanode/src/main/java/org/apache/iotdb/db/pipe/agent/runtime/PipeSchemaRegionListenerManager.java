@@ -21,32 +21,43 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeSchemaRegionListener {
+public class PipeSchemaRegionListenerManager {
 
-  private final Map<SchemaRegionId, SchemaRegionStatus> id2StatusMap = new ConcurrentHashMap<>();
+  private final Map<SchemaRegionId, PipeSchemaRegionListener> id2StatusMap =
+      new ConcurrentHashMap<>();
+
+  public SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
+    return id2StatusMap.computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+        .listeningQueue;
+  }
 
   public void notifyLeaderReady(SchemaRegionId schemaRegionId) {
-    id2StatusMap.computeIfAbsent(schemaRegionId, k -> new SchemaRegionStatus()).notifyLeaderReady();
+    id2StatusMap
+        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+        .notifyLeaderReady();
   }
 
   public void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
     id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new SchemaRegionStatus())
+        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .notifyLeaderUnavailable();
   }
 
   public boolean isLeaderReady(SchemaRegionId schemaRegionId) {
     return id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new SchemaRegionStatus())
+        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
         .isLeaderReady();
   }
 
-  private static class SchemaRegionStatus {
+  private static class PipeSchemaRegionListener {
+
+    private final SchemaRegionListeningQueue listeningQueue = new SchemaRegionListeningQueue();
 
     private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
 

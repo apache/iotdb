@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -56,8 +57,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
   private final AtomicReference<String> clusterId = new AtomicReference<>(null);
 
-  private final PipeSchemaRegionListener schemaRegionStatusListener =
-      new PipeSchemaRegionListener();
+  private final PipeSchemaRegionListenerManager regionListenerManager =
+      new PipeSchemaRegionListenerManager();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -129,18 +130,22 @@ public class PipeDataNodeRuntimeAgent implements IService {
     return clusterId.get();
   }
 
-  ////////////////////// Leader Status Listener //////////////////////
+  ////////////////////// Region Listener //////////////////////
 
-  public void notifyLeaderReady(SchemaRegionId schemaRegionId) {
-    schemaRegionStatusListener.notifyLeaderReady(schemaRegionId);
+  public SchemaRegionListeningQueue schemaListener(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listener(schemaRegionId);
   }
 
-  public void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
-    schemaRegionStatusListener.notifyLeaderUnavailable(schemaRegionId);
+  public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {
+    regionListenerManager.notifyLeaderReady(schemaRegionId);
   }
 
-  public boolean isLeaderReady(SchemaRegionId schemaRegionId) {
-    return schemaRegionStatusListener.isLeaderReady(schemaRegionId);
+  public void notifySchemaLeaderUnavailable(SchemaRegionId schemaRegionId) {
+    regionListenerManager.notifyLeaderUnavailable(schemaRegionId);
+  }
+
+  public boolean isSchemaLeaderReady(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.isLeaderReady(schemaRegionId);
   }
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////

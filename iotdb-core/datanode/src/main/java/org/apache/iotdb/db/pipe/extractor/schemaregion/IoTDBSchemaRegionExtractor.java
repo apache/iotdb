@@ -61,7 +61,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!PipeAgent.runtime().isLeaderReady(new SchemaRegionId(regionId))
+    if (!PipeAgent.runtime().isSchemaLeaderReady(new SchemaRegionId(regionId))
         || hasBeenStarted.get()
         || hasBeenClosed.get()) {
       return;
@@ -83,7 +83,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!PipeAgent.runtime().isLeaderReady(new SchemaRegionId(regionId)) || hasBeenClosed.get()) {
+    if (!PipeAgent.runtime().isSchemaLeaderReady(new SchemaRegionId(regionId))
+        || hasBeenClosed.get()) {
       return null;
     }
     if (!hasBeenStarted.get()) {
@@ -94,7 +95,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return SchemaRegionListeningQueue.getInstance(regionId);
+    return PipeAgent.runtime().schemaListener(new SchemaRegionId(regionId));
   }
 
   @Override

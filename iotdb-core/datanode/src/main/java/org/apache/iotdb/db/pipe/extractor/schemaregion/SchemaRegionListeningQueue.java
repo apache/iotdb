@@ -39,18 +39,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionListeningQueue.class);
 
   private static final String SNAPSHOT_FILE_NAME = "pipe_schema_region_listening_queue.bin";
-
-  private SchemaRegionListeningQueue() {
-    super();
-  }
 
   /////////////////////////////// Function ///////////////////////////////
 
@@ -120,28 +114,6 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot {}", e.getMessage());
-    }
-  }
-
-  /////////////////////////// Singleton ///////////////////////////
-
-  // TODO: move to pipe runtime
-
-  public static SchemaRegionListeningQueue getInstance(int regionId) {
-    return SchemaRegionListeningQueue.InstanceHolder.getOrCreateInstance(regionId);
-  }
-
-  private static class InstanceHolder {
-
-    private static final Map<Integer, SchemaRegionListeningQueue> INSTANCE_MAP =
-        new ConcurrentHashMap<>();
-
-    public static SchemaRegionListeningQueue getOrCreateInstance(int key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new SchemaRegionListeningQueue());
-    }
-
-    private InstanceHolder() {
-      // forbidding instantiation
     }
   }
 }
