@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.response;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -33,12 +34,18 @@ public class EnrichedTablets {
 
   private transient String topicName;
   private transient List<Tablet> tablets = new ArrayList<>();
+  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(tablets.size(), stream);
     for (Tablet tablet : tablets) {
       tablet.serialize(stream);
+    }
+    ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), stream);
+    for (Pair<String, Integer> committerKeyAndCommitId : committerKeyAndCommitIds) {
+      ReadWriteIOUtils.write(committerKeyAndCommitId.left, stream);
+      ReadWriteIOUtils.write(committerKeyAndCommitId.right, stream);
     }
   }
 
@@ -48,6 +55,12 @@ public class EnrichedTablets {
     int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
       enrichedTablets.tablets.add(Tablet.deserialize(buffer));
+    }
+    size = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < size; ++i) {
+      String committerKey = ReadWriteIOUtils.readString(buffer);
+      int commitId = ReadWriteIOUtils.readInt(buffer);
+      enrichedTablets.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
     }
     return enrichedTablets;
   }
@@ -64,12 +77,13 @@ public class EnrichedTablets {
     }
     EnrichedTablets that = (EnrichedTablets) obj;
     return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.tablets, that.tablets);
+        && Objects.equals(this.tablets, that.tablets)
+        && Objects.equals(this.committerKeyAndCommitIds, that.committerKeyAndCommitIds);
   }
 
   @Override
   public int hashCode() {
     // TODO: Tablet hashCode
-    return Objects.hash(topicName, tablets);
+    return Objects.hash(topicName, tablets, committerKeyAndCommitIds);
   }
 }
