@@ -357,6 +357,12 @@ public class MemoryManager implements IMemoryManager {
 
           synchronized (cacheEntry) {
             if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
+              if (status == ITERATE_UPDATE_BUFFER) {
+                container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(
+                        node.getName());
+              } else {
+                container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
+              }
               if (cacheEntry.hasVolatileDescendant()
                   && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
                 // these two factor judgement is not redundant because the #hasVolatileDescendant is
@@ -367,16 +373,9 @@ public class MemoryManager implements IMemoryManager {
                 nextSubtree = node;
                 unlockImmediately = false;
                 return;
-              } else {
-                if (status == ITERATE_UPDATE_BUFFER) {
-                  container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(
-                      node.getName());
-                } else {
-                  container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
-                }
-                nodeBuffer.addUpdatedNodeToBuffer(node);
-                continue;
               }
+              nodeBuffer.addUpdatedNodeToBuffer(node);
+              continue;
             }
 
             cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
