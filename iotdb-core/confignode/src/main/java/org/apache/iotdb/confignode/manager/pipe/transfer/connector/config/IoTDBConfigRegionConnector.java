@@ -110,7 +110,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handleReceiverStatus(
+    receiverStatusHandler.handle(
         status,
         String.format(
             "Transfer config region write plan %s error, result status %s.",
@@ -168,7 +168,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           continue;
         }
 
-        receiverStatusHandler.handleReceiverStatus(
+        receiverStatusHandler.handle(
             resp.getStatus(),
             String.format(
                 "Transfer config region snapshot %s error, result status %s.",
@@ -195,7 +195,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           e);
     }
 
-    receiverStatusHandler.handleReceiverStatus(
+    receiverStatusHandler.handle(
         resp.getStatus(),
         String.format(
             "Seal config region snapshot file %s error, result status %s.",

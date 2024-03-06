@@ -223,7 +223,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
-  public PipeReceiverStatusHandler getReceiverStatusHandler() {
+  public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
   }
 }
