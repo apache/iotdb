@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.IoTDBCon
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime.PipeConfigNodeRuntimeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeConfigNodeTaskAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.db.pipe.agent.plugin.PipeDataNodePluginAgent;
 
 /** {@link PipeConfigNodeAgent} is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
@@ -57,9 +56,9 @@ public class PipeConfigNodeAgent {
   }
 
   /**
-   * Get the singleton instance of {@link PipeDataNodePluginAgent}.
+   * Get the singleton instance of {@link PipeConfigNodePluginAgent}.
    *
-   * @return the singleton instance of {@link PipeDataNodePluginAgent}
+   * @return the singleton instance of {@link PipeConfigNodePluginAgent}
    */
   public static PipeConfigNodePluginAgent plugin() {
     return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodePluginAgent;
