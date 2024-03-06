@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_CONNECTOR;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -35,19 +43,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 public class PipeConnectorSubtaskManager {
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
-  private final Map<String, List<PipeConnectorSubtaskLifeCycle>>
+  private final Map<String, List<PipeAbstractConnectorSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
@@ -69,13 +70,19 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final int connectorNum =
-          pipeConnectorParameters.getIntOrDefault(
-              Arrays.asList(
-                  PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
-                  PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-              PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
-      final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
+      final int connectorNum;
+      if (!DO_NOTHING_CONNECTOR.getPipePluginName().equals(connectorKey)) {
+        connectorNum =
+            pipeConnectorParameters.getIntOrDefault(
+                Arrays.asList(
+                    PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                    PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
+                PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      } else {
+        connectorNum = 1;
+      }
+
+      final List<PipeAbstractConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
       // Shared pending queue for all subtasks
@@ -101,26 +108,32 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-        final PipeConnectorSubtask pipeConnectorSubtask =
-            new PipeConnectorSubtask(
-                String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
-                environment.getCreationTime(),
-                attributeSortedString,
-                connectorIndex,
-                pendingQueue,
-                pipeConnector);
-        final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-            new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
-        pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+        if (!DO_NOTHING_CONNECTOR.getPipePluginName().equals(connectorKey)) {
+          final PipeConnectorSubtask pipeConnectorSubtask =
+              new PipeConnectorSubtask(
+                  String.format(
+                      "%s_%s_%s",
+                      attributeSortedString, environment.getCreationTime(), connectorIndex),
+                  environment.getCreationTime(),
+                  attributeSortedString,
+                  connectorIndex,
+                  pendingQueue,
+                  pipeConnector);
+          final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
+              new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
+          pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+        } else {
+          final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
+              new PipeDoNothingConnectorSubtaskLifeCycle(pendingQueue);
+          pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+        }
       }
 
       attributeSortedString2SubtaskLifeCycleMap.put(
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
 
-    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
+    for (final PipeAbstractConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.register();
     }
@@ -134,7 +147,7 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
+    final List<PipeAbstractConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycles.removeIf(o -> o.deregister(pipeName));
 
@@ -150,7 +163,7 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
+    for (final PipeAbstractConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.start();
     }
@@ -161,7 +174,7 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
+    for (final PipeAbstractConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.stop();
     }
