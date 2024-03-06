@@ -41,10 +41,10 @@ public class PipeReceiverStatusHandler {
   private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
-  private final long retryMaxSecondsWhenConflictOccurs;
+  private final long retryMaxMillisWhenConflictOccurs;
   private final boolean shouldRecordIgnoredDataWhenConflictOccurs;
 
-  private final long retryMaxSecondsWhenOtherExceptionsOccur;
+  private final long retryMaxMillisWhenOtherExceptionsOccur;
   private final boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur;
 
   private final AtomicLong exceptionFirstEncounteredTime = new AtomicLong(0);
@@ -58,14 +58,16 @@ public class PipeReceiverStatusHandler {
       long retryMaxSecondsWhenOtherExceptionsOccur,
       boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur) {
     this.isRetryAllowedWhenConflictOccurs = isRetryAllowedWhenConflictOccurs;
-    this.retryMaxSecondsWhenConflictOccurs =
-        retryMaxSecondsWhenConflictOccurs < 0 ? Long.MAX_VALUE : retryMaxSecondsWhenConflictOccurs;
+    this.retryMaxMillisWhenConflictOccurs =
+        retryMaxSecondsWhenConflictOccurs < 0
+            ? Long.MAX_VALUE
+            : retryMaxSecondsWhenConflictOccurs * 1000;
     this.shouldRecordIgnoredDataWhenConflictOccurs = shouldRecordIgnoredDataWhenConflictOccurs;
 
-    this.retryMaxSecondsWhenOtherExceptionsOccur =
+    this.retryMaxMillisWhenOtherExceptionsOccur =
         retryMaxSecondsWhenOtherExceptionsOccur < 0
             ? Long.MAX_VALUE
-            : retryMaxSecondsWhenOtherExceptionsOccur;
+            : retryMaxSecondsWhenOtherExceptionsOccur * 1000;
     this.shouldRecordIgnoredDataWhenOtherExceptionsOccur =
         shouldRecordIgnoredDataWhenOtherExceptionsOccur;
   }
@@ -102,20 +104,20 @@ public class PipeReceiverStatusHandler {
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
-        synchronized (this) {
-          if (!isRetryAllowedWhenConflictOccurs) {
-            LOGGER.warn(
-                "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
-                shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
-                status);
-            return;
-          }
+        if (!isRetryAllowedWhenConflictOccurs) {
+          LOGGER.warn(
+              "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
+              shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
+              status);
+          return;
+        }
 
+        synchronized (this) {
           recordExceptionStatusIfNecessary(recordMessage);
 
           if (exceptionEventHasBeenRetried.get()
               && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxSecondsWhenConflictOccurs) {
+                  > retryMaxMillisWhenConflictOccurs) {
             LOGGER.warn(
                 "User conflict exception: retry timeout. will be ignored. event: {}. status: {}",
                 shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
@@ -126,10 +128,10 @@ public class PipeReceiverStatusHandler {
 
           LOGGER.warn(
               "User conflict exception: will retry for at least {} seconds. status: {}",
-              (retryMaxSecondsWhenConflictOccurs * 1000
+              (retryMaxMillisWhenConflictOccurs
                       + exceptionFirstEncounteredTime.get()
                       - System.currentTimeMillis())
-                  / 1000,
+                  / 1000.0,
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeConnectorRetryTimesConfigurableException(
@@ -137,7 +139,7 @@ public class PipeReceiverStatusHandler {
               (int)
                   Math.max(
                       PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxSecondsWhenConflictOccurs * 1.1)));
+                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
         }
 
       default: // Other exceptions
@@ -146,7 +148,7 @@ public class PipeReceiverStatusHandler {
 
           if (exceptionEventHasBeenRetried.get()
               && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxSecondsWhenOtherExceptionsOccur) {
+                  > retryMaxMillisWhenOtherExceptionsOccur) {
             LOGGER.warn(
                 "Unclassified exception: retry timeout. will be ignored. event: {}. status: {}",
                 shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
@@ -157,7 +159,7 @@ public class PipeReceiverStatusHandler {
 
           LOGGER.warn(
               "Unclassified exception: will retry for at least {} seconds. status: {}",
-              (retryMaxSecondsWhenOtherExceptionsOccur * 1000
+              (retryMaxMillisWhenOtherExceptionsOccur
                       + exceptionFirstEncounteredTime.get()
                       - System.currentTimeMillis())
                   / 1000,
@@ -169,8 +171,7 @@ public class PipeReceiverStatusHandler {
                   Math.max(
                       PipeSubtask.MAX_RETRY_TIMES,
                       Math.min(
-                          CONFLICT_RETRY_MAX_TIMES,
-                          retryMaxSecondsWhenOtherExceptionsOccur * 1.1)));
+                          CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
         }
     }
   }
