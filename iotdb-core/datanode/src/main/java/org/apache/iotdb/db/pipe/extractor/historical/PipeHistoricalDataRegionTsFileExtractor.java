@@ -57,9 +57,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_MODS_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
@@ -67,8 +67,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
@@ -98,7 +98,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
-  private boolean shouldTransferModFile; // Whether to transfer mods in historical mode
+  private boolean shouldTransferModFile; // Whether to transfer mods
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -181,8 +181,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
       shouldTransferModFile =
           parameters.getBooleanOrDefault(
-              Arrays.asList(SOURCE_HISTORY_MODS_ENABLE_KEY, EXTRACTOR_HISTORY_MODS_ENABLE_KEY),
-              EXTRACTOR_HISTORY_MODS_ENABLE_DEFAULT_VALUE);
+              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE);
     } catch (Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());

@@ -47,7 +47,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
-  private final boolean isWithMod;
+  private boolean isWithMod;
   private File modFile;
 
   private final boolean isLoaded;
@@ -60,7 +60,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
     this(
         resource,
-        false,
+        true,
         isLoaded,
         isGeneratedByPipe,
         null,
@@ -136,6 +136,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public boolean isWithMod() {
     return isWithMod;
+  }
+
+  public void setWithMod(boolean isWithMod) {
+    this.isWithMod = isWithMod;
   }
 
   public boolean isLoaded() {

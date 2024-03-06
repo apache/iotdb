@@ -53,9 +53,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
@@ -86,6 +89,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       new AtomicReference<>();
 
   protected boolean isForwardingPipeRequests;
+
+  private boolean shouldTransferModFile; // Whether to transfer mods
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -190,6 +195,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+
+    shouldTransferModFile =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE);
   }
 
   @Override
@@ -310,6 +320,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
+  }
+
+  public final boolean isShouldTransferModFile() {
+    return shouldTransferModFile;
   }
 
   @Override

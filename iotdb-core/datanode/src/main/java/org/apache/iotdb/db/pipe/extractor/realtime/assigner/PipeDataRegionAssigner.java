@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
@@ -74,11 +75,15 @@ public class PipeDataRegionAssigner {
                       extractor.getPattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
+              final EnrichedEvent innerEvent = copiedEvent.getEvent();
+              if (innerEvent instanceof PipeTsFileInsertionEvent) {
+                ((PipeTsFileInsertionEvent) innerEvent)
+                    .setWithMod(extractor.isShouldTransferModFile());
+              }
 
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
 
-              final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeHeartbeatEvent) {
                 ((PipeHeartbeatEvent) innerEvent).bindPipeName(extractor.getPipeName());
                 ((PipeHeartbeatEvent) innerEvent).onAssigned();
