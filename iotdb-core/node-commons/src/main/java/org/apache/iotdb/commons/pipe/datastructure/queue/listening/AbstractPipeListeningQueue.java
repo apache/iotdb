@@ -60,7 +60,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     super(QueueSerializerType.PLAIN);
   }
 
-  /////////////////////////////// Function ///////////////////////////////
+  /////////////////////////////// Plan ///////////////////////////////
 
   protected synchronized void tryListen(EnrichedEvent event) {
     if (super.tryListen(event)) {
@@ -70,7 +70,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////
 
-  protected synchronized void listenToSnapshots(List<PipeSnapshotEvent> events) {
+  protected synchronized void tryListen(List<PipeSnapshotEvent> events) {
     if (!isClosed.get()) {
       clearSnapshots();
       queueTailIndex2SnapshotsCache.setLeft(queue.getTailIndex());

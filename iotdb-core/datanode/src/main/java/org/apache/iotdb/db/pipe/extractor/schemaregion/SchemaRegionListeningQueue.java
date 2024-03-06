@@ -80,7 +80,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     for (String snapshotPath : snapshotPaths) {
       events.add(new PipeSchemaRegionSnapshotEvent(snapshotPath));
     }
-    listenToSnapshots(events);
+    tryListen(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

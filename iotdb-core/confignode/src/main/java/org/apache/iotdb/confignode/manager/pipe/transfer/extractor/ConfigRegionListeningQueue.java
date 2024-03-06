@@ -93,7 +93,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     for (String snapshotPath : snapshotPaths) {
       events.add(new PipeConfigRegionSnapshotEvent(snapshotPath));
     }
-    listenToSnapshots(events);
+    tryListen(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
