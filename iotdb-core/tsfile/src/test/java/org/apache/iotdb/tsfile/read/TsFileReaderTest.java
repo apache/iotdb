@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -487,21 +488,22 @@ public class TsFileReaderTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
       // query for non-exist device
       try {
-        reader.getAlignedChunkMetadata("d3");
+        reader.getAlignedChunkMetadata(new PlainDeviceID("d3"));
       } catch (IOException e) {
         Assert.assertEquals("Device {d3} is not in tsFileMetaData", e.getMessage());
       }
 
       // query for non-aligned device
       try {
-        reader.getAlignedChunkMetadata("d2");
+        reader.getAlignedChunkMetadata(new PlainDeviceID("d2"));
       } catch (IOException e) {
         Assert.assertEquals("Timeseries of device {d2} are not aligned", e.getMessage());
       }
 
       String[] expected = new String[] {"s1", "s2", "s3", "s4"};
 
-      List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata("d1");
+      List<AlignedChunkMetadata> chunkMetadataList =
+          reader.getAlignedChunkMetadata(new PlainDeviceID("d1"));
       AlignedChunkMetadata alignedChunkMetadata = chunkMetadataList.get(0);
       Assert.assertEquals("", alignedChunkMetadata.getTimeChunkMetadata().getMeasurementUid());
       int i = 0;

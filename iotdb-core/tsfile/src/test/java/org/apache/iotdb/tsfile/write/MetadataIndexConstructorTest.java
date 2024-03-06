@@ -22,8 +22,10 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -93,11 +95,11 @@ public class MetadataIndexConstructorTest {
   public void singleIndexTest1() {
     int deviceNum = 5;
     int measurementNum = 5;
-    String[] devices = new String[deviceNum];
+    IDeviceID[] devices = new IDeviceID[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + i;
+      devices[i] = new PlainDeviceID("d" + i);
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -112,11 +114,11 @@ public class MetadataIndexConstructorTest {
   public void singleIndexTest2() {
     int deviceNum = 1;
     int measurementNum = 150;
-    String[] devices = new String[deviceNum];
+    IDeviceID[] devices = new IDeviceID[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + i;
+      devices[i] = new PlainDeviceID("d" + i);
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -131,11 +133,11 @@ public class MetadataIndexConstructorTest {
   public void singleIndexTest3() {
     int deviceNum = 150;
     int measurementNum = 1;
-    String[] devices = new String[deviceNum];
+    IDeviceID[] devices = new IDeviceID[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + generateIndexString(i, deviceNum);
+      devices[i] = new PlainDeviceID("d" + generateIndexString(i, deviceNum));
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -150,11 +152,11 @@ public class MetadataIndexConstructorTest {
   public void singleIndexTest4() {
     int deviceNum = 150;
     int measurementNum = 1;
-    String[] devices = new String[deviceNum];
+    IDeviceID[] devices = new IDeviceID[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + generateIndexString(i, deviceNum);
+      devices[i] = new PlainDeviceID("d" + generateIndexString(i, deviceNum));
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -167,7 +169,7 @@ public class MetadataIndexConstructorTest {
   /** Example 5: 1 entities with 1 vector containing 9 measurements */
   @Test
   public void vectorIndexTest() {
-    String[] devices = {"d0"};
+    IDeviceID[] devices = {new PlainDeviceID("d0")};
     int[][] vectorMeasurement = {{9}};
     test(devices, vectorMeasurement, null);
   }
@@ -179,7 +181,7 @@ public class MetadataIndexConstructorTest {
    */
   @Test
   public void compositeIndexTest() {
-    String[] devices = {"d0", "d1"};
+    IDeviceID[] devices = {new PlainDeviceID("d0"), new PlainDeviceID("d1")};
     int[][] vectorMeasurement = {{}, {4}};
     String[][] singleMeasurement = {
       {"s0", "s1", "s2", "s3", "s4", "z0", "z1", "z2", "z3"},
@@ -195,11 +197,11 @@ public class MetadataIndexConstructorTest {
    * @param vectorMeasurement the number of device and the number of values to include in the tablet
    * @param singleMeasurement non-vector measurement name, set null if no need
    */
-  private void test(String[] devices, int[][] vectorMeasurement, String[][] singleMeasurement) {
+  private void test(IDeviceID[] devices, int[][] vectorMeasurement, String[][] singleMeasurement) {
     // 1. generate file
     generateFile(devices, vectorMeasurement, singleMeasurement);
     // 2. read metadata from file
-    List<String> actualDevices = new ArrayList<>(); // contains all device by sequence
+    List<IDeviceID> actualDevices = new ArrayList<>(); // contains all device by sequence
     List<List<String>> actualMeasurements =
         new ArrayList<>(); // contains all measurements group by device
     readMetaDataDFS(actualDevices, actualMeasurements);
@@ -225,7 +227,7 @@ public class MetadataIndexConstructorTest {
     }
     // 4.2 make sure timeseries in order
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
-      Iterator<Pair<String, Boolean>> iterator = reader.getAllDevicesIteratorWithIsAligned();
+      Iterator<Pair<IDeviceID, Boolean>> iterator = reader.getAllDevicesIteratorWithIsAligned();
       while (iterator.hasNext()) {
         for (String correctDevice : correctDevices) {
           assertEquals(correctDevice, iterator.next().left);
@@ -233,7 +235,7 @@ public class MetadataIndexConstructorTest {
       }
       assertFalse(iterator.hasNext());
 
-      Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
+      Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata(false);
       for (int j = 0; j < actualDevices.size(); j++) {
         for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
@@ -361,14 +363,14 @@ public class MetadataIndexConstructorTest {
    * @param singleMeasurement input
    */
   private void generateCorrectResult(
-      List<String> correctDevices,
+      List<IDeviceID> correctDevices,
       List<List<String>> correctMeasurements,
       List<String> correctPaths,
-      String[] devices,
+      IDeviceID[] devices,
       int[][] vectorMeasurement,
       String[][] singleMeasurement) {
     for (int i = 0; i < devices.length; i++) {
-      String device = devices[i];
+      IDeviceID device = devices[i];
       correctDevices.add(device);
       // generate measurement and sort
       List<String> measurements = new ArrayList<>();
@@ -403,7 +405,7 @@ public class MetadataIndexConstructorTest {
    * @param singleMeasurement non-vector measurement name, set null if no need
    */
   private void generateFile(
-      String[] devices, int[][] vectorMeasurement, String[][] singleMeasurement) {
+      IDeviceID[] devices, int[][] vectorMeasurement, String[][] singleMeasurement) {
     File f = FSFactoryProducer.getFSFactory().getFile(FILE_PATH);
     if (f.exists() && !f.delete()) {
       fail("can not delete " + f.getAbsolutePath());
@@ -413,7 +415,7 @@ public class MetadataIndexConstructorTest {
       // write single-variable timeseries
       if (singleMeasurement != null) {
         for (int i = 0; i < singleMeasurement.length; i++) {
-          String device = devices[i];
+          IDeviceID device = devices[i];
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device),
@@ -436,7 +438,7 @@ public class MetadataIndexConstructorTest {
 
       // write multi-variable timeseries
       for (int i = 0; i < devices.length; i++) {
-        String device = devices[i];
+        IDeviceID device = devices[i];
         logger.info("generating device {}...", device);
         // the number of rows to include in the tablet
         int rowNum = 10;
