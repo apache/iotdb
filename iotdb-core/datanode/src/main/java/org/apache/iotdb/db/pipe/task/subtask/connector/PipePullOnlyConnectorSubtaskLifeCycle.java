@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeDoNothingConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskLifeCycle {
+public class PipePullOnlyConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskLifeCycle {
 
-  public PipeDoNothingConnectorSubtaskLifeCycle(BoundedBlockingPendingQueue<Event> pendingQueue) {
+  public PipePullOnlyConnectorSubtaskLifeCycle(BoundedBlockingPendingQueue<Event> pendingQueue) {
     super(pendingQueue);
   }
 

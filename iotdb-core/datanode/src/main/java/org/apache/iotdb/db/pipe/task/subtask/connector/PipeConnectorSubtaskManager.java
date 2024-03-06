@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.PULL_ONLY_SINK;
 
 public class PipeConnectorSubtaskManager {
 
@@ -72,7 +72,7 @@ public class PipeConnectorSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final int connectorNum;
-      if (!DO_NOTHING_CONNECTOR.getPipePluginName().equals(connectorKey)) {
+      if (!PULL_ONLY_SINK.getPipePluginName().equals(connectorKey)) {
         connectorNum =
             pipeConnectorParameters.getIntOrDefault(
                 Arrays.asList(
@@ -109,7 +109,7 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-        if (!DO_NOTHING_CONNECTOR.getPipePluginName().equals(connectorKey)) {
+        if (!PULL_ONLY_SINK.getPipePluginName().equals(connectorKey)) {
           final PipeConnectorSubtask pipeConnectorSubtask =
               new PipeConnectorSubtask(
                   String.format(
@@ -125,7 +125,7 @@ public class PipeConnectorSubtaskManager {
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         } else {
           final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-              new PipeDoNothingConnectorSubtaskLifeCycle(pendingQueue);
+              new PipePullOnlyConnectorSubtaskLifeCycle(pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         }
       }
