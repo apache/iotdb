@@ -2894,6 +2894,21 @@ public class DataRegion implements IDataRegionForQuery {
     return workSequenceTsFileProcessors.values();
   }
 
+  public boolean removeTsFile(File fileToBeRemoved) {
+    TsFileResource tsFileResourceToBeRemoved = unloadTsFileInside(fileToBeRemoved);
+    if (tsFileResourceToBeRemoved == null) {
+      return false;
+    }
+    tsFileResourceToBeRemoved.writeLock();
+    try {
+      tsFileResourceToBeRemoved.remove();
+      logger.info("Remove tsfile {} successfully.", tsFileResourceToBeRemoved.getTsFile());
+    } finally {
+      tsFileResourceToBeRemoved.writeUnlock();
+    }
+    return true;
+  }
+
   /**
    * Unload tsfile and move it to the target directory if it exists.
    *
@@ -2905,36 +2920,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @return whether the file to be unloaded exists. @UsedBy load external tsfile module.
    */
   public boolean unloadTsfile(File fileToBeUnloaded, File targetDir) throws IOException {
-    writeLock("unloadTsfile");
-    TsFileResource tsFileResourceToBeMoved = null;
-    try {
-      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
-      while (sequenceIterator.hasNext()) {
-        TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
-          tsFileResourceToBeMoved = sequenceResource;
-          tsFileManager.remove(tsFileResourceToBeMoved, true);
-          FileMetrics.getInstance()
-              .deleteTsFile(true, Collections.singletonList(tsFileResourceToBeMoved));
-          break;
-        }
-      }
-      if (tsFileResourceToBeMoved == null) {
-        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
-        while (unsequenceIterator.hasNext()) {
-          TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
-            tsFileResourceToBeMoved = unsequenceResource;
-            tsFileManager.remove(tsFileResourceToBeMoved, false);
-            FileMetrics.getInstance()
-                .deleteTsFile(false, Collections.singletonList(tsFileResourceToBeMoved));
-            break;
-          }
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
+    TsFileResource tsFileResourceToBeMoved = unloadTsFileInside(fileToBeUnloaded);
     if (tsFileResourceToBeMoved == null) {
       return false;
     }
@@ -2949,6 +2935,40 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceToBeMoved.writeUnlock();
     }
     return true;
+  }
+
+  private TsFileResource unloadTsFileInside(File fileToBeUnloaded) {
+    writeLock("unloadTsFileInside");
+    TsFileResource unloadedTsFileResource = null;
+    try {
+      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
+      while (sequenceIterator.hasNext()) {
+        TsFileResource sequenceResource = sequenceIterator.next();
+        if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
+          unloadedTsFileResource = sequenceResource;
+          tsFileManager.remove(unloadedTsFileResource, true);
+          FileMetrics.getInstance()
+              .deleteTsFile(true, Collections.singletonList(unloadedTsFileResource));
+          break;
+        }
+      }
+      if (unloadedTsFileResource == null) {
+        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
+        while (unsequenceIterator.hasNext()) {
+          TsFileResource unsequenceResource = unsequenceIterator.next();
+          if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
+            unloadedTsFileResource = unsequenceResource;
+            tsFileManager.remove(unloadedTsFileResource, false);
+            FileMetrics.getInstance()
+                .deleteTsFile(false, Collections.singletonList(unloadedTsFileResource));
+            break;
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+    return unloadedTsFileResource;
   }
 
   /**
