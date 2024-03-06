@@ -29,8 +29,14 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
 public class PipeReceiverStatusHandler {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverStatusHandler.class);
+
   private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
   private final boolean isAllowConflictRetry;
@@ -39,8 +45,8 @@ public class PipeReceiverStatusHandler {
   private final long othersRetryMaxSeconds;
   private final boolean othersRecordIgnoredData;
 
-  private long firstEncounterTime;
-  private String lastRecordMessage = "";
+  private final AtomicLong firstEncounterTime = new AtomicLong();
+  private final AtomicReference<String> lastRecordMessage = new AtomicReference<>("");
 
   public PipeReceiverStatusHandler(
       boolean isAllowConflictRetry,
@@ -70,33 +76,39 @@ public class PipeReceiverStatusHandler {
   public void handleReceiverStatusWithLaterExceptionRetry(
       TSStatus status, String exceptionMessage, String recordMessage) {
     switch (status.getCode()) {
-        // SUCCESS_STATUS
-      case 200:
-        return;
-        // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
-      case 1809:
-        LOGGER.info(
-            "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
-        return;
-        // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-      case 1808:
-        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
-        // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
-      case 1810:
-        if (isAllowConflictRetry) {
-          LOGGER.warn(
-              "User conflict exception status in pipe transfer, will retry. status: {}", status);
+      case 200: // SUCCESS_STATUS
+        {
+          return;
+        }
+      case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
+        {
+          LOGGER.info(
+              "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
+          return;
+        }
+      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
+        {
           throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
         }
-        if (conflictRecordIgnoredData) {
-          LOGGER.warn(
-              "User conflict exception status in pipe transfer, Ignored event: {}", recordMessage);
+      case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+        {
+          if (isAllowConflictRetry) {
+            LOGGER.warn(
+                "User conflict exception status in pipe transfer, will retry. status: {}", status);
+            throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+          }
+          if (conflictRecordIgnoredData) {
+            LOGGER.warn(
+                "User conflict exception status in pipe transfer, Ignored event: {}",
+                recordMessage);
+          }
+          return;
         }
-        return;
-        // Other exceptions
-      default:
-        LOGGER.warn("Unclassified exception in pipe transfer, will retry. status: {}", status);
-        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+      default: // Other exceptions
+        {
+          LOGGER.warn("Unclassified exception in pipe transfer, will retry. status: {}", status);
+          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+        }
     }
   }
 
@@ -112,71 +124,83 @@ public class PipeReceiverStatusHandler {
    *     that the same {@link Event} generates always the same record message, for instance, do not
    *     put any time-related info here
    */
-  public void handleReceiverStatus(TSStatus status, String exceptionMessage, String recordMessage) {
+  public synchronized void handleReceiverStatus(
+      TSStatus status, String exceptionMessage, String recordMessage) {
     // Reset the time counter if the event changes
-    if (!lastRecordMessage.equals(recordMessage)) {
-      firstEncounterTime = 0;
-      lastRecordMessage = recordMessage;
+    if (!Objects.equals(lastRecordMessage.get(), recordMessage)) {
+      firstEncounterTime.set(0);
+      lastRecordMessage.set(recordMessage);
     }
+
     switch (status.getCode()) {
-        // SUCCESS_STATUS
-      case 200:
-        firstEncounterTime = 0;
-        return;
-        // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
-      case 1809:
-        firstEncounterTime = 0;
-        LOGGER.info(
-            "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
-        return;
-        // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
-      case 1808:
-        LOGGER.info(
-            "Temporary unavailable exception in pipe transfer, will retry forever. status: {}",
-            status);
-        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
-        // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
-      case 1810:
-        if (firstEncounterTime == 0 && isAllowConflictRetry) {
-          firstEncounterTime = System.currentTimeMillis();
-          LOGGER.warn(
-              "User conflict exception status in pipe transfer, will retry for {} seconds. status: {}",
-              conflictRetryMaxSeconds,
-              status);
-        } else if (System.currentTimeMillis() - firstEncounterTime > conflictRetryMaxSeconds) {
-          LOGGER.warn("User conflict exception timeout, release the event.");
-          if (conflictRecordIgnoredData) {
-            LOGGER.warn("Ignored event: {}", recordMessage);
-          }
-          firstEncounterTime = 0;
+      case 200: // SUCCESS_STATUS
+        {
+          firstEncounterTime.set(0);
           return;
         }
-        // We assume one retry costs one second here, and the retry times is configured here
-        // to better assure a conflict won't cost the whole task to stop (i.e. wait for the
-        // next meta sync to re-open the task)
-        throw new PipeRuntimeConnectorRetryTimesConfigurableException(
-            exceptionMessage,
-            (int)
-                Math.max(
-                    PipeSubtask.MAX_RETRY_TIMES,
-                    Math.min(CONFLICT_RETRY_MAX_TIMES, conflictRetryMaxSeconds * 1.1)));
-        // Other exceptions
-      default:
-        if (firstEncounterTime == 0) {
-          firstEncounterTime = System.currentTimeMillis();
-          LOGGER.warn(
-              "Unclassified exception in pipe transfer, will retry for {} seconds. status: {}",
-              othersRetryMaxSeconds,
-              status);
-        } else if (System.currentTimeMillis() - firstEncounterTime > othersRetryMaxSeconds) {
-          LOGGER.warn("Unclassified exception timeout, release the event.");
-          if (othersRecordIgnoredData) {
-            LOGGER.warn("Ignored event: {}", recordMessage);
-          }
-          firstEncounterTime = 0;
+
+      case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
+        {
+          firstEncounterTime.set(0);
+          LOGGER.info(
+              "Idempotent conflict exception in pipe transfer, will ignore. status: {}", status);
           return;
         }
-        throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+
+      case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
+        {
+          LOGGER.info(
+              "Temporary unavailable exception in pipe transfer, will retry forever. status: {}",
+              status);
+          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+        }
+
+      case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+        {
+          if (firstEncounterTime.get() == 0 && isAllowConflictRetry) {
+            firstEncounterTime.set(System.currentTimeMillis());
+            LOGGER.warn(
+                "User conflict exception status in pipe transfer, will retry for {} seconds. status: {}",
+                conflictRetryMaxSeconds,
+                status);
+          } else if (System.currentTimeMillis() - firstEncounterTime.get()
+              > conflictRetryMaxSeconds) {
+            LOGGER.warn("User conflict exception timeout, release the event.");
+            if (conflictRecordIgnoredData) {
+              LOGGER.warn("Ignored event: {}", recordMessage);
+            }
+            firstEncounterTime.set(0);
+            return;
+          }
+          // We assume one retry costs one second here, and the retry times is configured here
+          // to better assure a conflict won't cost the whole task to stop (i.e. wait for the
+          // next meta sync to re-open the task)
+          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+              exceptionMessage,
+              (int)
+                  Math.max(
+                      PipeSubtask.MAX_RETRY_TIMES,
+                      Math.min(CONFLICT_RETRY_MAX_TIMES, conflictRetryMaxSeconds * 1.1)));
+        }
+      default: // Other exceptions
+        {
+          if (firstEncounterTime.get() == 0) {
+            firstEncounterTime.set(System.currentTimeMillis());
+            LOGGER.warn(
+                "Unclassified exception in pipe transfer, will retry for {} seconds. status: {}",
+                othersRetryMaxSeconds,
+                status);
+          } else if (System.currentTimeMillis() - firstEncounterTime.get()
+              > othersRetryMaxSeconds) {
+            LOGGER.warn("Unclassified exception timeout, release the event.");
+            if (othersRecordIgnoredData) {
+              LOGGER.warn("Ignored event: {}", recordMessage);
+            }
+            firstEncounterTime.set(0);
+            return;
+          }
+          throw new PipeRuntimeConnectorCriticalException(exceptionMessage);
+        }
     }
   }
 }
