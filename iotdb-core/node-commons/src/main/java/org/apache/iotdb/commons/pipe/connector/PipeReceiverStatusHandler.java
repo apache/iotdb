@@ -162,7 +162,7 @@ public class PipeReceiverStatusHandler {
               (retryMaxMillisWhenOtherExceptionsOccur
                       + exceptionFirstEncounteredTime.get()
                       - System.currentTimeMillis())
-                  / 1000,
+                  / 1000.0,
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeConnectorRetryTimesConfigurableException(
