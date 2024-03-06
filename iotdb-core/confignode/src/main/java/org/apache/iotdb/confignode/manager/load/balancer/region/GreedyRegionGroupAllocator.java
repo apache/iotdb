@@ -88,16 +88,16 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                     freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
 
     // Sort weightList
-   return priorityMap.entrySet().stream()
-            .sorted(
-                comparingByValue(
-                    (o1, o2) ->
-                        !Objects.equals(o1.getLeft(), o2.getLeft())
-                            // Compare the first key(The number of Regions) by ascending order
-                            ? o1.getLeft() - o2.getLeft()
-                            // Compare the second key(The free disk space) by descending order
-                            : (int) (o2.getRight() - o1.getRight())))
-            .map(entry -> entry.getKey().deepCopy())
-            .collect(Collectors.toList());
+    return priorityMap.entrySet().stream()
+        .sorted(
+            comparingByValue(
+                (o1, o2) ->
+                    !Objects.equals(o1.getLeft(), o2.getLeft())
+                        // Compare the first key(The number of Regions) by ascending order
+                        ? o1.getLeft() - o2.getLeft()
+                        // Compare the second key(The free disk space) by descending order
+                        : (int) (o2.getRight() - o1.getRight())))
+        .map(entry -> entry.getKey().deepCopy())
+        .collect(Collectors.toList());
   }
 }

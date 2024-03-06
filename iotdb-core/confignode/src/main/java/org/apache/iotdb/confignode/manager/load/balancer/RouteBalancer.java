@@ -140,6 +140,7 @@ public class RouteBalancer {
     Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
+          getPartitionManager().getAllRegionGroupIdMap(regionGroupType),
             getPartitionManager().getAllReplicaSetsMap(regionGroupType),
             currentLeaderMap,
             getNodeManager()

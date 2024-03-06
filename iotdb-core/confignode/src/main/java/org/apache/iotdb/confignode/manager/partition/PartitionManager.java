@@ -791,6 +791,18 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * <p>Get the all RegionGroups currently in the cluster
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Map<Database, List<RegionGroupIds>>
+   */
+  public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
+    return partitionInfo.getAllRegionGroupIdMap(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get all the RegionGroups currently owned by the specified Database
    *
    * @param database DatabaseName

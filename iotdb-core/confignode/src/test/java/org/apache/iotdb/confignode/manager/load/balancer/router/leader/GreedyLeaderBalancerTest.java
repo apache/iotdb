@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -75,7 +76,7 @@ public class GreedyLeaderBalancerTest {
     }
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(
+        BALANCER.generateOptimalLeaderDistribution(new TreeMap<>(),
             regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(
@@ -128,7 +129,7 @@ public class GreedyLeaderBalancerTest {
     }
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
-        BALANCER.generateOptimalLeaderDistribution(
+        BALANCER.generateOptimalLeaderDistribution(new TreeMap<>(),
             regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(

@@ -99,16 +99,20 @@ public class GreedyCopySetRegionGroupAllocatorTest {
       greedyCopySetDatabaseResult.put(i, new ArrayList<>());
     }
     for (int index = 0; index < dataRegionGroupPerDatabase * TEST_DATABASE_NUM; index++) {
-      TRegionReplicaSet greedyRegionGroup = GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
-          AVAILABLE_DATA_NODE_MAP,
-          FREE_SPACE_MAP,
-          greedyResult,
-          greedyResult,
-          replicationFactor,
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      TRegionReplicaSet greedyRegionGroup =
+          GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+              AVAILABLE_DATA_NODE_MAP,
+              FREE_SPACE_MAP,
+              greedyResult,
+              greedyResult,
+              replicationFactor,
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
       greedyResult.add(greedyRegionGroup);
-      greedyRegionGroup.getDataNodeLocations().forEach(
-          dataNodeLocation -> greedyRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum));
+      greedyRegionGroup
+          .getDataNodeLocations()
+          .forEach(
+              dataNodeLocation ->
+                  greedyRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum));
       int databaseId = RANDOM.nextInt(TEST_DATABASE_NUM);
       TRegionReplicaSet greedyCopySetRegionGroup =
           GREEDY_COPY_SET_ALLOCATOR.generateOptimalRegionReplicasDistribution(
@@ -120,20 +124,23 @@ public class GreedyCopySetRegionGroupAllocatorTest {
               new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
       greedyCopySetResult.add(greedyCopySetRegionGroup);
       greedyCopySetDatabaseResult.get(databaseId).add(greedyCopySetRegionGroup);
-      greedyCopySetRegionGroup.getDataNodeLocations().forEach(
-          dataNodeLocation -> {
-            greedyCopySetRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
-            greedyCopySetDatabaseRegionCounter
-                .computeIfAbsent(databaseId, empty -> new TreeMap<>())
-                .merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
-          });
+      greedyCopySetRegionGroup
+          .getDataNodeLocations()
+          .forEach(
+              dataNodeLocation -> {
+                greedyCopySetRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
+                greedyCopySetDatabaseRegionCounter
+                    .computeIfAbsent(databaseId, empty -> new TreeMap<>())
+                    .merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
+              });
       LOGGER.info("After allocate RegionGroup: {}", index);
       for (int i = 0; i < TEST_DATABASE_NUM; i++) {
         LOGGER.info("Database {}: {}", i, greedyCopySetDatabaseRegionCounter.get(i));
       }
       LOGGER.info("Cluster   : {}", greedyCopySetRegionCounter);
       for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
-        Assert.assertTrue(greedyCopySetRegionCounter.getOrDefault(i, 0) <= DATA_REGION_PER_DATA_NODE);
+        Assert.assertTrue(
+            greedyCopySetRegionCounter.getOrDefault(i, 0) <= DATA_REGION_PER_DATA_NODE);
       }
     }
 
@@ -208,9 +215,11 @@ public class GreedyCopySetRegionGroupAllocatorTest {
       for (int j = 1; j <= TEST_DATA_NODE_NUM; j++) {
         if (greedyCopySetDatabaseRegionCounter.get(i).containsKey(j)) {
           greedyCopySetMinRegionCount =
-            Math.min(greedyCopySetMinRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
+              Math.min(
+                  greedyCopySetMinRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
           greedyCopySetMaxRegionCount =
-            Math.max(greedyCopySetMaxRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
+              Math.max(
+                  greedyCopySetMaxRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
         }
       }
       // The maximal Region count - minimal Region count should be less than or equal to 1 for each

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,6 +33,7 @@ public interface ILeaderBalancer {
   /**
    * Generate an optimal leader distribution.
    *
+   * @param databaseRegionGroupMap RegionGroup held by each Database
    * @param regionReplicaSetMap All RegionGroups the cluster currently have
    * @param regionLeaderMap The current leader of each RegionGroup
    * @param disabledDataNodeSet The DataNodes that currently unable to work(can't place
@@ -39,6 +41,7 @@ public interface ILeaderBalancer {
    * @return Map<TConsensusGroupId, Integer>, The optimal leader distribution
    */
   Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
+      Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
       Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Set<Integer> disabledDataNodeSet);
