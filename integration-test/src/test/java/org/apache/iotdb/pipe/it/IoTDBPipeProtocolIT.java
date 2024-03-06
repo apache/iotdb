@@ -407,7 +407,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
-      extractorAttributes.put("source.history.mods.enable", "true");
+      extractorAttributes.put("source.mods.enable", "true");
 
       // Test forced-log mode, in TimechoDB this might be "file"
       extractorAttributes.put("source.realtime.mode", "forced-log");
