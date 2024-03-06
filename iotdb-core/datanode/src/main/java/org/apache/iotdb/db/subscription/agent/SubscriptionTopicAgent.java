@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionTopicAgent implements IService {
 
@@ -63,6 +64,15 @@ public class SubscriptionTopicAgent implements IService {
 
   public boolean isTopicExist(String topicName) {
     return topicNameToTopicMeta.containsKey(topicName);
+  }
+
+  public void addSubscribedConsumerGroupID(String topicName, String consumerGroupID) {
+    TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
+    if (Objects.isNull(topicMeta)) {
+      LOGGER.warn("Subscription: topic {} not exist", topicName);
+      return;
+    }
+    topicMeta.addSubscribedConsumerGroupID(consumerGroupID);
   }
 
   //////////////////////////// singleton ////////////////////////////

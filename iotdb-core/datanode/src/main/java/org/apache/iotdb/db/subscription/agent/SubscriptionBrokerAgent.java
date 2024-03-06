@@ -9,22 +9,34 @@ import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class SubscriptionBrokerAgent {
 
-  private Map<String, SubscriptionBroker> subscriptionBrokerMap;
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
+
+  private Map<String, SubscriptionBroker> subscriptionBrokerMap = new HashMap<>();
+
+  public void createSubscriptionBroker(String consumerGroupID) {
+    subscriptionBrokerMap.put(consumerGroupID, new SubscriptionBroker(consumerGroupID));
+  }
 
   public Iterable<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
-    SubscriptionBroker broker = subscriptionBrokerMap.get(consumerConfig.getConsumerGroupID());
+    String consumerGroupID = consumerConfig.getConsumerGroupID();
+    SubscriptionBroker broker = subscriptionBrokerMap.get(consumerGroupID);
     if (Objects.isNull(broker)) {
-      // TODO: handle error
+      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
       return Collections.emptyList();
     }
-    return broker.poll(consumerConfig);
+    // poll all subscribed topics
+    return broker.poll(SubscriptionAgent.consumer().subscribedTopic(consumerConfig));
   }
 
   public void commit(

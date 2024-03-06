@@ -21,8 +21,10 @@ package org.apache.iotdb.db.subscription.meta;
 
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,22 +40,23 @@ public class ConsumerGroupMeta {
   }
 
   public void addConsumer(ConsumerConfig consumerConfig) {
-    this.consumers.put(consumerConfig.getConsumerClientID(), consumerConfig);
+    consumers.put(consumerConfig.getConsumerClientID(), consumerConfig);
   }
 
   public void removeConsumer(String consumerClientID) {
-    this.consumers.remove(consumerClientID);
-    this.topicNameToSubscribedConsumers.forEach(
-        (topicName, subscribedConsumers) -> {
-          subscribedConsumers.remove(consumerClientID);
-        });
+    consumers.remove(consumerClientID);
+    topicNameToSubscribedConsumers.forEach(
+        (topicName, subscribedConsumers) -> subscribedConsumers.remove(consumerClientID));
   }
 
-  public void subscribe(String consumerClientID, String topicName) {
+  /** @return true if new subscription is created */
+  public boolean subscribe(String consumerClientID, String topicName) {
     Set<String> subscribedConsumers =
         topicNameToSubscribedConsumers.getOrDefault(topicName, new HashSet<>());
+    boolean isNewSubscription = subscribedConsumers.isEmpty();
     subscribedConsumers.add(consumerClientID);
     topicNameToSubscribedConsumers.put(topicName, subscribedConsumers);
+    return isNewSubscription;
   }
 
   public void unsubscribe(String consumerClientID, String topicName) {
@@ -69,5 +72,16 @@ public class ConsumerGroupMeta {
 
   public boolean isEmpty() {
     return consumers.isEmpty();
+  }
+
+  public List<String> subscribedTopics(String consumerClientID) {
+    List<String> topicNames = new ArrayList<>();
+    topicNameToSubscribedConsumers.forEach(
+        (topicName, subscribedConsumers) -> {
+          if (subscribedConsumers.contains(consumerClientID)) {
+            topicNames.add(topicName);
+          }
+        });
+    return topicNames;
   }
 }

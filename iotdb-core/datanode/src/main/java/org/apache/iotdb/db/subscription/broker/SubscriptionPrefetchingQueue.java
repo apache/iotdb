@@ -22,7 +22,6 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public class SubscriptionPrefetchingQueue {
 
@@ -33,6 +32,4 @@ public class SubscriptionPrefetchingQueue {
   private EnrichedDeque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
 
   private EnrichedDeque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
-
-  public Iterable<Tablet> fetch() {}
 }

@@ -19,20 +19,26 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SubscriptionDispatcher {
 
   private String brokerID; // consumer group ID
 
-  private SubscriptionSinkQueueManager sinkQueueManager;
+  private Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
-  public Iterable<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
+  public SubscriptionDispatcher(String brokerID) {
+    this.brokerID = brokerID;
+    this.topicNameToPrefetchingQueue = new HashMap<>();
+  }
+
+  public Iterable<EnrichedTablets> poll(List<String> topicNames) {
     return Collections.emptyList();
   }
 

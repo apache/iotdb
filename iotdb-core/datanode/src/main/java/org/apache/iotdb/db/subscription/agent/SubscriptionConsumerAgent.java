@@ -13,13 +13,14 @@ import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class SubscriptionConsumerAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionRpcAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
   // TODO: sync from node-commons
   private Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta;
@@ -28,8 +29,11 @@ public class SubscriptionConsumerAgent implements IService {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
+      // new consumer group
       consumerGroupIDToConsumerGroupMeta.put(
           consumerGroupID, new ConsumerGroupMeta(consumerConfig));
+      // create broker
+      SubscriptionAgent.broker().createSubscriptionBroker(consumerGroupID);
     } else {
       consumerGroupMeta.addConsumer(consumerConfig);
     }
@@ -65,7 +69,9 @@ public class SubscriptionConsumerAgent implements IService {
       if (!SubscriptionAgent.topic().isTopicExist(topicName)) {
         LOGGER.warn("Subscription: topic {} not exist", topicName);
       } else {
-        consumerGroupMeta.subscribe(consumerClientID, topicName);
+        if (consumerGroupMeta.subscribe(consumerClientID, topicName)) {
+          SubscriptionAgent.topic().addSubscribedConsumerGroupID(topicName, consumerGroupID);
+        }
         // TODO: call CN rpc
       }
     }
@@ -88,6 +94,17 @@ public class SubscriptionConsumerAgent implements IService {
         // TODO: call CN rpc
       }
     }
+  }
+
+  public List<String> subscribedTopic(ConsumerConfig consumerConfig) {
+    String consumerGroupID = consumerConfig.getConsumerGroupID();
+    String consumerClientID = consumerConfig.getConsumerClientID();
+    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
+    if (Objects.isNull(consumerGroupMeta)) {
+      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      return Collections.emptyList();
+    }
+    return consumerGroupMeta.subscribedTopics(consumerClientID);
   }
 
   //////////////////////////// singleton ////////////////////////////
