@@ -84,7 +84,7 @@ public class MemoryManager implements IMemoryManager {
   }
 
   public void initRootStatus(ICachedMNode root) {
-    pinMNodeWithMemStatusUpdate(root);
+    pinMNodeWithMemStatusUpdate(root, SchemaConstant.VolatileStatus.Update);
   }
 
   /**
@@ -118,7 +118,7 @@ public class MemoryManager implements IMemoryManager {
    */
   @Override
   public void updateCacheStatusAfterDiskRead(ICachedMNode node) {
-    pinMNodeWithMemStatusUpdate(node);
+    pinMNodeWithMemStatusUpdate(node, SchemaConstant.VolatileStatus.NonVolatile);
     CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
     nodeCache.addToNodeCache(cacheEntry, node);
@@ -132,9 +132,7 @@ public class MemoryManager implements IMemoryManager {
    */
   @Override
   public void updateCacheStatusAfterAppend(ICachedMNode node) {
-    pinMNodeWithMemStatusUpdate(node);
-    CacheEntry cacheEntry = getCacheEntry(node);
-    cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.New);
+    pinMNodeWithMemStatusUpdate(node, SchemaConstant.VolatileStatus.New);
     memoryStatistics.addVolatileNode();
     // the ancestors must be processed first since the volatileDescendant judgement is of higher
     // priority than
@@ -359,10 +357,11 @@ public class MemoryManager implements IMemoryManager {
             if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
               if (status == ITERATE_UPDATE_BUFFER) {
                 container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(
-                        node.getName());
+                    node.getName());
               } else {
                 container.moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(node.getName());
               }
+              nodeBuffer.addUpdatedNodeToBuffer(node);
               if (cacheEntry.hasVolatileDescendant()
                   && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
                 // these two factor judgement is not redundant because the #hasVolatileDescendant is
@@ -374,7 +373,6 @@ public class MemoryManager implements IMemoryManager {
                 unlockImmediately = false;
                 return;
               }
-              nodeBuffer.addUpdatedNodeToBuffer(node);
               continue;
             }
 
@@ -538,13 +536,23 @@ public class MemoryManager implements IMemoryManager {
     }
   }
 
-  private void pinMNodeWithMemStatusUpdate(ICachedMNode node) {
+  private void pinMNodeWithMemStatusUpdate(
+      ICachedMNode node, SchemaConstant.VolatileStatus status) {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first
     if (cacheEntry == null) {
       memoryStatistics.requestPinnedMemResource(node);
-      nodeCache.initCacheEntryForNode(node);
+      nodeCache.initCacheEntryForNode(node, status);
     } else if (!cacheEntry.isPinned()) {
+      memoryStatistics.upgradeMemResource(node);
+    }
+    doPin(node);
+  }
+
+  private void pinMNodeWithMemStatusUpdate(ICachedMNode node) {
+    CacheEntry cacheEntry = getCacheEntry(node);
+    // update memory status first
+    if (!cacheEntry.isPinned()) {
       memoryStatistics.upgradeMemResource(node);
     }
     doPin(node);

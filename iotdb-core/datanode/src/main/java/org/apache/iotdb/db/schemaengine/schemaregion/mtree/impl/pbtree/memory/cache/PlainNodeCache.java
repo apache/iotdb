@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Map;
@@ -67,7 +68,8 @@ public class PlainNodeCache implements INodeCache {
   }
 
   @Override
-  public void initCacheEntryForNode(ICachedMNode node) {
-    node.setCacheEntry(new CacheEntry());
+  public void initCacheEntryForNode(
+      ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus) {
+    node.setCacheEntry(new CacheEntry(volatileStatus));
   }
 }

@@ -804,6 +804,9 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d2.s1",
                 "root.laptop.d2.s2"));
     int expectedSize = 6;
+    if (expectedSize != result.size()) {
+      System.out.println();
+    }
     Assert.assertEquals(expectedSize, result.size());
     Set<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {

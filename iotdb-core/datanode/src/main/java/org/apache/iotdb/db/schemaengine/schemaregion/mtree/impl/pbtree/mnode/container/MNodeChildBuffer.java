@@ -77,7 +77,7 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
     }
     if (receivingBuffer != null) {
       flushingBuffer.putAll(receivingBuffer);
-      for (Map.Entry<String, ICachedMNode> entry : receivingBuffer.entrySet()) {
+      for (Map.Entry<String, ICachedMNode> entry : flushingBuffer.entrySet()) {
         entry.getValue().getCacheEntry().setVolatileStatus(SchemaConstant.VolatileStatus.Flushing);
       }
       receivingBuffer.clear();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 /**
@@ -29,7 +30,7 @@ public interface INodeCache {
 
   long getCacheNodeNum();
 
-  void initCacheEntryForNode(ICachedMNode node);
+  void initCacheEntryForNode(ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus);
 
   void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
 
