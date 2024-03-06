@@ -130,9 +130,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       writeLogForSimpleConsensus(plan);
     }
+
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false);
     }
+
     return result;
   }
 
