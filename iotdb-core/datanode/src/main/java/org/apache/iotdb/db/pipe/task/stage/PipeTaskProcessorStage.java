@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -59,24 +59,16 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       PipeProcessorSubtaskExecutor executor) {
+    final PipeProcessorRuntimeConfiguration runtimeConfiguration =
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId()));
     final PipeProcessor pipeProcessor =
-        PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters);
-
-    // Validate and customize should be called before createSubtask. this allows extractor exposing
-    // exceptions in advance.
-    try {
-      // 1. validate processor parameters
-      pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
-
-      // 2. customize processor
-      final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskProcessorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId()));
-      pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
-    } catch (Exception e) {
-      throw new PipeException(e.getMessage(), e);
-    }
+        PipeAgent.plugin()
+            .dataRegion()
+            .getConfiguredProcessor(
+                pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
+                pipeProcessorParameters,
+                runtimeConfiguration);
 
     // Should add creation time in taskID, because subtasks are stored in the hashmap
     // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by

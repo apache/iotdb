@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.aggregator.StandardStatisticsProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 
 public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
@@ -37,5 +39,10 @@ public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.AGGREGATE_PROCESSOR.getPipePluginName(), AggregateProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.STANDARD_STATISTICS_PROCESSOR.getPipePluginName(),
+        StandardStatisticsProcessor::new);
   }
 }
