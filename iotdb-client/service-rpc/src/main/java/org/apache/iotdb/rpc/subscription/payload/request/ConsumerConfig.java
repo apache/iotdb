@@ -47,7 +47,7 @@ public class ConsumerConfig {
   }
 
   public static ConsumerConfig deserialize(ByteBuffer buffer) {
-    ConsumerConfig consumerConfig = new ConsumerConfig();
+    final ConsumerConfig consumerConfig = new ConsumerConfig();
     consumerConfig.consumerGroupID = ReadWriteIOUtils.readString(buffer);
     consumerConfig.consumerClientID = ReadWriteIOUtils.readString(buffer);
     return consumerConfig;
