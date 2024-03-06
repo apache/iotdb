@@ -73,7 +73,8 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     pipeLeaderChangeHandler.onClusterStatisticsChanged(event);
   }
 
-  public void onConfigRegionGroupLeaderChangedIfReady() {
+  public void onConfigRegionGroupLeaderChangedIfLeaderReady() {
+    // TODO: FIXME
     if (Objects.nonNull(ConfigNode.getInstance().getConfigManager().getConsensusManager())
         && PipeConfigNodeAgent.runtime().isLeaderReady()) {
       pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
