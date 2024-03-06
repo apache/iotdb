@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.subscription.broker.SubscriptionBrokerManager;
+import org.apache.iotdb.db.subscription.consumer.SubscriptionConsumerAgent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
@@ -39,6 +41,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -50,12 +53,14 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -126,6 +131,9 @@ public class SubscriptionAgent {
               TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, "inconsistent consumer config"));
     }
 
+    // create consumer (group)
+    SubscriptionConsumerAgent.getInstance().createConsumer(consumerConfig);
+
     // get DN configs
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -144,56 +152,120 @@ public class SubscriptionAgent {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
-    try {
-      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, "unknown consumer config"));
     }
+
+    // TODO: do something
+
+    LOGGER.info(
+        "Subscription: consumer heartbeat successfully, consumer config: {}", consumerConfig);
+    return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq req) {
-    try {
-      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, "unknown consumer config"));
     }
+
+    // subscribe topics
+    List<String> topicNames = req.getTopicNames();
+    SubscriptionConsumerAgent.getInstance().subscribe(topicNames);
+
+    LOGGER.info(
+        "Subscription: consumer subscribe {} successfully, consumer config: {}",
+        topicNames,
+        consumerConfig);
+    return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(PipeSubscribeUnsubscribeReq req) {
-    try {
-      return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR, "unknown consumer config"));
     }
+
+    // unsubscribe topics
+    List<String> topicNames = req.getTopicNames();
+    SubscriptionConsumerAgent.getInstance().unsubscribe(topicNames);
+
+    LOGGER.info(
+        "Subscription: consumer unsubscribe {} successfully, consumer config: {}",
+        topicNames,
+        consumerConfig);
+    return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(PipeSubscribePollReq req) {
-    try {
-      return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, "unknown consumer config"));
     }
+
+    // poll
+    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    for (EnrichedTablets enrichedTablets :
+        SubscriptionBrokerManager.getInstance().poll(consumerConfig)) {
+      // TODO: limit
+      enrichedTabletsList.add(enrichedTablets);
+    }
+
+    LOGGER.info("Subscription: consumer poll successfully, consumer config: {}", consumerConfig);
+    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, enrichedTabletsList);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
-    try {
-      return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, "unknown consumer config"));
     }
+
+    // commit
+    List<Pair<String, Integer>> committerKeyAndCommitIds = req.getCommitterKeyAndCommitIds();
+    SubscriptionBrokerManager.getInstance().commit(consumerConfig, committerKeyAndCommitIds);
+
+    LOGGER.info(
+        "Subscription: consumer commit {} successfully, consumer config: {}",
+        committerKeyAndCommitIds,
+        consumerConfig);
+    return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeClose(PipeSubscribeCloseReq req) {
-    try {
-      return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      return null;
+    // check consumer config thread local
+    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn("Subscription: unknown consumer config");
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, "unknown consumer config"));
     }
+
+    // drop consumer (group)
+    SubscriptionConsumerAgent.getInstance().dropConsumer(consumerConfig);
+
+    LOGGER.info("Subscription: consumer close successfully, consumer config: {}", consumerConfig);
+    return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   //////////////////////////// utility ////////////////////////////
-
-  private boolean checkConsumerConfigThreadLocal() {}
 
   //////////////////////////// singleton ////////////////////////////
 

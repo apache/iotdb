@@ -33,6 +33,14 @@ public class ConsumerConfig {
 
   // TODO: more configs
 
+  public String getConsumerClientID() {
+    return consumerClientID;
+  }
+
+  public String getConsumerGroupID() {
+    return consumerGroupID;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(consumerGroupID, stream);
     ReadWriteIOUtils.write(consumerClientID, stream);

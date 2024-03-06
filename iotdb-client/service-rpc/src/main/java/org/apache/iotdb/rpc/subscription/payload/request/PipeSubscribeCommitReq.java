@@ -33,7 +33,11 @@ import java.util.Objects;
 
 public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
-  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();;
+  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();
+
+  public List<Pair<String, Integer>> getCommitterKeyAndCommitIds() {
+    return committerKeyAndCommitIds;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
