@@ -40,8 +40,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addIntInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addIntInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;
@@ -54,8 +55,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addLongInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addLongInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;
@@ -68,8 +70,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addFloatInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addFloatInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;
@@ -82,8 +85,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addDoubleInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addDoubleInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;
@@ -96,8 +100,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addBooleanInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBooleanInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;
@@ -110,8 +115,9 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   }
 
   @Override
-  protected void addBinaryInput(Column[] column, BitMap needSkip, int lastIndex) {
-    for (int i = 0; i <= lastIndex; i++) {
+  protected void addBinaryInput(Column[] column, BitMap needSkip) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
       // skip null value in control column
       if (needSkip != null && needSkip.isMarked(i)) {
         continue;

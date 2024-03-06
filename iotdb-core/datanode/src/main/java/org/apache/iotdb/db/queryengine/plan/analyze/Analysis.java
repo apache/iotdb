@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -171,7 +172,10 @@ public class Analysis {
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
+  // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
   private boolean deviceViewSpecialProcess;
+
+  private boolean existDeviceCrossRegion;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
@@ -288,6 +292,12 @@ public class Analysis {
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Used in optimizer
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -655,6 +665,14 @@ public class Analysis {
     this.deviceViewSpecialProcess = deviceViewSpecialProcess;
   }
 
+  public boolean isExistDeviceCrossRegion() {
+    return existDeviceCrossRegion;
+  }
+
+  public void setExistDeviceCrossRegion() {
+    this.existDeviceCrossRegion = true;
+  }
+
   public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
     return deviceViewIntoPathDescriptor;
   }
@@ -876,5 +894,13 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
+  }
+
+  public void setFromWhere(FilterNode filterNode) {
+    this.fromWhereFilterNodes.add(NodeRef.of(filterNode));
+  }
+
+  public boolean fromWhere(FilterNode filterNode) {
+    return fromWhereFilterNodes.contains(NodeRef.of(filterNode));
   }
 }

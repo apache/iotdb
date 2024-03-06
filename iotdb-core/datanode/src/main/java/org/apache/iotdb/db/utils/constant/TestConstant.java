@@ -75,6 +75,14 @@ public class TestConstant {
     return String.format("min_value(%s)", path);
   }
 
+  public static String maxBy(String x, String y) {
+    return String.format("max_by(%s, %s)", x, y);
+  }
+
+  public static String minBy(String x, String y) {
+    return String.format("min_by(%s, %s)", x, y);
+  }
+
   private TestConstant() {}
 
   public static String getTestTsFilePath(

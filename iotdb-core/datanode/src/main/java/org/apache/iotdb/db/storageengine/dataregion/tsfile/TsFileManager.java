@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -134,41 +133,6 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
-  }
-
-  public long recoverFlushTimeFromTsFileResource(long partitionId, String devicePath) {
-    long lastFlushTime = Long.MIN_VALUE;
-    writeLock("recoverFlushTimeFromTsFileResource");
-    try {
-      List<TsFileResource> seqTsFileResourceList =
-          sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
-      for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
-        TsFileResource seqResource = seqTsFileResourceList.get(i);
-        if (!seqResource.isClosed()) {
-          continue;
-        }
-        if (seqResource.getTimeIndexType() == ITimeIndex.DEVICE_TIME_INDEX_TYPE) {
-          Set<String> deviceSet = seqResource.getDevices();
-          if (deviceSet.contains(devicePath)) {
-            lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
-            break;
-          }
-        } else {
-          lastFlushTime = Math.max(lastFlushTime, seqResource.getEndTime(devicePath));
-        }
-      }
-      List<TsFileResource> unseqTsFileResourceList =
-          unsequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
-      for (TsFileResource resource : unseqTsFileResourceList) {
-        if (resource.definitelyNotContains(devicePath)) {
-          continue;
-        }
-        lastFlushTime = Math.max(lastFlushTime, resource.getEndTime(devicePath));
-      }
-    } finally {
-      writeUnlock();
-    }
-    return lastFlushTime;
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {

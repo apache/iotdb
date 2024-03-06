@@ -220,9 +220,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
       LOGGER.info(
-          "Pipe {}@{}: '{}' is set to false, use fake realtime extractor.",
-          pipeName,
-          dataRegionId,
+          "Pipe: '{}' is set to false, use fake realtime extractor.",
           EXTRACTOR_REALTIME_ENABLE_KEY);
       return;
     }
@@ -231,10 +229,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     if (!parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
       LOGGER.info(
-          "Pipe {}@{}: '{}' is not set, use hybrid mode by default.",
-          pipeName,
-          dataRegionId,
-          EXTRACTOR_REALTIME_MODE_KEY);
+          "Pipe: '{}' is not set, use hybrid mode by default.", EXTRACTOR_REALTIME_MODE_KEY);
       return;
     }
 
@@ -255,9 +250,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
-              "Pipe {}@{}: Unsupported extractor realtime mode: {}, create a hybrid extractor.",
-              pipeName,
-              dataRegionId,
+              "Pipe: Unsupported extractor realtime mode: {}, create a hybrid extractor.",
               parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }

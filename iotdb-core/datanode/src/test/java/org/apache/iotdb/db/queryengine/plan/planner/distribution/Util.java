@@ -293,7 +293,7 @@ public class Util {
   }
 
   public static PlanNode genLogicalPlan(Analysis analysis, MPPQueryContext context) {
-    LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
+    LogicalPlanner planner = new LogicalPlanner(context);
     return planner.plan(analysis).getRootNode();
   }
 

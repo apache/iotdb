@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -74,8 +75,8 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   // when no event can be pulled.
   private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
-  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;
   private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
@@ -120,14 +121,17 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
     try {
       if (event == null) {
         if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
-            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS) {
           transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         }
         return false;
@@ -142,7 +146,10 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(event);
+        outputPipeConnector.transfer(
+            event instanceof UserDefinedEnrichedEvent
+                ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
+                : event);
       }
 
       releaseLastEvent(true);
@@ -159,7 +166,11 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
         throw new PipeException(
             String.format(
                 "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+                taskID,
+                lastEvent instanceof EnrichedEvent
+                    ? ((EnrichedEvent) lastEvent).coreReportMessage()
+                    : lastEvent.toString(),
+                ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
@@ -207,14 +218,18 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
 
     if (throwable instanceof PipeConnectionException) {
       // Retry to connect to the target system if the connection is broken
+      // We should reconstruct the client before re-submit the subtask
       if (onPipeConnectionException(throwable)) {
         // return if the pipe task should be stopped
         return;
       }
     }
 
-    // Handle other exceptions as usual
-    super.onFailure(throwable);
+    // Handle exceptions if any available clients exist
+    // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+    // because the upper layer relies on this to stop all the related pipe tasks
+    // Other exceptions may cause the subtask to stop forever and can not be restarted
+    super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
   /** @return true if the pipe task should be stopped, false otherwise */
@@ -252,7 +267,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
       }
     }
 
-    // Stop current pipe task if failed to reconnect to
+    // Stop current pipe task directly if failed to reconnect to
     // the target system after MAX_RETRY_TIMES times
     if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
       ((EnrichedEvent) lastEvent)

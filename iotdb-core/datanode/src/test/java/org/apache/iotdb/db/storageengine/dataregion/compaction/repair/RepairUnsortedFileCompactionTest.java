@@ -21,17 +21,18 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
@@ -62,15 +63,13 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
+public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
   private boolean enableSeqSpaceCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -87,6 +86,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
+    try {
+      CompactionScheduleTaskManager.getInstance().start();
+    } catch (StartupException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @After
@@ -178,6 +182,38 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testRepairUnsortedDataInOnePageWithMultiNonAlignedSeries() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      for (int i = 0; i < 1000; i++) {
+        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+            "s" + i,
+            new TimeRange[][][] {
+              new TimeRange[][] {
+                new TimeRange[] {
+                  new TimeRange(10, 20), new TimeRange(29, 30), new TimeRange(21, 25)
+                }
+              }
+            },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileDataCorrectness(resource));
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
+    task.start();
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileDataCorrectness(
+            tsFileManager.getTsFileList(false).get(0)));
+  }
+
+  @Test
   public void testRepairUnsortedDataInOnePageWithUnseqFile() throws IOException {
     TsFileResource resource = createEmptyFileAndResource(false);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
@@ -237,7 +273,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithInnerSeqSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithInnerSeqSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
       writer.startChunkGroup("d1");
@@ -311,7 +348,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithInnerUnSeqSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithInnerUnSeqSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource unSeqResource1 = createEmptyFileAndResource(false);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(unSeqResource1)) {
       writer.startChunkGroup("d1");
@@ -385,7 +423,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testMarkFileAndRepairWithCrossSpaceCompactionTask() throws IOException {
+  public void testMarkFileAndRepairWithCrossSpaceCompactionTask()
+      throws IOException, InterruptedException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
       writer.startChunkGroup("d1");
@@ -591,15 +630,12 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
-    long currentTime = System.currentTimeMillis();
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    File logFile =
-        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File tempDir = getEmptyRepairDataLogDir();
 
-    Files.createFile(logFile.toPath());
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
@@ -641,15 +677,12 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
-    long currentTime = System.currentTimeMillis();
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    File logFile =
-        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File tempDir = getEmptyRepairDataLogDir();
 
-    Files.createFile(logFile.toPath());
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
@@ -703,15 +736,12 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
-    long currentTime = System.currentTimeMillis();
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    File logFile =
-        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
+    File tempDir = getEmptyRepairDataLogDir();
 
-    Files.createFile(logFile.toPath());
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
@@ -766,13 +796,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
-    long currentTime = System.currentTimeMillis();
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    File logFile =
-        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
-    Files.createFile(logFile.toPath());
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    File tempDir = getEmptyRepairDataLogDir();
+    try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
@@ -781,13 +807,14 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     // reset the repair status
     seqResource3.setTsFileRepairStatus(TsFileRepairStatus.NORMAL);
 
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), true, tempDir);
     scheduler.run();
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     // check whether the repair status is marked correctly
     Assert.assertEquals(TsFileRepairStatus.NEED_TO_REPAIR, seqResource3.getTsFileRepairStatus());
-    Files.deleteIfExists(logFile.toPath());
   }
 
   @Test
@@ -840,13 +867,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(seqResources));
 
-    long currentTime = System.currentTimeMillis();
-    Path tempDir = Files.createTempDirectory("");
-    tempDir.toFile().deleteOnExit();
-    File logFile =
-        new File(tempDir.toString() + File.separator + currentTime + RepairLogger.repairLogSuffix);
-    Files.createFile(logFile.toPath());
-    try (RepairLogger logger = new RepairLogger(logFile)) {
+    File tempDir = getEmptyRepairDataLogDir();
+    try (RepairLogger logger = new RepairLogger(tempDir, false)) {
+      logger.recordRepairTaskStartTimeIfLogFileEmpty(System.currentTimeMillis());
       RepairTimePartition timePartition =
           new RepairTimePartition(mockDataRegion, 0, System.currentTimeMillis());
       // record seqResource3 as cannot recover
@@ -861,11 +884,12 @@ public class RepairUnsortedFileCompactionTest extends AbstractCompactionTest {
         Collections.emptyList(),
         0);
 
+    CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
     UnsortedFileRepairTaskScheduler scheduler =
-        new UnsortedFileRepairTaskScheduler(Collections.singletonList(mockDataRegion), logFile);
+        new UnsortedFileRepairTaskScheduler(
+            Collections.singletonList(mockDataRegion), true, tempDir);
     scheduler.run();
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
-    Files.deleteIfExists(logFile.toPath());
   }
 
   @Test

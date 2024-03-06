@@ -54,8 +54,7 @@ import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final SessionInfo sessionInfo =
-      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
+  private static final SessionInfo sessionInfo = new SessionInfo(1, "test", ZoneId.systemDefault());
 
   @Test
   public void testSerializeAndDeserializeForTree1() throws IllegalPathException {

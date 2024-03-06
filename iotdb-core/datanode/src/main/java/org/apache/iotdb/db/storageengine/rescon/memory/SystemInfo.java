@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
-import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 
 import org.slf4j.Logger;
@@ -40,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -63,9 +63,9 @@ public class SystemInfo {
 
   private final AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
-  private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
+  private int totalFileLimitForCompactionTask = config.getTotalFileLimitForCompactionTask();
 
-  private ExecutorService flushTaskSubmitThreadPool =
+  private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
   private double FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
   private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
@@ -100,8 +100,7 @@ public class SystemInfo {
     dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
     if (totalStorageGroupMemCost < FLUSH_THRESHOLD) {
       return true;
-    } else if (totalStorageGroupMemCost >= FLUSH_THRESHOLD
-        && totalStorageGroupMemCost < REJECT_THRESHOLD) {
+    } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "The total database mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
@@ -195,27 +194,54 @@ public class SystemInfo {
 
   public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
       throws InterruptedException, CompactionFileCountExceededException {
-    if (fileNum > totalFileLimitForCrossTask) {
+    if (fileNum > totalFileLimitForCompactionTask) {
       // source file num is greater than the max file num for compaction
       throw new CompactionFileCountExceededException(
           String.format(
               "Required file num %d is greater than the max file num %d for compaction.",
-              fileNum, totalFileLimitForCrossTask));
+              fileNum, totalFileLimitForCompactionTask));
     }
     long startTime = System.currentTimeMillis();
     int originFileNum = this.compactionFileNumCost.get();
-    while (originFileNum + fileNum > totalFileLimitForCrossTask
+    while (originFileNum + fileNum > totalFileLimitForCompactionTask
         || !compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
       if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
         throw new CompactionFileCountExceededException(
             String.format(
                 "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
-                fileNum, timeOutInSecond, totalFileLimitForCrossTask, originFileNum));
+                fileNum, timeOutInSecond, totalFileLimitForCompactionTask, originFileNum));
       }
       Thread.sleep(100);
       originFileNum = this.compactionFileNumCost.get();
     }
     return true;
+  }
+
+  public void addCompactionFileNum(int fileNum, boolean waitUntilAcquired)
+      throws CompactionFileCountExceededException, InterruptedException {
+    if (fileNum > totalFileLimitForCompactionTask) {
+      // source file num is greater than the max file num for compaction
+      throw new CompactionFileCountExceededException(
+          String.format(
+              "Required file num %d is greater than the max file num %d for compaction.",
+              fileNum, totalFileLimitForCompactionTask));
+    }
+    int originFileNum = this.compactionFileNumCost.get();
+    while (true) {
+      boolean canUpdate = originFileNum + fileNum <= totalFileLimitForCompactionTask;
+      if (!canUpdate && !waitUntilAcquired) {
+        throw new CompactionFileCountExceededException(
+            String.format(
+                "Failed to allocate %d files for compaction, max file num for compaction module is %d, %d files is used.",
+                fileNum, totalFileLimitForCompactionTask, originFileNum));
+      }
+      if (canUpdate
+          && compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
+        return;
+      }
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
+      originFileNum = this.compactionFileNumCost.get();
+    }
   }
 
   public boolean addCompactionMemoryCost(
@@ -258,11 +284,49 @@ public class SystemInfo {
     return true;
   }
 
+  public void addCompactionMemoryCost(
+      CompactionTaskType taskType, long memoryCost, boolean waitUntilAcquired)
+      throws CompactionMemoryNotEnoughException, InterruptedException {
+    if (memoryCost > memorySizeForCompaction) {
+      // required memory cost is greater than the total memory budget for compaction
+      throw new CompactionMemoryNotEnoughException(
+          String.format(
+              "Required memory cost %d bytes is greater than "
+                  + "the total memory budget for compaction %d bytes",
+              memoryCost, memorySizeForCompaction));
+    }
+    long originSize = this.compactionMemoryCost.get();
+    while (true) {
+      boolean canUpdate = originSize + memoryCost <= memorySizeForCompaction;
+      if (!canUpdate && !waitUntilAcquired) {
+        throw new CompactionMemoryNotEnoughException(
+            String.format(
+                "Failed to allocate %d bytes memory for compaction, "
+                    + "total memory budget for compaction module is %d bytes, %d bytes is used",
+                memoryCost, memorySizeForCompaction, originSize));
+      }
+      if (canUpdate && compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+        break;
+      }
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
+      originSize = this.compactionMemoryCost.get();
+    }
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case CROSS:
+        crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      default:
+    }
+  }
+
   public synchronized void resetCompactionMemoryCost(
       CompactionTaskType taskType, long compactionMemoryCost) {
-    if (!config.isEnableCompactionMemControl()) {
-      return;
-    }
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
     switch (taskType) {
       case INNER_SEQ:
@@ -284,11 +348,7 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    if (config.isEnableMemControl()) {
-      return memorySizeForCompaction;
-    } else {
-      return Long.MAX_VALUE;
-    }
+    return memorySizeForCompaction;
   }
 
   public void allocateWriteMemory() {
@@ -309,13 +369,12 @@ public class SystemInfo {
   }
 
   @TestOnly
-  public void setTotalFileLimitForCrossTask(int totalFileLimitForCrossTask) {
-    this.totalFileLimitForCrossTask = totalFileLimitForCrossTask;
+  public void setTotalFileLimitForCompactionTask(int totalFileLimitForCompactionTask) {
+    this.totalFileLimitForCompactionTask = totalFileLimitForCompactionTask;
   }
 
-  @TestOnly
-  public int getTotalFileLimitForCrossTask() {
-    return totalFileLimitForCrossTask;
+  public int getTotalFileLimitForCompaction() {
+    return totalFileLimitForCompactionTask;
   }
 
   public AtomicLong getCompactionMemoryCost() {
@@ -350,7 +409,7 @@ public class SystemInfo {
    */
   private boolean chooseMemTablesToMarkFlush(TsFileProcessor currentTsFileProcessor) {
     // If invoke flush by replaying logs, do not flush now!
-    if (reportedStorageGroupMemCostMap.size() == 0) {
+    if (reportedStorageGroupMemCostMap.isEmpty()) {
       return false;
     }
     PriorityQueue<TsFileProcessor> allTsFileProcessors =
@@ -370,10 +429,7 @@ public class SystemInfo {
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      flushTaskSubmitThreadPool.submit(
-          () -> {
-            selectedTsFileProcessor.submitAFlushTask();
-          });
+      flushTaskSubmitThreadPool.submit(selectedTsFileProcessor::submitAFlushTask);
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }
@@ -408,7 +464,7 @@ public class SystemInfo {
 
     private InstanceHolder() {}
 
-    private static SystemInfo instance = new SystemInfo();
+    private static final SystemInfo instance = new SystemInfo();
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
@@ -437,9 +493,5 @@ public class SystemInfo {
 
   public double getRejectThershold() {
     return REJECT_THRESHOLD;
-  }
-
-  public int flushingMemTableNum() {
-    return FlushManager.getInstance().getNumberOfWorkingTasks();
   }
 }

@@ -44,7 +44,7 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
 
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
-    if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
+    if (predicate.isAggregationFunctionExpression() && context.isWhere()) {
       throw new SemanticException("aggregate functions are not supported in WHERE clause");
     }
     List<List<Expression>> extendedExpressions = new ArrayList<>();

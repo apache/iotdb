@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -480,6 +481,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus createManyDatabases() throws TException {
+    return configManager.createManyDatabases();
+  }
+
+  @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
@@ -790,8 +796,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus repairData() {
-    return configManager.repairData();
+  public TSStatus startRepairData() {
+    return configManager.startRepairData();
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return configManager.stopRepairData();
   }
 
   @Override
@@ -920,6 +931,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.createPipe(req);
+  }
+
+  @Override
+  public TSStatus alterPipe(TAlterPipeReq req) {
+    return configManager.alterPipe(req);
   }
 
   @Override

@@ -122,13 +122,14 @@ public class TypeInferenceUtils {
     return TSDataType.TEXT;
   }
 
-  public static TSDataType getAggrDataType(String aggrFuncName, TSDataType dataType) {
-    if (aggrFuncName == null) {
+  public static TSDataType getBuiltinAggregationDataType(
+      String aggregationFunctionName, TSDataType dataType) {
+    if (aggregationFunctionName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
-    verifyIsAggregationDataTypeMatched(aggrFuncName, dataType);
+    verifyIsAggregationDataTypeMatched(aggregationFunctionName, dataType);
 
-    switch (aggrFuncName.toLowerCase()) {
+    switch (aggregationFunctionName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
@@ -142,6 +143,8 @@ public class TypeInferenceUtils {
       case SqlConstant.MAX_VALUE:
       case SqlConstant.EXTREME:
       case SqlConstant.MODE:
+      case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -153,7 +156,8 @@ public class TypeInferenceUtils {
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+        throw new IllegalArgumentException(
+            "Invalid Aggregation function: " + aggregationFunctionName);
     }
   }
 
@@ -187,6 +191,8 @@ public class TypeInferenceUtils {
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         return;
       case SqlConstant.COUNT_IF:
         if (dataType != TSDataType.BOOLEAN) {
@@ -207,7 +213,7 @@ public class TypeInferenceUtils {
    * <p>.e.g COUNT_IF(s1>1, keep>2, 'ignoreNull'='false'), we bind type {@link TSDataType#INT64} for
    * 'keep'
    */
-  public static void bindTypeForAggregationNonSeriesInputExpressions(
+  public static void bindTypeForBuiltinAggregationNonSeriesInputExpressions(
       String functionName,
       List<Expression> inputExpressions,
       List<List<Expression>> outputExpressionLists) {
@@ -231,6 +237,8 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         return;
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);

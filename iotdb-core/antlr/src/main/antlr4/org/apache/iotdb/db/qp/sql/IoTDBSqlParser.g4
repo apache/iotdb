@@ -53,7 +53,7 @@ ddlStatement
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
     // Pipe Task
-    | createPipe | dropPipe | startPipe | stopPipe | showPipes
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
@@ -78,10 +78,11 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle | repairData | explain
+    : flush | clearCache | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
+    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
+    | removeFile | unloadFile
     ;
 
 /**
@@ -561,6 +562,26 @@ connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
     ;
 
+alterPipe
+    : ALTER PIPE pipeName=identifier
+        alterProcessorAttributesClause?
+        alterConnectorAttributesClause?
+    ;
+
+alterProcessorAttributesClause
+    : (MODIFY | REPLACE) PROCESSOR
+        LR_BRACKET
+        (processorAttributeClause COMMA)* processorAttributeClause?
+        RR_BRACKET
+    ;
+
+alterConnectorAttributesClause
+    : (MODIFY | REPLACE) (CONNECTOR | SINK)
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
+    ;
+
 dropPipe
     : DROP PIPE pipeName=identifier
     ;
@@ -786,21 +807,21 @@ insertStatement
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? nodeNameWithoutWildcard)+ RR_BRACKET
+    : LR_BRACKET insertColumn (COMMA insertColumn)* RR_BRACKET
+    ;
+
+insertColumn
+    : identifier
+    | TIME
+    | TIMESTAMP
     ;
 
 insertValuesSpec
-    : (COMMA? insertMultiValue)*
+    : row (COMMA row)*
     ;
 
-insertMultiValue
-    : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
-    ;
-
-measurementValue
-    : constant
-    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
+row
+    : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
 // Delete Statement
@@ -913,16 +934,6 @@ usernameWithRoot
  * 5. Utility Statements
  */
 
-// Merge
-merge
-    : MERGE (ON (LOCAL | CLUSTER))?
-    ;
-
-// Full Merge
-fullMerge
-    : FULL MERGE (ON (LOCAL | CLUSTER))?
-    ;
-
 // Flush
 flush
     : FLUSH prefixPath? (COMMA prefixPath)* boolean_literal? (ON (LOCAL | CLUSTER))?
@@ -938,9 +949,14 @@ settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
     ;
 
-// Repair Data
-repairData
-    : REPAIR DATA (ON (LOCAL | CLUSTER))?
+// Start Repair Data
+startRepairData
+    : START REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Stop Repair Data
+stopRepairData
+    : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain
@@ -980,6 +996,11 @@ showQueries
     whereClause?
     orderByClause?
     rowPaginationClause?
+    ;
+
+// Show Current Timestamp
+showCurrentTimestamp
+    : SHOW CURRENT_TIMESTAMP
     ;
 
 // Kill Query

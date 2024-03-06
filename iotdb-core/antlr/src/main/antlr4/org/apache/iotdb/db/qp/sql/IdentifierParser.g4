@@ -133,6 +133,7 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
+    | MODIFY
     | NAN
     | NODEID
     | NODES
@@ -255,4 +256,5 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | CURRENT_TIMESTAMP
     ;

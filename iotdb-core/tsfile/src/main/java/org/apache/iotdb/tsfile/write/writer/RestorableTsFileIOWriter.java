@@ -85,7 +85,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   public RestorableTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
     this(file, true);
     this.maxMetadataSize = maxMetadataSize;
-    this.enableMemoryControl = true;
     this.chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
     this.checkMetadataSizeAndMayFlush();
   }

@@ -75,6 +75,7 @@ import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.CacheHitRatioMonitor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -116,7 +117,7 @@ public class DataNode implements DataNodeMBean {
           IoTDBConstant.JMX_TYPE,
           ServiceType.DATA_NODE.getJmxName());
 
-  private static final File SYSTEM_PROPERTIES =
+  private static File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
           config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
@@ -148,7 +149,15 @@ public class DataNode implements DataNodeMBean {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
-  private static final RegisterManager registerManager = new RegisterManager();
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    SYSTEM_PROPERTIES =
+        SystemFileFactory.INSTANCE.getFile(
+            config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+    registerManager = new RegisterManager();
+  }
+
+  private static RegisterManager registerManager = new RegisterManager();
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
@@ -362,6 +371,9 @@ public class DataNode implements DataNodeMBean {
 
     /* Store ttl information */
     StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
+
+    /* Store cluster ID */
+    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
   }
 
   /**
@@ -554,6 +566,9 @@ public class DataNode implements DataNodeMBean {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
+
+    // Must init before StorageEngine
+    registerManager.register(CompactionScheduleTaskManager.getInstance());
 
     // In mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());

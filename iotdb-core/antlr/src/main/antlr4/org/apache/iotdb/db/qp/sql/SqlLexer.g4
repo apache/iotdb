@@ -438,6 +438,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+MODIFY
+    : M O D I F Y
+    ;
+
 NAN
     : N A N
     ;
@@ -1011,6 +1015,10 @@ SCHEMA_REGION_GROUP_NUM
 
 DATA_REGION_GROUP_NUM
     : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+CURRENT_TIMESTAMP
+    : C U R R E N T '_' T I M E S T A M P
     ;
 
 /**
