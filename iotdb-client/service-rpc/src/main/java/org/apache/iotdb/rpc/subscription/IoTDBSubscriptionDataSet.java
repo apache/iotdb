@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.rpc.subscription;
 
-public class IoTDBSubscriptionDataSet implements AbstractDataSet {
+import java.util.Iterator;
 
-  @Override
-  public EnrichedRowRecord next() {
-    return null;
-  }
+public class IoTDBSubscriptionDataSet implements Iterator<EnrichedRowRecord> {
 
   @Override
   public boolean hasNext() {
     return false;
+  }
+
+  @Override
+  public EnrichedRowRecord next() {
+    return null;
   }
 }
