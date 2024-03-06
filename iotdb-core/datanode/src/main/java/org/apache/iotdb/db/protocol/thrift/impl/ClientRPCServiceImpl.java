@@ -2570,7 +2570,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) {
-    return SubscriptionAgent.getInstance().handle(req);
+    return SubscriptionAgent.rpc().handle(req);
   }
 
   @Override
