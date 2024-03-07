@@ -133,11 +133,8 @@ public class LoadTsfileAnalyzer {
     try {
       this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
     } catch (LoadRuntimeOutOfMemoryException e) {
-      LOGGER.warn("Can not allocate memory for analyze TsFile schema.", e);
-      throw new SemanticException(
-          String.format(
-              "Can not allocate memory for analyze TsFile schema when executing statement %s.",
-              loadTsFileStatement));
+      throw new LoadRuntimeOutOfMemoryException(
+          "Can not allocate memory for analyze TsFile schema, because: " + e.getMessage());
     }
   }
 

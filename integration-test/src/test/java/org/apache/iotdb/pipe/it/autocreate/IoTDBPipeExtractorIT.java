@@ -621,7 +621,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41)"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41)",
+              "flush"))) {
         return;
       }
 
@@ -756,20 +757,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       // insert realtime data that overlapped with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Collections.singletonList(
+          Arrays.asList(
               "insert into root.db.d3 (time, at1)"
-                  + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"))) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
-
-      // flush realtime data - test PipeTsFileInsertionEvent
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
+                  + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+              "flush"))) {
         return;
       }
 
@@ -782,24 +773,14 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       // insert realtime data that does not overlap with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Collections.singletonList(
+          Arrays.asList(
               "insert into root.db.d4 (time, at1)"
-                  + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)"))) {
+                  + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
+              "flush"))) {
         return;
       }
 
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.at1),count(root.db.d3.at1),",
-          Collections.singleton("3,3,"));
-
-      // flush realtime data - test PipeTsFileInsertionEvent
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList("flush"))) {
-        return;
-      }
-
-      TestUtils.assertDataEventuallyOnEnv(
+      TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",

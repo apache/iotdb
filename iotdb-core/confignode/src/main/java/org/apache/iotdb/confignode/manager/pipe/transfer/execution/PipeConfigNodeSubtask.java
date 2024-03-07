@@ -86,9 +86,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             new PipeTaskExtractorRuntimeEnvironment(
                 taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);
-
-    // 4. TODO ???
-    extractor.start();
   }
 
   private void initProcessor(Map<String, String> processorAttributes) throws Exception {
@@ -124,6 +121,14 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
     // 4. Handshake
     outputPipeConnector.handshake();
+  }
+
+  public void start() {
+    try {
+      extractor.start();
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 
   /**

@@ -501,6 +501,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         return;
       }
       t.join();
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -557,6 +560,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         senderEnv.registerNewDataNode(true);
       } catch (Exception e) {
         e.printStackTrace();
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
         return;
       }
 
@@ -625,6 +632,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
       } catch (Exception e) {
         e.printStackTrace();
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
         return;
       }
 

@@ -63,6 +63,8 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
+    // IoTDBConfigRegionExtractor must be started before configNode task sends data
+    subtask.start();
     PipeConfigNodeSubtaskExecutor.getInstance().start(subtask.getTaskID());
   }
 
