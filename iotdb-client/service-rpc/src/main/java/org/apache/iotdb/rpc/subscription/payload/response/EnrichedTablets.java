@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.rpc.subscription.payload.response;
 
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -34,7 +33,7 @@ public class EnrichedTablets {
 
   private transient String topicName;
   private transient List<Tablet> tablets;
-  private transient List<Pair<String, Long>> committerKeyAndCommitIds;
+  private transient List<String> subscriptionCommitIds;
 
   public String getTopicName() {
     return topicName;
@@ -44,20 +43,20 @@ public class EnrichedTablets {
     return tablets;
   }
 
-  public List<Pair<String, Long>> getCommitterKeyAndCommitIds() {
-    return committerKeyAndCommitIds;
+  public List<String> getSubscriptionCommitIds() {
+    return subscriptionCommitIds;
   }
 
   public EnrichedTablets() {
     this.tablets = new ArrayList<>();
-    this.committerKeyAndCommitIds = new ArrayList<>();
+    this.subscriptionCommitIds = new ArrayList<>();
   }
 
   public EnrichedTablets(
-      String topicName, List<Tablet> tablets, List<Pair<String, Long>> committerKeyAndCommitIds) {
+      String topicName, List<Tablet> tablets, List<String> subscriptionCommitIds) {
     this.topicName = topicName;
     this.tablets = tablets;
-    this.committerKeyAndCommitIds = committerKeyAndCommitIds;
+    this.subscriptionCommitIds = subscriptionCommitIds;
   }
 
   public static EnrichedTablets blendEnrichedTablets(EnrichedTablets left, EnrichedTablets right) {
@@ -66,11 +65,10 @@ public class EnrichedTablets {
       return null;
     }
     List<Tablet> tablets = new ArrayList<>(left.tablets);
-    List<Pair<String, Long>> committerKeyAndCommitIds =
-        new ArrayList<>(left.committerKeyAndCommitIds);
+    List<String> subscriptionCommitIds = new ArrayList<>(left.subscriptionCommitIds);
     tablets.addAll(right.tablets);
-    committerKeyAndCommitIds.addAll(right.committerKeyAndCommitIds);
-    return new EnrichedTablets(left.topicName, tablets, committerKeyAndCommitIds);
+    subscriptionCommitIds.addAll(right.subscriptionCommitIds);
+    return new EnrichedTablets(left.topicName, tablets, subscriptionCommitIds);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -79,11 +77,7 @@ public class EnrichedTablets {
     for (Tablet tablet : tablets) {
       tablet.serialize(stream);
     }
-    ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), stream);
-    for (Pair<String, Long> committerKeyAndCommitId : committerKeyAndCommitIds) {
-      ReadWriteIOUtils.write(committerKeyAndCommitId.left, stream);
-      ReadWriteIOUtils.write(committerKeyAndCommitId.right, stream);
-    }
+    ReadWriteIOUtils.writeStringList(subscriptionCommitIds, stream);
   }
 
   public static EnrichedTablets deserialize(ByteBuffer buffer) {
@@ -93,12 +87,7 @@ public class EnrichedTablets {
     for (int i = 0; i < size; ++i) {
       enrichedTablets.tablets.add(Tablet.deserialize(buffer));
     }
-    size = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < size; ++i) {
-      String committerKey = ReadWriteIOUtils.readString(buffer);
-      long commitId = ReadWriteIOUtils.readLong(buffer);
-      enrichedTablets.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
-    }
+    enrichedTablets.subscriptionCommitIds = ReadWriteIOUtils.readStringList(buffer);
     return enrichedTablets;
   }
 
@@ -115,12 +104,12 @@ public class EnrichedTablets {
     EnrichedTablets that = (EnrichedTablets) obj;
     return Objects.equals(this.topicName, that.topicName)
         && Objects.equals(this.tablets, that.tablets)
-        && Objects.equals(this.committerKeyAndCommitIds, that.committerKeyAndCommitIds);
+        && Objects.equals(this.subscriptionCommitIds, that.subscriptionCommitIds);
   }
 
   @Override
   public int hashCode() {
     // TODO: Tablet hashCode
-    return Objects.hash(topicName, tablets, committerKeyAndCommitIds);
+    return Objects.hash(topicName, tablets, subscriptionCommitIds);
   }
 }

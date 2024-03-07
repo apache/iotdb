@@ -254,6 +254,10 @@ public abstract class EnrichedEvent implements Event {
     return commitId;
   }
 
+  public String generateSubscriptionCommitId() {
+    return String.format("%s_%s", committerKey, commitId);
+  }
+
   public void onCommitted() {
     if (shouldReportOnCommit) {
       reportProgress();

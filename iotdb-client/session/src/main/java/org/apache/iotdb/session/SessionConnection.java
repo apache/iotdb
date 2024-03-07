@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
@@ -85,7 +86,9 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -1656,11 +1659,17 @@ public class SessionConnection {
           client.pipeSubscribe(
               PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
       PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
       for (EnrichedTablets enrichedTablets : pollResp.getEnrichedTabletsList()) {
         System.out.println(enrichedTablets.getTopicName());
         System.out.println(enrichedTablets.getTablets());
-        System.out.println(enrichedTablets.getCommitterKeyAndCommitIds());
+        System.out.println(enrichedTablets.getSubscriptionCommitIds());
+        topicNameToSubscriptionCommitIds
+            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+            .addAll(enrichedTablets.getSubscriptionCommitIds());
       }
+      client.pipeSubscribe(
+          PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
     } catch (Exception e) {
       e.printStackTrace();
     }

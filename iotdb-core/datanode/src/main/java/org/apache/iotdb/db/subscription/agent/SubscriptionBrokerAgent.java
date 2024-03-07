@@ -8,7 +8,6 @@ import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorS
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,14 +42,14 @@ public class SubscriptionBrokerAgent {
   }
 
   public void commit(
-      ConsumerConfig consumerConfig, List<Pair<String, Long>> committerKeyAndCommitIds) {
+      ConsumerConfig consumerConfig, Map<String, List<String>> topicNameToSubscriptionCommitIds) {
     SubscriptionBroker broker =
         consumerGroupIDToSubscriptionBroker.get(consumerConfig.getConsumerGroupID());
     if (Objects.isNull(broker)) {
       // TODO: handle error
       return;
     }
-    broker.commit(committerKeyAndCommitIds);
+    broker.commit(topicNameToSubscriptionCommitIds);
   }
 
   public void bindPrefetchingQueue(PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask) {

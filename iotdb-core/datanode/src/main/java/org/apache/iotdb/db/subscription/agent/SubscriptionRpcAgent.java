@@ -52,7 +52,6 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -241,12 +240,13 @@ public class SubscriptionRpcAgent {
     }
 
     // commit
-    List<Pair<String, Long>> committerKeyAndCommitIds = req.getCommitterKeyAndCommitIds();
-    SubscriptionAgent.broker().commit(consumerConfig, committerKeyAndCommitIds);
+    Map<String, List<String>> topicNameToSubscriptionCommitIds =
+        req.getTopicNameToSubscriptionCommitIds();
+    SubscriptionAgent.broker().commit(consumerConfig, topicNameToSubscriptionCommitIds);
 
     LOGGER.info(
         "Subscription: consumer commit {} successfully, consumer config: {}",
-        committerKeyAndCommitIds,
+        topicNameToSubscriptionCommitIds,
         consumerConfig);
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }

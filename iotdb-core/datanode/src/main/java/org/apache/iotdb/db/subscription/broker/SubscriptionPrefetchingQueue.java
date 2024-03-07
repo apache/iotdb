@@ -29,7 +29,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
@@ -52,7 +51,7 @@ public class SubscriptionPrefetchingQueue {
 
   private final Deque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
 
-  private final Map<Pair<String, Long>, EnrichedEvent> uncommittedEvents;
+  private final Map<String, EnrichedEvent> uncommittedEvents;
 
   public SubscriptionPrefetchingQueue(
       String brokerID, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
@@ -69,12 +68,15 @@ public class SubscriptionPrefetchingQueue {
     return toEnrichedTablets();
   }
 
-  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {
-    for (Pair<String, Long> committerKeyAndCommitId : committerKeyAndCommitIds) {
-      EnrichedEvent enrichedEvent = uncommittedEvents.get(committerKeyAndCommitId);
-      if (Objects.nonNull(enrichedEvent)) {
-        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+  public void commit(List<String> subscriptionCommitIds) {
+    for (String subscriptionCommitId : subscriptionCommitIds) {
+      EnrichedEvent enrichedEvent = uncommittedEvents.get(subscriptionCommitId);
+      if (Objects.isNull(enrichedEvent)) {
+        // TODO: logger warn
+        continue;
       }
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      uncommittedEvents.remove(subscriptionCommitId);
     }
   }
 
@@ -108,7 +110,7 @@ public class SubscriptionPrefetchingQueue {
 
   private EnrichedTablets toEnrichedTablets() {
     final List<Tablet> tablets = new ArrayList<>();
-    final List<Pair<String, Long>> committerKeyAndCommitIds = new ArrayList<>();
+    final List<String> subscriptionCommitIds = new ArrayList<>();
 
     while (!prefetchingTabletInsertionEvents.isEmpty()) {
       TabletInsertionEvent tabletInsertionEvent = prefetchingTabletInsertionEvents.poll();
@@ -116,21 +118,16 @@ public class SubscriptionPrefetchingQueue {
         PipeInsertNodeTabletInsertionEvent insertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
         tablets.add(insertNodeTabletInsertionEvent.convertToTablet());
-        Pair<String, Long> committerKeyAndCommitId =
-            new Pair<>(
-                insertNodeTabletInsertionEvent.getCommitterKey(),
-                insertNodeTabletInsertionEvent.getCommitId());
-        committerKeyAndCommitIds.add(committerKeyAndCommitId);
-        uncommittedEvents.put(committerKeyAndCommitId, insertNodeTabletInsertionEvent);
+        String subscriptionCommitId = insertNodeTabletInsertionEvent.generateSubscriptionCommitId();
+        subscriptionCommitIds.add(subscriptionCommitId);
+        uncommittedEvents.put(subscriptionCommitId, insertNodeTabletInsertionEvent);
       } else { // PipeRawTabletInsertionEvent
         PipeRawTabletInsertionEvent rawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
         tablets.add(rawTabletInsertionEvent.convertToTablet());
-        Pair<String, Long> committerKeyAndCommitId =
-            new Pair<>(
-                rawTabletInsertionEvent.getCommitterKey(), rawTabletInsertionEvent.getCommitId());
-        committerKeyAndCommitIds.add(committerKeyAndCommitId);
-        uncommittedEvents.put(committerKeyAndCommitId, rawTabletInsertionEvent);
+        String subscriptionCommitId = rawTabletInsertionEvent.generateSubscriptionCommitId();
+        subscriptionCommitIds.add(subscriptionCommitId);
+        uncommittedEvents.put(subscriptionCommitId, rawTabletInsertionEvent);
       }
     }
 
@@ -146,15 +143,12 @@ public class SubscriptionPrefetchingQueue {
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
         tablets.add(rawTabletInsertionEvent.convertToTablet());
       }
-      Pair<String, Long> committerKeyAndCommitId =
-          new Pair<>(
-              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getCommitterKey(),
-              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getCommitId());
-      committerKeyAndCommitIds.add(committerKeyAndCommitId);
-      uncommittedEvents.put(
-          committerKeyAndCommitId, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      String subscriptionCommitId =
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).generateSubscriptionCommitId();
+      subscriptionCommitIds.add(subscriptionCommitId);
+      uncommittedEvents.put(subscriptionCommitId, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     }
 
-    return new EnrichedTablets(topicName, tablets, committerKeyAndCommitIds);
+    return new EnrichedTablets(topicName, tablets, subscriptionCommitIds);
   }
 }

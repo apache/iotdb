@@ -22,10 +22,10 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
@@ -52,10 +52,16 @@ public class SubscriptionBroker {
     return enrichedTabletsList;
   }
 
-  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {
-    topicNameToPrefetchingQueue
-        .values()
-        .forEach((prefetchingQueue) -> prefetchingQueue.commit(committerKeyAndCommitIds));
+  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
+    for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
+      SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(entry.getKey());
+      if (Objects.isNull(prefetchingQueue)) {
+        // TODO: logger warn
+        continue;
+      }
+      prefetchingQueue.commit(entry.getValue());
+    }
   }
 
   public void bindPrefetchingQueue(
