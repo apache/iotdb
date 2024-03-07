@@ -31,8 +31,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 @TestOnly
-public class MakeChildProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
-  public static final String A = "root.start";
+public class AddNeverFinishSubProcedureProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
   public static final String FAIL_DATABASE_NAME = "root.fail";
 
   @Override
@@ -40,7 +40,6 @@ public class MakeChildProcedure extends StateMachineProcedure<ConfigNodeProcedur
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     if (state == 0) {
       // the sub procedure will never finish, so the father procedure should never be called again
-      ProcedureTestUtils.createDatabase(env.getConfigManager(), A);
       addChildProcedure(new NeverFinishProcedure());
       setNextState(1);
       return Flow.HAS_MORE_STATE;
@@ -73,7 +72,7 @@ public class MakeChildProcedure extends StateMachineProcedure<ConfigNodeProcedur
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.MAKE_CHILD_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE.getTypeCode());
     super.serialize(stream);
   }
 }

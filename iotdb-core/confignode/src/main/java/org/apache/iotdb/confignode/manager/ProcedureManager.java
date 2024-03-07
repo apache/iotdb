@@ -75,8 +75,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
-import org.apache.iotdb.confignode.procedure.impl.testonly.MakeChildProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -182,7 +182,7 @@ public class ProcedureManager {
 
   @TestOnly
   public TSStatus testSubProcedure() {
-    this.executor.submitProcedure(new MakeChildProcedure());
+    this.executor.submitProcedure(new AddNeverFinishSubProcedureProcedure());
     return StatusUtils.OK;
   }
 
