@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
@@ -37,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
@@ -61,110 +61,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
-  /////////////////////////////// Tools ///////////////////////////////
-
-  protected final void updateWritingFileIfNeeded(String fileName) throws IOException {
-    if (isFileExistedAndNameCorrect(fileName)) {
-      return;
-    }
-
-    LOGGER.info(
-        "Writing file {} is not existed or name is not correct, try to create it. "
-            + "Current writing file is {}.",
-        fileName,
-        writingFile == null ? "null" : writingFile.getPath());
-
-    closeCurrentWritingFileWriter();
-    deleteCurrentWritingFile();
-
-    // make sure receiver file dir exists
-    // this may be useless, because receiver file dir is created when handshake. just in case.
-    if (!receiverFileDirWithIdSuffix.get().exists()) {
-      if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
-            "Receiver file dir {} was created.", receiverFileDirWithIdSuffix.get().getPath());
-      } else {
-        LOGGER.error(
-            "Failed to create receiver file dir {}.", receiverFileDirWithIdSuffix.get().getPath());
-      }
-    }
-
-    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
-    writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info("Writing file {} was created. Ready to write file pieces.", writingFile.getPath());
+  @Override
+  public IoTDBConnectorRequestVersion getVersion() {
+    return IoTDBConnectorRequestVersion.VERSION_1;
   }
-
-  private boolean isFileExistedAndNameCorrect(String fileName) {
-    return writingFile != null && writingFile.getName().equals(fileName);
-  }
-
-  private void closeCurrentWritingFileWriter() {
-    if (writingFileWriter != null) {
-      try {
-        writingFileWriter.close();
-        LOGGER.info(
-            "Current writing file writer {} was closed.",
-            writingFile == null ? "null" : writingFile.getPath());
-      } catch (IOException e) {
-        LOGGER.warn(
-            "Failed to close current writing file writer {}, because {}.",
-            writingFile == null ? "null" : writingFile.getPath(),
-            e.getMessage());
-      }
-      writingFileWriter = null;
-    } else {
-      LOGGER.info("Current writing file writer is null. No need to close.");
-    }
-  }
-
-  private void deleteCurrentWritingFile() {
-    if (writingFile != null) {
-      if (writingFile.exists()) {
-        try {
-          Files.delete(writingFile.toPath());
-          LOGGER.info("Original writing file {} was deleted.", writingFile.getPath());
-        } catch (IOException e) {
-          LOGGER.warn(
-              "Failed to delete original writing file {}, because {}.",
-              writingFile.getPath(),
-              e.getMessage());
-        }
-      } else {
-        LOGGER.info("Original file {} is not existed. No need to delete.", writingFile.getPath());
-      }
-      writingFile = null;
-    } else {
-      LOGGER.info("Current writing file is null. No need to delete.");
-    }
-  }
-
-  private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
-    final boolean offsetCorrect = writingFileWriter.length() == offset;
-    if (!offsetCorrect) {
-      LOGGER.warn(
-          "Writing file {}'s offset is {}, but request sender's offset is {}.",
-          writingFile.getPath(),
-          writingFileWriter.length(),
-          offset);
-    }
-    return offsetCorrect;
-  }
-
-  private boolean isWritingFileAvailable() {
-    final boolean isWritingFileAvailable =
-        writingFile != null && writingFile.exists() && writingFileWriter != null;
-    if (!isWritingFileAvailable) {
-      LOGGER.info(
-          "Writing file {} is not available. Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
-          writingFile,
-          writingFile == null,
-          writingFile != null && writingFile.exists(),
-          writingFileWriter == null);
-    }
-    return isWritingFileAvailable;
-  }
-
-  /////////////////////////////// Handler ///////////////////////////////
 
   protected TPipeTransferResp handleTransferHandshakeV1(PipeTransferHandshakeV1Req req) {
     if (!CommonDescriptor.getInstance()
@@ -240,6 +140,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
+
+  protected abstract String getReceiverFileBaseDir() throws Exception;
 
   protected TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
       throws IOException {
@@ -346,6 +248,93 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  protected final void updateWritingFileIfNeeded(String fileName) throws IOException {
+    if (isFileExistedAndNameCorrect(fileName)) {
+      return;
+    }
+
+    LOGGER.info(
+        "Writing file {} is not existed or name is not correct, try to create it. "
+            + "Current writing file is {}.",
+        fileName,
+        writingFile == null ? "null" : writingFile.getPath());
+
+    closeCurrentWritingFileWriter();
+    deleteCurrentWritingFile();
+
+    // make sure receiver file dir exists
+    // this may be useless, because receiver file dir is created when handshake. just in case.
+    if (!receiverFileDirWithIdSuffix.get().exists()) {
+      if (receiverFileDirWithIdSuffix.get().mkdirs()) {
+        LOGGER.info(
+            "Receiver file dir {} was created.", receiverFileDirWithIdSuffix.get().getPath());
+      } else {
+        LOGGER.error(
+            "Failed to create receiver file dir {}.", receiverFileDirWithIdSuffix.get().getPath());
+      }
+    }
+
+    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
+    writingFileWriter = new RandomAccessFile(writingFile, "rw");
+    LOGGER.info("Writing file {} was created. Ready to write file pieces.", writingFile.getPath());
+  }
+
+  private boolean isFileExistedAndNameCorrect(String fileName) {
+    return writingFile != null && writingFile.getName().equals(fileName);
+  }
+
+  private void closeCurrentWritingFileWriter() {
+    if (writingFileWriter != null) {
+      try {
+        writingFileWriter.close();
+        LOGGER.info(
+            "Current writing file writer {} was closed.",
+            writingFile == null ? "null" : writingFile.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to close current writing file writer {}, because {}.",
+            writingFile == null ? "null" : writingFile.getPath(),
+            e.getMessage());
+      }
+      writingFileWriter = null;
+    } else {
+      LOGGER.info("Current writing file writer is null. No need to close.");
+    }
+  }
+
+  private void deleteCurrentWritingFile() {
+    if (writingFile != null) {
+      if (writingFile.exists()) {
+        try {
+          Files.delete(writingFile.toPath());
+          LOGGER.info("Original writing file {} was deleted.", writingFile.getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Failed to delete original writing file {}, because {}.",
+              writingFile.getPath(),
+              e.getMessage());
+        }
+      } else {
+        LOGGER.info("Original file {} is not existed. No need to delete.", writingFile.getPath());
+      }
+      writingFile = null;
+    } else {
+      LOGGER.info("Current writing file is null. No need to delete.");
+    }
+  }
+
+  private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
+    final boolean offsetCorrect = writingFileWriter.length() == offset;
+    if (!offsetCorrect) {
+      LOGGER.warn(
+          "Writing file {}'s offset is {}, but request sender's offset is {}.",
+          writingFile.getPath(),
+          writingFileWriter.length(),
+          offset);
+    }
+    return offsetCorrect;
+  }
+
   protected final TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
     try {
       if (!isWritingFileAvailable()) {
@@ -429,15 +418,23 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  /////////////////////////////// Execution ///////////////////////////////
-
-  protected abstract String getReceiverFileBaseDir() throws Exception;
+  private boolean isWritingFileAvailable() {
+    final boolean isWritingFileAvailable =
+        writingFile != null && writingFile.exists() && writingFileWriter != null;
+    if (!isWritingFileAvailable) {
+      LOGGER.info(
+          "Writing file {} is not available. Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
+          writingFile,
+          writingFile == null,
+          writingFile != null && writingFile.exists(),
+          writingFileWriter == null);
+    }
+    return isWritingFileAvailable;
+  }
 
   protected abstract TSStatus loadFile(
-      final PipeTransferFileSealReq req, final String fileAbsolutePath)
-      throws FileNotFoundException;
+      final PipeTransferFileSealReq req, final String fileAbsolutePath) throws IOException;
 
-  /////////////////////////////// Implement ///////////////////////////////
   @Override
   public synchronized void handleExit() {
     if (writingFileWriter != null) {

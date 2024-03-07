@@ -20,9 +20,10 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
-import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -30,24 +31,25 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.HashSet;
 import java.util.Set;
 
-public class IoTDBConfigRegionExtractor extends IoTDBMetaExtractor {
-  private Set<ConfigPhysicalPlanType> listenTypes = new HashSet<>();
+public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
+
+  private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return ConfigRegionListeningQueue.getInstance();
+    return PipeConfigNodeAgent.runtime().listener();
   }
 
   @Override
-  protected boolean isListenType(Event event) {
-    return listenTypes.contains(
+  protected boolean isTypeListened(Event event) {
+    return listenedTypeSet.contains(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
   }
 }

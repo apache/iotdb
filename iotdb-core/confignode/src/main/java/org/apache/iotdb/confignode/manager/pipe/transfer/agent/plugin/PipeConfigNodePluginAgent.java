@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginConstructor;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 
-public class PipePluginConfigNodeAgent extends PipePluginAgent {
+public class PipeConfigNodePluginAgent extends PipePluginAgent {
 
-  public PipePluginConfigNodeAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
+  public PipeConfigNodePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
   }
 

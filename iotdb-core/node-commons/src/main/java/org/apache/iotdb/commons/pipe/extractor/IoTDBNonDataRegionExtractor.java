@@ -29,13 +29,15 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
-  private ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr;
-  private List<PipeSnapshotEvent> historicalEvents = new ArrayList<>();
+public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
+
+  private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
+
+  private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
@@ -45,73 +47,79 @@ public abstract class IoTDBMetaExtractor extends IoTDBExtractor {
       return;
     }
     super.start();
-    ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
-    long index =
+
+    final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+    final long nextIndex =
         progressIndex instanceof MinimumProgressIndex
                 // If the index is invalid, the queue is seen as cleared before and thus
                 // needs snapshot re-transferring
                 || !getListeningQueue()
-                    .isValidIndex(((MetaProgressIndex) progressIndex).getIndex() + 1)
+                    .isGivenNextIndexValid(((MetaProgressIndex) progressIndex).getIndex() + 1)
             ? getNextIndexAfterSnapshot()
             : ((MetaProgressIndex) progressIndex).getIndex() + 1;
-    itr = getListeningQueue().newIterator(index);
+    iterator = getListeningQueue().newIterator(nextIndex);
   }
 
   private long getNextIndexAfterSnapshot() {
-    Pair<Long, List<PipeSnapshotEvent>> eventPair = getListeningQueue().findAvailableSnapshots();
+    final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2Snapshots =
+        getListeningQueue().findAvailableSnapshots();
     // TODO: Trigger snapshot if not exists
-    long index = !Objects.isNull(eventPair.getLeft()) ? eventPair.getLeft() + 1 : 0;
-    historicalEvents = eventPair.getRight();
-    return index;
+    final long nextIndex =
+        Objects.nonNull(queueTailIndex2Snapshots.getLeft())
+                && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE
+            ? queueTailIndex2Snapshots.getLeft() + 1
+            : 0;
+    historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
+    return nextIndex;
   }
 
   @Override
   public EnrichedEvent supply() throws Exception {
+    // historical
     if (!historicalEvents.isEmpty()) {
-      PipeSnapshotEvent event;
-      if (historicalEvents.size() != 1) {
-        // Do not report progress for non-final snapshot events since we re-transmit all snapshot
-        // files currently
-        event = historicalEvents.remove(0);
-      } else {
-        event =
-            (PipeSnapshotEvent)
-                historicalEvents
-                    .remove(0)
-                    .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                        pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-        event.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
+      final PipeSnapshotEvent historicalEvent =
+          (PipeSnapshotEvent)
+              historicalEvents
+                  .remove(0)
+                  .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                      pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+
+      if (historicalEvents.isEmpty()) {
+        // We only report progress for the last snapshot event.
+        historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       }
-      event.increaseReferenceCount(IoTDBMetaExtractor.class.getName());
-      return event;
+
+      historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      return historicalEvent;
     }
 
-    EnrichedEvent event;
+    // realtime
+    EnrichedEvent realtimeEvent;
     do {
-      // Return immediately
-      event = (EnrichedEvent) itr.next(0);
-    } while (!Objects.isNull(event)
-        && (!isListenType(event) || !isForwardingPipeRequests && event.isGeneratedByPipe()));
+      realtimeEvent = (EnrichedEvent) iterator.next(0);
+      if (Objects.isNull(realtimeEvent)) {
+        return null;
+      }
+    } while (!isTypeListened(realtimeEvent)
+        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe()));
 
-    if (Objects.isNull(event)) {
-      return null;
-    }
-
-    EnrichedEvent targetEvent =
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+    realtimeEvent =
+        realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    targetEvent.bindProgressIndex(new MetaProgressIndex(itr.getNextIndex() - 1));
-    targetEvent.increaseReferenceCount(IoTDBMetaExtractor.class.getName());
-    return targetEvent;
+    realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+    return realtimeEvent;
   }
 
-  protected abstract boolean isListenType(Event event);
+  protected abstract boolean isTypeListened(Event event);
 
   @Override
   public void close() throws Exception {
     if (!hasBeenStarted.get()) {
       return;
     }
-    getListeningQueue().returnIterator(itr);
+
+    getListeningQueue().returnIterator(iterator);
+    historicalEvents.clear();
   }
 }

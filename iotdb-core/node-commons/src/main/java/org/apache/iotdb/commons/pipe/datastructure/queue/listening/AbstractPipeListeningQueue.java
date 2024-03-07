@@ -46,108 +46,96 @@ import java.util.List;
  * existed.
  */
 public abstract class AbstractPipeListeningQueue extends AbstractSerializableListeningQueue<Event> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
-  private static final String SNAPSHOT_PREFIX = ".snapshot";
 
-  private final Pair<Long, List<PipeSnapshotEvent>> snapshotCache =
+  private static final String SNAPSHOT_SUFFIX = ".snapshot";
+
+  // The cache of the snapshot events list and the tail index of the queue
+  // when the snapshot events are generated.
+  private final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2SnapshotsCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
-
-  private volatile boolean leaderReady = false;
 
   protected AbstractPipeListeningQueue() {
     super(QueueSerializerType.PLAIN);
   }
 
-  /////////////////////////////// Leader ready ///////////////////////////////
+  /////////////////////////////// Plan ///////////////////////////////
 
-  /**
-   * Get leader ready state, DO NOT use consensus layer's leader ready flag because SimpleConsensus'
-   * ready flag is always {@code true}. Note that this flag has nothing to do with listening and a
-   * {@link PipeTask} starts only iff the current node is a leader and ready.
-   *
-   * @return {@code true} iff the current node is a leader and ready
-   */
-  public boolean isLeaderReady() {
-    return leaderReady;
-  }
-
-  // Leader ready flag has the following effect
-  // 1. The linked list starts serving only after leader gets ready
-  // 2. Config pipe task is only created after leader gets ready
-  public void notifyLeaderReady() {
-    leaderReady = true;
-  }
-
-  public void notifyLeaderUnavailable() {
-    leaderReady = false;
+  protected synchronized void tryListen(EnrichedEvent event) {
+    if (super.tryListen(event)) {
+      event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
+    }
   }
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////
 
-  // This method is thread-unsafe but snapshot must not be parallel with other
-  // snapshots or write-plan.
-  public void listenToSnapshots(List<PipeSnapshotEvent> events) {
-    if (!isSealed.get()) {
+  protected synchronized void tryListen(List<PipeSnapshotEvent> events) {
+    if (!isClosed.get()) {
       clearSnapshots();
-      snapshotCache.setLeft(queue.getTailIndex());
-      snapshotCache.setRight(events);
+      queueTailIndex2SnapshotsCache.setLeft(queue.getTailIndex());
+      events.forEach(
+          event -> event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName()));
+      queueTailIndex2SnapshotsCache.setRight(events);
     }
   }
 
-  public Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
+  public synchronized Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
     // TODO: configure maximum number of events from snapshot to queue tail
-    if (snapshotCache.getLeft() < queue.getTailIndex() - 1000) {
+    if (queueTailIndex2SnapshotsCache.getLeft() < queue.getTailIndex() - 1000) {
       clearSnapshots();
     }
-    return snapshotCache;
+    return queueTailIndex2SnapshotsCache;
   }
 
-  private void clearSnapshots() {
-    snapshotCache.setLeft(Long.MIN_VALUE);
-    snapshotCache
+  private synchronized void clearSnapshots() {
+    queueTailIndex2SnapshotsCache.setLeft(Long.MIN_VALUE);
+    queueTailIndex2SnapshotsCache
         .getRight()
         .forEach(
             event ->
                 event.decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false));
-    snapshotCache.setRight(new ArrayList<>());
+    queueTailIndex2SnapshotsCache.setRight(new ArrayList<>());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
+
   @Override
-  public final boolean serializeToFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
+  public final synchronized boolean serializeToFile(File snapshotName) throws IOException {
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          "Failed to take snapshot, because snapshot file {} is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
 
     try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      ReadWriteIOUtils.write(snapshotCache.getLeft(), fileOutputStream);
-      ReadWriteIOUtils.write(snapshotCache.getRight().size(), fileOutputStream);
-      for (PipeSnapshotEvent event : snapshotCache.getRight()) {
+      ReadWriteIOUtils.write(queueTailIndex2SnapshotsCache.getLeft(), fileOutputStream);
+      ReadWriteIOUtils.write(queueTailIndex2SnapshotsCache.getRight().size(), fileOutputStream);
+      for (PipeSnapshotEvent event : queueTailIndex2SnapshotsCache.getRight()) {
         ByteBuffer planBuffer = serializeToByteBuffer(event);
         ReadWriteIOUtils.write(planBuffer, fileOutputStream);
       }
     }
+
     return super.serializeToFile(snapshotName);
   }
 
   @Override
-  public final void deserializeFromFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_PREFIX);
+  public final synchronized void deserializeFromFile(File snapshotName) throws IOException {
+    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot, snapshot file [{}] is not exist.",
+          "Failed to load snapshot, snapshot file {} is not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
 
     try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
       try (FileChannel channel = inputStream.getChannel()) {
-        snapshotCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
-        snapshotCache.setRight(new ArrayList<>());
+        queueTailIndex2SnapshotsCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
+        queueTailIndex2SnapshotsCache.setRight(new ArrayList<>());
         int size = ReadWriteIOUtils.readInt(inputStream);
         for (int i = 0; i < size; ++i) {
           int capacity = ReadWriteIOUtils.readInt(inputStream);
@@ -157,12 +145,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
           }
           ByteBuffer buffer = ByteBuffer.allocate(capacity);
           channel.read(buffer);
-          PipeSnapshotEvent event = (PipeSnapshotEvent) deserializeFromByteBuffer(buffer);
-          event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
-          snapshotCache.getRight().add(event);
+          queueTailIndex2SnapshotsCache
+              .getRight()
+              .add((PipeSnapshotEvent) deserializeFromByteBuffer(buffer));
         }
       }
     }
+
     super.deserializeFromFile(snapshotName);
   }
 

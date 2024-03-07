@@ -19,27 +19,26 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent;
 
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipePluginConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.plugin.PipeConfigNodePluginAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver.IoTDBConfigNodeReceiverAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime.PipeRuntimeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeTaskConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.runtime.PipeConfigNodeRuntimeAgent;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.task.PipeConfigNodeTaskAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
 
 /** {@link PipeConfigNodeAgent} is the entry point of the pipe module in {@link ConfigNode}. */
 public class PipeConfigNodeAgent {
 
-  private final PipeTaskConfigNodeAgent pipeTaskConfigNodeAgent;
-  private final PipePluginConfigNodeAgent pipePluginConfigNodeAgent;
-  private final PipeRuntimeConfigNodeAgent pipeRuntimeConfigNodeAgent;
-  private final IoTDBConfigNodeReceiverAgent ioTDBConfigNodeReceiverAgent;
+  private final PipeConfigNodeTaskAgent pipeConfigNodeTaskAgent;
+  private final PipeConfigNodePluginAgent pipeConfigNodePluginAgent;
+  private final PipeConfigNodeRuntimeAgent pipeConfigNodeRuntimeAgent;
+  private final IoTDBConfigNodeReceiverAgent pipeConfigNodeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeConfigNodeAgent() {
-    pipeTaskConfigNodeAgent = new PipeTaskConfigNodeAgent();
-    pipePluginConfigNodeAgent = new PipePluginConfigNodeAgent(null);
-    pipeRuntimeConfigNodeAgent = new PipeRuntimeConfigNodeAgent();
-    ioTDBConfigNodeReceiverAgent = new IoTDBConfigNodeReceiverAgent();
+    pipeConfigNodeTaskAgent = new PipeConfigNodeTaskAgent();
+    pipeConfigNodePluginAgent = new PipeConfigNodePluginAgent(null);
+    pipeConfigNodeRuntimeAgent = new PipeConfigNodeRuntimeAgent();
+    pipeConfigNodeReceiverAgent = new IoTDBConfigNodeReceiverAgent();
   }
 
   /** The singleton holder of {@link PipeConfigNodeAgent}. */
@@ -48,30 +47,30 @@ public class PipeConfigNodeAgent {
   }
 
   /**
-   * Get the singleton instance of {@link PipeTaskConfigNodeAgent}.
+   * Get the singleton instance of {@link PipeConfigNodeTaskAgent}.
    *
-   * @return the singleton instance of {@link PipeTaskConfigNodeAgent}
+   * @return the singleton instance of {@link PipeConfigNodeTaskAgent}
    */
-  public static PipeTaskConfigNodeAgent task() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipeTaskConfigNodeAgent;
+  public static PipeConfigNodeTaskAgent task() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeTaskAgent;
   }
 
   /**
-   * Get the singleton instance of {@link PipePluginDataNodeAgent}.
+   * Get the singleton instance of {@link PipeConfigNodePluginAgent}.
    *
-   * @return the singleton instance of {@link PipePluginDataNodeAgent}
+   * @return the singleton instance of {@link PipeConfigNodePluginAgent}
    */
-  public static PipePluginConfigNodeAgent plugin() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipePluginConfigNodeAgent;
+  public static PipeConfigNodePluginAgent plugin() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodePluginAgent;
   }
 
   /**
-   * Get the singleton instance of {@link PipeRuntimeConfigNodeAgent}.
+   * Get the singleton instance of {@link PipeConfigNodeRuntimeAgent}.
    *
-   * @return the singleton instance of {@link PipeRuntimeConfigNodeAgent}
+   * @return the singleton instance of {@link PipeConfigNodeRuntimeAgent}
    */
-  public static PipeRuntimeConfigNodeAgent runtime() {
-    return PipeConfigNodeAgentHolder.HANDLE.pipeRuntimeConfigNodeAgent;
+  public static PipeConfigNodeRuntimeAgent runtime() {
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeRuntimeAgent;
   }
 
   /**
@@ -80,6 +79,6 @@ public class PipeConfigNodeAgent {
    * @return the singleton instance of {@link IoTDBConfigNodeReceiverAgent}
    */
   public static IoTDBConfigNodeReceiverAgent receiver() {
-    return PipeConfigNodeAgentHolder.HANDLE.ioTDBConfigNodeReceiverAgent;
+    return PipeConfigNodeAgentHolder.HANDLE.pipeConfigNodeReceiverAgent;
   }
 }

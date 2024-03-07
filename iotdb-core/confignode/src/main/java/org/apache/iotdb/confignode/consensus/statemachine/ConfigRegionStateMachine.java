@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
@@ -130,9 +130,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       writeLogForSimpleConsensus(plan);
     }
+
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      ConfigRegionListeningQueue.getInstance().tryListenToPlan(plan, false);
+      PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false);
     }
+
     return result;
   }
 
@@ -229,7 +231,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.removeMetrics();
 
       // Shutdown leader related service for config pipe
-      ConfigRegionListeningQueue.getInstance().notifyLeaderUnavailable();
+      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
     }
   }
 
@@ -252,7 +254,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.addMetrics();
 
     // Activate leader related service for config pipe
-    ConfigRegionListeningQueue.getInstance().notifyLeaderReady();
+    PipeConfigNodeAgent.runtime().notifyLeaderReady();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
@@ -270,7 +272,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             configManager
                 .getPipeManager()
                 .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChangedIfReady());
+                .onConfigRegionGroupLeaderChangedIfLeaderReady());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.
@@ -287,7 +289,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public void stop() {
     // Shutdown leader related service for config pipe
-    ConfigRegionListeningQueue.getInstance().notifyLeaderUnavailable();
+    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
   }
 
   @Override
@@ -373,7 +375,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               // Recover the linked queue.
               // Note that the "nextPlan"s may contain create and drop pipe operations
               // and will affect whether the queue listen to the plans.
-              ConfigRegionListeningQueue.getInstance().tryListenToPlan(nextPlan, false);
+              PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());

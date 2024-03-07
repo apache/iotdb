@@ -50,6 +50,7 @@ public abstract class IoTDBExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
+  // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
 
   @Override

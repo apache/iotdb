@@ -319,7 +319,8 @@ public class ConfigManager implements IManager {
 
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
-    pipeManager.getPipeRuntimeCoordinator().onConfigRegionGroupLeaderChangedIfReady();
+    // TODO: FIXME
+    pipeManager.getPipeRuntimeCoordinator().onConfigRegionGroupLeaderChangedIfLeaderReady();
   }
 
   public void close() throws IOException {

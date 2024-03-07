@@ -40,7 +40,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
@@ -74,9 +73,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PipeTaskDataNodeAgent extends PipeTaskAgent {
+public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -115,7 +114,8 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
                   .contains(new SchemaRegionId(consensusGroupId))
-              && !SchemaRegionListeningFilter.getPipeListenSet(extractorParameters).isEmpty();
+              && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
+                  .isEmpty();
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
@@ -152,7 +152,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
         Map<Integer, PipeTaskMeta> metaMap =
             pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-        if (!SchemaRegionListeningFilter.getPipeListenSet(
+        if (!SchemaRegionListeningFilter.parseListeningPlanTypeSet(
                 pipeMeta.getStaticMeta().getExtractorParameters())
             .isEmpty()) {
           for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
@@ -178,7 +178,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
 
       newFirstIndexMap.forEach(
           (schemaId, index) ->
-              SchemaRegionListeningQueue.getInstance(schemaId).removeBefore(index));
+              PipeAgent.runtime().schemaListener(new SchemaRegionId(schemaId)).removeBefore(index));
 
       // Close queues of no sending PipeMetas if sync is successful
       if (exceptionMessages.isEmpty()) {
@@ -186,10 +186,9 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
             .getAllSchemaRegionIds()
             .forEach(
                 schemaRegionId -> {
-                  int id = schemaRegionId.getId();
-                  if (!newFirstIndexMap.containsKey(id)
-                      && SchemaRegionListeningQueue.getInstance(id).isLeaderReady()
-                      && SchemaRegionListeningQueue.getInstance(id).isOpened()) {
+                  if (!newFirstIndexMap.containsKey(schemaRegionId.getId())
+                      && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
+                      && PipeAgent.runtime().schemaListener(schemaRegionId).isOpened()) {
                     try {
                       SchemaRegionConsensusImpl.getInstance()
                           .write(
@@ -243,7 +242,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final Optional<Logger> logger =
           PipeResourceManager.log()
               .schedule(
-                  PipeTaskDataNodeAgent.class,
+                  PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                   PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                   pipeMetaKeeper.getPipeMetaCount());
@@ -281,7 +280,7 @@ public class PipeTaskDataNodeAgent extends PipeTaskAgent {
       final Optional<Logger> logger =
           PipeResourceManager.log()
               .schedule(
-                  PipeTaskDataNodeAgent.class,
+                  PipeDataNodeTaskAgent.class,
                   PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                   PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                   pipeMetaKeeper.getPipeMetaCount());

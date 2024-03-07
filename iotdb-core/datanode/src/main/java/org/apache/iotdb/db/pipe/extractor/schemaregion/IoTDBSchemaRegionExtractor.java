@@ -22,8 +22,9 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.extractor.IoTDBMetaExtractor;
+import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -33,83 +34,91 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class IoTDBSchemaRegionExtractor extends IoTDBMetaExtractor {
-  private Set<PlanNodeType> listenTypes = new HashSet<>();
-  private static final ConcurrentMap<Integer, Integer> referenceCountMap =
-      new ConcurrentHashMap<>();
+public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
-  // "IsClosed" is an extra flag to avoid supply and auto start after close.
-  // When a schema extractor is closed it cannot be restarted and may need a new one.
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private SchemaRegionId schemaRegionId;
+
+  private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
+
+  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
+  // If the extractor is closed, it should not be started again. This is to avoid the case that
+  // the extractor is closed and then be reused by processor.
+  private final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    listenTypes = SchemaRegionListeningFilter.getPipeListenSet(parameters);
+
+    schemaRegionId = new SchemaRegionId(regionId);
+    listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
   }
 
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady()
+    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
         || hasBeenStarted.get()
-        || isClosed.get()) {
+        || hasBeenClosed.get()
+        || listenedTypeSet.isEmpty()) {
       return;
     }
-    // Typically if this is empty the PipeTask won't be created, this is just in case
-    if (!listenTypes.isEmpty()
-        && (referenceCountMap.compute(
-                regionId, (id, count) -> Objects.nonNull(count) ? count + 1 : 1)
-            == 1)) {
-      // Try open the queue if it is the first task
+
+    // Try open the queue if it is the first task
+    if (PipeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId) == 1) {
       SchemaRegionConsensusImpl.getInstance()
-          .write(
-              new SchemaRegionId(regionId),
-              new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
+          .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
     }
+
     super.start();
   }
 
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!SchemaRegionListeningQueue.getInstance(regionId).isLeaderReady() || isClosed.get()) {
+    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId) || hasBeenClosed.get()) {
       return null;
     }
+
+    // Delayed start
     if (!hasBeenStarted.get()) {
       start();
     }
+
     return super.supply();
   }
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return SchemaRegionListeningQueue.getInstance(regionId);
+    return PipeAgent.runtime().schemaListener(schemaRegionId);
   }
 
   @Override
-  protected boolean isListenType(Event event) {
-    return listenTypes.contains(((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
+  protected boolean isTypeListened(Event event) {
+    return listenedTypeSet.contains(
+        ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
   }
 
   @Override
   public synchronized void close() throws Exception {
-    isClosed.set(true);
+    if (hasBeenClosed.get()) {
+      return;
+    }
+    hasBeenClosed.set(true);
+
     if (!hasBeenStarted.get()) {
       return;
     }
     super.close();
-    if (!listenTypes.isEmpty()) {
-      // The queue is not closed here, and is closed iff the PipeMetaKeeper has no schema pipe after
-      // one successful sync
-      referenceCountMap.compute(regionId, (id, count) -> Objects.nonNull(count) ? count - 1 : 0);
+
+    if (!listenedTypeSet.isEmpty()) {
+      // TODO: check me
+      // The queue is not closed here, and is closed iff the PipeMetaKeeper
+      // has no schema pipe after one successful sync
+      PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
     }
   }
 }

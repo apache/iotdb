@@ -112,7 +112,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handleReceiverStatus(
+    receiverStatusHandler.handle(
         status,
         String.format(
             "Transfer data node write plan %s error, result status %s.",

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -47,13 +49,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeRuntimeDataNodeAgent implements IService {
+public class PipeDataNodeRuntimeAgent implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
   private final AtomicReference<String> clusterId = new AtomicReference<>(null);
+
+  private final PipeSchemaRegionListenerManager regionListenerManager =
+      new PipeSchemaRegionListenerManager();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -123,6 +128,32 @@ public class PipeRuntimeDataNodeAgent implements IService {
       }
     }
     return clusterId.get();
+  }
+
+  ////////////////////// Region Listener //////////////////////
+
+  public SchemaRegionListeningQueue schemaListener(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listener(schemaRegionId);
+  }
+
+  public int increaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.increaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public int decreaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.decreaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {
+    regionListenerManager.notifyLeaderReady(schemaRegionId);
+  }
+
+  public void notifySchemaLeaderUnavailable(SchemaRegionId schemaRegionId) {
+    regionListenerManager.notifyLeaderUnavailable(schemaRegionId);
+  }
+
+  public boolean isSchemaLeaderReady(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.isLeaderReady(schemaRegionId);
   }
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////

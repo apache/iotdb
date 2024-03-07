@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -87,9 +86,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
-  private static final PipeStatementTSStatusVisitor statusVisitor =
-      new PipeStatementTSStatusVisitor();
-  private static final PipeStatementExceptionVisitor exceptionVisitor =
+
+  private final PipeStatementTSStatusVisitor statusVisitor = new PipeStatementTSStatusVisitor();
+  private final PipeStatementExceptionVisitor exceptionVisitor =
       new PipeStatementExceptionVisitor();
 
   static {
@@ -141,13 +140,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
             return handleTransferFileSeal(
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
-            // Config Requests will first be received by the DataNode receiver,
-            // then transferred to configNode receiver to execute.
           case HANDSHAKE_CONFIGNODE_V1:
           case HANDSHAKE_CONFIGNODE_V2:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
+            // Config requests will first be received by the DataNode receiver,
+            // then transferred to ConfigNode receiver to execute.
             return handleTransferConfigPlan(req);
           default:
             break;
@@ -170,7 +169,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
-    InsertBaseStatement statement = req.constructStatement();
+    final InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -178,7 +177,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferTabletBinary(PipeTransferTabletBinaryReq req) {
-    InsertBaseStatement statement = req.constructStatement();
+    final InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -186,7 +185,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferTabletRaw(PipeTransferTabletRawReq req) {
-    InsertTabletStatement statement = req.constructStatement();
+    final InsertTabletStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -208,23 +207,41 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 .collect(Collectors.toList())));
   }
 
-  private TSStatus getPriorStatus(List<TSStatus> tsStatusList) {
-    List<Integer> prioritySequence =
-        Collections.unmodifiableList(
-            Arrays.asList(
-                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
-                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
-                TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()));
-    TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    for (TSStatus status : tsStatusList) {
-      if (!prioritySequence.contains(status.getCode())) {
-        return status;
+  private static final List<Integer> STATUS_PRIORITY =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+              TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
+              TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()));
+
+  /**
+   * This method is used to get the highest priority status from a list of TSStatus. The priority of
+   * each status is determined by its status code, and the priority sequence is defined in the
+   * {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list.
+   *
+   * <p>Specifically, it iterates through the input status list. For each status, if its status code
+   * is not in the {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list, it directly returns this
+   * status. Otherwise, it compares the current status with the highest priority status found so far
+   * (initially set to the success status). If the current status has a higher priority, it updates
+   * the highest priority status to the current status.
+   *
+   * <p>Finally, the method returns the highest priority status.
+   *
+   * @param givenStatusList a list of TSStatus from which the highest priority status is to be found
+   * @return the highest priority status from the input list
+   */
+  public TSStatus getPriorStatus(List<TSStatus> givenStatusList) {
+    final TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    for (final TSStatus givenStatus : givenStatusList) {
+      if (!STATUS_PRIORITY.contains(givenStatus.getCode())) {
+        return givenStatus;
       }
-      if (prioritySequence.indexOf(status.getCode())
-          > prioritySequence.indexOf(resultStatus.getCode())) {
-        resultStatus.setCode(status.getCode());
-        resultStatus.setMessage(status.getMessage());
+
+      if (STATUS_PRIORITY.indexOf(givenStatus.getCode())
+          > STATUS_PRIORITY.indexOf(resultStatus.getCode())) {
+        resultStatus.setCode(givenStatus.getCode());
+        resultStatus.setMessage(givenStatus.getMessage());
       }
     }
     return resultStatus;
@@ -238,10 +255,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getReceiverFileBaseDir() throws DiskSpaceInsufficientException {
     // Get next receiver file base dir by folder manager
-    if (Objects.isNull(folderManager)) {
-      return null;
-    }
-    return folderManager.getNextFolder();
+    return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
   }
 
   @Override
@@ -317,10 +331,5 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     return result.status;
-  }
-
-  @Override
-  public IoTDBConnectorRequestVersion getVersion() {
-    return IoTDBConnectorRequestVersion.VERSION_1;
   }
 }

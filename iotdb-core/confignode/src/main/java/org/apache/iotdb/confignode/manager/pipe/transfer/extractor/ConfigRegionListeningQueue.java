@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -34,7 +33,6 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.thrift.TException;
@@ -52,17 +50,11 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionListeningQueue.class);
 
-  private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
-
-  private int referenceCount = 0;
-
-  private ConfigRegionListeningQueue() {
-    super();
-  }
+  private static final String SNAPSHOT_FILE_NAME = "pipe_config_region_listening_queue.bin";
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
+  public synchronized void tryListenToPlan(ConfigPhysicalPlan plan, boolean isGeneratedByPipe) {
     if (ConfigRegionListeningFilter.shouldPlanBeListened(plan)) {
       PipeConfigRegionWritePlanEvent event;
       switch (plan.getType()) {
@@ -70,6 +62,9 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
           tryListenToPlan(((PipeEnrichedPlan) plan).getInnerPlan(), true);
           return;
         case UnsetTemplate:
+          // Different clusters have different template ids, so we need to
+          // convert template id to template name, in order to make the event
+          // in receiver side executable.
           try {
             event =
                 new PipeConfigRegionWritePlanEvent(
@@ -82,54 +77,27 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
                     isGeneratedByPipe);
           } catch (MetadataException e) {
-            LOGGER.warn("Failed to collect UnsetTemplatePlan because ", e);
+            LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
             return;
           }
           break;
         default:
           event = new PipeConfigRegionWritePlanEvent(plan, isGeneratedByPipe);
       }
-      if (super.tryListenToElement(event)) {
-        event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
-      }
+      tryListen(event);
     }
   }
 
-  public void tryListenToSnapshots(List<String> snapshotPaths) {
+  public synchronized void tryListenToSnapshots(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
-      PipeConfigRegionSnapshotEvent event = new PipeConfigRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
-      events.add(event);
+      events.add(new PipeConfigRegionSnapshotEvent(snapshotPath));
     }
-    super.listenToSnapshots(events);
-  }
-
-  /////////////////////////////// Reference count ///////////////////////////////
-
-  // ConfigNodeQueue does not need extra protection of consensus, because the
-  // reference count is handled under consensus layer.
-  public void increaseReferenceCountForListeningPipe(PipeParameters parameters)
-      throws IllegalPathException {
-    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
-      referenceCount++;
-      if (referenceCount == 1) {
-        open();
-      }
-    }
-  }
-
-  public void decreaseReferenceCountForListeningPipe(PipeParameters parameters)
-      throws IllegalPathException, IOException {
-    if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
-      referenceCount--;
-      if (referenceCount == 0) {
-        close();
-      }
-    }
+    tryListen(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
+
   @Override
   protected ByteBuffer serializeToByteBuffer(Event event) {
     return ((SerializableEvent) event).serializeToByteBuffer();
@@ -139,6 +107,8 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeConfigSerializableEventType.deserialize(byteBuffer);
+      // We assume the caller of this method will put the deserialize result into a queue,
+      // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(ConfigRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
@@ -150,27 +120,12 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public synchronized void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-  }
-
-  /////////////////////////////// INSTANCE ///////////////////////////////
-
-  public static ConfigRegionListeningQueue getInstance() {
-    return ConfigPlanListeningQueueHolder.INSTANCE;
-  }
-
-  private static class ConfigPlanListeningQueueHolder {
-
-    private static final ConfigRegionListeningQueue INSTANCE = new ConfigRegionListeningQueue();
-
-    private ConfigPlanListeningQueueHolder() {
-      // empty constructor
-    }
   }
 }

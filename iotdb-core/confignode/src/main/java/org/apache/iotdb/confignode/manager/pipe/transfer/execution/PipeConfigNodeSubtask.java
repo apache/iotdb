@@ -46,13 +46,13 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
+  private final PipeTaskMeta pipeTaskMeta;
+
   // Pipe plugins for this subtask
   private PipeExtractor extractor;
   // TODO: currently unused
   @SuppressWarnings("unused")
   private PipeProcessor processor;
-
-  private final PipeTaskMeta pipeTaskMeta;
 
   public PipeConfigNodeSubtask(
       String pipeName,
@@ -100,7 +100,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 3. Customize processor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     processor.customize(processorParameters, runtimeConfiguration);
   }
@@ -117,7 +116,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 3. Customize connector
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            // TODO: check CONFIG_REGION_ID.getId()
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
     outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
@@ -140,7 +138,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
    *     {@link Event} can be consumed
    * @throws Exception if any error occurs when consuming the {@link Event}
    */
-  @SuppressWarnings("squid:S112") // Allow to throw Exception
   @Override
   protected boolean executeOnce() throws Exception {
     if (isClosed.get()) {

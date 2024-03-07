@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipePluginDataRegionAgent;
-import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipePluginSchemaRegionAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -38,31 +38,31 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class PipePluginDataNodeAgent {
+public class PipeDataNodePluginAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodePluginAgent.class);
 
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
-  private final PipePluginDataRegionAgent dataRegionAgent;
-  private final PipePluginSchemaRegionAgent schemaRegionAgent;
+  private final PipeDataRegionPluginAgent dataRegionAgent;
+  private final PipeSchemaRegionPluginAgent schemaRegionAgent;
 
   private final ReentrantLock lock;
 
-  public PipePluginDataNodeAgent() {
+  public PipeDataNodePluginAgent() {
     pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
 
-    dataRegionAgent = new PipePluginDataRegionAgent(pipePluginMetaKeeper);
-    schemaRegionAgent = new PipePluginSchemaRegionAgent(null);
+    dataRegionAgent = new PipeDataRegionPluginAgent(pipePluginMetaKeeper);
+    schemaRegionAgent = new PipeSchemaRegionPluginAgent(null);
 
     lock = new ReentrantLock();
   }
 
-  public PipePluginDataRegionAgent dataRegion() {
+  public PipeDataRegionPluginAgent dataRegion() {
     return dataRegionAgent;
   }
 
-  public PipePluginSchemaRegionAgent schemaRegion() {
+  public PipeSchemaRegionPluginAgent schemaRegion() {
     return schemaRegionAgent;
   }
 

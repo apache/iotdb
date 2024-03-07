@@ -39,22 +39,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionListeningQueue.class);
-  private static final String SNAPSHOT_FILE_NAME = "pipe_listening_queue.bin";
 
-  private SchemaRegionListeningQueue() {
-    super();
-  }
+  private static final String SNAPSHOT_FILE_NAME = "pipe_schema_region_listening_queue.bin";
 
   /////////////////////////////// Function ///////////////////////////////
 
-  public void tryListenToNode(PlanNode node) {
-    if (SchemaRegionListeningFilter.shouldBeListenedByQueue(node)) {
+  public synchronized void tryListenToNode(PlanNode node) {
+    if (SchemaRegionListeningFilter.shouldPlanBeListened(node)) {
       PipeSchemaRegionWritePlanEvent event;
       switch (node.getType()) {
         case PIPE_ENRICHED_WRITE:
@@ -70,20 +65,16 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
         default:
           event = new PipeSchemaRegionWritePlanEvent(node, false);
       }
-      if (super.tryListenToElement(event)) {
-        event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
-      }
+      tryListen(event);
     }
   }
 
-  public void tryListenToSnapshot(List<String> snapshotPaths) {
+  public synchronized void tryListenToSnapshot(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {
-      PipeSchemaRegionSnapshotEvent event = new PipeSchemaRegionSnapshotEvent(snapshotPath);
-      event.increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
-      events.add(event);
+      events.add(new PipeSchemaRegionSnapshotEvent(snapshotPath));
     }
-    super.listenToSnapshots(events);
+    tryListen(events);
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
@@ -97,6 +88,8 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   protected Event deserializeFromByteBuffer(ByteBuffer byteBuffer) {
     try {
       SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
+      // We assume the caller of this method will put the deserialize result into a queue,
+      // so we increase the reference count here.
       ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       return result;
     } catch (IOException e) {
@@ -107,7 +100,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(File snapshotDir) {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
@@ -116,31 +109,11 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
-  public void loadSnapshot(File snapshotDir) {
+  public synchronized void loadSnapshot(File snapshotDir) {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (IOException e) {
       LOGGER.error("Failed to load snapshot {}", e.getMessage());
-    }
-  }
-
-  /////////////////////////// Singleton ///////////////////////////
-
-  public static SchemaRegionListeningQueue getInstance(int regionId) {
-    return SchemaRegionListeningQueue.InstanceHolder.getOrCreateInstance(regionId);
-  }
-
-  private static class InstanceHolder {
-
-    private static final Map<Integer, SchemaRegionListeningQueue> INSTANCE_MAP =
-        new ConcurrentHashMap<>();
-
-    public static SchemaRegionListeningQueue getOrCreateInstance(int key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new SchemaRegionListeningQueue());
-    }
-
-    private InstanceHolder() {
-      // forbidding instantiation
     }
   }
 }

@@ -49,18 +49,18 @@ import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionO
  */
 public class SchemaRegionListeningFilter {
 
-  private static final Map<PartialPath, List<PlanNodeType>> NODE_MAP = new HashMap<>();
+  private static final Map<PartialPath, List<PlanNodeType>> OPTION_PLAN_MAP = new HashMap<>();
 
   static {
     try {
-      NODE_MAP.put(
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.view.create"),
           Collections.singletonList(PlanNodeType.CREATE_LOGICAL_VIEW));
-      NODE_MAP.put(
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.view.alter"),
           Collections.singletonList(PlanNodeType.ALTER_LOGICAL_VIEW));
 
-      NODE_MAP.put(
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.create"),
           Collections.unmodifiableList(
               Arrays.asList(
@@ -69,11 +69,11 @@ public class SchemaRegionListeningFilter {
                   PlanNodeType.CREATE_MULTI_TIME_SERIES,
                   PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
                   PlanNodeType.INTERNAL_CREATE_TIMESERIES)));
-      NODE_MAP.put(
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));
 
-      NODE_MAP.put(
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.activate"),
           Collections.unmodifiableList(
               Arrays.asList(
@@ -85,48 +85,46 @@ public class SchemaRegionListeningFilter {
     }
   }
 
-  static boolean shouldBeListenedByQueue(PlanNode node) {
+  static boolean shouldPlanBeListened(PlanNode node) {
     try {
       return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE.getNodeType()
           || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE.getNodeType()
-          || NODE_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
+          || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
     } catch (Exception e) {
       // Some plan nodes may not contain "getType()" implementation
       return false;
     }
   }
 
-  public static Set<PlanNodeType> getPipeListenSet(PipeParameters parameters)
+  public static Set<PlanNodeType> parseListeningPlanTypeSet(PipeParameters parameters)
       throws IllegalPathException, IllegalArgumentException {
-    String inclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-            EXTRACTOR_INCLUSION_DEFAULT_VALUE);
-    String exclusionStr =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
-
     Set<PlanNodeType> planTypes = new HashSet<>();
-    Set<PartialPath> inclusionPath = parseOptions(inclusionStr);
-    Set<PartialPath> exclusionPath = parseOptions(exclusionStr);
-    inclusionPath.forEach(
+    Set<PartialPath> inclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
+    Set<PartialPath> exclusionOptions =
+        parseOptions(
+            parameters.getStringOrDefault(
+                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+    inclusionOptions.forEach(
         inclusion ->
             planTypes.addAll(
-                NODE_MAP.keySet().stream()
+                OPTION_PLAN_MAP.keySet().stream()
                     .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                    .map(NODE_MAP::get)
+                    .map(OPTION_PLAN_MAP::get)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
-    exclusionPath.forEach(
+    exclusionOptions.forEach(
         exclusion ->
             planTypes.removeAll(
-                NODE_MAP.keySet().stream()
+                OPTION_PLAN_MAP.keySet().stream()
                     .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                    .map(NODE_MAP::get)
+                    .map(OPTION_PLAN_MAP::get)
                     .flatMap(Collection::stream)
                     .collect(Collectors.toSet())));
-
     return planTypes;
   }
 
