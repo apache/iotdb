@@ -56,6 +56,14 @@ public class DataRegionListeningFilter {
     }
   }
 
+  public static boolean shouldDataRegionBeListened(PipeParameters parameters)
+      throws IllegalPathException {
+    final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+        parseInsertionDeletionListeningOptionPair(parameters);
+    return insertionDeletionListeningOptionPair.getLeft()
+        || insertionDeletionListeningOptionPair.getRight();
+  }
+
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(
       PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
     final Set<String> listeningOptions = new HashSet<>();

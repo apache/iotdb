@@ -99,18 +99,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
-      final PipeDataNodeTask pipeTask;
       final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
       final boolean needConstructDataRegionTask =
           StorageEngine.getInstance()
                   .getAllDataRegionIds()
                   .contains(new DataRegionId(consensusGroupId))
-              && (DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                          extractorParameters)
-                      .getLeft()
-                  || DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                          extractorParameters)
-                      .getRight());
+              && DataRegionListeningFilter.shouldDataRegionBeListened(extractorParameters);
       final boolean needConstructSchemaRegionTask =
           SchemaEngine.getInstance()
                   .getAllSchemaRegionIds()
@@ -120,7 +114,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
       // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
       if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
-        pipeTask =
+        final PipeDataNodeTask pipeTask =
             new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
         pipeTask.create();
         pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
