@@ -198,9 +198,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
-      if (regionReplicaSets.size() > 1 && (!existDeviceCrossRegion)) {
+      if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
         existDeviceCrossRegion = true;
-        if (aggregationCannotUseMergeSort()) {
+        if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -310,10 +310,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
    * group by parameter (session, variation, count), use the old aggregation logic
    */
   private boolean aggregationCannotUseMergeSort() {
-    if (!analysis.isDeviceViewSpecialProcess()) {
-      return false;
-    }
-
     if (analysis.hasGroupByParameter()) {
       return true;
     }
@@ -440,16 +436,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       descriptorList = ((SlidingWindowAggregationNode) planNode).getAggregationDescriptorList();
     }
     return descriptorList;
-  }
-
-  private boolean hasCountIfAggregation(Set<Expression> selectExpressions) {
-    for (Expression expression : selectExpressions) {
-      if (expression instanceof FunctionExpression
-          && (COUNT_IF.equalsIgnoreCase(((FunctionExpression) expression).getFunctionName()))) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private List<PlanNode> processSpecialDeviceView(
