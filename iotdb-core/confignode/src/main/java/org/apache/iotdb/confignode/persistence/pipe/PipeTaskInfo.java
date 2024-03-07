@@ -670,9 +670,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
-              if (runtimeMeta.getIsStoppedByRuntimeException()) {
-                runtimeMeta.getStatus().set(PipeStatus.RUNNING);
+              if (pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException()) {
+                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
 
                 needRestart.set(true);
                 pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
@@ -682,7 +681,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (needRestart.get()) {
       LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
     }
-
     return needRestart.get();
   }
 
