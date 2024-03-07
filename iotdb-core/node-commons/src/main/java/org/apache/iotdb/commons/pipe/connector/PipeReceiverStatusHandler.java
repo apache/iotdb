@@ -127,11 +127,13 @@ public class PipeReceiverStatusHandler {
           }
 
           LOGGER.warn(
-              "User conflict exception: will retry for at least {} seconds. status: {}",
-              (retryMaxMillisWhenConflictOccurs
-                      + exceptionFirstEncounteredTime.get()
-                      - System.currentTimeMillis())
-                  / 1000.0,
+              "User conflict exception: will retry {}. status: {}",
+              (retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE ? "forever" : "for at least ")
+                  + (retryMaxMillisWhenConflictOccurs
+                          + exceptionFirstEncounteredTime.get()
+                          - System.currentTimeMillis())
+                      / 1000.0
+                  + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeConnectorRetryTimesConfigurableException(
@@ -158,11 +160,15 @@ public class PipeReceiverStatusHandler {
           }
 
           LOGGER.warn(
-              "Unclassified exception: will retry for at least {} seconds. status: {}",
-              (retryMaxMillisWhenOtherExceptionsOccur
-                      + exceptionFirstEncounteredTime.get()
-                      - System.currentTimeMillis())
-                  / 1000.0,
+              "Unclassified exception: will retry {}. status: {}",
+              retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE
+                  ? "forever"
+                  : "for at least "
+                      + (retryMaxMillisWhenOtherExceptionsOccur
+                              + exceptionFirstEncounteredTime.get()
+                              - System.currentTimeMillis())
+                          / 1000.0
+                      + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeConnectorRetryTimesConfigurableException(
