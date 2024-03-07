@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeConfigNodeRuntimeAgent implements IService {
@@ -129,9 +128,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
     // Stop all pipes locally if critical exception occurs
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      // To avoid deadlock, we use a new thread to stop all pipes.
-      CompletableFuture.runAsync(
-          () -> PipeConfigNodeAgent.task().stopAllPipesWithCriticalException());
+      PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
     }
   }
 }

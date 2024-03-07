@@ -45,7 +45,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -206,8 +205,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      // To avoid deadlock, we use a new thread to stop all pipes.
-      CompletableFuture.runAsync(() -> PipeAgent.task().stopAllPipesWithCriticalException());
+      PipeAgent.task().stopAllPipesWithCriticalException();
     }
   }
 
