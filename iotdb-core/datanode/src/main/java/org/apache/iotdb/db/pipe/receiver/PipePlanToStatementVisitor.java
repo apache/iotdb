@@ -46,9 +46,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +60,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePlanToStatementVisitor.class);
 
   @Override
   public Statement visitPlan(PlanNode node, Void context) {
@@ -134,8 +140,11 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
                 new PartialPath(path2Group.getKey().getFullPath(), group.getMeasurements().get(i)));
           }
         }
-      } catch (IllegalPathException ignore) {
-        // There typically won't be illegal paths
+      } catch (IllegalPathException e) {
+        LOGGER.error(
+            "failed to create multi timeseries statement because of {}", e.getMessage(), e);
+        throw new PipeException(
+            "failed to create multi timeseries statement because of " + e.getMessage(), e);
       }
     }
 
