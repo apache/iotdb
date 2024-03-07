@@ -157,6 +157,7 @@ public class IoTDBProcedureIT {
     boolean check1 = false;
     try {
       Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
           .atMost(10, TimeUnit.SECONDS)
           .until(
               () -> {
@@ -177,13 +178,13 @@ public class IoTDBProcedureIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
 
     Awaitility.await()
+        .pollDelay(1, TimeUnit.SECONDS)
         .atMost(10, TimeUnit.SECONDS)
         .until(
             () -> {
               try {
                 newLeaderClient.showDatabase(req);
               } catch (Exception e) {
-                Thread.sleep(1000);
                 return false;
               }
               return true;

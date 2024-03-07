@@ -37,7 +37,7 @@ public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProced
   protected Flow executeFromState(ConfigNodeProcedureEnv env, Integer state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     setNextState(state + 1);
-    //    ProcedureTestUtils.createDatabase(env.getConfigManager(), String.valueOf(state));
+    Thread.sleep(1000);
     return Flow.HAS_MORE_STATE;
   }
 
