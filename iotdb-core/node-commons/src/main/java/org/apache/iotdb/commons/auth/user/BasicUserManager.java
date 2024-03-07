@@ -82,7 +82,7 @@ public abstract class BasicUserManager implements IUserManager {
     this.accessor = accessor;
     this.lock = new HashLock();
 
-    reset();
+    init();
   }
 
   /**
@@ -119,7 +119,9 @@ public abstract class BasicUserManager implements IUserManager {
           pathPri.grantPrivilege(item.ordinal(), true);
         }
       }
+      admin.getPathPrivilegeList().clear();
       admin.getPathPrivilegeList().add(pathPri);
+      admin.setServiceReady(true);
     } catch (IllegalPathException e) {
       // This error only leads to  a lack of permissions for list.
       LOGGER.warn("Got a wrong path for root to init");
@@ -308,6 +310,17 @@ public abstract class BasicUserManager implements IUserManager {
       return true;
     } finally {
       lock.writeUnlock(username);
+    }
+  }
+
+  // If system.users is empty, it means we are init our system, so init an admin user.
+  // If system.user is not empty when we start system, it means we will boost our system with
+  // snapshot data,
+  // init admin when we load snapshot.
+  private void init() throws AuthException {
+    this.accessor.reset();
+    if (accessor.listAllUsers().isEmpty()) {
+      initAdmin();
     }
   }
 

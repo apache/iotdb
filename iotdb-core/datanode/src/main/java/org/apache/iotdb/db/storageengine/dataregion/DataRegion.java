@@ -105,7 +105,6 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
-import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -218,12 +217,11 @@ public class DataRegion implements IDataRegionForQuery {
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
   /** sequence tsfile processors which are closing. */
-  private final CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor =
-      new CopyOnReadLinkedList<>();
+  private final Set<TsFileProcessor> closingSequenceTsFileProcessor = ConcurrentHashMap.newKeySet();
 
   /** unsequence tsfile processors which are closing. */
-  private final CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
-      new CopyOnReadLinkedList<>();
+  private final Set<TsFileProcessor> closingUnSequenceTsFileProcessor =
+      ConcurrentHashMap.newKeySet();
 
   /** data region id. */
   private final String dataRegionId;
@@ -1300,6 +1298,11 @@ public class DataRegion implements IDataRegionForQuery {
    * @param tsFileProcessor tsfile processor in which memTable to be flushed
    */
   public void submitAFlushTaskWhenShouldFlush(TsFileProcessor tsFileProcessor) {
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
+        || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)
+        || tsFileProcessor.alreadyMarkedClosing()) {
+      return;
+    }
     writeLock("submitAFlushTaskWhenShouldFlush");
     try {
       // check memtable size and may asyncTryToFlush the work memtable

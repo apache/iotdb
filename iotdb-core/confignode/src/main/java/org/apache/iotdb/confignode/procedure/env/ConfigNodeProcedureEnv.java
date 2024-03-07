@@ -205,14 +205,17 @@ public class ConfigNodeProcedureEnv {
   }
 
   public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
-    return getNodeManager()
-                .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
-                .size()
-            - Boolean.compare(
-                getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
-                    != NodeStatus.Unknown,
-                false)
-        >= NodeInfo.getMinimumDataNode();
+    final int runningOrReadOnlyDataNodeNum =
+        getNodeManager()
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+            .size();
+    int dataNodeNumAfterRemoving;
+    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
+      dataNodeNumAfterRemoving = runningOrReadOnlyDataNodeNum - 1;
+    } else {
+      dataNodeNumAfterRemoving = runningOrReadOnlyDataNodeNum;
+    }
+    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**

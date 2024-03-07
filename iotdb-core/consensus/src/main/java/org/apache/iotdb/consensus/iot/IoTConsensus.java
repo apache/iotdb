@@ -285,14 +285,15 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (impl.getConfiguration().contains(peer)) {
-      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
-    }
+    // TODO：阻写？
     Pair<ConsensusGroupId, Peer> addRemotePeerTask = Pair.of(groupId, peer);
     if (addRemotePeerTaskSet.contains(addRemotePeerTask)) {
       return;
     }
     addRemotePeerTaskSet.add(addRemotePeerTask);
+    if (impl.getConfiguration().contains(peer)) {
+      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
+    }
     try {
       // step 1: inactive new Peer to prepare for following steps
       logger.info("[IoTConsensus] inactivate new peer: {}", peer);
@@ -413,16 +414,14 @@ public class IoTConsensus implements IConsensus {
     return new ArrayList<>(stateMachineMap.keySet());
   }
 
-  public TSStatus resetPeerList(ConsensusGroupId groupId, List<Peer> peers)
-      throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.isReadOnly()) {
-      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
+      throw new ConsensusException("system is in read-only status now");
     } else if (!impl.isActive()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
+      throw new ConsensusException(
           "peer is inactive and not ready to receive reset configuration request.");
     } else {
       for (Peer peer : impl.getConfiguration()) {
@@ -431,12 +430,11 @@ public class IoTConsensus implements IConsensus {
             removeRemotePeer(groupId, peer);
           } catch (ConsensusException e) {
             logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
-            return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw e;
           }
         }
       }
       impl.resetConfiguration(peers);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
   }
 

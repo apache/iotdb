@@ -32,7 +32,8 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -232,26 +233,9 @@ public class DataNodeRemoveHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus addRegionPeer(TDataNodeLocation destDataNode, TConsensusGroupId regionId) {
+  public TSStatus addRegionPeer(
+      TDataNodeLocation destDataNode, TConsensusGroupId regionId, TDataNodeLocation coordinator) {
     TSStatus status;
-
-    // Here we pick the DataNode who contains one of the RegionReplica of the specified
-    // ConsensusGroup except the new one
-    // in order to notify the origin ConsensusGroup that another peer is created and demand to join
-    Optional<TDataNodeLocation> selectedDataNode =
-        filterDataNodeWithOtherRegionReplica(regionId, destDataNode);
-    if (!selectedDataNode.isPresent()) {
-      LOGGER.warn(
-          "{}, There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check RegionGroup: {} by show regions sql command",
-          REGION_MIGRATE_PROCESS,
-          regionId);
-      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "There are no other DataNodes could be selected to perform the add peer process, "
-              + "please check by show regions sql command");
-      return status;
-    }
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
@@ -259,14 +243,14 @@ public class DataNodeRemoveHandler {
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                selectedDataNode.get().getInternalEndPoint(),
+                coordinator.getInternalEndPoint(),
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
-        getIdWithRpcEndpoint(selectedDataNode.get()),
+        getIdWithRpcEndpoint(coordinator),
         getIdWithRpcEndpoint(destDataNode));
     return status;
   }
@@ -283,33 +267,23 @@ public class DataNodeRemoveHandler {
    */
   public TSStatus removeRegionPeer(
       TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode,
-      TConsensusGroupId regionId) {
+      TConsensusGroupId regionId,
+      TDataNodeLocation coordinator) {
     TSStatus status;
-
-    TDataNodeLocation rpcClientDataNode;
-
-    // Here we pick the DataNode who contains one of the RegionReplica of the specified
-    // ConsensusGroup except the origin one
-    // in order to notify the new ConsensusGroup that the origin peer should secede now
-    // If the selectedDataNode equals null, we choose the destDataNode to execute the method
-    Optional<TDataNodeLocation> selectedDataNode =
-        filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-    rpcClientDataNode = selectedDataNode.orElse(destDataNode);
 
     // Send removeRegionPeer request to the rpcClientDataNode
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                rpcClientDataNode.getInternalEndPoint(),
+                coordinator.getInternalEndPoint(),
                 maintainPeerReq,
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
-        getIdWithRpcEndpoint(rpcClientDataNode));
+        getIdWithRpcEndpoint(coordinator));
     return status;
   }
 
@@ -351,31 +325,39 @@ public class DataNodeRemoveHandler {
     return status;
   }
 
-  /**
-   * Update region location cache
-   *
-   * @param regionId region id
-   * @param originalDataNode old location data node
-   * @param destDataNode dest data node
-   */
-  public void updateRegionLocationCache(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation destDataNode) {
+  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
     LOGGER.info(
-        "Start to updateRegionLocationCache {} location from {} to {} when it migrate succeed",
+        "AddRegionLocation started, add region {} to {}",
         regionId,
-        getIdWithRpcEndpoint(originalDataNode),
-        getIdWithRpcEndpoint(destDataNode));
-    UpdateRegionLocationPlan req =
-        new UpdateRegionLocationPlan(regionId, originalDataNode, destDataNode);
-    TSStatus status = configManager.getPartitionManager().updateRegionLocation(req);
+        getIdWithRpcEndpoint(newLocation));
+    AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
+    TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
-        "UpdateRegionLocationCache finished, region:{}, result:{}, old:{}, new:{}",
+        "AddRegionLocation finished, add region {} to {}, result is {}",
         regionId,
-        status,
-        getIdWithRpcEndpoint(originalDataNode),
-        getIdWithRpcEndpoint(destDataNode));
+        getIdWithRpcEndpoint(newLocation),
+        status);
+
+    // Remove the RegionGroupCache of the regionId
+    configManager.getLoadManager().removeRegionGroupCache(regionId);
+
+    // Broadcast the latest RegionRouteMap when Region migration finished
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  public void removeRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
+    LOGGER.info(
+        "RemoveRegionLocation started, add region {} to {}",
+        regionId,
+        getIdWithRpcEndpoint(deprecatedLocation));
+    RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
+    TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
+    LOGGER.info(
+        "AddRegionLocation finished, add region {} to {}, result is {}",
+        regionId,
+        getIdWithRpcEndpoint(deprecatedLocation),
+        status);
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
@@ -646,7 +628,7 @@ public class DataNodeRemoveHandler {
    * @return A DataNodeLocation that contains other RegionReplica and different from the
    *     filterLocation
    */
-  private Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {

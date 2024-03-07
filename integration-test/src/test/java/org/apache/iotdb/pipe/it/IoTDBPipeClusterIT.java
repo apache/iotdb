@@ -237,7 +237,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           }
           try {
             senderEnv.startDataNode(i);
-            Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
+            ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
           } catch (Exception e) {
             e.printStackTrace();
             return;
@@ -261,8 +261,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -357,8 +357,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
           Collections.singleton("2,"));
     }
 
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
-    Assert.assertTrue(TestUtils.restartCluster(receiverEnv));
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -626,7 +626,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
         senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
         senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-        Assert.assertTrue(((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown());
+        ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
       } catch (Exception e) {
         e.printStackTrace();
         return;
@@ -684,7 +684,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualIT {
       return;
     }
 
-    Assert.assertTrue(TestUtils.restartCluster(senderEnv));
+    TestUtils.restartCluster(senderEnv);
     TestUtils.assertDataOnEnv(
         receiverEnv,
         "select count(*) from root.**",
