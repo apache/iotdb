@@ -34,7 +34,7 @@ public class PipeSchemaRegionListenerManager {
   private final Map<SchemaRegionId, PipeSchemaRegionListener> id2StatusMap =
       new ConcurrentHashMap<>();
 
-  public Set<SchemaRegionId> regionIds() {
+  public synchronized Set<SchemaRegionId> regionIds() {
     return id2StatusMap.keySet();
   }
 
