@@ -68,7 +68,8 @@ public class PipeInfo implements SnapshotProcessor {
   public TSStatus createPipe(CreatePipePlanV2 plan) {
     try {
       final Optional<PipeMeta> pipeMetaBeforeCreation =
-          Optional.of(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+          Optional.ofNullable(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
 
       pipeTaskInfo.createPipe(plan);
 
@@ -116,7 +117,7 @@ public class PipeInfo implements SnapshotProcessor {
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     try {
       final Optional<PipeMeta> pipeMetaBeforeDrop =
-          Optional.of(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+          Optional.ofNullable(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
 
       pipeTaskInfo.dropPipe(plan);
 
