@@ -86,7 +86,9 @@ public class RegionMigrateService implements IService {
   public synchronized boolean submitAddRegionPeerTask(TMaintainPeerReq req) {
     boolean submitSucceed = true;
     try {
-      taskResultMap.put(req.getTaskId(), unfinishedResult);
+      if (!addToTaskResultMap(req.getTaskId())) {
+        LOGGER.warn("{} The AddRegionPeerTask {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+      }
       regionMigratePool.submit(
           new AddRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
@@ -110,7 +112,9 @@ public class RegionMigrateService implements IService {
 
     boolean submitSucceed = true;
     try {
-      taskResultMap.put(req.getTaskId(), unfinishedResult);
+      if (!addToTaskResultMap(req.getTaskId())) {
+        LOGGER.warn("{} The RemoveRegionPeer {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+      }
       regionMigratePool.submit(
           new RemoveRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
@@ -133,7 +137,9 @@ public class RegionMigrateService implements IService {
   public synchronized boolean submitDeleteOldRegionPeerTask(TMaintainPeerReq req) {
     boolean submitSucceed = true;
     try {
-      taskResultMap.put(req.getTaskId(), unfinishedResult);
+      if (!addToTaskResultMap(req.getTaskId())) {
+        LOGGER.warn("{} The DeleteOldRegionPeerTask {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+      }
       regionMigratePool.submit(
           new DeleteOldRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
     } catch (Exception e) {
@@ -145,6 +151,14 @@ public class RegionMigrateService implements IService {
       submitSucceed = false;
     }
     return submitSucceed;
+  }
+
+  private boolean addToTaskResultMap(long taskId) {
+    if (taskResultMap.containsKey(taskId)) {
+      return false;
+    }
+    taskResultMap.put(taskId, unfinishedResult);
+    return true;
   }
 
   @Override
