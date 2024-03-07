@@ -141,12 +141,7 @@ public class LRUNodeCache implements INodeCache {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof LRUCacheEntry)) return false;
-      LRUCacheEntry that = (LRUCacheEntry) o;
-      return Objects.equals(node, that.node)
-          && Objects.equals(pre, that.pre)
-          && Objects.equals(next, that.next);
+      return this == o;
     }
 
     @Override

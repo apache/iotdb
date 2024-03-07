@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  private SchemaConstant.VolatileStatus volatileStatus;
+  private volatile SchemaConstant.VolatileStatus volatileStatus;
 
   private final AtomicInteger pinSemaphore = new AtomicInteger(0);
 

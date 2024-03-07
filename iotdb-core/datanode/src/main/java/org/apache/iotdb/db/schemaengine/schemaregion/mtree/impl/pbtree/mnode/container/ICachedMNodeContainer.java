@@ -54,8 +54,6 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   Map<String, ICachedMNode> getUpdatedChildReceivingBuffer();
 
-  void transferAllBufferReceivingToFlushing();
-
   void loadChildrenFromDisk(Map<String, ICachedMNode> children);
 
   void addChildToCache(ICachedMNode node);
@@ -63,6 +61,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
   void appendMNode(ICachedMNode node);
 
   void updateMNode(String name);
+
+  void transferAllBufferReceivingToFlushing();
 
   void moveMNodeFromNewChildBufferToUpdateChildReceivingBuffer(String name);
 

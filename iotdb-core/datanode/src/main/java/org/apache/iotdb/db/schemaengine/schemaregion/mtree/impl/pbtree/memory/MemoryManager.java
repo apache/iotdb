@@ -250,14 +250,9 @@ public class MemoryManager implements IMemoryManager {
 
       private final Iterator<ICachedMNode> nodeBufferIterator = nodeBuffer.iterator();
 
-      private ICachedMNode nextSubtree = null;
-
       @Override
       public boolean hasNext() {
-        if (nextSubtree == null) {
-          tryGetNext();
-        }
-        return nextSubtree != null;
+        return nodeBufferIterator.hasNext();
       }
 
       @Override
@@ -265,27 +260,34 @@ public class MemoryManager implements IMemoryManager {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        ICachedMNode result = nextSubtree;
-        nextSubtree = null;
-        return result;
+        return tryGetNext();
       }
 
-      private void tryGetNext() {
-        ICachedMNode node;
+      private ICachedMNode tryGetNext() {
         if (nodeBufferIterator.hasNext()) {
-          node = nodeBufferIterator.next();
+          ICachedMNode node = nodeBufferIterator.next();
 
           // prevent this node being added to nodeBuffer during flush
           // unlock in PBTreeFlushExecutor
 
           // if there's flush failure, such node and ancestors will be removed from cache again by
           // #updateCacheStatusAfterFlushFailure
-          nodeBuffer.remove(getCacheEntry(node));
-
-          nextSubtree = node;
+          return node;
+        }
+        else{
+          throw new NoSuchElementException();
         }
       }
     };
+  }
+
+  public void updateSubtreeRootStatusAfterFlush(ICachedMNode subtreeRoot){
+    ICachedMNodeContainer container = getCachedMNodeContainer(subtreeRoot);
+    synchronized (container){
+      if(!container.hasChildrenInBuffer()){
+        nodeBuffer.remove(getCacheEntry(subtreeRoot));
+      }
+    }
   }
 
   @Override
@@ -369,6 +371,10 @@ public class MemoryManager implements IMemoryManager {
             continue;
           }
 
+          if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.Flushing) {
+            System.out.println();
+          }
+
           cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
           memoryStatistics.removeVolatileNode();
           if (status == ITERATE_UPDATE_BUFFER) {
@@ -392,6 +398,11 @@ public class MemoryManager implements IMemoryManager {
           // add the node and its ancestors to cache
           nodeCache.addToNodeCache(cacheEntry, node);
           addAncestorsToCache(node);
+
+
+          if (!node.getParent().getCacheEntry().hasVolatileDescendant() && nodeBuffer.contains(node.getParent().getCacheEntry())) {
+            System.out.println();
+          }
         }
       }
     }
@@ -461,6 +472,11 @@ public class MemoryManager implements IMemoryManager {
             // since the node could be moved from cache to buffer after being taken from cache
             // this check here is necessary to ensure that the node could truly be evicted
             continue;
+          }
+
+
+          if (nodeBuffer.contains(cacheEntry)){
+            System.out.println();
           }
 
           getBelongedContainer(node).evictMNode(node.getName());

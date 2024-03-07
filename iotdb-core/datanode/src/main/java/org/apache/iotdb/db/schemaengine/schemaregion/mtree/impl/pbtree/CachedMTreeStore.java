@@ -656,7 +656,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     @Override
     public ICachedMNode next() {
-      return mergeIterator.next();
+      ICachedMNode node = mergeIterator.next();
+      System.out.println(node.getFullPath() +"  " + node.getCacheEntry().getVolatileStatus());
+      return node;
     }
 
     @Override

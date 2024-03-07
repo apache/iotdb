@@ -289,12 +289,6 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
-  public synchronized void transferAllBufferReceivingToFlushing() {
-    getNewChildBuffer().transferReceivingBufferToFlushingBuffer();
-    getUpdatedChildBuffer().transferReceivingBufferToFlushingBuffer();
-  }
-
-  @Override
   public synchronized void loadChildrenFromDisk(Map<String, ICachedMNode> children) {
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
@@ -331,6 +325,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
       }
       updatedChildBuffer.put(name, node);
     }
+  }
+
+  @Override
+  public synchronized void transferAllBufferReceivingToFlushing() {
+    getNewChildBuffer().transferReceivingBufferToFlushingBuffer();
+    getUpdatedChildBuffer().transferReceivingBufferToFlushingBuffer();
   }
 
   @Override

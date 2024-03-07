@@ -76,11 +76,15 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
       flushingBuffer = new ConcurrentHashMap<>();
     }
     if (receivingBuffer != null) {
-      flushingBuffer.putAll(receivingBuffer);
-      for (Map.Entry<String, ICachedMNode> entry : flushingBuffer.entrySet()) {
-        entry.getValue().getCacheEntry().setVolatileStatus(SchemaConstant.VolatileStatus.Flushing);
+//      flushingBuffer.putAll(receivingBuffer);
+      for (Map.Entry<String, ICachedMNode> entry : receivingBuffer.entrySet()) {
+        synchronized (entry.getValue().getCacheEntry()){
+          entry.getValue().getCacheEntry().setVolatileStatus(SchemaConstant.VolatileStatus.Flushing);
+          flushingBuffer.put(entry.getKey(), entry.getValue());
+          receivingBuffer.remove(entry.getKey());
+          // transfer single
+        }
       }
-      receivingBuffer.clear();
     }
   }
 

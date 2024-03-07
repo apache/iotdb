@@ -50,4 +50,6 @@ public interface INodeBuffer {
   void clear();
 
   Iterator<ICachedMNode> iterator();
+
+  boolean contains(CacheEntry cacheEntry);
 }
