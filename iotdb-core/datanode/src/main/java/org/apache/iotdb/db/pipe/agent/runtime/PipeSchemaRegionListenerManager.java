@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +33,10 @@ public class PipeSchemaRegionListenerManager {
 
   private final Map<SchemaRegionId, PipeSchemaRegionListener> id2StatusMap =
       new ConcurrentHashMap<>();
+
+  public Set<SchemaRegionId> regionIds() {
+    return id2StatusMap.keySet();
+  }
 
   public synchronized SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
     return id2StatusMap.computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())

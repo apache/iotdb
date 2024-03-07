@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -130,6 +131,10 @@ public class PipeDataNodeRuntimeAgent implements IService {
   }
 
   ////////////////////// Region Listener //////////////////////
+
+  public Set<SchemaRegionId> listeningSchemaRegionIds() {
+    return regionListenerManager.regionIds();
+  }
 
   public SchemaRegionListeningQueue schemaListener(SchemaRegionId schemaRegionId) {
     return regionListenerManager.listener(schemaRegionId);

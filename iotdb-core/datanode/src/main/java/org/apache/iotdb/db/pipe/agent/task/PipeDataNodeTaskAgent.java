@@ -136,74 +136,90 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return Collections.emptyList();
     }
 
-    List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+    final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
-    // Clear useless events for listening queues
+
     try {
-      // Remove used messages
-      final Map<Integer, Long> newFirstIndexMap = new HashMap<>();
+      final Set<Integer> validSchemaRegionIds =
+          clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
+      closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
+    } catch (Exception e) {
+      throw new PipeException("Failed to clear/close schema region listening queue.", e);
+    }
 
-      for (PipeMeta pipeMeta : pipeMetaListFromCoordinator) {
-        Map<Integer, PipeTaskMeta> metaMap =
-            pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+    return exceptionMessages;
+  }
 
-        if (!SchemaRegionListeningFilter.parseListeningPlanTypeSet(
-                pipeMeta.getStaticMeta().getExtractorParameters())
-            .isEmpty()) {
-          for (SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
-            int id = regionId.getId();
-            PipeTaskMeta schemaMeta = metaMap.get(id);
+  private Set<Integer> clearSchemaRegionListeningQueueIfNecessary(
+      List<PipeMeta> pipeMetaListFromCoordinator) throws IllegalPathException {
+    final Map<Integer, Long> schemaRegionId2ListeningQueueNewFirstIndex = new HashMap<>();
 
-            if (schemaMeta != null) {
-              ProgressIndex schemaIndex = schemaMeta.getProgressIndex();
-              if (schemaIndex instanceof MetaProgressIndex
-                  && ((MetaProgressIndex) schemaIndex).getIndex() + 1
-                      < newFirstIndexMap.getOrDefault(id, Long.MAX_VALUE)) {
-                // The index itself is committed, thus can be removed
-                newFirstIndexMap.put(id, ((MetaProgressIndex) schemaIndex).getIndex() + 1);
-              } else {
-                // Do not clear "minimumProgressIndex"s related queues to avoid clearing
-                // the queue when there are schema tasks just started and transferring
-                newFirstIndexMap.put(id, 0L);
-              }
-            }
+    // Check each pipe
+    for (final PipeMeta pipeMetaFromCoordinator : pipeMetaListFromCoordinator) {
+      if (SchemaRegionListeningFilter.parseListeningPlanTypeSet(
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters())
+          .isEmpty()) {
+        continue;
+      }
+
+      // Check each schema region in a pipe
+      final Map<Integer, PipeTaskMeta> groupId2TaskMetaMap =
+          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+      for (final SchemaRegionId regionId : SchemaEngine.getInstance().getAllSchemaRegionIds()) {
+        final int id = regionId.getId();
+        final PipeTaskMeta pipeTaskMeta = groupId2TaskMetaMap.get(id);
+        if (pipeTaskMeta == null) {
+          continue;
+        }
+
+        final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
+        if (progressIndex instanceof MetaProgressIndex) {
+          if (((MetaProgressIndex) progressIndex).getIndex() + 1
+              < schemaRegionId2ListeningQueueNewFirstIndex.getOrDefault(id, Long.MAX_VALUE)) {
+            schemaRegionId2ListeningQueueNewFirstIndex.put(
+                id, ((MetaProgressIndex) progressIndex).getIndex() + 1);
           }
+        } else {
+          // Do not clear "minimumProgressIndex"s related queues to avoid clearing
+          // the queue when there are schema tasks just started and transferring
+          schemaRegionId2ListeningQueueNewFirstIndex.put(id, 0L);
         }
       }
-
-      newFirstIndexMap.forEach(
-          (schemaId, index) ->
-              PipeAgent.runtime().schemaListener(new SchemaRegionId(schemaId)).removeBefore(index));
-
-      // Close queues of no sending PipeMetas if sync is successful
-      if (exceptionMessages.isEmpty()) {
-        SchemaEngine.getInstance()
-            .getAllSchemaRegionIds()
-            .forEach(
-                schemaRegionId -> {
-                  if (!newFirstIndexMap.containsKey(schemaRegionId.getId())
-                      && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
-                      && PipeAgent.runtime().schemaListener(schemaRegionId).isOpened()) {
-                    try {
-                      SchemaRegionConsensusImpl.getInstance()
-                          .write(
-                              schemaRegionId,
-                              new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                    } catch (ConsensusException e) {
-                      throw new PipeException(
-                          "Failed to close listening queue for schemaRegion " + schemaRegionId, e);
-                    }
-                  }
-                });
-      }
-    } catch (Exception e) {
-      final String errorMessage =
-          String.format("Failed to handle pipe meta changes because %s", e.getMessage());
-      LOGGER.warn("Failed to handle pipe meta changes because ", e);
-      exceptionMessages.add(
-          new TPushPipeMetaRespExceptionMessage(null, errorMessage, System.currentTimeMillis()));
     }
-    return exceptionMessages;
+
+    schemaRegionId2ListeningQueueNewFirstIndex.forEach(
+        (schemaRegionId, listeningQueueNewFirstIndex) ->
+            PipeAgent.runtime()
+                .schemaListener(new SchemaRegionId(schemaRegionId))
+                .removeBefore(listeningQueueNewFirstIndex));
+
+    return schemaRegionId2ListeningQueueNewFirstIndex.keySet();
+  }
+
+  private void closeSchemaRegionListeningQueueIfNecessary(
+      Set<Integer> validSchemaRegionIds,
+      List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+    if (!exceptionMessages.isEmpty()) {
+      return;
+    }
+
+    PipeAgent.runtime()
+        .listeningSchemaRegionIds()
+        .forEach(
+            schemaRegionId -> {
+              if (!validSchemaRegionIds.contains(schemaRegionId.getId())
+                  && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
+                try {
+                  SchemaRegionConsensusImpl.getInstance()
+                      .write(
+                          schemaRegionId,
+                          new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
+                } catch (ConsensusException e) {
+                  throw new PipeException(
+                      "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
+                }
+              }
+            });
   }
 
   public void stopAllPipesWithCriticalException() {
