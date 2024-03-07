@@ -418,21 +418,17 @@ public class ConfigPlanExecutor {
       case ExtendSchemaTemplate:
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
       case CreatePipeV2:
-        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlanV2) physicalPlan);
+        return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:
-        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
+        return pipeInfo.setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
       case DropPipeV2:
-        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
+        return pipeInfo.dropPipe((DropPipePlanV2) physicalPlan);
       case AlterPipeV2:
-        return pipeInfo.getPipeTaskInfo().alterPipe((AlterPipePlanV2) physicalPlan);
+        return pipeInfo.alterPipe((AlterPipePlanV2) physicalPlan);
       case PipeHandleLeaderChange:
-        return pipeInfo
-            .getPipeTaskInfo()
-            .handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
+        return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:
-        return pipeInfo
-            .getPipeTaskInfo()
-            .handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
+        return pipeInfo.handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

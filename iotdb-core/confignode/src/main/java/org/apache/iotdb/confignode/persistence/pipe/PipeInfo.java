@@ -19,7 +19,21 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +41,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeInfo implements SnapshotProcessor {
 
@@ -48,6 +64,116 @@ public class PipeInfo implements SnapshotProcessor {
     return pipeTaskInfo;
   }
 
+  /////////////////////////////////  Non-query  /////////////////////////////////
+
+  public TSStatus createPipe(CreatePipePlanV2 plan) {
+    try {
+      pipeTaskInfo.createPipe(plan);
+      PipeConfigNodeAgent.task()
+          .handleSinglePipeMetaChangeOnConfigTaskAgent(
+              new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      PipeConfigNodeAgent.runtime()
+          .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Failed to create pipe", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to create pipe, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
+    try {
+      pipeTaskInfo.setPipeStatus(plan);
+      PipeConfigNodeAgent.task()
+          .handleSinglePipeMetaChangeOnConfigTaskAgent(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Failed to set pipe status", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to set pipe status, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus dropPipe(DropPipePlanV2 plan) {
+    try {
+      final Optional<PipeMeta> pipeMeta =
+          Optional.of(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+
+      pipeTaskInfo.dropPipe(plan);
+
+      pipeMeta.ifPresent(
+          meta -> {
+            try {
+              PipeConfigNodeAgent.runtime()
+                  .decreaseListenerReference(meta.getStaticMeta().getExtractorParameters());
+            } catch (IllegalPathException | IOException e) {
+              throw new PipeException("Failed to decrease listener reference", e);
+            }
+            PipeConfigNodeAgent.task().dropPipeOnConfigTaskAgent(plan.getPipeName());
+          });
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Failed to drop pipe", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to drop pipe, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus alterPipe(AlterPipePlanV2 physicalPlan) {
+    // TODO?
+    return pipeTaskInfo.alterPipe(physicalPlan);
+  }
+
+  public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan physicalPlan) {
+    try {
+      pipeTaskInfo.handleLeaderChange(physicalPlan);
+      PipeConfigNodeAgent.task().handlePipeMetaChangesOnConfigTaskAgent();
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Failed to handle leader change", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to handle leader change, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
+    try {
+      pipeTaskInfo.handleMetaChanges(plan);
+
+      AtomicLong newFirstIndex = new AtomicLong(Long.MAX_VALUE);
+
+      plan.getPipeMetaList()
+          .forEach(
+              pipeMeta -> {
+                ProgressIndex configIndex =
+                    pipeMeta
+                        .getRuntimeMeta()
+                        .getConsensusGroupId2TaskMetaMap()
+                        .get(Integer.MIN_VALUE)
+                        .getProgressIndex();
+                if (configIndex instanceof MetaProgressIndex
+                    && ((MetaProgressIndex) configIndex).getIndex() + 1 < newFirstIndex.get()) {
+                  // The index itself is committed, thus can be removed
+                  newFirstIndex.set(((MetaProgressIndex) configIndex).getIndex() + 1);
+                } else {
+                  // Do not clear "minimumProgressIndex"s related queues to avoid clearing
+                  // the queue when there are schema tasks just started and transferring
+                  newFirstIndex.set(0);
+                }
+              });
+
+      PipeConfigNodeAgent.runtime().listener().removeBefore(newFirstIndex.get());
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Failed to handle meta changes", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to handle meta changes, because " + e.getMessage());
+    }
+  }
+
   /////////////////////////////////  SnapshotProcessor  /////////////////////////////////
 
   @Override
@@ -63,6 +189,11 @@ public class PipeInfo implements SnapshotProcessor {
 
     try {
       pipeTaskInfo.processLoadSnapshot(snapshotDir);
+
+      for (final PipeMeta pipeMeta : pipeTaskInfo.getPipeMetaList()) {
+        PipeConfigNodeAgent.runtime()
+            .increaseListenerReference(pipeMeta.getStaticMeta().getExtractorParameters());
+      }
     } catch (Exception ex) {
       LOGGER.error("Failed to load pipe task info from snapshot", ex);
       loadPipeTaskInfoException = ex;

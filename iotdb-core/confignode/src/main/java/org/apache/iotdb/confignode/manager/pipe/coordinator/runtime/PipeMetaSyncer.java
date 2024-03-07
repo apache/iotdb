@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -162,7 +163,9 @@ public class PipeMetaSyncer {
       return false;
     }
     try {
-      return pipeTaskInfo.get().autoRestart();
+      final boolean needRestart = pipeTaskInfo.get().autoRestart();
+      PipeConfigNodeAgent.task().handlePipeMetaChangesOnConfigTaskAgent();
+      return needRestart;
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
