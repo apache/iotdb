@@ -152,10 +152,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setDataTypes(dataTypes);
     statement.setEncodings(encodings);
     statement.setCompressors(compressors);
-    statement.setPropsList(propsList);
-    statement.setAliasList(aliasList);
-    statement.setTagsList(tagsList);
-    statement.setAttributesList(attributesList);
+    statement.setPropsList(propsList.isEmpty() ? null : propsList);
+    statement.setAliasList(aliasList.isEmpty() ? null : aliasList);
+    statement.setTagsList(tagsList.isEmpty() ? null : tagsList);
+    statement.setAttributesList(attributesList.isEmpty() ? null : attributesList);
     return statement;
   }
 
