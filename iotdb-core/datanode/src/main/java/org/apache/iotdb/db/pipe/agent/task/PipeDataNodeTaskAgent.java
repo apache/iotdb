@@ -268,17 +268,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
 
-  public void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
-      throws TException {
-    acquireReadLock();
-    try {
-      collectPipeMetaListInternal(req, resp);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  private void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  @Override
+  protected void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {

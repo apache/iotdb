@@ -33,9 +33,18 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionL
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +52,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeTaskAgent.class);
+
+  private final AtomicLong lasLogPrintedTime = new AtomicLong(0);
 
   @Override
   protected boolean isShutdown() {
@@ -173,5 +186,36 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     if (listeningQueueNewFirstIndex.get() < Long.MAX_VALUE) {
       PipeConfigNodeAgent.runtime().listener().removeBefore(listeningQueueNewFirstIndex.get());
     }
+  }
+
+  @Override
+  protected void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    // Do nothing if data node is removing or removed, or request does not need pipe meta list
+    if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
+      return;
+    }
+
+    LOGGER.info("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
+
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    try {
+      final boolean shouldPrintLog =
+          System.currentTimeMillis() - lasLogPrintedTime.get() > 1000 * 60 * 10; // 10 minutes
+      if (shouldPrintLog) {
+        lasLogPrintedTime.set(System.currentTimeMillis());
+      }
+
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        pipeMetaBinaryList.add(pipeMeta.serialize());
+        if (shouldPrintLog) {
+          LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+        }
+      }
+      LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+    resp.setPipeMetaList(pipeMetaBinaryList);
   }
 }

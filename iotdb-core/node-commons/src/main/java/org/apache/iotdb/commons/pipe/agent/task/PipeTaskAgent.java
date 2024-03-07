@@ -31,9 +31,12 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -975,4 +978,17 @@ public abstract class PipeTaskAgent {
               }
             });
   }
+
+  public void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListInternal(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  protected abstract void collectPipeMetaListInternal(
+      TPipeHeartbeatReq req, TPipeHeartbeatResp resp) throws TException;
 }

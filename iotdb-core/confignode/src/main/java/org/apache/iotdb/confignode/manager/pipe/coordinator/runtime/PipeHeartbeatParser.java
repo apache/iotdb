@@ -50,7 +50,7 @@ public class PipeHeartbeatParser {
   private final ConfigManager configManager;
 
   private long heartbeatCounter;
-  private int registeredDataNodeNumber;
+  private int registeredNodeNumber;
 
   private final AtomicBoolean needWriteConsensusOnConfigNodes;
   private final AtomicBoolean needPushPipeMetaToDataNodes;
@@ -59,35 +59,35 @@ public class PipeHeartbeatParser {
     this.configManager = configManager;
 
     heartbeatCounter = 0;
-    registeredDataNodeNumber = 1;
+    registeredNodeNumber = 1;
 
     needWriteConsensusOnConfigNodes = new AtomicBoolean(false);
     needPushPipeMetaToDataNodes = new AtomicBoolean(false);
   }
 
   public synchronized void parseHeartbeat(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+      int nodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromAgent) {
     final long heartbeatCount = ++heartbeatCounter;
 
     final AtomicBoolean canSubmitHandleMetaChangeProcedure = new AtomicBoolean(false);
-    // registeredDataNodeNumber can not be 0 when the method is called
-    if (heartbeatCount % registeredDataNodeNumber == 0) {
+    // registeredNodeNumber can not be 0 when the method is called
+    if (heartbeatCount % registeredNodeNumber == 0) {
       canSubmitHandleMetaChangeProcedure.set(true);
 
-      // registeredDataNodeNumber may be changed, update it here when we can submit procedure
-      registeredDataNodeNumber = configManager.getNodeManager().getRegisteredDataNodeCount();
-      if (registeredDataNodeNumber <= 0) {
+      // registeredNodeNumber may be changed, update it here when we can submit procedure
+      registeredNodeNumber = configManager.getNodeManager().getRegisteredNodeCount();
+      if (registeredNodeNumber <= 0) {
         LOGGER.warn(
-            "registeredDataNodeNumber is {} when parseHeartbeat from data node (id={}).",
-            registeredDataNodeNumber,
-            dataNodeId);
-        // registeredDataNodeNumber can not be set to 0 in this class, otherwise may cause
+            "registeredNodeNumber is {} when parseHeartbeat from node (id={}).",
+            registeredNodeNumber,
+            nodeId);
+        // registeredNodeNumber can not be set to 0 in this class, otherwise may cause
         // DivideByZeroException
-        registeredDataNodeNumber = 1;
+        registeredNodeNumber = 1;
       }
     }
 
-    if (pipeMetaByteBufferListFromDataNode.isEmpty()
+    if (pipeMetaByteBufferListFromAgent.isEmpty()
         && !(canSubmitHandleMetaChangeProcedure.get()
             && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get()))) {
       return;
@@ -103,15 +103,14 @@ public class PipeHeartbeatParser {
                   configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
               if (pipeTaskInfo == null) {
                 LOGGER.warn(
-                    "Failed to acquire lock when parseHeartbeat from data node (id={}).",
-                    dataNodeId);
+                    "Failed to acquire lock when parseHeartbeat from node (id={}).", nodeId);
                 return;
               }
 
               try {
-                if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
+                if (!pipeMetaByteBufferListFromAgent.isEmpty()) {
                   parseHeartbeatAndSaveMetaChangeLocally(
-                      pipeTaskInfo, dataNodeId, pipeMetaByteBufferListFromDataNode);
+                      pipeTaskInfo, nodeId, pipeMetaByteBufferListFromAgent);
                 }
 
                 if (canSubmitHandleMetaChangeProcedure.get()
@@ -134,91 +133,90 @@ public class PipeHeartbeatParser {
 
   private void parseHeartbeatAndSaveMetaChangeLocally(
       final AtomicReference<PipeTaskInfo> pipeTaskInfo,
-      final int dataNodeId,
-      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromDataNode = new HashMap<>();
-    for (ByteBuffer byteBuffer : pipeMetaByteBufferListFromDataNode) {
+      final int nodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent) {
+    final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromAgent = new HashMap<>();
+    for (ByteBuffer byteBuffer : pipeMetaByteBufferListFromAgent) {
       final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
-      pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
+      pipeMetaMapFromAgent.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
 
-    for (final PipeMeta pipeMetaOnConfigNode : pipeTaskInfo.get().getPipeMetaList()) {
-      final PipeMeta pipeMetaFromDataNode =
-          pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
-      if (pipeMetaFromDataNode == null) {
+    for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
+      final PipeMeta pipeMetaFromAgent =
+          pipeMetaMapFromAgent.get(pipeMetaFromCoordinator.getStaticMeta());
+      if (pipeMetaFromAgent == null) {
         LOGGER.info(
             "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                + "pipeMetaFromDataNode is null, pipeMetaOnConfigNode: {}",
-            pipeMetaOnConfigNode);
+                + "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}",
+            pipeMetaFromCoordinator);
         continue;
       }
 
-      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
-          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
-          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-      for (final Map.Entry<Integer, PipeTaskMeta> runtimeMetaOnConfigNode :
-          pipeTaskMetaMapOnConfigNode.entrySet()) {
-        if (runtimeMetaOnConfigNode.getValue().getLeaderNodeId() != dataNodeId) {
+      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromCoordinator =
+          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+      final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromAgent =
+          pipeMetaFromAgent.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+      for (final Map.Entry<Integer, PipeTaskMeta> runtimeMetaFromCoordinator :
+          pipeTaskMetaMapFromCoordinator.entrySet()) {
+        if (runtimeMetaFromCoordinator.getValue().getLeaderNodeId() != nodeId) {
           continue;
         }
 
-        final PipeTaskMeta runtimeMetaFromDataNode =
-            pipeTaskMetaMapFromDataNode.get(runtimeMetaOnConfigNode.getKey());
-        if (runtimeMetaFromDataNode == null) {
+        final PipeTaskMeta runtimeMetaFromAgent =
+            pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
+        if (runtimeMetaFromAgent == null) {
           LOGGER.warn(
               "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                  + "runtimeMetaFromDataNode is null, runtimeMetaOnConfigNode: {}",
-              runtimeMetaOnConfigNode);
+                  + "runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
+              runtimeMetaFromCoordinator);
           continue;
         }
 
         // Update progress index
-        if (!(runtimeMetaOnConfigNode
+        if (!(runtimeMetaFromCoordinator
                 .getValue()
                 .getProgressIndex()
-                .isAfter(runtimeMetaFromDataNode.getProgressIndex())
-            || runtimeMetaOnConfigNode
+                .isAfter(runtimeMetaFromAgent.getProgressIndex())
+            || runtimeMetaFromCoordinator
                 .getValue()
                 .getProgressIndex()
-                .equals(runtimeMetaFromDataNode.getProgressIndex()))) {
+                .equals(runtimeMetaFromAgent.getProgressIndex()))) {
           LOGGER.info(
               "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
-                  + "Progress index on config node: {}, progress index from data node: {}",
-              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
-              runtimeMetaOnConfigNode.getKey(),
-              runtimeMetaOnConfigNode.getValue().getProgressIndex(),
-              runtimeMetaFromDataNode.getProgressIndex());
+                  + "Progress index on coordinator: {}, progress index from agent: {}",
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              runtimeMetaFromCoordinator.getKey(),
+              runtimeMetaFromCoordinator.getValue().getProgressIndex(),
+              runtimeMetaFromAgent.getProgressIndex());
           LOGGER.info(
               "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
-              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
-              runtimeMetaOnConfigNode.getKey(),
-              runtimeMetaOnConfigNode
+              pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+              runtimeMetaFromCoordinator.getKey(),
+              runtimeMetaFromCoordinator
                   .getValue()
-                  .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex()));
+                  .updateProgressIndex(runtimeMetaFromAgent.getProgressIndex()));
 
           needWriteConsensusOnConfigNodes.set(true);
         }
 
         // Update runtime exception
-        final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
-        pipeTaskMetaOnConfigNode.clearExceptionMessages();
-        for (final PipeRuntimeException exception :
-            runtimeMetaFromDataNode.getExceptionMessages()) {
+        final PipeTaskMeta pipeTaskMetaFromCoordinator = runtimeMetaFromCoordinator.getValue();
+        pipeTaskMetaFromCoordinator.clearExceptionMessages();
+        for (final PipeRuntimeException exception : runtimeMetaFromAgent.getExceptionMessages()) {
 
           // Do not judge the exception's clear time to avoid the restart process
           // being ended after the failure of some pipe
 
-          pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
+          pipeTaskMetaFromCoordinator.trackExceptionMessage(exception);
 
           if (exception instanceof PipeRuntimeCriticalException) {
-            final String pipeName = pipeMetaOnConfigNode.getStaticMeta().getPipeName();
-            if (!pipeMetaOnConfigNode
+            final String pipeName = pipeMetaFromCoordinator.getStaticMeta().getPipeName();
+            if (!pipeMetaFromCoordinator
                 .getRuntimeMeta()
                 .getStatus()
                 .get()
                 .equals(PipeStatus.STOPPED)) {
-              PipeRuntimeMeta runtimeMeta = pipeMetaOnConfigNode.getRuntimeMeta();
+              PipeRuntimeMeta runtimeMeta = pipeMetaFromCoordinator.getRuntimeMeta();
               runtimeMeta.getStatus().set(PipeStatus.STOPPED);
               runtimeMeta.setIsStoppedByRuntimeException(true);
 
@@ -226,7 +224,7 @@ public class PipeHeartbeatParser {
               needPushPipeMetaToDataNodes.set(false);
 
               LOGGER.warn(
-                  "Detect PipeRuntimeCriticalException {} from DataNode, stop pipe {}.",
+                  "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.",
                   exception,
                   pipeName);
             }
@@ -243,10 +241,10 @@ public class PipeHeartbeatParser {
                             // Record the connector exception for each pipe affected
                             Map<Integer, PipeRuntimeException> exceptionMap =
                                 runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
-                            if (!exceptionMap.containsKey(dataNodeId)
-                                || exceptionMap.get(dataNodeId).getTimeStamp()
+                            if (!exceptionMap.containsKey(nodeId)
+                                || exceptionMap.get(nodeId).getTimeStamp()
                                     < exception.getTimeStamp()) {
-                              exceptionMap.put(dataNodeId, exception);
+                              exceptionMap.put(nodeId, exception);
                             }
                             runtimeMeta.getStatus().set(PipeStatus.STOPPED);
                             runtimeMeta.setIsStoppedByRuntimeException(true);
@@ -257,7 +255,7 @@ public class PipeHeartbeatParser {
                             LOGGER.warn(
                                 String.format(
                                     "Detect PipeRuntimeConnectorCriticalException %s "
-                                        + "from DataNode, stop pipe %s.",
+                                        + "from agent, stop pipe %s.",
                                     exception, pipeName));
                           });
             }
