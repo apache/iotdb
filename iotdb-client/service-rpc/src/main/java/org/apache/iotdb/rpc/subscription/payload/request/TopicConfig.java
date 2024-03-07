@@ -41,6 +41,13 @@ public class TopicConfig {
     return path;
   }
 
+  public TopicConfig() {}
+
+  public TopicConfig(String topicName, String path) {
+    this.topicName = topicName;
+    this.path = path;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(path, stream);

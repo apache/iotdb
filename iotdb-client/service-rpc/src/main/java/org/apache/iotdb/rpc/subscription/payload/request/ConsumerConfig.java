@@ -41,6 +41,13 @@ public class ConsumerConfig {
     return consumerGroupID;
   }
 
+  public ConsumerConfig() {}
+
+  public ConsumerConfig(String consumerGroupID, String consumerClientID) {
+    this.consumerGroupID = consumerGroupID;
+    this.consumerClientID = consumerClientID;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(consumerGroupID, stream);
     ReadWriteIOUtils.write(consumerClientID, stream);
@@ -78,8 +85,8 @@ public class ConsumerConfig {
     return "ConsumerConfig{"
         + "consumerGroupID='"
         + consumerGroupID
-        + "', consumerClientID="
+        + "', consumerClientID='"
         + consumerClientID
-        + "}";
+        + "'}";
   }
 }

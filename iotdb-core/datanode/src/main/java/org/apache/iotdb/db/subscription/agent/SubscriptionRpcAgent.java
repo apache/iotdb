@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
@@ -130,7 +131,10 @@ public class SubscriptionRpcAgent {
     }
 
     // create consumer (group)
-    SubscriptionAgent.consumer().createConsumer(consumerConfig);
+    SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
+
+    // tmp
+    SubscriptionAgent.topic().createTopic(new TopicConfig("demo", "root.**"));
 
     // get DN configs
     // TODO: cached and listen changes

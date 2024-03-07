@@ -3664,4 +3664,8 @@ public class Session implements ISession {
       return newSession;
     }
   }
+
+  public void subscribe() {
+    defaultSessionConnection.subscribe();
+  }
 }

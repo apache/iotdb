@@ -14,16 +14,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
 
-  private Map<String, SubscriptionBroker> consumerGroupIDToSubscriptionBroker = new HashMap<>();
+  private Map<String, SubscriptionBroker> consumerGroupIDToSubscriptionBroker =
+      new ConcurrentHashMap<>();
 
   public void createSubscriptionBroker(String consumerGroupID) {
     consumerGroupIDToSubscriptionBroker.put(

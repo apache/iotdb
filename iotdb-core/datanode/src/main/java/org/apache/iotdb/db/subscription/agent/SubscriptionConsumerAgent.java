@@ -18,13 +18,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionConsumerAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
   // TODO: sync from node-commons
-  private Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta;
+  private Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta =
+      new ConcurrentHashMap<>();
 
   public void createConsumer(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();

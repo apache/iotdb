@@ -29,8 +29,15 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -1632,5 +1639,30 @@ public class SessionConnection {
   @Override
   public String toString() {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
+  }
+
+  public void subscribe() {
+    try {
+      client.pipeSubscribe(
+          PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig("cg1", "c1")));
+      client.pipeSubscribe(
+          PipeSubscribeSubscribeReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
+      client.executeStatementV2(
+          new TSExecuteStatementReq(
+              sessionId,
+              "create pipe demo_cg1 with sink('sink'='pull-only-sink', 'topic'='demo', 'consumer-group'='cg1')",
+              statementId));
+      TPipeSubscribeResp resp =
+          client.pipeSubscribe(
+              PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
+      PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+      for (EnrichedTablets enrichedTablets : pollResp.getEnrichedTabletsList()) {
+        System.out.println(enrichedTablets.getTopicName());
+        System.out.println(enrichedTablets.getTablets());
+        System.out.println(enrichedTablets.getCommitterKeyAndCommitIds());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 }

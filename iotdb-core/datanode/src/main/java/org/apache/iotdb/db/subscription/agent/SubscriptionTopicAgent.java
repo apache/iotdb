@@ -30,13 +30,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionTopicAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   // TODO: sync from node-commons
-  private Map<String, TopicMeta> topicNameToTopicMeta;
+  private Map<String, TopicMeta> topicNameToTopicMeta = new ConcurrentHashMap<>();
 
   public void createTopic(TopicConfig topicConfig) {
     String topicName = topicConfig.getTopicName();

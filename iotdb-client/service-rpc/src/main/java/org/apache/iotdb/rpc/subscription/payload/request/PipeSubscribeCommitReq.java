@@ -74,7 +74,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
         String committerKey = ReadWriteIOUtils.readString(commitReq.body);
-        long commitId = ReadWriteIOUtils.readInt(commitReq.body);
+        long commitId = ReadWriteIOUtils.readLong(commitReq.body);
         req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
       }
     }

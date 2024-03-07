@@ -36,6 +36,18 @@ public class EnrichedTablets {
   private transient List<Tablet> tablets;
   private transient List<Pair<String, Long>> committerKeyAndCommitIds;
 
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public List<Tablet> getTablets() {
+    return tablets;
+  }
+
+  public List<Pair<String, Long>> getCommitterKeyAndCommitIds() {
+    return committerKeyAndCommitIds;
+  }
+
   public EnrichedTablets() {
     this.tablets = new ArrayList<>();
     this.committerKeyAndCommitIds = new ArrayList<>();
@@ -84,7 +96,7 @@ public class EnrichedTablets {
     size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
       String committerKey = ReadWriteIOUtils.readString(buffer);
-      long commitId = ReadWriteIOUtils.readInt(buffer);
+      long commitId = ReadWriteIOUtils.readLong(buffer);
       enrichedTablets.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
     }
     return enrichedTablets;

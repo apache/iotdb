@@ -37,6 +37,10 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   private transient List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
 
+  public List<EnrichedTablets> getEnrichedTabletsList() {
+    return enrichedTabletsList;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
