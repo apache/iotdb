@@ -55,7 +55,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeTaskAgent.class);
 
-  private final AtomicLong lasLogPrintedTime = new AtomicLong(0);
+  private final AtomicLong lastLogPrintedTime = new AtomicLong(0);
 
   @Override
   protected boolean isShutdown() {
@@ -201,9 +201,9 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
       final boolean shouldPrintLog =
-          System.currentTimeMillis() - lasLogPrintedTime.get() > 1000 * 60 * 10; // 10 minutes
+          System.currentTimeMillis() - lastLogPrintedTime.get() > 1000 * 60 * 10; // 10 minutes
       if (shouldPrintLog) {
-        lasLogPrintedTime.set(System.currentTimeMillis());
+        lastLogPrintedTime.set(System.currentTimeMillis());
       }
 
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
