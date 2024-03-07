@@ -88,6 +88,7 @@ public class PipeHeartbeatScheduler {
       return;
     }
 
+    // data node heartbeat
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
@@ -107,6 +108,8 @@ public class PipeHeartbeatScheduler {
         .forEach(
             (dataNodeId, resp) ->
                 pipeHeartbeatParser.parseHeartbeat(dataNodeId, resp.getPipeMetaList()));
+
+    // TODO: config node heartbeat
   }
 
   public synchronized void stop() {

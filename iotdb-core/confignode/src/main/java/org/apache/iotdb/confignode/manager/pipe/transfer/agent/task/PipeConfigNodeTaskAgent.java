@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.task;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -34,10 +34,13 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTask
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.transfer.task.PipeConfigNodeTaskStage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
@@ -87,80 +90,88 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId());
   }
 
-  public void dropPipeOnConfigTaskAgent(String pipeName) {
-    // Operate tasks only after leader gets ready
-    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
-      return;
-    }
-    TPushPipeMetaRespExceptionMessage message = PipeConfigNodeAgent.task().handleDropPipe(pipeName);
-    if (message != null) {
-      pipeMetaKeeper
-          .getPipeMeta(message.getPipeName())
-          .getRuntimeMeta()
-          .getNodeId2PipeRuntimeExceptionMap()
-          .put(
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-              new PipeRuntimeCriticalException(message.getMessage(), message.getTimeStamp()));
-    }
-  }
-
-  public void handleSinglePipeMetaChangeOnConfigTaskAgent(PipeMeta pipeMeta) {
-    // Operate tasks only after leader gets ready
-    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
-      return;
-    }
-    // The new agent meta has separated status to enable control by diff
-    // Yet the taskMetaMap is reused to let configNode pipe report directly to the
-    // original meta. No lock is needed since the configNode taskMeta is only
-    // altered by one pipe.
-    PipeMeta agentMeta =
-        new PipeMeta(
-            pipeMeta.getStaticMeta(),
-            new PipeRuntimeMeta(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap()));
-    agentMeta.getRuntimeMeta().getStatus().set(pipeMeta.getRuntimeMeta().getStatus().get());
-
-    TPushPipeMetaRespExceptionMessage message =
-        PipeConfigNodeAgent.task().handleSinglePipeMetaChanges(agentMeta);
-    if (message != null) {
-      pipeMetaKeeper
-          .getPipeMeta(message.getPipeName())
-          .getRuntimeMeta()
-          .getNodeId2PipeRuntimeExceptionMap()
-          .put(
-              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-              new PipeRuntimeCriticalException(message.getMessage(), message.getTimeStamp()));
+  @Override
+  protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+      PipeMeta pipeMetaFromCoordinator) {
+    // TODO: check isLeaderReady?
+    try {
+      return PipeConfigNodeAgent.runtime().isLeaderReady()
+          ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy())
+          : null;
+    } catch (Exception e) {
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
+          e.getMessage(),
+          System.currentTimeMillis());
     }
   }
 
-  public void handlePipeMetaChangesOnConfigTaskAgent() {
-    // Operate tasks only after leader get ready
-    if (!PipeConfigNodeAgent.runtime().isLeaderReady()) {
-      return;
+  @Override
+  protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+    // TODO: check isLeaderReady?
+    return PipeConfigNodeAgent.runtime().isLeaderReady()
+        ? super.handleDropPipeInternal(pipeName)
+        : null;
+  }
+
+  @Override
+  protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
+      List<PipeMeta> pipeMetaListFromCoordinator) {
+    // TODO: check isLeaderReady?
+    if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
+      return Collections.emptyList();
     }
-    List<PipeMeta> pipeMetas = new ArrayList<>();
-    for (PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      // The new agent meta has separated status to enable control by diff
-      // Yet the taskMetaMap is reused to let configNode pipe report directly to the
-      // original meta. No lock is needed since the configNode taskMeta is only
-      // altered by one pipe.
-      PipeMeta agentMeta =
-          new PipeMeta(
-              pipeMeta.getStaticMeta(),
-              new PipeRuntimeMeta(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap()));
-      agentMeta.getRuntimeMeta().getStatus().set(pipeMeta.getRuntimeMeta().getStatus().get());
-      pipeMetas.add(agentMeta);
+
+    try {
+      final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+          super.handlePipeMetaChangesInternal(
+              pipeMetaListFromCoordinator.stream()
+                  .map(
+                      pipeMeta -> {
+                        try {
+                          return pipeMeta.deepCopy();
+                        } catch (Exception e) {
+                          throw new PipeException("failed to deep copy pipeMeta", e);
+                        }
+                      })
+                  .collect(Collectors.toList()));
+      clearConfigRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
+      return exceptionMessages;
+    } catch (Exception e) {
+      throw new PipeException("failed to handle pipe meta changes", e);
     }
-    PipeConfigNodeAgent.task()
-        .handlePipeMetaChanges(pipeMetas)
-        .forEach(
-            message ->
-                pipeMetaKeeper
-                    .getPipeMeta(message.getPipeName())
-                    .getRuntimeMeta()
-                    .getNodeId2PipeRuntimeExceptionMap()
-                    .put(
-                        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-                        new PipeRuntimeCriticalException(
-                            message.getMessage(), message.getTimeStamp())));
+  }
+
+  private void clearConfigRegionListeningQueueIfNecessary(
+      List<PipeMeta> pipeMetaListFromCoordinator) {
+    final AtomicLong listeningQueueNewFirstIndex = new AtomicLong(Long.MAX_VALUE);
+
+    // Check each pipe
+    for (final PipeMeta pipeMetaFromCoordinator : pipeMetaListFromCoordinator) {
+      // Check each region in a pipe
+      final Map<Integer, PipeTaskMeta> groupId2TaskMetaMap =
+          pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+      for (final Integer regionId : groupId2TaskMetaMap.keySet()) {
+        if (regionId != Integer.MIN_VALUE) {
+          continue;
+        }
+
+        final ProgressIndex progressIndex = groupId2TaskMetaMap.get(regionId).getProgressIndex();
+        if (progressIndex instanceof MetaProgressIndex) {
+          if (((MetaProgressIndex) progressIndex).getIndex() + 1
+              < listeningQueueNewFirstIndex.get()) {
+            listeningQueueNewFirstIndex.set(((MetaProgressIndex) progressIndex).getIndex() + 1);
+          }
+        } else {
+          // Do not clear "minimumProgressIndex"s related queues to avoid clearing
+          // the queue when there are schema tasks just started and transferring
+          listeningQueueNewFirstIndex.set(0);
+        }
+      }
+    }
+
+    if (listeningQueueNewFirstIndex.get() < Long.MAX_VALUE) {
+      PipeConfigNodeAgent.runtime().listener().removeBefore(listeningQueueNewFirstIndex.get());
+    }
   }
 }

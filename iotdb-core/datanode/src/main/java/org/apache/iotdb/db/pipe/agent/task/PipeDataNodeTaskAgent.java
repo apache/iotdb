@@ -370,7 +370,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         System.currentTimeMillis() - startTime);
   }
 
-  protected void changePipeStatusBeforeRestart(String pipeName) {
+  private void changePipeStatusBeforeRestart(String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
     final Set<Integer> taskRegionIds = new HashSet<>(pipeTasks.keySet());
