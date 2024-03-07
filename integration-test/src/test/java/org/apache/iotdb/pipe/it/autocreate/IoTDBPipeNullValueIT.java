@@ -242,6 +242,9 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
     }
 
     INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      fail();
+    }
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,

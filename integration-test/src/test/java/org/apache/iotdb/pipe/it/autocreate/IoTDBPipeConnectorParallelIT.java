@@ -79,7 +79,8 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeDualAutoIT {
               "insert into root.sg1.d1(time, s1) values (0, 1)",
               "insert into root.sg1.d1(time, s1) values (1, 2)",
               "insert into root.sg1.d1(time, s1) values (2, 3)",
-              "insert into root.sg1.d1(time, s1) values (3, 4)"))) {
+              "insert into root.sg1.d1(time, s1) values (3, 4)",
+              "flush"))) {
         return;
       }
 

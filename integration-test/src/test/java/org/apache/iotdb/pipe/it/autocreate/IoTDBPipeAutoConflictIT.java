@@ -138,6 +138,9 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
         return;
       }
     }
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
+    }
 
     Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {

@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -73,8 +74,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
         return;
       }
 
@@ -122,8 +124,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.vehicle.d0(time, s1) values (0, 1)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
         return;
       }
 
