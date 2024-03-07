@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtask;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
@@ -22,15 +23,16 @@ public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
 
-  private Map<String, SubscriptionBroker> subscriptionBrokerMap = new HashMap<>();
+  private Map<String, SubscriptionBroker> consumerGroupIDToSubscriptionBroker = new HashMap<>();
 
   public void createSubscriptionBroker(String consumerGroupID) {
-    subscriptionBrokerMap.put(consumerGroupID, new SubscriptionBroker(consumerGroupID));
+    consumerGroupIDToSubscriptionBroker.put(
+        consumerGroupID, new SubscriptionBroker(consumerGroupID));
   }
 
   public Iterable<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
-    SubscriptionBroker broker = subscriptionBrokerMap.get(consumerGroupID);
+    SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
       return Collections.emptyList();
@@ -41,11 +43,23 @@ public class SubscriptionBrokerAgent {
 
   public void commit(
       ConsumerConfig consumerConfig, List<Pair<String, Integer>> committerKeyAndCommitIds) {
-    SubscriptionBroker broker = subscriptionBrokerMap.get(consumerConfig.getConsumerGroupID());
+    SubscriptionBroker broker =
+        consumerGroupIDToSubscriptionBroker.get(consumerConfig.getConsumerGroupID());
     if (Objects.isNull(broker)) {
       // TODO: handle error
       return;
     }
     broker.commit(committerKeyAndCommitIds);
+  }
+
+  public void bindPrefetchingQueue(PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask) {
+    String consumerGroupID = pullOnlyConnectorSubtask.getConsumerGroupID();
+    SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      return;
+    }
+    broker.bindPrefetchingQueue(
+        pullOnlyConnectorSubtask.getTopicName(), pullOnlyConnectorSubtask.getInputPendingQueue());
   }
 }

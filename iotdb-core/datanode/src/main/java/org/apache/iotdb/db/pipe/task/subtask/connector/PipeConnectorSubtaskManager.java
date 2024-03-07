@@ -29,6 +29,8 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtask;
+import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtaskLifeCycle;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -124,8 +126,22 @@ public class PipeConnectorSubtaskManager {
               new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         } else {
+          // TODO: handle non-existence
+          final String topicName =
+              pipeConnectorParameters.getString(PipeConnectorConstant.SINK_TOPIC_KEY);
+          final String consumerGroupID =
+              pipeConnectorParameters.getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+          final PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask =
+              new PipePullOnlyConnectorSubtask(
+                  String.format(
+                      "%s_%s_%s",
+                      attributeSortedString, environment.getCreationTime(), connectorIndex),
+                  environment.getCreationTime(),
+                  pendingQueue,
+                  topicName,
+                  consumerGroupID);
           final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-              new PipePullOnlyConnectorSubtaskLifeCycle(pendingQueue);
+              new PipePullOnlyConnectorSubtaskLifeCycle(pullOnlyConnectorSubtask, pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         }
       }

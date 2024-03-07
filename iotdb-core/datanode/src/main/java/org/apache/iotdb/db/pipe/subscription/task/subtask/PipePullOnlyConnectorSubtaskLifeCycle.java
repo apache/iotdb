@@ -17,24 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask.connector;
+package org.apache.iotdb.db.pipe.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeAbstractConnectorSubtaskLifeCycle;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipePullOnlyConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskLifeCycle {
 
-  public PipePullOnlyConnectorSubtaskLifeCycle(BoundedBlockingPendingQueue<Event> pendingQueue) {
+  private PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask;
+
+  public PipePullOnlyConnectorSubtaskLifeCycle(
+      PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask,
+      BoundedBlockingPendingQueue<Event> pendingQueue) {
     super(pendingQueue);
+    this.pullOnlyConnectorSubtask = pullOnlyConnectorSubtask;
   }
 
   @Override
   public void register() {
-    // do nothing
+    SubscriptionAgent.broker().bindPrefetchingQueue(pullOnlyConnectorSubtask);
   }
 
   @Override
-  public boolean deregister(String pipeNameToDeregister) {
+  public boolean deregister(String pipeNameToDeregister /* ignored */) {
     // do nothing
     return false;
   }

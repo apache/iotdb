@@ -19,27 +19,42 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionBroker {
 
-  private String brokerID; // consumer group ID
+  private final String brokerID; // consumer group ID
 
-  private SubscriptionDispatcher dispatcher;
+  private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
   public SubscriptionBroker(String brokerID) {
     this.brokerID = brokerID;
-    this.dispatcher = new SubscriptionDispatcher(brokerID);
+    this.topicNameToPrefetchingQueue = new HashMap<>();
   }
 
   public Iterable<EnrichedTablets> poll(List<String> topicNames) {
-    return dispatcher.poll(topicNames);
+    return Collections.emptyList();
   }
 
-  public void commit(List<Pair<String, Integer>> committerKeyAndCommitIds) {
-    dispatcher.commit(committerKeyAndCommitIds);
+  public void commit(List<Pair<String, Integer>> committerKeyAndCommitIds) {}
+
+  public void bindPrefetchingQueue(
+      String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.nonNull(prefetchingQueue)) {
+      // TODO: logger
+      return;
+    }
+    topicNameToPrefetchingQueue.put(
+        topicName, new SubscriptionPrefetchingQueue(brokerID, topicName, inputPendingQueue));
   }
 }

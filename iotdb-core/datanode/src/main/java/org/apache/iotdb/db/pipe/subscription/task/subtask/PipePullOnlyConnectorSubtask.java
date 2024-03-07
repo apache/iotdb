@@ -17,30 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.broker;
+package org.apache.iotdb.db.pipe.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-public class SubscriptionPrefetchingQueue {
+public class PipePullOnlyConnectorSubtask {
 
-  private String brokerID; // consumer group ID
+  private final String taskID;
 
-  private String topicName;
-
-  private EnrichedDeque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
-
-  private EnrichedDeque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
+  private final long creationTime;
 
   private BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  public SubscriptionPrefetchingQueue(
-      String brokerID, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
-    this.brokerID = brokerID;
-    this.topicName = topicName;
+  private final String topicName;
+
+  private final String consumerGroupID;
+
+  public PipePullOnlyConnectorSubtask(
+      String taskID,
+      long creationTime,
+      BoundedBlockingPendingQueue<Event> inputPendingQueue,
+      String topicName,
+      String consumerGroupID) {
+    this.taskID = taskID;
+    this.creationTime = creationTime;
     this.inputPendingQueue = inputPendingQueue;
+    this.topicName = topicName;
+    this.consumerGroupID = consumerGroupID;
+    // TODO: metrics
+  }
+
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public String getConsumerGroupID() {
+    return consumerGroupID;
+  }
+
+  public BoundedBlockingPendingQueue<Event> getInputPendingQueue() {
+    return inputPendingQueue;
   }
 }
