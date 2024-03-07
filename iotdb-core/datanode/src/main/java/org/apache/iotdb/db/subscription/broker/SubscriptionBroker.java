@@ -24,28 +24,39 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 
 public class SubscriptionBroker {
 
   private final String brokerID; // consumer group ID
 
-  private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
+  private final TreeMap<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
   public SubscriptionBroker(String brokerID) {
     this.brokerID = brokerID;
-    this.topicNameToPrefetchingQueue = new HashMap<>();
+    this.topicNameToPrefetchingQueue = new TreeMap<>();
   }
 
-  public Iterable<EnrichedTablets> poll(List<String> topicNames) {
-    return Collections.emptyList();
+  public Iterable<EnrichedTablets> poll(Set<String> topicNames) {
+    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    topicNameToPrefetchingQueue.forEach(
+        (topicName, prefetchingQueue) -> {
+          if (topicNames.contains(topicName)) {
+            enrichedTabletsList.add(prefetchingQueue.fetch());
+          }
+        });
+    return enrichedTabletsList;
   }
 
-  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {}
+  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {
+    topicNameToPrefetchingQueue
+        .values()
+        .forEach((prefetchingQueue) -> prefetchingQueue.commit(committerKeyAndCommitIds));
+  }
 
   public void bindPrefetchingQueue(
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {

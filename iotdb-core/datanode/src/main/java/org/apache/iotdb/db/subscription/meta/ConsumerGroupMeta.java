@@ -21,10 +21,8 @@ package org.apache.iotdb.db.subscription.meta;
 
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,8 +72,8 @@ public class ConsumerGroupMeta {
     return consumers.isEmpty();
   }
 
-  public List<String> subscribedTopics(String consumerClientID) {
-    List<String> topicNames = new ArrayList<>();
+  public Set<String> subscribedTopics(String consumerClientID) {
+    Set<String> topicNames = new HashSet<>();
     topicNameToSubscribedConsumers.forEach(
         (topicName, subscribedConsumers) -> {
           if (subscribedConsumers.contains(consumerClientID)) {

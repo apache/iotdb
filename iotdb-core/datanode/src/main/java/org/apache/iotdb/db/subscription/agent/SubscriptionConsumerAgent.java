@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class SubscriptionConsumerAgent implements IService {
 
@@ -96,13 +97,13 @@ public class SubscriptionConsumerAgent implements IService {
     }
   }
 
-  public List<String> subscribedTopic(ConsumerConfig consumerConfig) {
+  public Set<String> subscribedTopic(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     String consumerClientID = consumerConfig.getConsumerClientID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
       LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
-      return Collections.emptyList();
+      return Collections.emptySet();
     }
     return consumerGroupMeta.subscribedTopics(consumerClientID);
   }

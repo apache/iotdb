@@ -38,20 +38,21 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionPrefetchingQueue {
 
-  private String brokerID; // consumer group ID
+  private final String brokerID; // consumer group ID
 
-  private String topicName;
+  private final String topicName;
 
-  private BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private Deque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
+  private final Deque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
 
-  private Deque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
+  private final Deque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
 
-  private Map<Pair<String, Long>, EnrichedEvent> uncommittedEvents;
+  private final Map<Pair<String, Long>, EnrichedEvent> uncommittedEvents;
 
   public SubscriptionPrefetchingQueue(
       String brokerID, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
@@ -61,6 +62,20 @@ public class SubscriptionPrefetchingQueue {
     this.prefetchingTabletInsertionEvents = new LinkedList<>();
     this.prefetchingTsFileInsertionEvent = new LinkedList<>();
     this.uncommittedEvents = new HashMap<>();
+  }
+
+  public EnrichedTablets fetch() {
+    prefetch(16);
+    return toEnrichedTablets();
+  }
+
+  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {
+    for (Pair<String, Long> committerKeyAndCommitId : committerKeyAndCommitIds) {
+      EnrichedEvent enrichedEvent = uncommittedEvents.get(committerKeyAndCommitId);
+      if (Objects.nonNull(enrichedEvent)) {
+        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      }
+    }
   }
 
   /** @return true if prefetch @param maxSize events */
