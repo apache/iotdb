@@ -90,12 +90,27 @@ struct TDataNodeConfiguration {
   2: required TNodeResource resource
 }
 
+// TODO: deprecated
 enum TRegionMigrateFailedType {
   AddPeerFailed,
   RemovePeerFailed,
   RemoveConsensusGroupFailed,
   DeleteRegionFailed,
   CreateRegionFailed
+}
+
+struct TRegionMigrateResultReportReq {
+  1: optional TConsensusGroupId regionId
+  2: optional TSStatus migrateResult
+  3: optional map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason
+  4: required TRegionMaintainTaskStatus taskStatus
+}
+
+enum TRegionMaintainTaskStatus {
+  TASK_NOT_EXIST,
+  PROCESSING,
+  SUCCESS,
+  FAIL,
 }
 
 struct TFlushReq {

@@ -21,18 +21,17 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,8 +41,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.ADD_REGION_PEER_PROGRESS;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -55,11 +52,6 @@ public class AddRegionPeerProcedure
   private TDataNodeLocation coordinator;
 
   private TDataNodeLocation destDataNode;
-
-  private boolean addRegionPeerSuccess = true;
-  private String addRegionPeerResult;
-
-  private final Object addRegionPeerLock = new Object();
 
   public AddRegionPeerProcedure() {
     super();
@@ -81,7 +73,7 @@ public class AddRegionPeerProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case CREATE_NEW_REGION_PEER:
@@ -90,17 +82,23 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          TSStatus tsStatus = handler.addRegionPeer(destDataNode, consensusGroupId, coordinator);
+          TSStatus tsStatus =
+              handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
+          TRegionMaintainTaskStatus result;
+          logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            waitForOneMigrationStepFinished(consensusGroupId, state);
+            result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
             throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
-          logBreakpoint(state.name());
-          setNextState(UPDATE_REGION_LOCATION_CACHE);
-          break;
+          if (result == TRegionMaintainTaskStatus.SUCCESS) {
+            setNextState(UPDATE_REGION_LOCATION_CACHE);
+            break;
+          }
+          throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
+          logBreakpoint(state.name());
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -112,61 +110,6 @@ public class AddRegionPeerProcedure
   }
 
   // TODO: Clear all remaining information related to 'migrate' and 'migration'
-  public TSStatus waitForOneMigrationStepFinished(
-      TConsensusGroupId consensusGroupId, AddRegionPeerState state) throws Exception {
-    LOGGER.info(
-        "{}, Wait for state {} finished, regionId: {}",
-        REGION_MIGRATE_PROCESS,
-        state,
-        consensusGroupId);
-
-    TSStatus status = new TSStatus(SUCCESS_STATUS.getStatusCode());
-    synchronized (addRegionPeerLock) {
-      try {
-        addRegionPeerLock.wait();
-
-        if (!addRegionPeerSuccess) {
-          throw new ProcedureException(
-              String.format("Region migration failed, regionId: %s", consensusGroupId));
-        }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
-        Thread.currentThread().interrupt();
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("Waiting for region migration interruption," + e.getMessage());
-      }
-    }
-    return status;
-  }
-
-  public void notifyAddPeerFinished(TRegionMigrateResultReportReq req) {
-
-    LOGGER.info(
-        "{}, ConfigNode received region migration result reported by DataNode: {}",
-        ADD_REGION_PEER_PROGRESS,
-        req);
-
-    // TODO the req is used in roll back
-    synchronized (addRegionPeerLock) {
-      TSStatus migrateStatus = req.getMigrateResult();
-      // Migration failed
-      if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info(
-            "{}, Region migration failed in DataNode, migrateStatus: {}",
-            ADD_REGION_PEER_PROGRESS,
-            migrateStatus);
-        addRegionPeerSuccess = false;
-        addRegionPeerResult = migrateStatus.toString();
-      }
-      addRegionPeerLock.notifyAll();
-    }
-  }
-
-  @Override
-  protected boolean isRollbackSupported(AddRegionPeerState state) {
-    return false;
-  }
 
   @Override
   protected void rollbackState(
@@ -215,9 +158,5 @@ public class AddRegionPeerProcedure
 
   public TDataNodeLocation getCoordinator() {
     return coordinator;
-  }
-
-  public TDataNodeLocation getDestDataNode() {
-    return destDataNode;
   }
 }

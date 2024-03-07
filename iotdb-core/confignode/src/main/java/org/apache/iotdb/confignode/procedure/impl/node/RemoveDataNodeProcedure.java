@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
@@ -68,7 +68,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
       return Flow.NO_MORE_STATE;
     }
 
-    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:

@@ -22,8 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -59,9 +65,9 @@ import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANOD
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
-public class DataNodeRemoveHandler {
+public class RegionMaintainHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionMaintainHandler.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -70,8 +76,14 @@ public class DataNodeRemoveHandler {
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
-  public DataNodeRemoveHandler(ConfigManager configManager) {
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
+
+  public RegionMaintainHandler(ConfigManager configManager) {
     this.configManager = configManager;
+    dataNodeClientManager =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   public static String getIdWithRpcEndpoint(TDataNodeLocation location) {
@@ -234,12 +246,15 @@ public class DataNodeRemoveHandler {
    * @return TSStatus
    */
   public TSStatus addRegionPeer(
-      TDataNodeLocation destDataNode, TConsensusGroupId regionId, TDataNodeLocation coordinator) {
+      long procedureId,
+      TDataNodeLocation destDataNode,
+      TConsensusGroupId regionId,
+      TDataNodeLocation coordinator) {
     TSStatus status;
 
     // Send addRegionPeer request to the selected DataNode,
     // destDataNode is where the new RegionReplica is created
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode);
+    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode, procedureId);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
@@ -268,11 +283,13 @@ public class DataNodeRemoveHandler {
   public TSStatus removeRegionPeer(
       TDataNodeLocation originalDataNode,
       TConsensusGroupId regionId,
-      TDataNodeLocation coordinator) {
+      TDataNodeLocation coordinator,
+      long procedureId) {
     TSStatus status;
 
     // Send removeRegionPeer request to the rpcClientDataNode
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
+    TMaintainPeerReq maintainPeerReq =
+        new TMaintainPeerReq(regionId, originalDataNode, procedureId);
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
@@ -298,10 +315,11 @@ public class DataNodeRemoveHandler {
    * @return TSStatus
    */
   public TSStatus deleteOldRegionPeer(
-      TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
+      TDataNodeLocation originalDataNode, TConsensusGroupId regionId, long procedureId) {
 
     TSStatus status;
-    TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, originalDataNode);
+    TMaintainPeerReq maintainPeerReq =
+        new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
     status =
         configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
@@ -323,6 +341,21 @@ public class DataNodeRemoveHandler {
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
+  }
+
+  public TRegionMaintainTaskStatus waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
+    while (true) {
+      try (SyncDataNodeInternalServiceClient dataNodeClient =
+          dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
+        TRegionMigrateResultReportReq report = dataNodeClient.getRegionMaintainResult(taskId);
+        if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
+          return report.getTaskStatus();
+        }
+        Thread.sleep(1000);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {

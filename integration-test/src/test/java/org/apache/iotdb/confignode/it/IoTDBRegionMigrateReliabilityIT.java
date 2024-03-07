@@ -23,12 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,14 +48,18 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class IoTDBRegionMigrateReliabilityIT {
   private static final Logger LOGGER =
@@ -81,61 +89,95 @@ public class IoTDBRegionMigrateReliabilityIT {
 
   @Test
   public void normal1C2DTest() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1);
-    EnvFactory.getEnv().initClusterEnvironment(1, 2);
-
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
-
-      statement.execute(INSERTION);
-
-      ResultSet result = statement.executeQuery(SHOW_REGIONS);
-      Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
-
-      result = statement.executeQuery(SHOW_DATANODES);
-      Set<Integer> dataNodeSet = new HashSet<>();
-      while (result.next()) {
-        dataNodeSet.add(result.getInt(ColumnHeaderConstant.NODE_ID));
-      }
-
-      final int selectedRegion = selectRegion(regionMap);
-      final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
-      final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
-
-      // set breakpoint
-      HashMap<String, Runnable> keywordAction = new HashMap<>();
-      Arrays.stream(RegionTransitionState.values())
-          .forEach(
-              state ->
-                  keywordAction.put(
-                      String.valueOf(state), () -> LOGGER.info(String.valueOf(state))));
-      ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
-      LOGGER.info("breakpoint setting...");
-      service.submit(() -> logBreakpointMonitor(0, keywordAction));
-      LOGGER.info("breakpoint set");
-
-      statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
-
-      awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
-
-      checkRegionFileClear(originalDataNode);
-
-      LOGGER.info("test pass");
-    }
+    generalTest(1, 1, 1, 2, Collections.emptySet(), Collections.emptySet());
   }
 
   @Test
   public void normal3C3DTest() throws Exception {
+    generalTest(2, 3, 3, 3, Collections.emptySet(), Collections.emptySet());
+  }
+
+  // endregion
+
+  // region ConfigNode crash tests
+  @Test
+  public void cnCrashDuringPreCheck() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        Stream.of(RegionTransitionState.REGION_MIGRATE_PREPARE.toString())
+            .collect(Collectors.toSet()),
+        Collections.emptySet());
+  }
+
+  @Test
+  public void cnCrashDuringCreatePeer() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        Stream.of(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()).collect(Collectors.toSet()),
+        Collections.emptySet());
+  }
+
+  @Test
+  public void cnCrashDuringDoAddPeer() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        Stream.of(AddRegionPeerState.DO_ADD_REGION_PEER.toString()).collect(Collectors.toSet()),
+        Collections.emptySet());
+  }
+
+  @Test
+  public void cnCrashDuring() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        Stream.of(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE.toString())
+            .collect(Collectors.toSet()),
+        Collections.emptySet());
+  }
+
+  // TODO: other cn crash test
+
+  // endregion
+
+  // region DataNode crash tests
+
+  // endregion
+
+  // region Helpers
+
+  public void generalTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      Set<String> killConfigNodeKeywords,
+      Set<String> killDataNodeKeywords // TODO：此参数尚未生效
+      ) throws Exception {
+    // prepare env
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDataReplicationFactor(2)
-        .setSchemaReplicationFactor(3);
-    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+        .setDataReplicationFactor(dataReplicateFactor)
+        .setSchemaReplicationFactor(schemaReplicationFactor);
+    EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
+
+    ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
+    EnvFactory.getEnv()
+        .getConfigNodeWrapperList()
+        .forEach(
+            configNodeWrapper ->
+                service.submit(() -> nodeLogKillPoint(configNodeWrapper, killConfigNodeKeywords)));
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement();
@@ -157,94 +199,62 @@ public class IoTDBRegionMigrateReliabilityIT {
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
       final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
 
-      // set breakpoint
-      HashMap<String, Runnable> keywordAction = new HashMap<>();
-      Arrays.stream(RegionTransitionState.values())
-          .forEach(
-              state ->
-                  keywordAction.put(
-                      String.valueOf(state), () -> LOGGER.info(String.valueOf(state))));
-      ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
-      LOGGER.info("breakpoint setting...");
-      service.submit(() -> logBreakpointMonitor(0, keywordAction));
-      service.submit(() -> logBreakpointMonitor(1, keywordAction));
-      service.submit(() -> logBreakpointMonitor(2, keywordAction));
-      LOGGER.info("breakpoint set");
-
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
 
       checkRegionFileClear(originalDataNode);
-
-      LOGGER.info("test pass");
     }
+    LOGGER.info("test pass");
   }
-
-  // endregion
-
-  // region ConfigNode crash tests
-  @Test
-  public void cnCrashDuringPreCheck() {}
-
-  @Test
-  public void cnCrashDuringCreatePeer() {}
-
-  @Test
-  public void cnCrashDuringAddPeer() {}
-
-  // TODO: other cn crash test
-
-  // endregion
-
-  // region DataNode crash tests
-
-  // endregion
-
-  // region Helpers
 
   /**
    * Monitor the node's log and do something.
    *
-   * @param nodeIndex
-   * @param keywordAction Map<keyword, action>
+   * @param nodeWrapper Easy to understand
+   * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
    */
-  private static void logBreakpointMonitor(int nodeIndex, HashMap<String, Runnable> keywordAction) {
+  private static void nodeLogKillPoint(
+      AbstractNodeWrapper nodeWrapper, Set<String> killNodeKeywords) {
+    if (killNodeKeywords.isEmpty()) {
+      return;
+    }
+    final String logFileName;
+    if (nodeWrapper instanceof ConfigNodeWrapper) {
+      logFileName = "log_confignode_all.log";
+    } else {
+      logFileName = "log_datanode_all.log";
+    }
     ProcessBuilder builder =
         new ProcessBuilder(
             "tail",
             "-f",
-            EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).getNodePath()
-                + File.separator
-                + "logs"
-                + File.separator
-                + "log_confignode_all.log");
-    builder.redirectErrorStream(true); // 将错误输出和标准输出合并
+            nodeWrapper.getNodePath() + File.separator + "logs" + File.separator + logFileName);
+    builder.redirectErrorStream(true);
 
     try {
-      Process process = builder.start(); // 开始执行命令
-      // 读取命令的输出
+      Process process = builder.start();
       try (BufferedReader reader =
           new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
-          Set<String> detected = new HashSet<>();
+          // if trigger more than one keyword at a same time, test code may have mistakes
+          Assert.assertTrue(killNodeKeywords.stream().filter(line::contains).count() <= 1);
           String finalLine = line;
-          keywordAction
-              .keySet()
-              .forEach(
-                  k -> {
-                    if (finalLine.contains(k)) {
-                      detected.add(k);
-                    }
-                  });
-          detected.forEach(
-              k -> {
-                keywordAction.get(k).run();
-                //
-                // EnvFactory.getEnv().getConfigNodeWrapper(nodeIndex).stopForcibly();
-                keywordAction.remove(k);
-              });
+          Optional<String> detectedKeyword =
+              killNodeKeywords.stream()
+                  .filter(keyword -> finalLine.contains("breakpoint:" + keyword))
+                  .findAny();
+          if (detectedKeyword.isPresent()) {
+            // reboot the node
+            nodeWrapper.stopForcibly();
+            nodeWrapper.start();
+            // each keyword only trigger once
+            killNodeKeywords.remove(detectedKeyword.get());
+          }
+          if (killNodeKeywords.isEmpty()) {
+            break;
+          }
         }
       }
     } catch (IOException e) {
@@ -279,7 +289,7 @@ public class IoTDBRegionMigrateReliabilityIT {
       Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
     return regionMap.get(selectedRegion).stream()
         .findAny()
-        .orElseThrow(() -> new RuntimeException("gg"));
+        .orElseThrow(() -> new RuntimeException("cannot find original DataNode"));
   }
 
   private static int selectDestDataNode(
@@ -287,20 +297,37 @@ public class IoTDBRegionMigrateReliabilityIT {
     return dataNodeSet.stream()
         .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
         .findAny()
-        .orElseThrow(() -> new RuntimeException("gg"));
+        .orElseThrow(() -> new RuntimeException("cannot find dest DataNode"));
   }
 
   private static void awaitUntilSuccess(
       Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
-    Awaitility.await()
-        .atMost(1, TimeUnit.MINUTES)
-        .until(
-            () -> {
-              Map<Integer, Set<Integer>> newRegionMap =
-                  getRegionMap(statement.executeQuery(SHOW_REGIONS));
-              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-            });
+    AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
+    try {
+      Awaitility.await()
+          .atMost(1, TimeUnit.MINUTES)
+          .until(
+              () -> {
+                try {
+                  Map<Integer, Set<Integer>> newRegionMap =
+                      getRegionMap(statement.executeQuery(SHOW_REGIONS));
+                  Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+                  lastTimeDataNodes.set(dataNodes);
+                  return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+                } catch (Exception e) {
+                  // Any exception can be ignored
+                  return false;
+                }
+              });
+    } catch (ConditionTimeoutException e) {
+      //      Set<Integer> expectation = new Set<>(lastTimeDataNodes);
+      String actualSetStr = lastTimeDataNodes.get().toString();
+      lastTimeDataNodes.get().remove(originalDataNode);
+      lastTimeDataNodes.get().add(destDataNode);
+      String expectSetStr = lastTimeDataNodes.toString();
+      LOGGER.info("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
+      throw e;
+    }
   }
 
   /** Check whether the original DataNode's region file has been deleted. */

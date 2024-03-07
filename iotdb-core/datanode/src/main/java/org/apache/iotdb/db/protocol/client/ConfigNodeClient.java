@@ -98,7 +98,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -415,12 +414,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     return executeRemoteCallWithRetry(
         () -> client.getDataNodeConfiguration(dataNodeId),
         resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.reportRegionMigrateResult(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
