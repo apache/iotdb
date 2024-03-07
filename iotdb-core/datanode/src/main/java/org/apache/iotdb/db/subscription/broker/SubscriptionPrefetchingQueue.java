@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPrefetchingQueue {
 
@@ -52,6 +54,8 @@ public class SubscriptionPrefetchingQueue {
   private final Deque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
 
   private final Map<String, EnrichedEvent> uncommittedEvents;
+
+  private final AtomicLong idGenerator = new AtomicLong(0);
 
   public SubscriptionPrefetchingQueue(
       String brokerID, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
@@ -78,6 +82,59 @@ public class SubscriptionPrefetchingQueue {
       enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
       uncommittedEvents.remove(subscriptionCommitId);
     }
+  }
+
+  private Pair<Tablet, String> convertToTablet(TabletInsertionEvent tabletInsertionEvent) {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      Tablet tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      String subscriptionId =
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+              .generateSubscriptionCommitId();
+      return new Pair<>(tablet, subscriptionId);
+    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      String subscriptionId =
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).generateSubscriptionCommitId();
+      return new Pair<>(tablet, subscriptionId);
+    }
+    // TODO: logger warn
+    return new Pair<>(null, null);
+  }
+
+  // TODO: use org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.calculateTabletSizeInBytes
+  private Pair<Long, EnrichedTablets> prefetchV2(long limit) {
+    List<Tablet> tablets = new ArrayList<>();
+    List<String> subscriptionCommitIds = new ArrayList<>();
+
+    Event event;
+    while ((event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll())) != null) {
+      if (event instanceof TabletInsertionEvent) {
+        Pair<Tablet, String> tabletWithSubscriptionId =
+            convertToTablet((TabletInsertionEvent) event);
+        tablets.add(tabletWithSubscriptionId.left);
+        subscriptionCommitIds.add(tabletWithSubscriptionId.right);
+        if (tablets.size() >= limit) {
+          break;
+        }
+      } else if (event instanceof TsFileInsertionEvent) {
+        if (event instanceof PipeTsFileInsertionEvent) {
+          for (TabletInsertionEvent tabletInsertionEvent :
+              ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
+            Pair<Tablet, String> tabletWithSubscriptionId = convertToTablet(tabletInsertionEvent);
+            tablets.add(tabletWithSubscriptionId.left);
+          }
+          subscriptionCommitIds.add(
+              ((PipeTsFileInsertionEvent) event).generateSubscriptionCommitId());
+        }
+        if (tablets.size() >= limit) {
+          break;
+        }
+      }
+    }
+
+    return new Pair<>(
+        idGenerator.getAndIncrement(),
+        new EnrichedTablets(topicName, tablets, subscriptionCommitIds));
   }
 
   /** @return true if prefetch @param maxSize events */
