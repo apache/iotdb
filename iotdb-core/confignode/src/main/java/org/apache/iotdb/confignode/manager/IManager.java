@@ -27,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -326,14 +325,6 @@ public interface IManager {
    * @return status
    */
   TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq);
-
-  /**
-   * Create many databases.
-   *
-   * @return status
-   */
-  @TestOnly
-  TSStatus createManyDatabases();
 
   /**
    * Get SchemaPartition.

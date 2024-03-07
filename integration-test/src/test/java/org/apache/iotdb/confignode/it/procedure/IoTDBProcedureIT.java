@@ -22,9 +22,11 @@ package org.apache.iotdb.confignode.it.procedure;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.MakeChildProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,6 +35,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,7 +51,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
+import static org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 @RunWith(IoTDBTestRunner.class)
@@ -98,7 +101,7 @@ public class IoTDBProcedureIT {
 
     SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    leaderClient.createManyDatabases();
+    leaderClient.callSpecialProcedure(TTestOperation.TEST_PROCEDURE_RECOVER);
 
     // prepare req
     final TGetDatabaseReq req =
@@ -133,5 +136,73 @@ public class IoTDBProcedureIT {
           return expectedDatabases.isEmpty();
         };
     Awaitility.await().atMost(1, TimeUnit.MINUTES).until(finalCheck);
+  }
+
+  @Test
+  public void subProcedureTest() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
+
+    SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    leaderClient.callSpecialProcedure(TTestOperation.TEST_SUB_PROCEDURE);
+
+    final TGetDatabaseReq req =
+        new TGetDatabaseReq(
+            Arrays.asList(
+                new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                    .getPathPattern()
+                    .getNodes()),
+            SchemaConstant.ALL_MATCH_SCOPE.serialize());
+
+    boolean check1 = false;
+    try {
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                TShowDatabaseResp resp = leaderClient.showDatabase(req);
+                return resp.getDatabaseInfoMap().containsKey(MakeChildProcedure.FAIL_DATABASE_NAME);
+              });
+    } catch (ConditionTimeoutException e) {
+      check1 = true;
+    }
+    if (!check1) {
+      throw new Exception("check1 fail");
+    }
+
+    boolean check2 = false;
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(0).stop();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(0).start();
+    SyncConfigNodeIServiceClient newLeaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              try {
+                newLeaderClient.showDatabase(req);
+              } catch (Exception e) {
+                Thread.sleep(1000);
+                return false;
+              }
+              return true;
+            });
+    try {
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                TShowDatabaseResp resp = newLeaderClient.showDatabase(req);
+                return resp.getDatabaseInfoMap().containsKey(MakeChildProcedure.FAIL_DATABASE_NAME);
+              });
+    } catch (ConditionTimeoutException e) {
+      check2 = true;
+    }
+    if (!check2) {
+      throw new Exception("check2 fail");
+    }
+
+    LOGGER.info("test pass");
   }
 }
