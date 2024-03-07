@@ -1169,31 +1169,6 @@ public class AlignedByDeviceTest {
     assertTrue(f3Root.getChildren().get(1) instanceof SeriesScanNode);
   }
 
-  /*
-   * IdentitySinkNode-31
-   *   └──AggregationMergeSort-28
-   *       ├──DeviceView-18
-   *       │   ├──TransformNode-13
-   *       │   │   └──FullOuterTimeJoinNode-12
-   *       │   │       ├──SeriesScanNode-10:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   │       └──SeriesScanNode-11:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   └──TransformNode-17
-   *       │       └──FullOuterTimeJoinNode-16
-   *       │           ├──SeriesScanNode-14:[SeriesPath: root.sg.d4444.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │           └──SeriesScanNode-15:[SeriesPath: root.sg.d4444.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       └──ExchangeNode-29: [SourceAddress:192.0.4.1/test_special_process_align_by_device_2_device_2_region.2.0/30]
-   *
-   * IdentitySinkNode-30
-   *   └──DeviceView-27
-   *       ├──TransformNode-22
-   *       │   └──FullOuterTimeJoinNode-21
-   *       │       ├──SeriesScanNode-19:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       │       └──SeriesScanNode-20:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *       └──TransformNode-26
-   *           └──FullOuterTimeJoinNode-25
-   *               ├──SeriesScanNode-23:[SeriesPath: root.sg.d4444.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *               └──SeriesScanNode-24:[SeriesPath: root.sg.d4444.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   */
   @Test
   public void testDiffFunction2Device2Region() {
     QueryId queryId = new QueryId("test_special_process_align_by_device_2_device_2_region");
@@ -1210,12 +1185,12 @@ public class AlignedByDeviceTest {
     PlanNode f2Root = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof TransformNode);
     assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof TransformNode);
+        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(2)
+            instanceof ExchangeNode);
   }
 
   @Test
@@ -1292,14 +1267,14 @@ public class AlignedByDeviceTest {
     assertTrue(f1Root instanceof IdentitySinkNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
     assertTrue(f3Root instanceof IdentitySinkNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(f2Root.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(f2Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof TransformNode);
+    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof TransformNode);
     assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof TransformNode);
-    assertTrue(f3Root.getChildren().get(0).getChildren().get(0) instanceof TransformNode);
+        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(2)
+            instanceof ExchangeNode);
+    assertTrue(f3Root.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
   }
 
   @Test
