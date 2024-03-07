@@ -57,7 +57,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -220,11 +219,7 @@ public class SubscriptionRpcAgent {
     }
 
     // poll
-    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
-    for (EnrichedTablets enrichedTablets : SubscriptionAgent.broker().poll(consumerConfig)) {
-      // TODO: limit
-      enrichedTabletsList.add(enrichedTablets);
-    }
+    List<EnrichedTablets> enrichedTabletsList = SubscriptionAgent.broker().poll(consumerConfig);
 
     LOGGER.info("Subscription: consumer poll successfully, consumer config: {}", consumerConfig);
     return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, enrichedTabletsList);

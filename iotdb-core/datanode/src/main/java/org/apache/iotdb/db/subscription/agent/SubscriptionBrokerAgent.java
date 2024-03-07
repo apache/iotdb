@@ -30,7 +30,7 @@ public class SubscriptionBrokerAgent {
         consumerGroupID, new SubscriptionBroker(consumerGroupID));
   }
 
-  public Iterable<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
+  public List<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {

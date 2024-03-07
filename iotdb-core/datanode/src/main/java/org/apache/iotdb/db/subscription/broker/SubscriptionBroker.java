@@ -41,7 +41,7 @@ public class SubscriptionBroker {
     this.topicNameToPrefetchingQueue = new TreeMap<>();
   }
 
-  public Iterable<EnrichedTablets> poll(Set<String> topicNames) {
+  public List<EnrichedTablets> poll(Set<String> topicNames) {
     List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
     topicNameToPrefetchingQueue.forEach(
         (topicName, prefetchingQueue) -> {
