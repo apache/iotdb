@@ -69,6 +69,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -351,8 +352,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private void restartStuckPipe(PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
     final long startTime = System.currentTimeMillis();
-    handleStopPipeForStuckRestart(
-        pipeMeta.getStaticMeta().getPipeName(), pipeMeta.getStaticMeta().getCreationTime());
+    changePipeStatusBeforeRestart(pipeMeta.getStaticMeta().getPipeName());
     handleSinglePipeMetaChangesInternal(pipeMeta);
     LOGGER.warn(
         "Pipe {} was restarted because of stuck, time cost: {} ms.",
@@ -360,44 +360,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         System.currentTimeMillis() - startTime);
   }
 
-  protected void handleStopPipeForStuckRestart(String pipeName, long creationTime) {
+  protected void changePipeStatusBeforeRestart(String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (!checkBeforeStopPipe(pipeMeta, pipeName, creationTime)) {
-      LOGGER.info(
-          "Stop Pipe: Pipe {} has already been dropped or has not been created. Skip stopping.",
-          pipeName);
-      return;
-    }
-
-    // Get pipe tasks
     final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
-
-    if (pipeTasks == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-              + "Skip stopping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-
-    final long startTime = System.currentTimeMillis();
-    Set<Integer> existedRegionId = new HashSet<>(pipeTasks.keySet());
-
-    // Get data region tasks
-    final Set<PipeTask> removedPipeTasks =
-        existedRegionId.stream()
-            .filter(
-                regionId ->
-                    StorageEngine.getInstance()
-                        .getAllDataRegionIds()
-                        .contains(new DataRegionId(regionId)))
+    final Set<Integer> taskRegionIds = new HashSet<>(pipeTasks.keySet());
+    final Set<Integer> dataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+    final Set<PipeTask> dataRegionPipeTasks =
+        taskRegionIds.stream()
+            .filter(dataRegionIds::contains)
             .map(regionId -> pipeTaskManager.removePipeTask(pipeMeta.getStaticMeta(), regionId))
+            .filter(Objects::nonNull)
             .collect(Collectors.toSet());
 
     // Drop data region tasks
-    removedPipeTasks.parallelStream().forEach(PipeTask::drop);
+    dataRegionPipeTasks.parallelStream().forEach(PipeTask::drop);
 
     // Stop schema region tasks
     pipeTaskManager
@@ -407,11 +386,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         .forEach(PipeTask::stop);
 
     // Re-create data region tasks
-    removedPipeTasks
+    dataRegionPipeTasks
         .parallelStream()
         .forEach(
             pipeTask -> {
-              PipeTask newPipeTask =
+              final PipeTask newPipeTask =
                   new PipeDataNodeTaskBuilder(
                           pipeMeta.getStaticMeta(),
                           ((PipeDataNodeTask) pipeTask).getRegionId(),
@@ -429,10 +408,5 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-
-    LOGGER.info(
-        "Stop all pipe tasks on Pipe {} successfully within {} ms",
-        pipeName,
-        System.currentTimeMillis() - startTime);
   }
 }
