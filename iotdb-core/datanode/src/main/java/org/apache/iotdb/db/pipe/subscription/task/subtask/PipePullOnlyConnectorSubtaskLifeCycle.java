@@ -41,23 +41,23 @@ public class PipePullOnlyConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public boolean deregister(String pipeNameToDeregister /* ignored */) {
-    // do nothing
-    return false;
+  public boolean deregister(String ignored) {
+    SubscriptionAgent.broker().unbindPrefetchingQueue(pullOnlyConnectorSubtask);
+    return true;
   }
 
   @Override
   public void start() {
-    // do nothing
+    // TODO: thread pool
   }
 
   @Override
   public void stop() {
-    // do nothing
+    // TODO: thread pool
   }
 
   @Override
   public void close() {
-    // do nothing
+    // TODO: thread pool
   }
 }

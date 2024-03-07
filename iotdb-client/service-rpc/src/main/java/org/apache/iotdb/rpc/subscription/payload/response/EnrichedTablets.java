@@ -33,8 +33,33 @@ import java.util.Objects;
 public class EnrichedTablets {
 
   private transient String topicName;
-  private transient List<Tablet> tablets = new ArrayList<>();
-  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();
+  private transient List<Tablet> tablets;
+  private transient List<Pair<String, Long>> committerKeyAndCommitIds;
+
+  public EnrichedTablets() {
+    this.tablets = new ArrayList<>();
+    this.committerKeyAndCommitIds = new ArrayList<>();
+  }
+
+  public EnrichedTablets(
+      String topicName, List<Tablet> tablets, List<Pair<String, Long>> committerKeyAndCommitIds) {
+    this.topicName = topicName;
+    this.tablets = tablets;
+    this.committerKeyAndCommitIds = committerKeyAndCommitIds;
+  }
+
+  public static EnrichedTablets blendEnrichedTablets(EnrichedTablets left, EnrichedTablets right) {
+    if (!Objects.equals(left.topicName, right.topicName)) {
+      // TODO: logger warn
+      return null;
+    }
+    List<Tablet> tablets = new ArrayList<>(left.tablets);
+    List<Pair<String, Long>> committerKeyAndCommitIds =
+        new ArrayList<>(left.committerKeyAndCommitIds);
+    tablets.addAll(right.tablets);
+    committerKeyAndCommitIds.addAll(right.committerKeyAndCommitIds);
+    return new EnrichedTablets(left.topicName, tablets, committerKeyAndCommitIds);
+  }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
@@ -43,7 +68,7 @@ public class EnrichedTablets {
       tablet.serialize(stream);
     }
     ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), stream);
-    for (Pair<String, Integer> committerKeyAndCommitId : committerKeyAndCommitIds) {
+    for (Pair<String, Long> committerKeyAndCommitId : committerKeyAndCommitIds) {
       ReadWriteIOUtils.write(committerKeyAndCommitId.left, stream);
       ReadWriteIOUtils.write(committerKeyAndCommitId.right, stream);
     }
@@ -59,7 +84,7 @@ public class EnrichedTablets {
     size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
       String committerKey = ReadWriteIOUtils.readString(buffer);
-      int commitId = ReadWriteIOUtils.readInt(buffer);
+      long commitId = ReadWriteIOUtils.readInt(buffer);
       enrichedTablets.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
     }
     return enrichedTablets;

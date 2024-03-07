@@ -33,9 +33,9 @@ import java.util.Objects;
 
 public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
-  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();
+  private transient List<Pair<String, Long>> committerKeyAndCommitIds = new ArrayList<>();
 
-  public List<Pair<String, Integer>> getCommitterKeyAndCommitIds() {
+  public List<Pair<String, Long>> getCommitterKeyAndCommitIds() {
     return committerKeyAndCommitIds;
   }
 
@@ -46,7 +46,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      List<Pair<String, Integer>> committerKeyAndCommitIds) throws IOException {
+      List<Pair<String, Long>> committerKeyAndCommitIds) throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     req.committerKeyAndCommitIds = committerKeyAndCommitIds;
@@ -56,7 +56,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), outputStream);
-      for (Pair<String, Integer> committerKeyAndCommitId : committerKeyAndCommitIds) {
+      for (Pair<String, Long> committerKeyAndCommitId : committerKeyAndCommitIds) {
         ReadWriteIOUtils.write(committerKeyAndCommitId.left, outputStream);
         ReadWriteIOUtils.write(committerKeyAndCommitId.right, outputStream);
       }
@@ -74,7 +74,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
         String committerKey = ReadWriteIOUtils.readString(commitReq.body);
-        int commitId = ReadWriteIOUtils.readInt(commitReq.body);
+        long commitId = ReadWriteIOUtils.readInt(commitReq.body);
         req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
       }
     }

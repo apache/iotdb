@@ -45,16 +45,26 @@ public class SubscriptionBroker {
     return Collections.emptyList();
   }
 
-  public void commit(List<Pair<String, Integer>> committerKeyAndCommitIds) {}
+  public void commit(List<Pair<String, Long>> committerKeyAndCommitIds) {}
 
   public void bindPrefetchingQueue(
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
-      // TODO: logger
+      // TODO: handle error
       return;
     }
     topicNameToPrefetchingQueue.put(
         topicName, new SubscriptionPrefetchingQueue(brokerID, topicName, inputPendingQueue));
+  }
+
+  public void unbindPrefetchingQueue(String topicName) {
+    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      // TODO: handle error
+      return;
+    }
+    // TODO: do something for events on-the-fly
+    topicNameToPrefetchingQueue.remove(topicName);
   }
 }

@@ -237,7 +237,7 @@ public class SubscriptionRpcAgent {
     }
 
     // commit
-    List<Pair<String, Integer>> committerKeyAndCommitIds = req.getCommitterKeyAndCommitIds();
+    List<Pair<String, Long>> committerKeyAndCommitIds = req.getCommitterKeyAndCommitIds();
     SubscriptionAgent.broker().commit(consumerConfig, committerKeyAndCommitIds);
 
     LOGGER.info(

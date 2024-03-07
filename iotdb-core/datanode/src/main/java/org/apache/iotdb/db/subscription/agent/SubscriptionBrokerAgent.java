@@ -42,7 +42,7 @@ public class SubscriptionBrokerAgent {
   }
 
   public void commit(
-      ConsumerConfig consumerConfig, List<Pair<String, Integer>> committerKeyAndCommitIds) {
+      ConsumerConfig consumerConfig, List<Pair<String, Long>> committerKeyAndCommitIds) {
     SubscriptionBroker broker =
         consumerGroupIDToSubscriptionBroker.get(consumerConfig.getConsumerGroupID());
     if (Objects.isNull(broker)) {
@@ -61,5 +61,15 @@ public class SubscriptionBrokerAgent {
     }
     broker.bindPrefetchingQueue(
         pullOnlyConnectorSubtask.getTopicName(), pullOnlyConnectorSubtask.getInputPendingQueue());
+  }
+
+  public void unbindPrefetchingQueue(PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask) {
+    String consumerGroupID = pullOnlyConnectorSubtask.getConsumerGroupID();
+    SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      return;
+    }
+    broker.unbindPrefetchingQueue(pullOnlyConnectorSubtask.getTopicName());
   }
 }
