@@ -30,7 +30,7 @@ public interface INodeCache {
 
   long getCacheNodeNum();
 
-  void initCacheEntryForNode(ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus);
+  void initCacheEntryForNode(ICachedMNode node, SchemaConstant.NodeCacheStatus volatileStatus);
 
   void updateCacheStatusAfterAccess(CacheEntry cacheEntry);
 

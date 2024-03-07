@@ -24,21 +24,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  private volatile SchemaConstant.VolatileStatus volatileStatus;
+  private volatile SchemaConstant.NodeCacheStatus volatileStatus;
 
   private final AtomicInteger pinSemaphore = new AtomicInteger(0);
 
   private final AtomicInteger volatileDescendantSemaphore = new AtomicInteger(0);
 
-  CacheEntry(SchemaConstant.VolatileStatus volatileStatus) {
+  CacheEntry(SchemaConstant.NodeCacheStatus volatileStatus) {
     this.volatileStatus = volatileStatus;
   }
 
-  public SchemaConstant.VolatileStatus getVolatileStatus() {
+  public SchemaConstant.NodeCacheStatus getVolatileStatus() {
     return volatileStatus;
   }
 
-  public void setVolatileStatus(SchemaConstant.VolatileStatus volatileStatus) {
+  public void setVolatileStatus(SchemaConstant.NodeCacheStatus volatileStatus) {
     this.volatileStatus = volatileStatus;
   }
 

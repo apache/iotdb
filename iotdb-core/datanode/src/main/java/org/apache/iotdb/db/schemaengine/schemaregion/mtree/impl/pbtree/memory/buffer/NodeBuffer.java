@@ -90,9 +90,6 @@ public class NodeBuffer implements INodeBuffer {
    * the volatile subtree the given node belong to will be record in nodeBuffer.
    */
   private void addNonVolatileAncestorToBuffer(ICachedMNode node) {
-    if (!node.getParent().isDatabase() && !node.getParent().getCacheEntry().hasVolatileDescendant()){
-      System.out.println();
-    }
     ICachedMNode parent = node.getParent();
     CacheEntry cacheEntry = parent.getCacheEntry();
 
@@ -103,16 +100,14 @@ public class NodeBuffer implements INodeBuffer {
       // the cacheEntry may be set to volatile concurrently, the unVolatile node should not be
       // added
       // to nodeBuffer, which prevent the duplicated collecting on subTree
-      if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.NonVolatile || cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Flushing) {
+      if (cacheEntry.getVolatileStatus() == SchemaConstant.NodeCacheStatus.NonVolatile
+          || cacheEntry.getVolatileStatus() == SchemaConstant.NodeCacheStatus.Flushing) {
         put(cacheEntry, parent);
       }
     }
   }
 
   private void put(CacheEntry cacheEntry, ICachedMNode node) {
-    if (!node.isDatabase() && !cacheEntry.hasVolatileDescendant()){
-      System.out.println();
-    }
     maps[getLoc(cacheEntry)].put(cacheEntry, node);
   }
 
@@ -140,11 +135,6 @@ public class NodeBuffer implements INodeBuffer {
   private int getLoc(CacheEntry cacheEntry) {
     int hash = cacheEntry.hashCode() % MAP_NUM;
     return hash < 0 ? hash + MAP_NUM : hash;
-  }
-
-  @Override
-  public boolean contains(CacheEntry cacheEntry) {
-    return maps[getLoc(cacheEntry)].containsKey(cacheEntry);
   }
 
   @Override

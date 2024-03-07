@@ -22,7 +22,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.buffer.INodeBuffer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import java.util.Iterator;

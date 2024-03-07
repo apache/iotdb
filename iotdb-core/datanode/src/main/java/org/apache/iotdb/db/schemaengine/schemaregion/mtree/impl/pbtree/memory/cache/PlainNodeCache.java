@@ -69,7 +69,7 @@ public class PlainNodeCache implements INodeCache {
 
   @Override
   public void initCacheEntryForNode(
-      ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus) {
+      ICachedMNode node, SchemaConstant.NodeCacheStatus volatileStatus) {
     node.setCacheEntry(new CacheEntry(volatileStatus));
   }
 }

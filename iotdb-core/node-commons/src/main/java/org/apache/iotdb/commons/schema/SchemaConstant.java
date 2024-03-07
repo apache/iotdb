@@ -124,10 +124,10 @@ public class SchemaConstant {
     return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
   }
 
-  public enum VolatileStatus {
+  public enum NodeCacheStatus {
     NonVolatile,
     New,
-    Update,
+    Updated,
     Flushing
   }
 }

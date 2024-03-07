@@ -84,7 +84,7 @@ public class MemoryManager implements IMemoryManager {
   }
 
   public void initRootStatus(ICachedMNode root) {
-    pinMNodeWithMemStatusUpdate(root, SchemaConstant.VolatileStatus.NonVolatile);
+    pinMNodeWithMemStatusUpdate(root, SchemaConstant.NodeCacheStatus.NonVolatile);
   }
 
   /**
@@ -118,7 +118,7 @@ public class MemoryManager implements IMemoryManager {
    */
   @Override
   public void updateCacheStatusAfterDiskRead(ICachedMNode node) {
-    pinMNodeWithMemStatusUpdate(node, SchemaConstant.VolatileStatus.NonVolatile);
+    pinMNodeWithMemStatusUpdate(node, SchemaConstant.NodeCacheStatus.NonVolatile);
     CacheEntry cacheEntry = getCacheEntry(node);
     getBelongedContainer(node).addChildToCache(node);
     nodeCache.addToNodeCache(cacheEntry, node);
@@ -132,14 +132,16 @@ public class MemoryManager implements IMemoryManager {
    */
   @Override
   public void updateCacheStatusAfterAppend(ICachedMNode node) {
-    pinMNodeWithMemStatusUpdate(node, SchemaConstant.VolatileStatus.New);
+    pinMNodeWithMemStatusUpdate(node, SchemaConstant.NodeCacheStatus.New);
     memoryStatistics.addVolatileNode();
     // the ancestors must be processed first since the volatileDescendant judgement is of higher
     // priority than
     // children container judgement
     removeAncestorsFromCache(node);
-    getBelongedContainer(node).appendMNode(node);
-    nodeBuffer.addNewNodeToBuffer(node);
+    synchronized (node.getCacheEntry()) {
+      getBelongedContainer(node).appendMNode(node);
+      nodeBuffer.addNewNodeToBuffer(node);
+    }
   }
 
   /**
@@ -157,21 +159,24 @@ public class MemoryManager implements IMemoryManager {
 
     CacheEntry cacheEntry = getCacheEntry(node);
     synchronized (cacheEntry) {
-      if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
-        if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Flushing) {
-          cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.Update);
+      if (cacheEntry.getVolatileStatus() != SchemaConstant.NodeCacheStatus.NonVolatile) {
+        if (cacheEntry.getVolatileStatus() == SchemaConstant.NodeCacheStatus.Flushing) {
+          cacheEntry.setVolatileStatus(SchemaConstant.NodeCacheStatus.Updated);
         }
         return;
       }
       // the status change affects the subTre collect in nodeBuffer
-      cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.Update);
+
       memoryStatistics.addVolatileNode();
       if (!cacheEntry.hasVolatileDescendant()) {
         nodeCache.removeFromNodeCache(cacheEntry);
         removeAncestorsFromCache(node);
       }
-      getBelongedContainer(node).updateMNode(node.getName());
-      nodeBuffer.addUpdatedNodeToBuffer(node);
+      synchronized (node.getCacheEntry()) {
+        cacheEntry.setVolatileStatus(SchemaConstant.NodeCacheStatus.Updated);
+        getBelongedContainer(node).updateMNode(node.getName());
+        nodeBuffer.addUpdatedNodeToBuffer(node);
+      }
     }
   }
 
@@ -198,7 +203,7 @@ public class MemoryManager implements IMemoryManager {
         }
 
         if (!isStatusChange
-            || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
+            || cacheEntry.getVolatileStatus() != SchemaConstant.NodeCacheStatus.NonVolatile) {
           return;
         }
       }
@@ -220,7 +225,7 @@ public class MemoryManager implements IMemoryManager {
       synchronized (cacheEntry) {
         cacheEntry.decVolatileDescendant();
         if (cacheEntry.hasVolatileDescendant()
-            || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
+            || cacheEntry.getVolatileStatus() != SchemaConstant.NodeCacheStatus.NonVolatile) {
           return;
         }
 
@@ -273,18 +278,17 @@ public class MemoryManager implements IMemoryManager {
           // if there's flush failure, such node and ancestors will be removed from cache again by
           // #updateCacheStatusAfterFlushFailure
           return node;
-        }
-        else{
+        } else {
           throw new NoSuchElementException();
         }
       }
     };
   }
 
-  public void updateSubtreeRootStatusAfterFlush(ICachedMNode subtreeRoot){
+  public void updateSubtreeRootStatusAfterFlush(ICachedMNode subtreeRoot) {
     ICachedMNodeContainer container = getCachedMNodeContainer(subtreeRoot);
-    synchronized (container){
-      if(!container.hasChildrenInBuffer()){
+    synchronized (container) {
+      if (!container.hasChildrenInBuffer()) {
         nodeBuffer.remove(getCacheEntry(subtreeRoot));
       }
     }
@@ -351,7 +355,7 @@ public class MemoryManager implements IMemoryManager {
         cacheEntry = getCacheEntry(node);
 
         synchronized (cacheEntry) {
-          if (cacheEntry.getVolatileStatus() == SchemaConstant.VolatileStatus.Update) {
+          if (cacheEntry.getVolatileStatus() == SchemaConstant.NodeCacheStatus.Updated) {
             if (status == ITERATE_UPDATE_BUFFER) {
               container.moveMNodeFromUpdateChildBufferToUpdateChildReceivingBuffer(node.getName());
             } else {
@@ -371,11 +375,7 @@ public class MemoryManager implements IMemoryManager {
             continue;
           }
 
-          if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.Flushing) {
-            System.out.println();
-          }
-
-          cacheEntry.setVolatileStatus(SchemaConstant.VolatileStatus.NonVolatile);
+          cacheEntry.setVolatileStatus(SchemaConstant.NodeCacheStatus.NonVolatile);
           memoryStatistics.removeVolatileNode();
           if (status == ITERATE_UPDATE_BUFFER) {
             container.moveMNodeFromUpdateChildBufferToCache(node.getName());
@@ -398,11 +398,6 @@ public class MemoryManager implements IMemoryManager {
           // add the node and its ancestors to cache
           nodeCache.addToNodeCache(cacheEntry, node);
           addAncestorsToCache(node);
-
-
-          if (!node.getParent().getCacheEntry().hasVolatileDescendant() && nodeBuffer.contains(node.getParent().getCacheEntry())) {
-            System.out.println();
-          }
         }
       }
     }
@@ -425,7 +420,7 @@ public class MemoryManager implements IMemoryManager {
             String.format(
                 "There should not exist descendant under this node %s", node.getFullPath()));
       }
-      if (cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile) {
+      if (cacheEntry.getVolatileStatus() != SchemaConstant.NodeCacheStatus.NonVolatile) {
         addAncestorsToCache(node);
         memoryStatistics.removeVolatileNode();
         if (!getCacheEntry(node.getParent()).hasVolatileDescendant()) {
@@ -467,16 +462,11 @@ public class MemoryManager implements IMemoryManager {
         // the operation that may change the cache status of a node should be synchronized
         synchronized (cacheEntry) {
           if (cacheEntry.isPinned()
-              || cacheEntry.getVolatileStatus() != SchemaConstant.VolatileStatus.NonVolatile
+              || cacheEntry.getVolatileStatus() != SchemaConstant.NodeCacheStatus.NonVolatile
               || cacheEntry.hasVolatileDescendant()) {
             // since the node could be moved from cache to buffer after being taken from cache
             // this check here is necessary to ensure that the node could truly be evicted
             continue;
-          }
-
-
-          if (nodeBuffer.contains(cacheEntry)){
-            System.out.println();
           }
 
           getBelongedContainer(node).evictMNode(node.getName());
@@ -540,7 +530,7 @@ public class MemoryManager implements IMemoryManager {
   }
 
   private void pinMNodeWithMemStatusUpdate(
-      ICachedMNode node, SchemaConstant.VolatileStatus status) {
+      ICachedMNode node, SchemaConstant.NodeCacheStatus status) {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first
     if (cacheEntry == null) {
@@ -552,6 +542,7 @@ public class MemoryManager implements IMemoryManager {
     doPin(node);
   }
 
+  // deal with the case which only happen in AfterMemoryRead and all have cacheEntry
   private void pinMNodeWithMemStatusUpdate(ICachedMNode node) {
     CacheEntry cacheEntry = getCacheEntry(node);
     // update memory status first

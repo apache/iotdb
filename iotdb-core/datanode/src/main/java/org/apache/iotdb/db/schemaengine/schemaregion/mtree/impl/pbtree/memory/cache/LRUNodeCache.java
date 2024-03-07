@@ -22,7 +22,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.c
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,7 +46,7 @@ public class LRUNodeCache implements INodeCache {
 
   @Override
   public void initCacheEntryForNode(
-      ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus) {
+      ICachedMNode node, SchemaConstant.NodeCacheStatus volatileStatus) {
     LRUCacheEntry cacheEntry = new LRUCacheEntry(node, volatileStatus);
     node.setCacheEntry(cacheEntry);
   }
@@ -114,7 +113,7 @@ public class LRUNodeCache implements INodeCache {
 
     private volatile LRUCacheEntry next = null;
 
-    public LRUCacheEntry(ICachedMNode node, SchemaConstant.VolatileStatus volatileStatus) {
+    public LRUCacheEntry(ICachedMNode node, SchemaConstant.NodeCacheStatus volatileStatus) {
       super(volatileStatus);
       this.node = node;
     }

@@ -131,9 +131,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
-      if (size1 != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
-        System.out.println();
-      }
       Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
       // schemaRegion2
       IMNode<?> sg2 =
