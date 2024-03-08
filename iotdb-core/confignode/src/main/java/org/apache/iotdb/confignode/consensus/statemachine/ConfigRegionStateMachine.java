@@ -253,7 +253,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
-    // TODO: check me
     // Activate leader related service for config pipe
     PipeConfigNodeAgent.runtime().notifyLeaderReady();
 
@@ -271,7 +270,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             configManager
                 .getPipeManager()
                 .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChangedIfLeaderReady());
+                .onConfigRegionGroupLeaderChanged());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.

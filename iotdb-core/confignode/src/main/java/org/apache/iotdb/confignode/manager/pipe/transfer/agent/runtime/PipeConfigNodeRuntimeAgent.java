@@ -95,14 +95,21 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     regionListener.decreaseReference(parameters);
   }
 
+  /** Notify the region listener that the leader is ready to allow pipe operations. */
   public void notifyLeaderReady() {
     regionListener.notifyLeaderReady();
   }
 
+  /** Notify the region listener that the leader is unavailable to stop pipe operations. */
   public void notifyLeaderUnavailable() {
     regionListener.notifyLeaderUnavailable();
   }
 
+  /**
+   * Check if the leader is ready to allow pipe operations.
+   *
+   * @return true if the leader is ready to allow pipe operations
+   */
   public boolean isLeaderReady() {
     return regionListener.isLeaderReady();
   }

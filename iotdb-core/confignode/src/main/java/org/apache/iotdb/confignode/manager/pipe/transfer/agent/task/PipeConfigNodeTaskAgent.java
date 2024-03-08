@@ -106,7 +106,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
       PipeMeta pipeMetaFromCoordinator) {
-    // TODO: check isLeaderReady?
     try {
       return PipeConfigNodeAgent.runtime().isLeaderReady()
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy())
@@ -121,7 +120,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
-    // TODO: check isLeaderReady?
     return PipeConfigNodeAgent.runtime().isLeaderReady()
         ? super.handleDropPipeInternal(pipeName)
         : null;
@@ -130,7 +128,6 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
-    // TODO: check isLeaderReady?
     if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return Collections.emptyList();
     }
