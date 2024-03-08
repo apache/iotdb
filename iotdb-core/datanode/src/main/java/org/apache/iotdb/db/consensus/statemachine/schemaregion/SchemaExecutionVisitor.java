@@ -543,17 +543,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
     final SchemaRegionListeningQueue queue = PipeAgent.runtime().schemaListener(id);
     try {
-      if (node.isOpen() && !queue.isOpened()) {
-        logger.info("Opened pipe listening queue on schema region {}", id);
+      if (!queue.isOpened()) {
         queue.open();
-      } else if (!node.isOpen() && queue.isOpened()) {
-        logger.info("Closed pipe listening queue on schema region {}", id);
-        queue.close();
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (IOException e) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage("Failed to clear the queue, because " + e.getMessage());
+    } catch (IllegalStateException e) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
