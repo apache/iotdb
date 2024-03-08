@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
