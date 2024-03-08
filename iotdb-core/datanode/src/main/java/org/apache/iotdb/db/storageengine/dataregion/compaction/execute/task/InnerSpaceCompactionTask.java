@@ -486,7 +486,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
         memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
-      } catch (IOException e) {
+      } catch (Exception e) {
         if (e instanceof ClosedByInterruptException || Thread.interrupted()) {
           Thread.currentThread().interrupt();
           return -1;

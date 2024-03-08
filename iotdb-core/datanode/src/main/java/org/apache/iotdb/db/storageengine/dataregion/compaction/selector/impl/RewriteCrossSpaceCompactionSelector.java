@@ -128,7 +128,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
-    } catch (IOException e) {
+    } catch (Exception e) {
       if (e instanceof ClosedByInterruptException || Thread.interrupted()) {
         Thread.currentThread().interrupt();
         return new CrossCompactionTaskResource();

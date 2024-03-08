@@ -35,8 +35,8 @@ public class LocalTsFileInput implements TsFileInput {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTsFileInput.class);
 
-  private final FileChannel channel;
-  private final String filePath;
+  protected final FileChannel channel;
+  protected final String filePath;
 
   public LocalTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
