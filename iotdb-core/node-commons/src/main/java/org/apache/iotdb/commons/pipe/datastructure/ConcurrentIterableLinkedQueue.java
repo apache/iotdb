@@ -181,6 +181,15 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  public boolean isEmpty() {
+    lock.readLock().lock();
+    try {
+      return firstIndex == tailIndex;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public boolean hasAnyIterators() {
     return !iteratorSet.isEmpty();
   }

@@ -1653,8 +1653,9 @@ public class SessionConnection {
       client.executeStatementV2(
           new TSExecuteStatementReq(
               sessionId,
-              "create pipe demo_cg1 with sink('sink'='pull-only-sink', 'topic'='demo', 'consumer-group'='cg1')",
+              "create pipe demo_cg1 with sink('sink'='subscription-sink', 'topic'='demo', 'consumer-group'='cg1')",
               statementId));
+      Thread.sleep(5000);
       TPipeSubscribeResp resp =
           client.pipeSubscribe(
               PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singletonList("demo")));

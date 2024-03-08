@@ -65,14 +65,16 @@ public class SubscriptionPrefetchingQueue {
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
   public ByteBuffer fetch() {
-    prefetchOnce(16);
-    serializeOnce();
+//    if (!prefetchingQueue.isEmpty()) {
+//      prefetchOnce(16);
+//      serializeOnce();
+//    }
 
     // fetch
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
-      if (Objects.nonNull(enrichedTablets = iter.next(1000))) {
+      if (Objects.nonNull(enrichedTablets = iter.next(100))) {
         if (Objects.isNull(enrichedTablets.left)) {
           try {
             prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
@@ -154,7 +156,7 @@ public class SubscriptionPrefetchingQueue {
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
       // TODO: memory control
-      while (Objects.nonNull(enrichedTablets = iter.next(1000))) {
+      while (Objects.nonNull(enrichedTablets = iter.next(100))) {
         if (Objects.isNull(enrichedTablets.left)) {
           try {
             enrichedTablets.left =
