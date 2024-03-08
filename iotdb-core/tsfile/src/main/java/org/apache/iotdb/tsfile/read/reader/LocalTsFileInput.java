@@ -45,33 +45,18 @@ public class LocalTsFileInput implements TsFileInput {
 
   @Override
   public long size() throws IOException {
-    try {
-      return channel.size();
-    } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
-      throw e;
-    }
+    return channel.size();
   }
 
   @Override
   public long position() throws IOException {
-    try {
-      return channel.position();
-    } catch (IOException e) {
-      logger.error("Error happened while getting {} current position", filePath);
-      throw e;
-    }
+    return channel.position();
   }
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    try {
-      channel.position(newPosition);
-      return this;
-    } catch (IOException e) {
-      logger.error("Error happened while changing {} position to {}", filePath, newPosition);
-      throw e;
-    }
+    channel.position(newPosition);
+    return this;
   }
 
   @Override

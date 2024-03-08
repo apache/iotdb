@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
 
 public class CompactionTsFileInput implements TsFileInput {
   private final TsFileInput tsFileInput;
@@ -35,24 +35,45 @@ public class CompactionTsFileInput implements TsFileInput {
 
   @Override
   public long size() throws IOException {
-    return tsFileInput.size();
+    try {
+      return tsFileInput.size();
+    } catch (Exception e) {
+      if (Thread.interrupted()) {
+        throw new StopReadTsFileByInterruptException();
+      }
+      throw e;
+    }
   }
 
   @Override
   public long position() throws IOException {
-    return tsFileInput.position();
+    try {
+      return tsFileInput.position();
+    } catch (Exception e) {
+      if (Thread.interrupted()) {
+        throw new StopReadTsFileByInterruptException();
+      }
+      throw e;
+    }
   }
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    return tsFileInput.position(newPosition);
+    try {
+      return tsFileInput.position(newPosition);
+    } catch (Exception e) {
+      if (Thread.interrupted()) {
+        throw new StopReadTsFileByInterruptException();
+      }
+      throw e;
+    }
   }
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
     int readSize = tsFileInput.read(dst);
     if (readSize == -1 && Thread.interrupted()) {
-      throw new ClosedByInterruptException();
+      throw new StopReadTsFileByInterruptException();
     }
     return readSize;
   }
@@ -60,8 +81,8 @@ public class CompactionTsFileInput implements TsFileInput {
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
     int readSize = tsFileInput.read(dst, position);
-    if (readSize == -1 && Thread.interrupted()) {
-      throw new ClosedByInterruptException();
+    if (Thread.interrupted()) {
+      throw new StopReadTsFileByInterruptException();
     }
     return readSize;
   }
