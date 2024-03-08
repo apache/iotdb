@@ -130,12 +130,7 @@ public class LoadTsfileAnalyzer {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
 
-    try {
-      this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
-    } catch (LoadRuntimeOutOfMemoryException e) {
-      throw new LoadRuntimeOutOfMemoryException(
-          "Can not allocate memory for analyze TsFile schema, because: " + e.getMessage());
-    }
+    this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
   }
 
   public Analysis analyzeFileByFile() {
