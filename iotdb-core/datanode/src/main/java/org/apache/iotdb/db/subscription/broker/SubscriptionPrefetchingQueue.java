@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriptionPrefetchingQueue implements Runnable {
+public class SubscriptionPrefetchingQueue {
 
   private final String brokerID; // consumer group ID
 
@@ -62,17 +62,11 @@ public class SubscriptionPrefetchingQueue implements Runnable {
     this.prefetchingQueue = new ConcurrentIterableLinkedQueue<>();
   }
 
-  @Override
-  public void run() {}
-
-  public void executeOnce() {
-    prefetchOnce(16);
-    serialize();
-  }
+  /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
   public ByteBuffer fetch() {
     prefetchOnce(16);
-    serialize();
+    serializeOnce();
 
     // fetch
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
@@ -108,21 +102,11 @@ public class SubscriptionPrefetchingQueue implements Runnable {
     }
   }
 
-  private Pair<Tablet, String> convertToTablet(TabletInsertionEvent tabletInsertionEvent) {
-    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      Tablet tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      String subscriptionId =
-          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-              .generateSubscriptionCommitId();
-      return new Pair<>(tablet, subscriptionId);
-    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      String subscriptionId =
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).generateSubscriptionCommitId();
-      return new Pair<>(tablet, subscriptionId);
-    }
-    // TODO: logger warn
-    return new Pair<>(null, null);
+  /////////////////////////////// prefetch ///////////////////////////////
+
+  public void prefetch() {
+    prefetchOnce(16);
+    serializeOnce();
   }
 
   // TODO: use org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.calculateTabletSizeInBytes
@@ -165,7 +149,7 @@ public class SubscriptionPrefetchingQueue implements Runnable {
     }
   }
 
-  private void serialize() {
+  private void serializeOnce() {
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
@@ -181,5 +165,24 @@ public class SubscriptionPrefetchingQueue implements Runnable {
         }
       }
     }
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  private Pair<Tablet, String> convertToTablet(TabletInsertionEvent tabletInsertionEvent) {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      Tablet tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      String subscriptionId =
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
+              .generateSubscriptionCommitId();
+      return new Pair<>(tablet, subscriptionId);
+    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      String subscriptionId =
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).generateSubscriptionCommitId();
+      return new Pair<>(tablet, subscriptionId);
+    }
+    // TODO: logger warn
+    return new Pair<>(null, null);
   }
 }

@@ -132,7 +132,7 @@ public class PipeConnectorSubtaskManager {
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_TOPIC_KEY);
           final String consumerGroupID =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
-          final SubscriptionConnectorSubtask pullOnlyConnectorSubtask =
+          final SubscriptionConnectorSubtask subtask =
               new SubscriptionConnectorSubtask(
                   String.format(
                       "%s_%s_%s",
@@ -147,7 +147,7 @@ public class PipeConnectorSubtaskManager {
           final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
               new SubscriptionConnectorSubtaskLifeCycle(
                   PipeSubtaskExecutorManager.getInstance().getSubscriptionSubtaskExecutor(),
-                  pullOnlyConnectorSubtask,
+                  subtask,
                   pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         }

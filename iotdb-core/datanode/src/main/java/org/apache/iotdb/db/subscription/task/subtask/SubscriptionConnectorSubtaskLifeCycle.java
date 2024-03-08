@@ -35,7 +35,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
 
   private final SubscriptionSubtaskExecutor executor;
 
-  private SubscriptionConnectorSubtask subtask;
+  private final SubscriptionConnectorSubtask subtask;
 
   private int runningTaskCount;
   private int registeredTaskCount;

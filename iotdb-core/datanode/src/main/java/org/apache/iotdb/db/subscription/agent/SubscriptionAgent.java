@@ -21,13 +21,13 @@ package org.apache.iotdb.db.subscription.agent;
 
 public class SubscriptionAgent {
 
-  private SubscriptionRpcAgent rpcAgent;
+  private final SubscriptionRpcAgent rpcAgent;
 
-  private SubscriptionConsumerAgent consumerAgent;
+  private final SubscriptionConsumerAgent consumerAgent;
 
-  private SubscriptionBrokerAgent brokerAgent;
+  private final SubscriptionBrokerAgent brokerAgent;
 
-  private SubscriptionTopicAgent topicAgent;
+  private final SubscriptionTopicAgent topicAgent;
 
   //////////////////////////// singleton ////////////////////////////
 

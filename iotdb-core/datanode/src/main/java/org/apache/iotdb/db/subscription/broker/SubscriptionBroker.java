@@ -41,6 +41,8 @@ public class SubscriptionBroker {
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
 
+  //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
+
   public List<ByteBuffer> poll(Set<String> topicNames) {
     List<ByteBuffer> serializedEnrichedTabletsList = new ArrayList<>();
     topicNameToPrefetchingQueue.forEach(
@@ -67,6 +69,8 @@ public class SubscriptionBroker {
     }
   }
 
+  /////////////////////////////// prefetching queue ///////////////////////////////
+
   public void bindPrefetchingQueue(
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
@@ -86,5 +90,14 @@ public class SubscriptionBroker {
     }
     // TODO: do something for events on-the-fly
     topicNameToPrefetchingQueue.remove(topicName);
+  }
+
+  public void prefetch(String topicName) {
+    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      // TODO: handle error
+      return;
+    }
+    prefetchingQueue.prefetch();
   }
 }

@@ -37,7 +37,9 @@ public class SubscriptionTopicAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   // TODO: sync from node-commons
-  private Map<String, TopicMeta> topicNameToTopicMeta = new ConcurrentHashMap<>();
+  private final Map<String, TopicMeta> topicNameToTopicMeta = new ConcurrentHashMap<>();
+
+  //////////////////////////// provided for subscription agent ////////////////////////////
 
   public void createTopic(TopicConfig topicConfig) {
     String topicName = topicConfig.getTopicName();
@@ -63,10 +65,6 @@ public class SubscriptionTopicAgent implements IService {
     // TODO: call CN rpc
   }
 
-  public boolean isTopicExist(String topicName) {
-    return topicNameToTopicMeta.containsKey(topicName);
-  }
-
   public void addSubscribedConsumerGroupID(String topicName, String consumerGroupID) {
     TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
     if (Objects.isNull(topicMeta)) {
@@ -76,7 +74,11 @@ public class SubscriptionTopicAgent implements IService {
     topicMeta.addSubscribedConsumerGroupID(consumerGroupID);
   }
 
-  //////////////////////////// singleton ////////////////////////////
+  public boolean isTopicExist(String topicName) {
+    return topicNameToTopicMeta.containsKey(topicName);
+  }
+
+  //////////////////////////// IService ////////////////////////////
 
   // TODO: fetch meta when started
   @Override

@@ -22,13 +22,15 @@ public class SubscriptionBrokerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBrokerAgent.class);
 
-  private Map<String, SubscriptionBroker> consumerGroupIDToSubscriptionBroker =
+  private final Map<String, SubscriptionBroker> consumerGroupIDToSubscriptionBroker =
       new ConcurrentHashMap<>();
 
   public void createSubscriptionBroker(String consumerGroupID) {
     consumerGroupIDToSubscriptionBroker.put(
         consumerGroupID, new SubscriptionBroker(consumerGroupID));
   }
+
+  //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<ByteBuffer> poll(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
@@ -52,6 +54,8 @@ public class SubscriptionBrokerAgent {
     broker.commit(topicNameToSubscriptionCommitIds);
   }
 
+  /////////////////////////////// prefetching queue ///////////////////////////////
+
   public void bindPrefetchingQueue(SubscriptionConnectorSubtask subtask) {
     String consumerGroupID = subtask.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
@@ -70,5 +74,15 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.unbindPrefetchingQueue(subtask.getTopicName());
+  }
+
+  public void prefetch(SubscriptionConnectorSubtask subtask) {
+    String consumerGroupID = subtask.getConsumerGroupID();
+    SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      return;
+    }
+    broker.prefetch(subtask.getTopicName());
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -52,8 +53,9 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   protected boolean executeOnce() {
-    // TODO: prefetch
-    return false;
+    SubscriptionAgent.broker().prefetch(this);
+    // always return true
+    return true;
   }
 
   public String getTopicName() {

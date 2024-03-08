@@ -25,8 +25,10 @@ public class SubscriptionConsumerAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
   // TODO: sync from node-commons
-  private Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta =
+  private final Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta =
       new ConcurrentHashMap<>();
+
+  //////////////////////////// provided for subscription agent ////////////////////////////
 
   public void createConsumer(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
@@ -110,7 +112,7 @@ public class SubscriptionConsumerAgent implements IService {
     return consumerGroupMeta.subscribedTopics(consumerClientID);
   }
 
-  //////////////////////////// singleton ////////////////////////////
+  //////////////////////////// IService ////////////////////////////
 
   // TODO: fetch meta when started
   @Override
