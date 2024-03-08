@@ -75,13 +75,17 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
   }
 
   private Map<TConsensusGroupId, Integer> constructGreedyDistribution() {
-    regionLeaderMap.clear();
     Map<Integer, Integer> leaderCounter = new TreeMap<>();
     regionReplicaSetMap.forEach(
         (regionGroupId, regionGroup) -> {
-          int minCount = Integer.MAX_VALUE, leaderId = -1;
+          int minCount = Integer.MAX_VALUE,
+              leaderId = regionLeaderMap.getOrDefault(regionGroupId, -1);
           for (TDataNodeLocation dataNodeLocation : regionGroup.getDataNodeLocations()) {
             int dataNodeId = dataNodeLocation.getDataNodeId();
+            if (disabledDataNodeSet.contains(dataNodeId)) {
+              continue;
+            }
+            // Select the DataNode with the minimal leader count as the new leader
             int count = leaderCounter.getOrDefault(dataNodeId, 0);
             if (count < minCount) {
               minCount = count;
@@ -91,6 +95,7 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
           regionLeaderMap.put(regionGroupId, leaderId);
           leaderCounter.merge(leaderId, 1, Integer::sum);
         });
+    return new ConcurrentHashMap<>(regionLeaderMap);
 
     //    /* Count the number of leaders that each DataNode have */
     //    // Map<DataNodeId, leader count>
@@ -172,8 +177,6 @@ public class GreedyLeaderBalancer implements ILeaderBalancer {
     //        regionLeaderMap.replace(regionGroupId, newLeaderId);
     //      }
     //    }
-
-    return new ConcurrentHashMap<>(regionLeaderMap);
   }
 
   private static class WeightEntry {

@@ -346,6 +346,7 @@ public class ConfigNodeDescriptor {
             .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
             .trim();
     if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || ILeaderBalancer.RANDOM_POLICY.equals(leaderDistributionPolicy)
         || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {

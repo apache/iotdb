@@ -28,6 +28,7 @@ import java.util.Set;
 public interface ILeaderBalancer {
 
   String GREEDY_POLICY = "GREEDY";
+  String RANDOM_POLICY = "RANDOM";
   String MIN_COST_FLOW_POLICY = "MIN_COST_FLOW";
 
   /**
