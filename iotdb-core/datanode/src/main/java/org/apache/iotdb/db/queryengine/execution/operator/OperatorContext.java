@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import io.airlift.units.Duration;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -51,6 +53,13 @@ public class OperatorContext {
 
   private long totalExecutionTimeInNanos = 0L;
   private long nextCalledCount = 0L;
+  private long hasNextCalledCount = 0L;
+
+  // SpecifiedInfo is used to record some custom information for the operator,
+  // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
+  private Map<String, String> specifiedInfo = null;
+  private long inputRows = 0;
+  private long estimatedMemorySize;
 
   public OperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
@@ -104,6 +113,10 @@ public class OperatorContext {
     return getInstanceContext().getSessionInfo();
   }
 
+  public PlanNodeId getPlanNodeId() {
+    return planNodeId;
+  }
+
   public void recordExecutionTime(long executionTimeInNanos) {
     this.totalExecutionTimeInNanos += executionTimeInNanos;
   }
@@ -112,12 +125,47 @@ public class OperatorContext {
     this.nextCalledCount++;
   }
 
+  public void recordHasNextCalled() {
+    this.hasNextCalledCount++;
+  }
+
   public long getTotalExecutionTimeInNanos() {
     return totalExecutionTimeInNanos;
   }
 
   public long getNextCalledCount() {
     return nextCalledCount;
+  }
+
+  public long getHasNextCalledCount() {
+    return hasNextCalledCount;
+  }
+
+  public void setEstimatedMemorySize(long estimatedMemorySize) {
+    this.estimatedMemorySize = estimatedMemorySize;
+  }
+
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
+  }
+
+  public void addInputRows(long inputRows) {
+    this.inputRows += inputRows;
+  }
+
+  public long getInputRows() {
+    return inputRows;
+  }
+
+  public void recordSpecifiedInfo(String key, String value) {
+    if (specifiedInfo == null) {
+      specifiedInfo = new HashMap<>();
+    }
+    specifiedInfo.put(key, value);
+  }
+
+  public Map<String, String> getSpecifiedInfo() {
+    return specifiedInfo == null ? new HashMap<>() : specifiedInfo;
   }
 
   @Override

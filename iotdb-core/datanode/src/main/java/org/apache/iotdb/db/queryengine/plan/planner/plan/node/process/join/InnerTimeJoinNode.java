@@ -67,13 +67,19 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
   // for logical planner, it will also be null
   private List<String> outputColumnNames;
 
-  public InnerTimeJoinNode(PlanNodeId id, Ordering mergeOrder) {
-    this(id, new ArrayList<>(), mergeOrder, null);
+  public InnerTimeJoinNode(PlanNodeId id, List<PlanNode> children, Ordering mergeOrder) {
+    this(id, children, mergeOrder, null, null);
   }
 
   public InnerTimeJoinNode(
-      PlanNodeId id, List<PlanNode> children, Ordering mergeOrder, List<Long> timePartitions) {
-    this(id, children, mergeOrder, timePartitions, null);
+      PlanNodeId id,
+      Ordering mergeOrder,
+      List<Long> timePartitions,
+      List<String> outputColumnNames) {
+    super(id);
+    this.mergeOrder = mergeOrder;
+    this.timePartitions = timePartitions;
+    this.outputColumnNames = outputColumnNames;
   }
 
   public InnerTimeJoinNode(
@@ -99,7 +105,8 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new InnerTimeJoinNode(getPlanNodeId(), getMergeOrder());
+    return new InnerTimeJoinNode(
+        getPlanNodeId(), getMergeOrder(), timePartitions, outputColumnNames);
   }
 
   @Override
@@ -108,7 +115,8 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrder(),
-        timePartitions);
+        timePartitions,
+        null);
   }
 
   @Override
@@ -179,7 +187,7 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
     List<Long> timePartitionIds = null;
     boolean hasTimePartitionIds = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasTimePartitionIds) {
-      int size = ReadWriteIOUtils.read(byteBuffer);
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
       timePartitionIds = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         timePartitionIds.add(ReadWriteIOUtils.readLong(byteBuffer));
@@ -188,7 +196,7 @@ public class InnerTimeJoinNode extends MultiChildProcessNode {
     List<String> outputColumnNames = null;
     boolean hasOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasOutputColumnNames) {
-      int size = ReadWriteIOUtils.read(byteBuffer);
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
       outputColumnNames = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));

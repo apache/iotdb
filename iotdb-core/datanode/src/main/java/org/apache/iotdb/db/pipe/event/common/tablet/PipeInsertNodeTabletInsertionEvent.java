@@ -127,6 +127,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
+      // Release the container's memory.
+      dataContainer = null;
       return true;
     } catch (Exception e) {
       LOGGER.warn(

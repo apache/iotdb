@@ -73,6 +73,10 @@ ALTER
     : A L T E R
     ;
 
+ANALYZE
+    : A N A L Y Z E
+    ;
+
 AND
     : A N D
     ;
@@ -870,6 +874,10 @@ VARIATION
     : V A R I A T I O N
     ;
 
+VERBOSE
+    : V E R B O S E
+    ;
+
 VERIFY
     : V E R I F Y
     ;
@@ -1015,6 +1023,10 @@ SCHEMA_REGION_GROUP_NUM
 
 DATA_REGION_GROUP_NUM
     : D A T A '_' R E G I O N '_' G R O U P '_' N U M
+    ;
+
+CURRENT_TIMESTAMP
+    : C U R R E N T '_' T I M E S T A M P
     ;
 
 /**

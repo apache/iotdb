@@ -206,7 +206,9 @@ public enum PlanNodeType {
   LEFT_OUTER_TIME_JOIN((short) 88),
   AGG_MERGE_SORT((short) 89),
 
-  PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 90),
+  EXPLAIN_ANALYZE((short) 90),
+
+  PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -435,6 +437,8 @@ public enum PlanNodeType {
       case 89:
         return AggregationMergeSortNode.deserialize(buffer);
       case 90:
+        return ExplainAnalyzeNode.deserialize(buffer);
+      case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
@@ -450,6 +454,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
       case 65:
         return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      case 32:
+        return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

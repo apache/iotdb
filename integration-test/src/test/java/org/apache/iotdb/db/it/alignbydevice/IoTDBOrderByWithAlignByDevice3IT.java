@@ -17,11 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.db.it.alignbydevice;
 
-public class MeasurementNotExistException extends RuntimeException {
+import org.apache.iotdb.it.env.EnvFactory;
 
-  public MeasurementNotExistException(String message) {
-    super(message);
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+public class IoTDBOrderByWithAlignByDevice3IT extends IoTDBOrderByWithAlignByDeviceIT {
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
+    EnvFactory.getEnv().initClusterEnvironment();
+    insertData();
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

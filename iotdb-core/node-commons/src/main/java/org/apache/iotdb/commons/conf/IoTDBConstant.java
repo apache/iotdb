@@ -102,6 +102,7 @@ public class IoTDBConstant {
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
+  public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
   public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
   public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";
@@ -221,7 +222,8 @@ public class IoTDBConstant {
               MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data" + File.separator + DN_ROLE;
+  public static final String CN_DEFAULT_DATA_DIR = "data" + File.separator + CN_ROLE;
+  public static final String DN_DEFAULT_DATA_DIR = "data" + File.separator + DN_ROLE;
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";

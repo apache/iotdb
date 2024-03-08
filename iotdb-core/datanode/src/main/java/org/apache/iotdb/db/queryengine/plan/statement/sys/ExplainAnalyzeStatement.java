@@ -20,43 +20,41 @@
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
-import java.util.Collections;
 import java.util.List;
 
-public class RepairDataStatement extends Statement implements IConfigStatement {
+public class ExplainAnalyzeStatement extends Statement {
 
-  private boolean onCluster;
+  private final QueryStatement queryStatement;
 
-  public RepairDataStatement(StatementType repairDataType) {
-    this.statementType = repairDataType;
+  private boolean verbose = false;
+
+  public ExplainAnalyzeStatement(QueryStatement queryStatement) {
+    this.queryStatement = queryStatement;
   }
 
-  public boolean isOnCluster() {
-    return onCluster;
+  public QueryStatement getQueryStatement() {
+    return queryStatement;
   }
 
-  public void setOnCluster(boolean onCluster) {
-    this.onCluster = onCluster;
+  public void setVerbose(boolean verbose) {
+    this.verbose = verbose;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return queryStatement.getPaths();
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitRepairData(this, context);
+    return visitor.visitExplainAnalyze(this, context);
   }
 }

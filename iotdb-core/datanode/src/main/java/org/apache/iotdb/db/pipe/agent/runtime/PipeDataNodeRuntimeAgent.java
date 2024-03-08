@@ -35,9 +35,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -47,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataNodeRuntimeAgent implements IService {
 
@@ -55,7 +51,6 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-  private final AtomicReference<String> clusterId = new AtomicReference<>(null);
 
   private final PipeSchemaRegionListenerManager regionListenerManager =
       new PipeSchemaRegionListenerManager();
@@ -112,22 +107,6 @@ public class PipeDataNodeRuntimeAgent implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.PIPE_RUNTIME_DATA_NODE_AGENT;
-  }
-
-  public String getClusterIdIfPossible() {
-    if (clusterId.get() == null) {
-      synchronized (clusterId) {
-        if (clusterId.get() == null) {
-          try (final ConfigNodeClient configNodeClient =
-              ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-            clusterId.set(configNodeClient.getClusterId().getClusterId());
-          } catch (Exception e) {
-            LOGGER.warn("Unable to get clusterId, because: {}", e.getMessage(), e);
-          }
-        }
-      }
-    }
-    return clusterId.get();
   }
 
   ////////////////////// Region Listener //////////////////////

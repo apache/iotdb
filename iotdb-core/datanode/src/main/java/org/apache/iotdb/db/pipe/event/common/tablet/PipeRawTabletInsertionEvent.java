@@ -36,10 +36,10 @@ import java.util.function.BiConsumer;
 
 public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
-  private final Tablet tablet;
+  private Tablet tablet;
   private final boolean isAligned;
 
-  private final EnrichedEvent sourceEvent;
+  private EnrichedEvent sourceEvent;
   private boolean needToReport;
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
@@ -106,6 +106,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     allocatedMemoryBlock.close();
+    // Actually release the occupied memory.
+    tablet = null;
+    sourceEvent = null;
+    dataContainer = null;
     return true;
   }
 

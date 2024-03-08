@@ -49,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
-import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -110,8 +109,6 @@ public class QueryExecution implements IQueryExecution {
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
 
-  private final List<PlanOptimizer> planOptimizers;
-
   private final Statement rawStatement;
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
@@ -167,7 +164,6 @@ public class QueryExecution implements IQueryExecution {
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
-    this.planOptimizers = new ArrayList<>();
     this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
@@ -314,7 +310,9 @@ public class QueryExecution implements IQueryExecution {
     try {
       result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(System.nanoTime() - startTime);
+      long analyzeCost = System.nanoTime() - startTime;
+      context.setAnalyzeCost(analyzeCost);
+      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
     }
     return result;
   }
@@ -356,7 +354,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
+    LogicalPlanner planner = new LogicalPlanner(this.context);
     this.logicalPlan = planner.plan(this.analysis);
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
@@ -373,8 +371,9 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      long distributionPlanCost = System.nanoTime() - startTime;
+      context.setDistributionPlanCost(distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
@@ -779,7 +778,15 @@ public class QueryExecution implements IQueryExecution {
     return analysis.getStatement();
   }
 
+  public MPPQueryContext getContext() {
+    return context;
+  }
+
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
+  }
+
+  public ScheduledExecutorService getScheduledExecutor() {
+    return scheduledExecutor;
   }
 }

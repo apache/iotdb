@@ -798,8 +798,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus repairData() {
-    return configManager.repairData();
+  public TSStatus startRepairData() {
+    return configManager.startRepairData();
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return configManager.stopRepairData();
   }
 
   @Override

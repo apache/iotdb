@@ -108,7 +108,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> repairData(boolean onCluster);
+  SettableFuture<ConfigTaskResult> startRepairData(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> stopRepairData(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
