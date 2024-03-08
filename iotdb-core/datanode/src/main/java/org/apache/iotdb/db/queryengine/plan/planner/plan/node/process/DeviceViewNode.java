@@ -52,7 +52,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
   private final List<String> devices = new ArrayList<>();
 
   // Device column and measurement columns in result output
-  private final List<String> outputColumnNames;
+  private List<String> outputColumnNames;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
@@ -112,6 +112,10 @@ public class DeviceViewNode extends MultiChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   @Override

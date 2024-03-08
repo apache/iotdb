@@ -252,6 +252,11 @@ public class LastValueAccumulator implements Accumulator {
     return lastValue.getDataType();
   }
 
+  @Override
+  public int getPartialResultSize() {
+    return 2;
+  }
+
   protected void addIntInput(Column[] column, BitMap bitMap, int lastIndex) {
     for (int i = 0; i <= lastIndex; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
