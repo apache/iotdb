@@ -28,17 +28,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionBroker {
 
   private final String brokerID; // consumer group ID
 
-  private final TreeMap<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
+  private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
   public SubscriptionBroker(String brokerID) {
     this.brokerID = brokerID;
-    this.topicNameToPrefetchingQueue = new TreeMap<>();
+    this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
 
   public List<ByteBuffer> poll(Set<String> topicNames) {

@@ -32,13 +32,12 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public class EnrichedTabletsBinaryCache {
 
   private final PipeMemoryBlock allocatedMemoryBlock;
 
-  private final LoadingCache<Long, Pair<ByteBuffer, List<EnrichedEvent>>> cache;
+  private final LoadingCache<Long, Pair<ByteBuffer, EnrichedEvent>> cache;
 
   public EnrichedTabletsBinaryCache() {
     // TODO: config
@@ -48,12 +47,12 @@ public class EnrichedTabletsBinaryCache {
         Caffeine.newBuilder()
             .maximumWeight(this.allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                (Weigher<Long, Pair<ByteBuffer, List<EnrichedEvent>>>)
+                (Weigher<Long, Pair<ByteBuffer, EnrichedEvent>>)
                     (id, enrichedTablets) -> enrichedTablets.left.limit())
             .build(
-                new CacheLoader<Long, Pair<ByteBuffer, List<EnrichedEvent>>>() {
+                new CacheLoader<Long, Pair<ByteBuffer, EnrichedEvent>>() {
                   @Override
-                  public @Nullable Pair<ByteBuffer, List<EnrichedEvent>> load(@NonNull Long aLong)
+                  public @Nullable Pair<ByteBuffer, EnrichedEvent> load(@NonNull Long aLong)
                       throws Exception {
                     return null;
                   }

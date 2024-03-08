@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionConn
 import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionProcessorSubtaskExecutor;
+import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;
 
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
@@ -38,6 +39,8 @@ public class PipeSubtaskExecutorManager {
   private final PipeAssignerSubtaskExecutor schemaRegionAssignerExecutor;
   private final PipeProcessorSubtaskExecutor schemaRegionProcessorExecutor;
   private final PipeConnectorSubtaskExecutor schemaRegionConnectorExecutor;
+
+  private final SubscriptionSubtaskExecutor subscriptionSubtaskExecutor;
 
   public PipeAssignerSubtaskExecutor getDataRegionAssignerExecutor() {
     throw new UnsupportedOperationException("currently not needed");
@@ -63,6 +66,10 @@ public class PipeSubtaskExecutorManager {
     return schemaRegionConnectorExecutor;
   }
 
+  public SubscriptionSubtaskExecutor getSubscriptionSubtaskExecutor() {
+    return subscriptionSubtaskExecutor;
+  }
+
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
@@ -73,6 +80,8 @@ public class PipeSubtaskExecutorManager {
     schemaRegionAssignerExecutor = null;
     schemaRegionProcessorExecutor = new PipeSchemaRegionProcessorSubtaskExecutor();
     schemaRegionConnectorExecutor = new PipeSchemaRegionConnectorSubtaskExecutor();
+
+    subscriptionSubtaskExecutor = new SubscriptionSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {

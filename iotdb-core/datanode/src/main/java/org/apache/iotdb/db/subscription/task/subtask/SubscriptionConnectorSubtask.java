@@ -17,35 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.subscription.task.subtask;
+package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipePullOnlyConnectorSubtask {
-
-  private final String taskID;
-
-  private final long creationTime;
-
-  private BoundedBlockingPendingQueue<Event> inputPendingQueue;
+public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   private final String topicName;
 
   private final String consumerGroupID;
 
-  public PipePullOnlyConnectorSubtask(
+  public SubscriptionConnectorSubtask(
       String taskID,
       long creationTime,
+      String attributeSortedString,
+      int connectorIndex,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
+      PipeConnector outputPipeConnector,
       String topicName,
       String consumerGroupID) {
-    this.taskID = taskID;
-    this.creationTime = creationTime;
-    this.inputPendingQueue = inputPendingQueue;
+    super(
+        taskID,
+        creationTime,
+        attributeSortedString,
+        connectorIndex,
+        inputPendingQueue,
+        outputPipeConnector);
     this.topicName = topicName;
     this.consumerGroupID = consumerGroupID;
-    // TODO: metrics
+  }
+
+  @Override
+  protected boolean executeOnce() {
+    // TODO: prefetch
+    return false;
   }
 
   public String getTopicName() {

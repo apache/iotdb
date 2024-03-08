@@ -4,8 +4,8 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtask;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 
 import org.slf4j.Logger;
@@ -52,24 +52,23 @@ public class SubscriptionBrokerAgent {
     broker.commit(topicNameToSubscriptionCommitIds);
   }
 
-  public void bindPrefetchingQueue(PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask) {
-    String consumerGroupID = pullOnlyConnectorSubtask.getConsumerGroupID();
+  public void bindPrefetchingQueue(SubscriptionConnectorSubtask subtask) {
+    String consumerGroupID = subtask.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
       return;
     }
-    broker.bindPrefetchingQueue(
-        pullOnlyConnectorSubtask.getTopicName(), pullOnlyConnectorSubtask.getInputPendingQueue());
+    broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }
 
-  public void unbindPrefetchingQueue(PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask) {
-    String consumerGroupID = pullOnlyConnectorSubtask.getConsumerGroupID();
+  public void unbindPrefetchingQueue(SubscriptionConnectorSubtask subtask) {
+    String consumerGroupID = subtask.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
       return;
     }
-    broker.unbindPrefetchingQueue(pullOnlyConnectorSubtask.getTopicName());
+    broker.unbindPrefetchingQueue(subtask.getTopicName());
   }
 }

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -37,15 +36,12 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriptionPrefetchingQueue {
+public class SubscriptionPrefetchingQueue implements Runnable {
 
   private final String brokerID; // consumer group ID
 
@@ -53,13 +49,7 @@ public class SubscriptionPrefetchingQueue {
 
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private final Deque<TabletInsertionEvent> prefetchingTabletInsertionEvents;
-
-  private final Deque<TsFileInsertionEvent> prefetchingTsFileInsertionEvent;
-
   private final Map<String, EnrichedEvent> uncommittedEvents;
-
-  private final AtomicLong idGenerator = new AtomicLong(0);
 
   private final ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>> prefetchingQueue;
 
@@ -68,14 +58,19 @@ public class SubscriptionPrefetchingQueue {
     this.brokerID = brokerID;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
-    this.prefetchingTabletInsertionEvents = new LinkedList<>();
-    this.prefetchingTsFileInsertionEvent = new LinkedList<>();
-    this.uncommittedEvents = new HashMap<>();
+    this.uncommittedEvents = new ConcurrentHashMap<>();
     this.prefetchingQueue = new ConcurrentIterableLinkedQueue<>();
   }
 
+  @Override
+  public void run() {}
+
+  public void executeOnce() {
+    prefetchOnce(16);
+    serialize();
+  }
+
   public ByteBuffer fetch() {
-    // TODO: async
     prefetchOnce(16);
     serialize();
 
@@ -84,15 +79,16 @@ public class SubscriptionPrefetchingQueue {
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
       if (Objects.nonNull(enrichedTablets = iter.next(1000))) {
-        prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
         if (Objects.isNull(enrichedTablets.left)) {
           try {
+            prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
             return PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
           } catch (IOException e) {
             // TODO: logger warn
             return null;
           }
         }
+        prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
         return enrichedTablets.left;
       }
     }
@@ -173,13 +169,15 @@ public class SubscriptionPrefetchingQueue {
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
-      if (Objects.nonNull(enrichedTablets = iter.next(1000))
-          && Objects.isNull(enrichedTablets.left)) {
-        try {
-          enrichedTablets.left =
-              PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
-        } catch (IOException e) {
-          // TODO: logger warn
+      // TODO: memory control
+      while (Objects.nonNull(enrichedTablets = iter.next(1000))) {
+        if (Objects.isNull(enrichedTablets.left)) {
+          try {
+            enrichedTablets.left =
+                PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
+          } catch (IOException e) {
+            // TODO: logger warn
+          }
         }
       }
     }

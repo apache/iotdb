@@ -27,10 +27,11 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
-import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtask;
-import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtaskLifeCycle;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtaskLifeCycle;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -44,7 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.PULL_ONLY_SINK;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.SUBSCRIPTION_SINK;
 
 public class PipeConnectorSubtaskManager {
 
@@ -74,7 +75,7 @@ public class PipeConnectorSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final int connectorNum;
-      if (!PULL_ONLY_SINK.getPipePluginName().equals(connectorKey)) {
+      if (!SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey)) {
         connectorNum =
             pipeConnectorParameters.getIntOrDefault(
                 Arrays.asList(
@@ -111,7 +112,7 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-        if (!PULL_ONLY_SINK.getPipePluginName().equals(connectorKey)) {
+        if (!SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey)) {
           final PipeConnectorSubtask pipeConnectorSubtask =
               new PipeConnectorSubtask(
                   String.format(
@@ -131,17 +132,23 @@ public class PipeConnectorSubtaskManager {
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_TOPIC_KEY);
           final String consumerGroupID =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
-          final PipePullOnlyConnectorSubtask pullOnlyConnectorSubtask =
-              new PipePullOnlyConnectorSubtask(
+          final SubscriptionConnectorSubtask pullOnlyConnectorSubtask =
+              new SubscriptionConnectorSubtask(
                   String.format(
                       "%s_%s_%s",
                       attributeSortedString, environment.getCreationTime(), connectorIndex),
                   environment.getCreationTime(),
+                  attributeSortedString,
+                  connectorIndex,
                   pendingQueue,
+                  pipeConnector,
                   topicName,
                   consumerGroupID);
           final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-              new PipePullOnlyConnectorSubtaskLifeCycle(pullOnlyConnectorSubtask, pendingQueue);
+              new SubscriptionConnectorSubtaskLifeCycle(
+                  PipeSubtaskExecutorManager.getInstance().getSubscriptionSubtaskExecutor(),
+                  pullOnlyConnectorSubtask,
+                  pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         }
       }

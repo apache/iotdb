@@ -54,7 +54,7 @@ public class PipeConnectorSubtask extends PipeDataNodeSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
   // For input and output
-  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
