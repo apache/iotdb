@@ -79,7 +79,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.read(dst);
     } catch (ClosedByInterruptException e) {
-      logger.info(
+      logger.warn(
           "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
       return -1;
     } catch (IOException e) {
@@ -93,7 +93,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.read(dst, position);
     } catch (ClosedByInterruptException e) {
-      logger.info(
+      logger.warn(
           "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
       return -1;
     } catch (IOException e) {
