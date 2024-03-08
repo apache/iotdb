@@ -23,12 +23,9 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
-import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -67,11 +64,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       return;
     }
 
-    // Try open the queue if it is the first task
-    if (PipeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId) == 1) {
-      SchemaRegionConsensusImpl.getInstance()
-          .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
-    }
+    //    // Try open the queue if it is the first task
+    //    if (PipeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId) == 1) {
+    //      SchemaRegionConsensusImpl.getInstance()
+    //          .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
+    //    }
 
     super.start();
   }
@@ -114,11 +111,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     }
     super.close();
 
-    if (!listenedTypeSet.isEmpty()) {
-      // TODO: check me
-      // The queue is not closed here, and is closed iff the PipeMetaKeeper
-      // has no schema pipe after one successful sync
-      PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
-    }
+    //    if (!listenedTypeSet.isEmpty()) {
+    //      // TODO: check me
+    //      // The queue is not closed here, and is closed iff the PipeMetaKeeper
+    //      // has no schema pipe after one successful sync
+    //      PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+    //    }
   }
 }

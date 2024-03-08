@@ -31,10 +31,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
@@ -45,8 +43,6 @@ import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeTaskBuilder;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -209,15 +205,17 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             schemaRegionId -> {
               if (!validSchemaRegionIds.contains(schemaRegionId.getId())
                   && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
-                try {
-                  SchemaRegionConsensusImpl.getInstance()
-                      .write(
-                          schemaRegionId,
-                          new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                } catch (ConsensusException e) {
-                  throw new PipeException(
-                      "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
-                }
+                //                try {
+                //                  SchemaRegionConsensusImpl.getInstance()
+                //                      .write(
+                //                          schemaRegionId,
+                //                          new PipeOperateSchemaQueueNode(new PlanNodeId(""),
+                // false));
+                //                } catch (ConsensusException e) {
+                //                  throw new PipeException(
+                //                      "Failed to close listening queue for SchemaRegion " +
+                // schemaRegionId, e);
+                //                }
               }
             });
   }

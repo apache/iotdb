@@ -82,6 +82,10 @@ public class PipeSchemaRegionListenerManager {
 
     private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
 
+    private PipeSchemaRegionListener() {
+      listeningQueue.open();
+    }
+
     /**
      * Get leader ready state, DO NOT use consensus layer's leader ready flag because
      * SimpleConsensus' ready flag is always {@code true}. Note that this flag has nothing to do

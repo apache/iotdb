@@ -55,6 +55,10 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     // TODO: clean sender (connector) hardlink snapshot dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
+    if (!regionListener.listener().isOpened()) {
+      regionListener.listener().open();
+    }
+
     isShutdown.set(false);
     LOGGER.info("PipeRuntimeConfigNodeAgent started");
   }
