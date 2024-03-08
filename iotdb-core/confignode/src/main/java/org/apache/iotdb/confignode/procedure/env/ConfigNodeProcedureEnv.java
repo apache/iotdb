@@ -568,13 +568,15 @@ public class ConfigNodeProcedureEnv {
    */
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    long currentTime = System.currentTimeMillis();
+    long currentTime = System.nanoTime();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
         (dataNodeId, regionStatus) ->
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // force balance region leader to skip waiting for leader election
+    getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
     getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }

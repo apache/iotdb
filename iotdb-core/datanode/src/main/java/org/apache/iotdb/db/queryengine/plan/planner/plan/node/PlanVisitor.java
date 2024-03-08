@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedC
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -125,12 +127,16 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  public R visitSeriesScanSource(SeriesScanSourceNode node, C context) {
     return visitSourceNode(node, context);
   }
 
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitSeriesScanSource(node, context);
+  }
+
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
-    return visitSourceNode(node, context);
+    return visitSeriesScanSource(node, context);
   }
 
   public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
@@ -228,6 +234,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeviceView(DeviceViewNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitAggregationMergeSort(AggregationMergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 

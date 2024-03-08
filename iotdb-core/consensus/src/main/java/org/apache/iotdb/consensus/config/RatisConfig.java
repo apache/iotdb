@@ -821,7 +821,6 @@ public class RatisConfig {
     private final int clientMaxRetryAttempt;
     private final long clientRetryInitialSleepTimeMs;
     private final long clientRetryMaxSleepTimeMs;
-    private final int coreClientNumForEachNode;
     private final int maxClientNumForEachNode;
 
     public Client(
@@ -829,13 +828,11 @@ public class RatisConfig {
         int clientMaxRetryAttempt,
         long clientRetryInitialSleepTimeMs,
         long clientRetryMaxSleepTimeMs,
-        int coreClientNumForEachNode,
         int maxClientNumForEachNode) {
       this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
       this.clientMaxRetryAttempt = clientMaxRetryAttempt;
       this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
       this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
-      this.coreClientNumForEachNode = coreClientNumForEachNode;
       this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
@@ -855,10 +852,6 @@ public class RatisConfig {
       return clientRetryMaxSleepTimeMs;
     }
 
-    public int getCoreClientNumForEachNode() {
-      return coreClientNumForEachNode;
-    }
-
     public int getMaxClientNumForEachNode() {
       return maxClientNumForEachNode;
     }
@@ -873,9 +866,6 @@ public class RatisConfig {
       private int clientMaxRetryAttempt = 10;
       private long clientRetryInitialSleepTimeMs = 100;
       private long clientRetryMaxSleepTimeMs = 10000;
-
-      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
-
       private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public Client build() {
@@ -884,7 +874,6 @@ public class RatisConfig {
             clientMaxRetryAttempt,
             clientRetryInitialSleepTimeMs,
             clientRetryMaxSleepTimeMs,
-            coreClientNumForEachNode,
             maxClientNumForEachNode);
       }
 
@@ -905,11 +894,6 @@ public class RatisConfig {
 
       public Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
         this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
-        return this;
-      }
-
-      public Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-        this.coreClientNumForEachNode = coreClientNumForEachNode;
         return this;
       }
 

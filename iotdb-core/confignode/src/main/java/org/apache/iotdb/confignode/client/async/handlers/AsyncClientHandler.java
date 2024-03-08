@@ -233,6 +233,8 @@ public class AsyncClientHandler<Q, R> {
       case FULL_MERGE:
       case FLUSH:
       case CLEAR_CACHE:
+      case START_REPAIR_DATA:
+      case STOP_REPAIR_DATA:
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
       case UPDATE_REGION_ROUTE_MAP:

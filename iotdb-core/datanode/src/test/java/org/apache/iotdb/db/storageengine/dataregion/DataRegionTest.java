@@ -1099,6 +1099,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the sequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushSeqMemTable();
 
     // wait until memtable flush task is done
@@ -1154,6 +1156,8 @@ public class DataRegionTest {
     FlushManager flushManager = FlushManager.getInstance();
 
     // flush the unsequence memtable
+    tsFileProcessor.getWorkMemTable().getUpdateTime();
+    Thread.sleep(500);
     dataRegion.timedFlushUnseqMemTable();
 
     // wait until memtable flush task is done

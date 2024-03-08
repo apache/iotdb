@@ -67,11 +67,12 @@ public class GroupByTagNodeSerdeTest {
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
             1,
             Collections.emptyMap(),
-            new FunctionExpression(
-                "max_time",
-                new LinkedHashMap<>(),
-                Collections.singletonList(
-                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+            Collections.singletonList(
+                new FunctionExpression(
+                    "max_time",
+                    new LinkedHashMap<>(),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))));
     CrossSeriesAggregationDescriptor s1Avg =
         new CrossSeriesAggregationDescriptor(
             TAggregationType.AVG.name().toLowerCase(),
@@ -79,11 +80,12 @@ public class GroupByTagNodeSerdeTest {
             Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))),
             1,
             Collections.emptyMap(),
-            new FunctionExpression(
-                "avg",
-                new LinkedHashMap<>(),
-                Collections.singletonList(
-                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+            Collections.singletonList(
+                new FunctionExpression(
+                    "avg",
+                    new LinkedHashMap<>(),
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))));
     AggregationDescriptor s1MaxTimePartial =
         new AggregationDescriptor(
             TAggregationType.MAX_TIME.name().toLowerCase(),

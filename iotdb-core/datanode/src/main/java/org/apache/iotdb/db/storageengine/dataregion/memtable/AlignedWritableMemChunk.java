@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -59,8 +57,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
-
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
@@ -399,7 +395,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                         tsDataType == TSDataType.TEXT
                             ? list.getBinaryByValueIndex(sortedRowIndex, columnIndex)
                             : null,
-                        CONFIG.isEnableMemControl());
+                        true);
                 CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
               }
               continue;

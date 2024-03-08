@@ -27,23 +27,23 @@ import org.apache.iotdb.pipe.api.event.Event;
 /**
  * PipeSource
  *
- * <p>PipeSource is responsible for capturing events from sources.
+ * <p>{@link PipeSource} is responsible for capturing {@link Event}s from sources.
  *
- * <p>Various data sources can be supported by implementing different PipeSource classes.
+ * <p>Various data sources can be supported by implementing different {@link PipeSource} classes.
  *
- * <p>The lifecycle of a PipeSource is as follows:
+ * <p>The lifecycle of a {@link PipeSource} is as follows:
  *
  * <ul>
  *   <li>When a collaboration task is created, the KV pairs of `WITH EXTRACTOR` clause in SQL are
  *       parsed and the validation method {@link PipeSource#validate(PipeParameterValidator)} will
- *       be called to validate the parameters.
+ *       be called to validate the {@link PipeParameters}.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)} will be called to
- *       config the runtime behavior of the PipeSource.
- *   <li>Then the method {@link PipeSource#start()} will be called to start the PipeSource.
+ *       configure the runtime behavior of the {@link PipeSource}.
+ *   <li>Then the method {@link PipeSource#start()} will be called to start the {@link PipeSource}.
  *   <li>While the collaboration task is in progress, the method {@link PipeSource#supply()} will be
- *       called to capture events from sources and then the events will be passed to the
- *       PipeProcessor.
+ *       called to capture {@link Event}s from sources and then the {@link Event}s will be passed to
+ *       the {@link PipeProcessor}.
  *   <li>The method {@link PipeSource#close()} will be called when the collaboration task is
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
@@ -55,32 +55,32 @@ public interface PipeSource extends PipeExtractor {
    * PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)} is called.
    *
    * @param validator the validator used to validate {@link PipeParameters}
-   * @throws Exception if any parameter is not valid
+   * @throws Exception if any {@link PipeParameters} is invalid
    */
   void validate(PipeParameterValidator validator) throws Exception;
 
   /**
-   * This method is mainly used to customize PipeSource. In this method, the user can do the
+   * This method is mainly used to customize {@link PipeSource}. In this method, the user can do the
    * following things:
    *
    * <ul>
-   *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in PipeSourceRuntimeConfiguration.
+   *   <li>Use {@link PipeParameters} to parse key-value pair attributes entered by the user.
+   *   <li>Set the running configurations in {@link PipeSourceRuntimeConfiguration}.
    * </ul>
    *
    * <p>This method is called after the method {@link PipeSource#validate(PipeParameterValidator)}
    * is called.
    *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configuration used to set the required properties of the running PipeSource
+   * @param parameters used to parse the input {@link PipeParameters} entered by the user
+   * @param configuration used to set the required properties of the running {@link PipeSource}
    * @throws Exception the user can throw errors if necessary
    */
   void customize(PipeParameters parameters, PipeSourceRuntimeConfiguration configuration)
       throws Exception;
 
   /**
-   * Start the extractor. After this method is called, events should be ready to be supplied by
-   * {@link PipeSource#supply()}. This method is called after {@link
+   * Start the {@link PipeSource}. After this method is called, {@link Event}s should be ready to be
+   * supplied by {@link PipeSource#supply()}. This method is called after {@link
    * PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)} is called.
    *
    * @throws Exception the user can throw errors if necessary
@@ -88,11 +88,13 @@ public interface PipeSource extends PipeExtractor {
   void start() throws Exception;
 
   /**
-   * Supply single event from the extractor and the caller will send the event to the processor.
-   * This method is called after {@link PipeSource#start()} is called.
+   * Supply single {@link Event} from the {@link PipeSource} and the caller will send the {@link
+   * Event} to the {@link PipeProcessor}. This method is called after {@link PipeSource#start()} is
+   * called.
    *
-   * @return the event to be supplied. the event may be null if the extractor has no more events at
-   *     the moment, but the extractor is still running for more events.
+   * @return the {@link Event} to be supplied. the {@link Event} may be {@code null} if the {@link
+   *     PipeSource} has no more {@link Event}s at the moment, but the {@link PipeSource} is still
+   *     running for more {@link Event}s.
    * @throws Exception the user can throw errors if necessary
    */
   Event supply() throws Exception;

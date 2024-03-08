@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -78,7 +79,8 @@ public class LeftOuterTimeJoinNode extends TwoChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    List<String> outputColumnNames = leftChild.getOutputColumnNames();
+    List<String> outputColumnNames = new ArrayList<>();
+    outputColumnNames.addAll(leftChild.getOutputColumnNames());
     outputColumnNames.addAll(rightChild.getOutputColumnNames());
     return outputColumnNames;
   }

@@ -31,11 +31,11 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSeriali
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -48,7 +48,7 @@ public class QueryContext {
    * Modifications, and we do not want it to create multiple copies within a query.
    */
   private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
-      new HashMap<>();
+      new ConcurrentHashMap<>();
 
   protected long queryId;
 
@@ -59,7 +59,7 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
-  private final Set<TsFileID> nonExistentModFiles = new HashSet<>();
+  private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   public QueryContext() {}
 
@@ -92,14 +92,16 @@ public class QueryContext {
     }
 
     PatternTreeMap<Modification, ModsSerializer> allModifications =
-        fileModCache.get(modFile.getFilePath());
-    if (allModifications == null) {
-      allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : modFile.getModificationsIter()) {
-        allModifications.append(modification.getPath(), modification);
-      }
-      fileModCache.put(modFile.getFilePath(), allModifications);
-    }
+        fileModCache.computeIfAbsent(
+            modFile.getFilePath(),
+            k -> {
+              PatternTreeMap<Modification, ModsSerializer> modifications =
+                  PatternTreeMapFactory.getModsPatternTreeMap();
+              for (Modification modification : modFile.getModificationsIter()) {
+                modifications.append(modification.getPath(), modification);
+              }
+              return modifications;
+            });
     return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 

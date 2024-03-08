@@ -58,6 +58,9 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -94,6 +97,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
@@ -200,6 +205,7 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
+              recoverRepairData();
               setAllSgReady(true);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
@@ -330,8 +336,7 @@ public class StorageEngine implements IService {
   public void stop() {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
       }
     }
     syncCloseAllProcessor();
@@ -349,8 +354,9 @@ public class StorageEngine implements IService {
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        if (dataRegion != null) {
+          CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
+        }
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -505,6 +511,71 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     dataRegionMap.values().forEach(DataRegion::compact);
+  }
+
+  /**
+   * check and repair unsorted data by compaction.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public boolean repairData() throws StorageEngineException {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    if (!CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart()) {
+      return false;
+    }
+    LOGGER.info("start repair data");
+    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
+    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, false));
+    return true;
+  }
+
+  /**
+   * stop repair data by interrupt
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void stopRepairData() throws StorageEngineException {
+    CompactionScheduleTaskManager.RepairDataTaskManager repairDataTaskManager =
+        CompactionScheduleTaskManager.getRepairTaskManagerInstance();
+    if (!CompactionScheduleTaskManager.getRepairTaskManagerInstance().hasRunningRepairTask()) {
+      return;
+    }
+    LOGGER.info("stop repair data");
+    try {
+      repairDataTaskManager.markRepairTaskStopping();
+      repairDataTaskManager.abortRepairTask();
+    } catch (IOException ignored) {
+    }
+  }
+
+  /** recover the progress of unfinished repair schedule task */
+  public void recoverRepairData() {
+    List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
+    String repairLogDirPath =
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+            + File.separator
+            + RepairLogger.repairLogDir;
+    File repairLogDir = new File(repairLogDirPath);
+    if (!repairLogDir.exists() || !repairLogDir.isDirectory()) {
+      return;
+    }
+    File[] files = repairLogDir.listFiles();
+    List<File> fileList =
+        Stream.of(files == null ? new File[0] : files)
+            .filter(
+                f -> {
+                  String fileName = f.getName();
+                  return f.isFile()
+                      && (RepairLogger.repairProgressFileName.equals(fileName)
+                          || RepairLogger.repairProgressStoppedFileName.equals(fileName));
+                })
+            .collect(Collectors.toList());
+    if (!fileList.isEmpty()) {
+      CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
+      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, true));
+    }
   }
 
   public void operateFlush(TFlushReq req) {

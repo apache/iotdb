@@ -90,7 +90,6 @@ public class TemplatedLogicalPlan {
 
   private void initCommonVariables() {
     if (whereExpression != null) {
-
       if (!analysis.isTemplateWildCardQuery()) {
         newMeasurementList = new ArrayList<>(measurementList);
         newSchemaList = new ArrayList<>(schemaList);
@@ -129,7 +128,6 @@ public class TemplatedLogicalPlan {
                 newSchemaList.stream()
                     .map(IMeasurementSchema::getType)
                     .collect(Collectors.toList()),
-                new HashSet<>(newMeasurementList),
                 queryStatement.getResultTimeOrder(),
                 analysis.isLastLevelUseWildcard(),
                 analysis.getDeviceViewOutputExpressions().stream()
@@ -139,9 +137,10 @@ public class TemplatedLogicalPlan {
                 OFFSET_VALUE,
                 limitValue,
                 whereExpression,
-                queryStatement.getSelectComponent().getZoneId(),
+                queryStatement.isGroupByTime(),
                 analysis.getDeviceTemplate().getSchemaMap(),
-                filterLayoutMap));
+                filterLayoutMap,
+                null));
   }
 
   public PlanNode visitQuery() {
@@ -209,7 +208,6 @@ public class TemplatedLogicalPlan {
             .planFilter(
                 whereExpression,
                 queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
                 queryStatement.getResultTimeOrder());
 
     return planBuilder.getRoot();

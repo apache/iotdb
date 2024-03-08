@@ -77,6 +77,7 @@ public class CompactionUtils {
     switch (type) {
       case INNER_UNSEQ:
       case INNER_SEQ:
+      case REPAIR:
         return IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX;
       case CROSS:
         return IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;

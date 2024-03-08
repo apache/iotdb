@@ -24,5 +24,6 @@ public enum CompactionTaskType {
   INNER_UNSEQ,
   CROSS,
   INSERTION,
-  SETTLE
+  SETTLE,
+  REPAIR
 }

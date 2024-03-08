@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.MemoryManager.STATUS.ITERATE_NEW_BUFFER;
+import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.MemoryManager.STATUS.ITERATE_UPDATE_BUFFER;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
@@ -292,13 +294,14 @@ public class MemoryManager implements IMemoryManager {
   private class VolatileSubtreeIterator implements Iterator<ICachedMNode> {
 
     private final ICachedMNodeContainer container;
-    private final Iterator<ICachedMNode> bufferedNodeIterator;
-
+    private Iterator<ICachedMNode> bufferedNodeIterator;
+    private STATUS status;
     private ICachedMNode nextSubtree = null;
 
     private VolatileSubtreeIterator(ICachedMNodeContainer container) {
       this.container = container;
-      this.bufferedNodeIterator = container.getChildrenBufferIterator();
+      this.bufferedNodeIterator = container.getNewChildFlushingBuffer().values().iterator();
+      this.status = ITERATE_NEW_BUFFER;
     }
 
     @Override
@@ -322,7 +325,16 @@ public class MemoryManager implements IMemoryManager {
     private void tryGetNext() {
       ICachedMNode node;
       CacheEntry cacheEntry;
-      while (bufferedNodeIterator.hasNext()) {
+      while (bufferedNodeIterator.hasNext() || status == ITERATE_NEW_BUFFER) {
+        if (!bufferedNodeIterator.hasNext()) {
+          // flushingBuffer of NewChildBuffer has been traversed, and the flushingBuffer of
+          // UpdateChildBuffer needs to be traversed.
+          bufferedNodeIterator = container.getUpdatedChildFlushingBuffer().values().iterator();
+          status = ITERATE_UPDATE_BUFFER;
+          if (!bufferedNodeIterator.hasNext()) {
+            return;
+          }
+        }
         node = bufferedNodeIterator.next();
 
         // prevent this node being added buffer during the following check and potential flush
@@ -338,9 +350,30 @@ public class MemoryManager implements IMemoryManager {
           cacheEntry = getCacheEntry(node);
 
           synchronized (cacheEntry) {
+            if (status == ITERATE_UPDATE_BUFFER
+                && container.getUpdatedChildReceivingBuffer().containsKey(node.getName())) {
+              if (cacheEntry.hasVolatileDescendant()
+                  && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+                // these two factor judgement is not redundant because the #hasVolatileDescendant is
+                // on a higher priority than #container.hasChildren
+
+                // nodes with volatile children should be treated as root of volatile subtree and
+                // return for flush
+                nextSubtree = node;
+                unlockImmediately = false;
+                return;
+              } else {
+                continue;
+              }
+            }
+
             cacheEntry.setVolatile(false);
             memoryStatistics.removeVolatileNode();
-            container.moveMNodeToCache(node.getName());
+            if (status == ITERATE_UPDATE_BUFFER) {
+              container.moveMNodeFromUpdateChildBufferToCache(node.getName());
+            } else {
+              container.moveMNodeFromNewChildBufferToCache(node.getName());
+            }
 
             if (cacheEntry.hasVolatileDescendant()
                 && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
@@ -348,8 +381,7 @@ public class MemoryManager implements IMemoryManager {
               // on a higher priority than #container.hasChildren
 
               // nodes with volatile children should be treated as root of volatile subtree and
-              // return
-              // for flush
+              // return for flush
               nextSubtree = node;
               unlockImmediately = false;
               return;
@@ -599,5 +631,16 @@ public class MemoryManager implements IMemoryManager {
   @Override
   public long getCacheNodeNum() {
     return nodeCache.getCacheNodeNum();
+  }
+
+  enum STATUS {
+    ITERATE_NEW_BUFFER((byte) 0),
+    ITERATE_UPDATE_BUFFER((byte) 1);
+
+    private final byte status;
+
+    STATUS(byte status) {
+      this.status = status;
+    }
   }
 }

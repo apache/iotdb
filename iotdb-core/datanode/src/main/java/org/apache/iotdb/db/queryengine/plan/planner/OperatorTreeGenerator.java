@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LinearFillOper
 import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
@@ -141,14 +142,18 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -182,6 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -243,7 +249,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -266,6 +271,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -274,6 +280,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
@@ -318,6 +325,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
+    if (pushDownPredicate != null && predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(
+              pushDownPredicate,
+              Collections.singletonList(node.getSeriesPath().getMeasurement()),
+              context.getTypeProvider().getTemplatedInfo() != null,
+              context.getTypeProvider()));
+    }
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -336,6 +354,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
+
+    if (!predicateCanPushIntoScan) {
+      checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
+      return constructFilterOperator(
+          pushDownPredicate,
+          seriesScanOperator,
+          Collections.singletonList(ExpressionFactory.timeSeries(node.getSeriesPath()))
+              .toArray(new Expression[0]),
+          Collections.singletonList(node.getSeriesPath().getSeriesType()),
+          makeLayout(Collections.singletonList(node)),
+          false,
+          node.getPlanNodeId(),
+          node.getScanOrder(),
+          context);
+    }
     return seriesScanOperator;
   }
 
@@ -348,9 +381,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withAllSensors(
-        context.getTypeProvider().getTemplatedInfo() != null
-            ? context.getTypeProvider().getTemplatedInfo().getAllSensors()
-            : new HashSet<>(seriesPath.getMeasurementList()));
+        new HashSet<>(
+            context.isBuildPlanUseTemplate()
+                ? context.getTemplatedInfo().getMeasurementList()
+                : seriesPath.getMeasurementList()));
+
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
+    if (pushDownPredicate != null && predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(
+              pushDownPredicate,
+              node.getAlignedPath().getMeasurementList(),
+              context.getTypeProvider().getTemplatedInfo() != null,
+              context.getTypeProvider()));
+    }
 
     OperatorContext operatorContext =
         context
@@ -359,6 +404,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 AlignedSeriesScanOperator.class.getSimpleName());
+
+    int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    if (context.getTypeProvider().getTemplatedInfo() != null) {
+      maxTsBlockLineNum =
+          (int)
+              Math.min(
+                  context.getTypeProvider().getTemplatedInfo().getLimitValue(), maxTsBlockLineNum);
+    }
+
     AlignedSeriesScanOperator seriesScanOperator =
         new AlignedSeriesScanOperator(
             operatorContext,
@@ -369,12 +423,91 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isQueryAllSensors(),
             context.getTypeProvider().getTemplatedInfo() != null
                 ? context.getTypeProvider().getTemplatedInfo().getDataTypes()
-                : null);
+                : null,
+            maxTsBlockLineNum);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
+
+    if (!predicateCanPushIntoScan) {
+      if (context.isBuildPlanUseTemplate()) {
+        TemplatedInfo templatedInfo = context.getTemplatedInfo();
+        return constructFilterOperator(
+            pushDownPredicate,
+            seriesScanOperator,
+            templatedInfo.getProjectExpressions(),
+            templatedInfo.getDataTypes(),
+            templatedInfo.getLayoutMap(),
+            templatedInfo.isKeepNull(),
+            node.getPlanNodeId(),
+            templatedInfo.getScanOrder(),
+            context);
+      }
+
+      AlignedPath alignedPath = node.getAlignedPath();
+      List<Expression> expressions = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (int i = 0; i < alignedPath.getMeasurementList().size(); i++) {
+        expressions.add(ExpressionFactory.timeSeries(alignedPath.getSubMeasurementPath(i)));
+        dataTypes.add(alignedPath.getSubMeasurementDataType(i));
+      }
+
+      return constructFilterOperator(
+          pushDownPredicate,
+          seriesScanOperator,
+          expressions.toArray(new Expression[0]),
+          dataTypes,
+          makeLayout(Collections.singletonList(node)),
+          false,
+          node.getPlanNodeId(),
+          node.getScanOrder(),
+          context);
+    }
     return seriesScanOperator;
+  }
+
+  private boolean canPushIntoScan(Expression pushDownPredicate) {
+    return pushDownPredicate == null || PredicateUtils.predicateCanPushIntoScan(pushDownPredicate);
+  }
+
+  @Override
+  public Operator visitProject(ProjectNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ProjectOperator.class.getSimpleName());
+
+    List<String> inputColumnNames;
+    List<String> outputColumnNames = node.getOutputColumnNames();
+    if (outputColumnNames == null) {
+      outputColumnNames = context.getTypeProvider().getTemplatedInfo().getSelectMeasurements();
+      // skip device column
+      outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+      inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+    } else {
+      inputColumnNames = node.getChild().getOutputColumnNames();
+    }
+
+    if (inputColumnNames.equals(outputColumnNames)) {
+      // no need to project
+      return child;
+    }
+
+    List<Integer> remainingColumnIndexList = new ArrayList<>();
+    for (String outputColumnName : outputColumnNames) {
+      int index = inputColumnNames.indexOf(outputColumnName);
+      if (index < 0) {
+        throw new IllegalStateException(
+            String.format("Cannot find column [%s] in child's output", outputColumnName));
+      }
+      remainingColumnIndexList.add(index);
+    }
+    return new ProjectOperator(operatorContext, child, remainingColumnIndexList);
   }
 
   @Override
@@ -389,11 +522,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators.add(
                 new Aggregator(
                     AccumulatorFactory.createAccumulator(
+                        o.getAggregationFuncName(),
                         o.getAggregationType(),
-                        node.getSeriesPath().getSeriesType(),
+                        Collections.singletonList(node.getSeriesPath().getSeriesType()),
                         o.getInputExpressions(),
                         o.getInputAttributes(),
-                        ascending),
+                        ascending,
+                        o.getStep().isInputRaw()),
                     o.getStep())));
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
@@ -455,11 +590,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
-                    seriesDataType,
+                    Collections.singletonList(seriesDataType),
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    descriptor.getStep().isInputRaw()),
                 descriptor.getStep(),
                 Collections.singletonList(
                     new InputLocation[] {new InputLocation(0, seriesIndex)})));
@@ -467,11 +604,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
-                    TSDataType.INT64,
+                    Collections.singletonList(TSDataType.INT64),
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    descriptor.getStep().isInputRaw()),
                 descriptor.getStep(),
                 Collections.singletonList(new InputLocation[] {new InputLocation(0, -1)})));
       } else {
@@ -518,7 +657,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return seriesAggregationScanOperator;
   }
 
-  // TODO: push down value filter
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
       SeriesSourceNode node, LocalExecutionPlanContext context) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -528,9 +666,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // time filter may be stateful, so we need to copy it
       scanOptionsBuilder.withGlobalTimeFilter(globalTimeFilter.copy());
     }
-
-    Expression pushDownPredicate = node.getPushDownPredicate();
-    checkArgument(pushDownPredicate == null, "push down predicate must be null currently");
 
     return scanOptionsBuilder;
   }
@@ -938,12 +1073,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 inputColumns,
                 inputDataTypes,
                 descriptor.getTimeDurationThreshold(),
-                ZoneId.of(
-                    context
-                        .getDriverContext()
-                        .getFragmentInstanceContext()
-                        .getSessionInfo()
-                        .getZoneId())),
+                context.getZoneId()),
             child);
       case LINEAR:
         return new LinearFillOperator(
@@ -1112,7 +1242,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // Use FilterAndProject Operator when project expressions are all mappable
     if (!hasNonMappableUDF) {
       // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(node.getZoneId());
+      UDTFContext projectContext = new UDTFContext(context.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
       List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
@@ -1161,7 +1291,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           inputLocations,
           node.getOutputExpressions(),
           node.isKeepNull(),
-          node.getZoneId(),
+          context.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
     } catch (QueryProcessException e) {
@@ -1171,36 +1301,64 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-    Expression filterExpression = node.getPredicate();
-    TypeProvider typeProvider = context.getTypeProvider();
-    if (typeProvider != null
-        && typeProvider.getTemplatedInfo() != null
-        && typeProvider.getTemplatedInfo().getPredicate() != null) {
-      return visitTemplatedAlignByDeviceFilter(node, context);
+    if (context.isBuildPlanUseTemplate()) {
+      TemplatedInfo templatedInfo = context.getTemplatedInfo();
+      return constructFilterOperator(
+          node.getPredicate(),
+          generateOnlyChildOperator(node, context),
+          templatedInfo.getProjectExpressions(),
+          templatedInfo.getDataTypes(),
+          templatedInfo.getLayoutMap(),
+          templatedInfo.isKeepNull(),
+          node.getPlanNodeId(),
+          templatedInfo.getScanOrder(),
+          context);
     }
 
+    return constructFilterOperator(
+        node.getPredicate(),
+        generateOnlyChildOperator(node, context),
+        node.getOutputExpressions(),
+        getInputColumnTypes(node, context.getTypeProvider()),
+        makeLayout(node),
+        node.isKeepNull(),
+        node.getPlanNodeId(),
+        node.getScanOrder(),
+        context);
+  }
+
+  private Operator constructFilterOperator(
+      Expression predicate,
+      Operator inputOperator,
+      Expression[] projectExpressions,
+      List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
+      boolean isKeepNull,
+      PlanNodeId planNodeId,
+      Ordering scanOrder,
+      LocalExecutionPlanContext context) {
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
-    ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, filterExpression);
+    if (context.isBuildPlanUseTemplate()) {
+      ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
+          expressionTypes, predicate, context.getTypeProvider().getTemplatedInfo());
+    } else {
+      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, predicate);
+    }
 
     // check whether predicate contains Non-Mappable UDF
-    if (!filterExpression.isMappable(expressionTypes)) {
+    if (!predicate.isMappable(expressionTypes)) {
       throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
     }
 
-    final Expression[] projectExpressions = node.getOutputExpressions();
-    final Operator inputOperator = generateOnlyChildOperator(node, context);
-    final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
-    final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                FilterAndProjectOperator.class.getSimpleName());
 
     for (Expression projectExpression : projectExpressions) {
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      if (context.isBuildPlanUseTemplate()) {
+        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
+            expressionTypes, projectExpression, context.getTypeProvider().getTemplatedInfo());
+      } else {
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      }
     }
 
     boolean hasNonMappableUdf = false;
@@ -1212,8 +1370,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     // init UDTFContext
-    UDTFContext filterContext = new UDTFContext(node.getZoneId());
-    filterContext.constructUdfExecutors(new Expression[] {filterExpression});
+    UDTFContext filterContext = new UDTFContext(context.getZoneId());
+    filterContext.constructUdfExecutors(new Expression[] {predicate});
 
     // records LeafColumnTransformer of filter
     List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
@@ -1226,8 +1384,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     // records subexpression -> ColumnTransformer for filter
     Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
-
-    final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
     ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
 
@@ -1245,7 +1401,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             null);
 
     ColumnTransformer filterOutputTransformer =
-        visitor.process(filterExpression, filterColumnTransformerContext);
+        visitor.process(predicate, filterColumnTransformerContext);
 
     List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
 
@@ -1254,7 +1410,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // init project transformer when project expressions are all mappable
     if (!hasNonMappableUdf) {
       // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(node.getZoneId());
+      UDTFContext projectContext = new UDTFContext(context.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
       ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
@@ -1276,153 +1432,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    Operator filter =
-        new FilterAndProjectOperator(
-            operatorContext,
-            inputOperator,
-            filterOutputDataTypes,
-            filterLeafColumnTransformerList,
-            filterOutputTransformer,
-            commonTransformerList,
-            projectLeafColumnTransformerList,
-            projectOutputTransformerList,
-            hasNonMappableUdf,
-            true);
-
-    // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
-    if (!hasNonMappableUdf) {
-      return filter;
-    }
-
-    // has Non-Mappable UDF, we wrap a TransformOperator for further calculation
-    try {
-      final OperatorContext transformContext =
-          context
-              .getDriverContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  TransformOperator.class.getSimpleName());
-      return new TransformOperator(
-          transformContext,
-          filter,
-          inputDataTypes,
-          inputLocations,
-          projectExpressions,
-          node.isKeepNull(),
-          node.getZoneId(),
-          expressionTypes,
-          node.getScanOrder() == Ordering.ASC);
-    } catch (QueryProcessException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public Operator visitTemplatedAlignByDeviceFilter(
-      FilterNode node, LocalExecutionPlanContext context) {
-    Expression filterExpression = node.getPredicate();
-    TypeProvider typeProvider = context.getTypeProvider();
-    Map<String, List<InputLocation>> inputLocations =
-        typeProvider.getTemplatedInfo().getLayoutMap();
-
-    final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
-
-    // check whether predicate contains Non-Mappable UDF
-    if (!filterExpression.isMappable(expressionTypes)) {
-      throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
-    }
-
-    List<String> measurementList = typeProvider.getTemplatedInfo().getMeasurementList();
-    List<IMeasurementSchema> schemaList = typeProvider.getTemplatedInfo().getSchemaList();
-    Expression[] projectExpressions = new Expression[measurementList.size()];
-    for (int i = 0; i < measurementList.size(); i++) {
-      projectExpressions[i] =
-          new TimeSeriesOperand(
-              new MeasurementPath(
-                  new PartialPath(new String[] {measurementList.get(i)}), schemaList.get(i)));
-    }
-    final Operator inputOperator = generateOnlyChildOperator(node, context);
-    final List<TSDataType> inputDataTypes = typeProvider.getTemplatedInfo().getDataTypes();
-    final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
     final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
-                node.getPlanNodeId(),
+                planNodeId,
                 FilterAndProjectOperator.class.getSimpleName());
-
-    boolean hasNonMappableUdf = false;
-    for (Expression expression : projectExpressions) {
-      if (!expression.isMappable(expressionTypes)) {
-        hasNonMappableUdf = true;
-        break;
-      }
-    }
-
-    // init UDTFContext
-    UDTFContext filterContext = new UDTFContext(node.getZoneId());
-    filterContext.constructUdfExecutors(new Expression[] {filterExpression});
-
-    // records LeafColumnTransformer of filter
-    List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
-
-    // records common ColumnTransformer between filter and project expressions
-    List<ColumnTransformer> commonTransformerList = new ArrayList<>();
-
-    // records LeafColumnTransformer of project expressions
-    List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
-
-    // records subexpression -> ColumnTransformer for filter
-    Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
-
-    ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
-
-    ColumnTransformerVisitor.ColumnTransformerVisitorContext filterColumnTransformerContext =
-        new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
-            filterContext,
-            expressionTypes,
-            filterLeafColumnTransformerList,
-            inputLocations,
-            filterExpressionColumnTransformerMap,
-            ImmutableMap.of(),
-            ImmutableList.of(),
-            ImmutableList.of(),
-            0,
-            context.getTypeProvider());
-
-    ColumnTransformer filterOutputTransformer =
-        visitor.process(filterExpression, filterColumnTransformerContext);
-
-    List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
-
-    Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
-
-    // init project transformer when project expressions are all mappable
-    if (!hasNonMappableUdf) {
-      // init project UDTFContext
-      UDTFContext projectContext = new UDTFContext(node.getZoneId());
-      projectContext.constructUdfExecutors(projectExpressions);
-
-      ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
-          new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
-              projectContext,
-              expressionTypes,
-              projectLeafColumnTransformerList,
-              inputLocations,
-              projectExpressionColumnTransformerMap,
-              filterExpressionColumnTransformerMap,
-              commonTransformerList,
-              filterOutputDataTypes,
-              inputLocations.size() - 1,
-              context.getTypeProvider());
-
-      for (Expression expression : projectExpressions) {
-        projectOutputTransformerList.add(
-            visitor.process(expression, projectColumnTransformerContext));
-      }
-    }
-
     Operator filter =
         new FilterAndProjectOperator(
             operatorContext,
@@ -1447,19 +1463,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           context
               .getDriverContext()
               .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  TransformOperator.class.getSimpleName());
+                  context.getNextOperatorId(), planNodeId, TransformOperator.class.getSimpleName());
       return new TransformOperator(
           transformContext,
           filter,
           inputDataTypes,
           inputLocations,
           projectExpressions,
-          node.isKeepNull(),
-          node.getZoneId(),
+          isKeepNull,
+          context.getZoneId(),
           expressionTypes,
-          node.getScanOrder() == Ordering.ASC);
+          scanOrder == Ordering.ASC);
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
@@ -1478,19 +1492,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getGroupByLevelDescriptors();
     for (CrossSeriesAggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
-      TSDataType seriesDataType =
-          context
-              .getTypeProvider()
-              // get the type of first inputExpression
-              .getType(descriptor.getInputExpressions().get(0).getExpressionString());
+      // Use the first set of InputExpression
+      List<TSDataType> inputDataTypes =
+          IntStream.range(0, descriptor.getExpressionNumOfOneInput())
+              .mapToObj(
+                  x ->
+                      context
+                          .getTypeProvider()
+                          .getType(descriptor.getInputExpressions().get(x).getExpressionString()))
+              .collect(Collectors.toList());
       aggregators.add(
           new Aggregator(
               AccumulatorFactory.createAccumulator(
+                  descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
-                  seriesDataType,
+                  inputDataTypes,
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
-                  ascending),
+                  ascending,
+                  descriptor.getStep().isInputRaw()),
               descriptor.getStep(),
               inputLocationList));
     }
@@ -1537,18 +1557,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           continue;
         }
         List<InputLocation[]> inputLocations = calcInputLocationList(aggregationDescriptor, layout);
-        TSDataType seriesDataType =
-            context
-                .getTypeProvider()
-                .getType(aggregationDescriptor.getInputExpressions().get(0).getExpressionString());
+        List<TSDataType> inputDataTypes =
+            aggregationDescriptor.getInputExpressions().stream()
+                .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                .collect(Collectors.toList());
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
+                    aggregationDescriptor.getAggregationFuncName(),
                     aggregationDescriptor.getAggregationType(),
-                    seriesDataType,
+                    inputDataTypes,
                     aggregationDescriptor.getInputExpressions(),
                     aggregationDescriptor.getInputAttributes(),
-                    ascending),
+                    ascending,
+                    aggregationDescriptor.getStep().isInputRaw()),
                 aggregationDescriptor.getStep(),
                 inputLocations));
       }
@@ -1601,11 +1623,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
       aggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
+              descriptor.getAggregationFuncName(),
               descriptor.getAggregationType(),
-              context
-                  .getTypeProvider()
-                  // get the type of first inputExpression
-                  .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
+              descriptor.getInputExpressions().stream()
+                  .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                  .collect(Collectors.toList()),
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
               ascending,
@@ -1674,14 +1696,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       aggregators.add(
           new Aggregator(
               AccumulatorFactory.createAccumulator(
+                  descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
-                  context
-                      .getTypeProvider()
-                      // get the type of first inputExpression
-                      .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
+                  descriptor.getInputExpressions().stream()
+                      .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                      .collect(Collectors.toList()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
-                  ascending),
+                  ascending,
+                  descriptor.getStep().isInputRaw()),
               descriptor.getStep(),
               inputLocationList));
     }
@@ -2721,9 +2744,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private Map<String, List<InputLocation>> makeLayout(PlanNode node) {
+    return makeLayout(node.getChildren());
+  }
+
+  private Map<String, List<InputLocation>> makeLayout(List<PlanNode> children) {
     Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
-    for (PlanNode childNode : node.getChildren()) {
+    for (PlanNode childNode : children) {
       outputMappings
           .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
           .add(new InputLocation(tsBlockIndex, -1));
@@ -2747,12 +2774,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           .map(typeProvider::getType)
           .collect(Collectors.toList());
     } else {
-      return getInputColumnTypesUseTemplate(node, typeProvider);
+      return getInputColumnTypesUseTemplate(node);
     }
   }
 
-  private List<TSDataType> getInputColumnTypesUseTemplate(
-      PlanNode node, TypeProvider typeProvider) {
+  private List<TSDataType> getInputColumnTypesUseTemplate(PlanNode node) {
     // Only templated device + filter situation can invoke this method,
     // the children of FilterNode/TransformNode can be TimeJoinNode, ScanNode, any others?
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -2766,7 +2792,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getSchemaList()
             .forEach(c -> dataTypes.add(c.getType()));
       } else {
-        dataTypes.addAll(getInputColumnTypesUseTemplate(child, typeProvider));
+        dataTypes.addAll(getInputColumnTypesUseTemplate(child));
       }
     }
     return dataTypes;

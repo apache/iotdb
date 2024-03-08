@@ -147,6 +147,8 @@ public class ImportCsv extends AbstractCsvTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
   }
 
+  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+
   /**
    * create the commandline options.
    *
@@ -230,7 +232,7 @@ public class ImportCsv extends AbstractCsvTool {
         Option.builder(LINES_PER_FAILED_FILE_ARGS)
             .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
             .hasArgs()
-            .desc("Lines per failedfile")
+            .desc("Lines per failed file")
             .build();
     options.addOption(opFailedLinesPerFile);
 
@@ -313,14 +315,14 @@ public class ImportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      IoTPrinter.println("Too few params input, please check the following hint.");
+      ioTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
-      IoTPrinter.println("Parse error: " + e.getMessage());
+      ioTPrinter.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -338,10 +340,10 @@ public class ImportCsv extends AbstractCsvTool {
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
-      IoTPrinter.println("Args error: " + e.getMessage());
+      ioTPrinter.println("Args error: " + e.getMessage());
       System.exit(CODE_ERROR);
     } catch (Exception e) {
-      IoTPrinter.println("Encounter an error, because: " + e.getMessage());
+      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
 
@@ -388,11 +390,11 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } else {
-        IoTPrinter.println("File not found!");
+        ioTPrinter.println("File not found!");
         return CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      IoTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
+      ioTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
       return CODE_ERROR;
     } finally {
       if (session != null) {
@@ -414,11 +416,11 @@ public class ImportCsv extends AbstractCsvTool {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
-          IoTPrinter.println("Empty file!");
+          ioTPrinter.println("Empty file!");
           return;
         }
         if (!timeColumn.equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
-          IoTPrinter.println("The first field of header must be `Time`!");
+          ioTPrinter.println("The first field of header must be `Time`!");
           return;
         }
         String failedFilePath = null;
@@ -433,10 +435,10 @@ public class ImportCsv extends AbstractCsvTool {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
         }
       } catch (IOException | IllegalPathException e) {
-        IoTPrinter.println("CSV file read exception because: " + e.getMessage());
+        ioTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
-      IoTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
+      ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
 
@@ -499,7 +501,7 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(header, type);
                   } else {
-                    IoTPrinter.printf(
+                    ioTPrinter.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
                         recordObj.getRecordNumber(), header, value);
                     isFail = true;
@@ -510,7 +512,7 @@ public class ImportCsv extends AbstractCsvTool {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
                     isFail = true;
-                    IoTPrinter.printf(
+                    ioTPrinter.printf(
                         "Line '%s', column '%s': '%s' can't convert to '%s'%n",
                         recordObj.getRecordNumber(), header, value, type);
                   } else {
@@ -543,9 +545,9 @@ public class ImportCsv extends AbstractCsvTool {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
     if (Boolean.TRUE.equals(hasStarted.get())) {
-      IoTPrinter.println("Import completely!");
+      ioTPrinter.println("Import completely!");
     } else {
-      IoTPrinter.println("No records!");
+      ioTPrinter.println("No records!");
     }
   }
 
@@ -627,7 +629,7 @@ public class ImportCsv extends AbstractCsvTool {
                 if (type != null) {
                   headerTypeMap.put(headerNameWithoutType, type);
                 } else {
-                  IoTPrinter.printf(
+                  ioTPrinter.printf(
                       "Line '%s', column '%s': '%s' unknown type%n",
                       recordObj.getRecordNumber(), headerNameWithoutType, value);
                   isFail.set(true);
@@ -638,7 +640,7 @@ public class ImportCsv extends AbstractCsvTool {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
-                  IoTPrinter.printf(
+                  ioTPrinter.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
                       recordObj.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
@@ -667,7 +669,7 @@ public class ImportCsv extends AbstractCsvTool {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    IoTPrinter.println("Import completely!");
+    ioTPrinter.println("Import completely!");
   }
 
   private static void writeFailedLinesFile(
@@ -706,12 +708,12 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       try {
         session.close();
       } catch (IoTDBConnectionException ex) {
@@ -744,13 +746,13 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(
             deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       try {
         session.close();
       } catch (IoTDBConnectionException ex) {
@@ -865,7 +867,7 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
-        IoTPrinter.println(
+        ioTPrinter.println(
             "Meet error when query the type of timeseries because " + e.getMessage());
         try {
           session.close();

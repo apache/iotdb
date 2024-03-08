@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -184,18 +185,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     this.configNodes = configNodes;
     this.property = property;
     this.clientManager = clientManager;
+    // Set the first configNode as configLeader for a tentative connection
+    this.configLeader = this.configNodes.get(0);
 
-    init();
-  }
-
-  public void init() throws TException {
-    try {
-      tryToConnect();
-    } catch (TException e) {
-      // Can not connect to each config node
-      syncLatestConfigNodeList();
-      tryToConnect();
-    }
+    connectAndSync();
   }
 
   public void connect(TEndPoint endpoint) throws TException {
@@ -215,16 +208,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
-  private void waitAndReconnect() throws TException {
-    try {
-      // Wait to start the next try
-      Thread.sleep(RETRY_INTERVAL_MS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new TException(
-          "Unexpected interruption when waiting to retry to connect to ConfigNode");
-    }
-
+  private void connectAndSync() throws TException {
     try {
       tryToConnect();
     } catch (TException e) {
@@ -242,6 +226,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       } catch (TException e) {
         logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
+      }
+    } else {
+      try {
+        // Wait to start the next try
+        Thread.sleep(RETRY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
     }
 
@@ -338,7 +330,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
-      waitAndReconnect();
+      connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -386,7 +378,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
-      waitAndReconnect();
+      connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -475,6 +467,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowTTLResp showAllTTL() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showAllTTL(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  public TSStatus createManyDatabases() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -633,6 +630,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus clearCache() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus startRepairData() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.startRepairData(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopRepairData(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -862,6 +871,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createPipe(TCreatePipeReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createPipe(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus alterPipe(TAlterPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.alterPipe(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

@@ -28,8 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask.MAX_RETRY_TIMES;
-
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
@@ -71,9 +69,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     boolean canSleepBeforeNextRound = true;
 
     for (final PipeProcessorSubtask subtask : subtasks.keySet()) {
-      if (subtask.isClosed()
-          || !subtask.isSubmittingSelf()
-          || MAX_RETRY_TIMES <= subtask.getRetryCount()) {
+      if (subtask.isClosed() || !subtask.isSubmittingSelf() || subtask.isStoppedByException()) {
         continue;
       }
 

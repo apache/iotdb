@@ -37,15 +37,17 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Set
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Phaser;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
@@ -66,14 +68,22 @@ public class CompactionScheduler {
   private CompactionScheduler() {}
 
   /** avoid timed compaction schedule conflict with manually triggered schedule */
-  private static final Lock compactionTaskSelectionLock = new ReentrantLock();
+  private static final ReadWriteLock compactionTaskSelectionLock = new ReentrantReadWriteLock();
 
-  public static void lockCompactionSelection() {
-    compactionTaskSelectionLock.lock();
+  public static void sharedLockCompactionSelection() {
+    compactionTaskSelectionLock.readLock().lock();
   }
 
-  public static void unlockCompactionSelection() {
-    compactionTaskSelectionLock.unlock();
+  public static void sharedUnlockCompactionSelection() {
+    compactionTaskSelectionLock.readLock().unlock();
+  }
+
+  public static void exclusiveLockCompactionSelection() {
+    compactionTaskSelectionLock.writeLock().lock();
+  }
+
+  public static void exclusiveUnlockCompactionSelection() {
+    compactionTaskSelectionLock.writeLock().unlock();
   }
 
   /**
@@ -85,7 +95,8 @@ public class CompactionScheduler {
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary) {
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+      throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
@@ -108,23 +119,20 @@ public class CompactionScheduler {
   }
 
   @TestOnly
-  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
+  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
+      throws InterruptedException {
     scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleSummary());
   }
 
   public static int scheduleInsertionCompaction(
-      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser) {
+      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
+      throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
     int trySubmitCount = 0;
-    try {
-      trySubmitCount +=
-          tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
-    } catch (InterruptedException e) {
-      LOGGER.error("Exception occurs when selecting compaction tasks", e);
-      Thread.currentThread().interrupt();
-    }
+    trySubmitCount +=
+        tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
     return trySubmitCount;
   }
 
@@ -166,15 +174,45 @@ public class CompactionScheduler {
             System.currentTimeMillis() - startTime);
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
+    int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);
+    summary.incrementSubmitTaskNum(
+        sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
+    return trySubmitCount;
+  }
+
+  private static int addTaskToWaitingQueue(List<? extends AbstractCompactionTask> tasks)
+      throws InterruptedException {
     int trySubmitCount = 0;
-    for (InnerSpaceCompactionTask task : innerSpaceTaskList) {
+    for (AbstractCompactionTask task : tasks) {
+      if (!canAddTaskToWaitingQueue(task)) {
+        continue;
+      }
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
         trySubmitCount++;
       }
     }
-    summary.incrementSubmitTaskNum(
-        sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
     return trySubmitCount;
+  }
+
+  private static boolean canAddTaskToWaitingQueue(AbstractCompactionTask task) {
+    // check file num
+    long fileNumLimitForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
+    if (task.getProcessedFileNum() > fileNumLimitForCompaction) {
+      return false;
+    }
+    // check disk space
+    if (!task.isDiskSpaceCheckPassed()) {
+      LOGGER.info(
+          "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+      return false;
+    }
+    // check task memory cost
+    long allocatedTotalCompactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
+    long estimatedTaskMemoryCost = task.getEstimatedMemoryCost();
+    if (estimatedTaskMemoryCost < 0 || estimatedTaskMemoryCost > allocatedTotalCompactionMemory) {
+      return false;
+    }
+    return true;
   }
 
   private static int tryToSubmitInsertionCompactionTask(
@@ -237,21 +275,20 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      if (CompactionTaskManager.getInstance()
-          .addTaskToWaitingQueue(
-              new CrossSpaceCompactionTask(
-                  timePartition,
-                  tsFileManager,
-                  taskList.get(i).getSeqFiles(),
-                  taskList.get(i).getUnseqFiles(),
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getCrossCompactionPerformer()
-                      .createInstance(),
-                  memoryCost.get(i),
-                  tsFileManager.getNextCompactionTaskId()))) {
-        trySubmitCount++;
-      }
+      trySubmitCount =
+          addTaskToWaitingQueue(
+              Collections.singletonList(
+                  new CrossSpaceCompactionTask(
+                      timePartition,
+                      tsFileManager,
+                      taskList.get(i).getSeqFiles(),
+                      taskList.get(i).getUnseqFiles(),
+                      IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getCrossCompactionPerformer()
+                          .createInstance(),
+                      memoryCost.get(i),
+                      tsFileManager.getNextCompactionTaskId())));
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
     return trySubmitCount;

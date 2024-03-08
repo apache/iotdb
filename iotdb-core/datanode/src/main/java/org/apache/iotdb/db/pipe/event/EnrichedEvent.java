@@ -175,6 +175,10 @@ public abstract class EnrichedEvent implements Event {
     return pipeName;
   }
 
+  public final PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
+
   /**
    * Get the pattern of this event.
    *
@@ -204,8 +208,12 @@ public abstract class EnrichedEvent implements Event {
     isTimeParsed = true;
   }
 
-  public boolean shouldParsePatternOrTime() {
-    return !isPatternParsed || !isTimeParsed;
+  public boolean shouldParseTimeOrPattern() {
+    return shouldParseTime() || shouldParsePattern();
+  }
+
+  public boolean shouldParsePattern() {
+    return !isPatternParsed;
   }
 
   public boolean shouldParseTime() {
@@ -253,18 +261,40 @@ public abstract class EnrichedEvent implements Event {
         + referenceCount.get()
         + ", pipeName='"
         + pipeName
-        + '\''
-        + ", pipeTaskMeta="
+        + "', pipeTaskMeta="
         + pipeTaskMeta
         + ", committerKey='"
         + committerKey
-        + '\''
-        + ", commitId="
+        + "', commitId="
         + commitId
         + ", pattern='"
         + pattern
-        + '\''
-        + ", startTime="
+        + "', startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", isPatternParsed="
+        + isPatternParsed
+        + ", isTimeParsed="
+        + isTimeParsed
+        + ", shouldReportOnCommit="
+        + shouldReportOnCommit
+        + '}';
+  }
+
+  public String coreReportMessage() {
+    return "EnrichedEvent{"
+        + "referenceCount="
+        + referenceCount.get()
+        + ", pipeName='"
+        + pipeName
+        + "', committerKey='"
+        + committerKey
+        + "', commitId="
+        + commitId
+        + ", pattern='"
+        + pattern
+        + "', startTime="
         + startTime
         + ", endTime="
         + endTime

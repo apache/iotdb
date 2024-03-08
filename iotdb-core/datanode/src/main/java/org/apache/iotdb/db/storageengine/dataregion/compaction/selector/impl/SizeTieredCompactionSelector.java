@@ -24,11 +24,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -109,7 +111,7 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
-      if (currentFile.getStatus() != TsFileResourceStatus.NORMAL) {
+      if (cannotSelectCurrentFileToNormalCompaction(currentFile)) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -157,6 +159,12 @@ public class SizeTieredCompactionSelector
     return taskList;
   }
 
+  private boolean cannotSelectCurrentFileToNormalCompaction(TsFileResource resource) {
+    return resource.getStatus() != TsFileResourceStatus.NORMAL
+        || resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR
+        || resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR;
+  }
+
   /**
    * This method is used to select a batch of files to be merged. There are two ways to select
    * files.If the first method selects the appropriate file, the second method is not executed. The
@@ -172,6 +180,13 @@ public class SizeTieredCompactionSelector
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     this.tsFileResources = tsFileResources;
     try {
+      // 1. select compaction task based on file which need to repair
+      List<InnerSpaceCompactionTask> taskList = selectFileNeedToRepair();
+      if (!taskList.isEmpty()) {
+        return taskList;
+      }
+      // 2. if a suitable compaction task is not selected in the first step, select the compaction
+      // task at the tsFile level
       return selectTaskBaseOnLevel();
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
@@ -188,6 +203,23 @@ public class SizeTieredCompactionSelector
       }
     }
     return Collections.emptyList();
+  }
+
+  private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
+    List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (resource.getStatus() == TsFileResourceStatus.NORMAL
+          && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
+        taskList.add(
+            new RepairUnsortedFileCompactionTask(
+                timePartition,
+                tsFileManager,
+                resource,
+                sequence,
+                tsFileManager.getNextCompactionTaskId()));
+      }
+    }
+    return taskList;
   }
 
   private ICompactionPerformer createCompactionPerformer() {

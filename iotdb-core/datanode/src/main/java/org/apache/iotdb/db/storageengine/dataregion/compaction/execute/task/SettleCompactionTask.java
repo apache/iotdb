@@ -63,7 +63,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(timePartition, tsFileManager, partialDeletedFiles, isSequence, performer, serialId, true);
+    super(tsFileManager, timePartition, partialDeletedFiles, isSequence, performer, serialId);
     this.allDeletedFiles = allDeletedFiles;
     allDeletedFiles.forEach(x -> allDeletedFileSize += x.getTsFileSize());
     partialDeletedFiles.forEach(
@@ -77,7 +77,6 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   public SettleCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
     super(databaseName, dataRegionId, tsFileManager, logFile);
-    settleFlag = true;
   }
 
   @Override
@@ -170,14 +169,14 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        printLogWhenException(LOGGER, e);
+        handleException(LOGGER, e);
       }
       // may fail to set status if the status of target resource is DELETED
       if (targetTsFileResource != null) {

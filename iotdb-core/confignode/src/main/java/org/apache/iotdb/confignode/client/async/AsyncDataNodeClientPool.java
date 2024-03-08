@@ -294,6 +294,16 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
+        case START_REPAIR_DATA:
+          client.startRepairData(
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case STOP_REPAIR_DATA:
+          client.stopRepairData(
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case LOAD_CONFIGURATION:
           client.loadConfiguration(
               (AsyncTSStatusRPCHandler)

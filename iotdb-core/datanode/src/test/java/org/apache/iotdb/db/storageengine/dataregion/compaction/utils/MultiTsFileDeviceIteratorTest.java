@@ -459,7 +459,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
@@ -606,7 +606,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
@@ -751,7 +751,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
@@ -904,7 +904,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
@@ -1049,7 +1049,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
@@ -1202,7 +1202,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
+        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
     tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);

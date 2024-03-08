@@ -64,7 +64,7 @@ public class AuditLogger {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
   private static final SessionInfo sessionInfo =
-      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId());
+      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
   private static final List<AuditLogOperation> auditLogOperationList =
       config.getAuditLogOperation();
@@ -224,6 +224,8 @@ public class AuditLogger {
       case ACTIVATE_TEMPLATE:
       case SETTLE:
       case INTERNAL_CREATE_TIMESERIES:
+      case START_REPAIR_DATA:
+      case STOP_REPAIR_DATA:
         return AuditLogOperation.DML;
       case LIST_USER:
       case LIST_ROLE:

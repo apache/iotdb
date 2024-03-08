@@ -55,22 +55,43 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
+  private String oldUserFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "users";
+
+  private String oldRoleFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "roles";
+
+  private String oldProcedureWalFolder =
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "procedure";
+
   private String userFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + "users";
 
   private String roleFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + "roles";
 
   private String procedureWalFolder =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.CN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
@@ -78,11 +99,11 @@ public class CommonConfig {
 
   /** Sync directory, including the log and hardlink tsFiles. */
   private String syncDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** WAL directories. */
   private String[] walDirs = {
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
+    IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
   };
 
   /** Default system file storage is in local file system (unsupported). */
@@ -111,7 +132,6 @@ public class CommonConfig {
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
-  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
@@ -155,6 +175,7 @@ public class CommonConfig {
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
   private int pipeDataStructureTabletRowSize = 2048;
+  private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -174,8 +195,7 @@ public class CommonConfig {
   private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private int pipeAsyncConnectorSelectorNumber = 8;
-  private int pipeAsyncConnectorCoreClientNumber = 8;
+  private int pipeAsyncConnectorSelectorNumber = 4;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
@@ -190,14 +210,23 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
+  private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private long pipeStuckRestartIntervalSeconds = 120;
+
+  private int pipeMetaReportMaxLogNumPerRound = 10;
+  private int pipeMetaReportMaxLogIntervalRounds = 36;
+  private int pipeTsFilePinMaxLogNumPerRound = 10;
+  private int pipeTsFilePinMaxLogIntervalRounds = 90;
+  private int pipeWalPinMaxLogNumPerRound = 10;
+  private int pipeWalPinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
-  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
-  private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
-  private float PipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
+  private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
+  private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -290,6 +319,18 @@ public class CommonConfig {
 
   public void setAdminPassword(String adminPassword) {
     this.adminPassword = adminPassword;
+  }
+
+  public String getOldUserFolder() {
+    return oldUserFolder;
+  }
+
+  public String getOldRoleFolder() {
+    return oldRoleFolder;
+  }
+
+  public String getOldProcedureWalFolder() {
+    return oldProcedureWalFolder;
   }
 
   public String getUserFolder() {
@@ -392,14 +433,6 @@ public class CommonConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
-  public int getCoreClientNumForEachNode() {
-    return coreClientNumForEachNode;
-  }
-
-  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
-    this.coreClientNumForEachNode = coreClientNumForEachNode;
-  }
-
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
     return handleSystemErrorStrategy;
   }
@@ -422,6 +455,10 @@ public class CommonConfig {
 
   public boolean isReadOnly() {
     return status == NodeStatus.ReadOnly;
+  }
+
+  public boolean isRunning() {
+    return status == NodeStatus.Running;
   }
 
   public NodeStatus getNodeStatus() {
@@ -546,6 +583,16 @@ public class CommonConfig {
     this.pipeDataStructureTabletRowSize = pipeDataStructureTabletRowSize;
   }
 
+  public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
+    return pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
+  }
+
+  public void setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
+      double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold) {
+    this.pipeDataStructureTabletMemoryBlockAllocationRejectThreshold =
+        pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
+  }
+
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
     return pipeExtractorAssignerDisruptorRingBufferSize;
   }
@@ -613,14 +660,6 @@ public class CommonConfig {
 
   public void setPipeAsyncConnectorSelectorNumber(int pipeAsyncConnectorSelectorNumber) {
     this.pipeAsyncConnectorSelectorNumber = pipeAsyncConnectorSelectorNumber;
-  }
-
-  public int getPipeAsyncConnectorCoreClientNumber() {
-    return pipeAsyncConnectorCoreClientNumber;
-  }
-
-  public void setPipeAsyncConnectorCoreClientNumber(int pipeAsyncConnectorCoreClientNumber) {
-    this.pipeAsyncConnectorCoreClientNumber = pipeAsyncConnectorCoreClientNumber;
   }
 
   public int getPipeAsyncConnectorMaxClientNumber() {
@@ -783,6 +822,70 @@ public class CommonConfig {
     this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
   }
 
+  public long getPipeMaxAllowedLinkedTsFileCount() {
+    return pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
+    this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public long getPipeStuckRestartIntervalSeconds() {
+    return pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
+    this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public int getPipeMetaReportMaxLogNumPerRound() {
+    return pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public void setPipeMetaReportMaxLogNumPerRound(int pipeMetaReportMaxLogNumPerRound) {
+    this.pipeMetaReportMaxLogNumPerRound = pipeMetaReportMaxLogNumPerRound;
+  }
+
+  public int getPipeMetaReportMaxLogIntervalRounds() {
+    return pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public void setPipeMetaReportMaxLogIntervalRounds(int pipeMetaReportMaxLogIntervalRounds) {
+    this.pipeMetaReportMaxLogIntervalRounds = pipeMetaReportMaxLogIntervalRounds;
+  }
+
+  public int getPipeTsFilePinMaxLogNumPerRound() {
+    return pipeTsFilePinMaxLogNumPerRound;
+  }
+
+  public void setPipeTsFilePinMaxLogNumPerRound(int pipeTsFilePinMaxLogNumPerRound) {
+    this.pipeTsFilePinMaxLogNumPerRound = pipeTsFilePinMaxLogNumPerRound;
+  }
+
+  public int getPipeTsFilePinMaxLogIntervalRounds() {
+    return pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public void setPipeTsFilePinMaxLogIntervalRounds(int pipeTsFilePinMaxLogIntervalRounds) {
+    this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
+  }
+
+  public int getPipeWalPinMaxLogNumPerRound() {
+    return pipeWalPinMaxLogNumPerRound;
+  }
+
+  public void setPipeWalPinMaxLogNumPerRound(int pipeWalPinMaxLogNumPerRound) {
+    this.pipeWalPinMaxLogNumPerRound = pipeWalPinMaxLogNumPerRound;
+  }
+
+  public int getPipeWalPinMaxLogIntervalRounds() {
+    return pipeWalPinMaxLogIntervalRounds;
+  }
+
+  public void setPipeWalPinMaxLogIntervalRounds(int pipeWalPinMaxLogIntervalRounds) {
+    this.pipeWalPinMaxLogIntervalRounds = pipeWalPinMaxLogIntervalRounds;
+  }
+
   public boolean getPipeMemoryManagementEnabled() {
     return pipeMemoryManagementEnabled;
   }
@@ -834,11 +937,11 @@ public class CommonConfig {
   }
 
   public float getPipeLeaderCacheMemoryUsagePercentage() {
-    return PipeLeaderCacheMemoryUsagePercentage;
+    return pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
-    this.PipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+    this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
   public String getSchemaEngineMode() {

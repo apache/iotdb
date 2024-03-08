@@ -37,19 +37,17 @@ public class CountAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    int curPositionCount = column[0].getPositionCount();
+  public void addInput(Column[] columns, BitMap bitMap) {
+    int count = columns[0].getPositionCount();
 
-    if (!column[1].mayHaveNull()
-        && lastIndex == curPositionCount - 1
-        && ((bitMap == null) || bitMap.isAllMarked())) {
-      countValue += curPositionCount;
+    if (!columns[1].mayHaveNull() && ((bitMap == null) || bitMap.isAllMarked())) {
+      countValue += count;
     } else {
-      for (int i = 0; i <= lastIndex; i++) {
+      for (int i = 0; i < count; i++) {
         if (bitMap != null && !bitMap.isMarked(i)) {
           continue;
         }
-        if (!column[1].isNull(i)) {
+        if (!columns[1].isNull(i)) {
           countValue++;
         }
       }

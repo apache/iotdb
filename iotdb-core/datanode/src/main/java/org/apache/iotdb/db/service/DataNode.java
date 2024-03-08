@@ -76,6 +76,7 @@ import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.CacheHitRatioMonitor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -119,7 +120,7 @@ public class DataNode implements DataNodeMBean {
           IoTDBConstant.JMX_TYPE,
           ServiceType.DATA_NODE.getJmxName());
 
-  private static final File SYSTEM_PROPERTIES =
+  private static File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
           config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
@@ -127,7 +128,7 @@ public class DataNode implements DataNodeMBean {
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
    * times before returning a failure to the client.
    */
-  private static final int DEFAULT_RETRY = 10;
+  private static final int DEFAULT_RETRY = 50;
 
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
 
@@ -151,7 +152,15 @@ public class DataNode implements DataNodeMBean {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
-  private static final RegisterManager registerManager = new RegisterManager();
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    SYSTEM_PROPERTIES =
+        SystemFileFactory.INSTANCE.getFile(
+            config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+    registerManager = new RegisterManager();
+  }
+
+  private static RegisterManager registerManager = new RegisterManager();
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
@@ -283,9 +292,11 @@ public class DataNode implements DataNodeMBean {
         || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
-          "Cannot pull system configurations from ConfigNode-leader after {} retries",
+          "Cannot pull system configurations from ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
-      throw new StartupException("Cannot pull system configurations from ConfigNode-leader");
+      throw new StartupException(
+          "Cannot pull system configurations from ConfigNode-leader. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     /* Load system configurations */
@@ -363,6 +374,9 @@ public class DataNode implements DataNodeMBean {
 
     /* Store ttl information */
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
+
+    /* Store cluster ID */
+    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
   }
 
   /**
@@ -402,11 +416,10 @@ public class DataNode implements DataNodeMBean {
     }
     if (dataNodeRegisterResp == null) {
       // All tries failed
-      logger.error(
-          "Cannot register into cluster after {} retries. "
-              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
-          DEFAULT_RETRY);
-      throw new StartupException("Cannot register into the cluster.");
+      logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
+      throw new StartupException(
+          "Cannot register into the cluster. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -465,10 +478,11 @@ public class DataNode implements DataNodeMBean {
     if (dataNodeRestartResp == null) {
       // All tries failed
       logger.error(
-          "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
-              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
+          "Cannot send restart DataNode request to ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
-      throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
+      throw new StartupException(
+          "Cannot send restart DataNode request to ConfigNode-leader. "
+              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -555,6 +569,9 @@ public class DataNode implements DataNodeMBean {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
+
+    // Must init before StorageEngine
+    registerManager.register(CompactionScheduleTaskManager.getInstance());
 
     // In mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());

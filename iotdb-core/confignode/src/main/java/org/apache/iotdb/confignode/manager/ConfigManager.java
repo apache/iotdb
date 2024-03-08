@@ -46,6 +46,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -108,6 +109,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -196,6 +198,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -317,6 +320,7 @@ public class ConfigManager implements IManager {
 
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
+    this.consensusManager.get().start();
   }
 
   public void close() throws IOException {
@@ -626,6 +630,12 @@ public class ConfigManager implements IManager {
     } else {
       return status;
     }
+  }
+
+  @TestOnly
+  @Override
+  public TSStatus createManyDatabases() {
+    return getProcedureManager().createManyDatabases();
   }
 
   private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
@@ -1250,10 +1260,13 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
-    for (int i = 0; i < 30; i++) {
+    final long rpcTimeoutInMS = COMMON_CONF.getConnectionTimeoutInMS();
+    final long retryIntervalInMS = 1000;
+
+    for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
       try {
         if (consensusManager.get() == null) {
-          Thread.sleep(1000);
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
           consensusManager.get().createPeerForConsensusGroup(Collections.emptyList());
@@ -1434,6 +1447,22 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.clearCache())
+        : status;
+  }
+
+  @Override
+  public TSStatus startRepairData() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.startRpairData())
+        : status;
+  }
+
+  @Override
+  public TSStatus stopRepairData() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.stopRepairData())
         : status;
   }
 
@@ -1772,6 +1801,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().createPipe(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus alterPipe(TAlterPipeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().alterPipe(req)
         : status;
   }
 

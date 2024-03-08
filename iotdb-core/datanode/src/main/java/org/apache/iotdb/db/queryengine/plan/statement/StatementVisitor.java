@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -108,6 +110,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -378,6 +382,14 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(clearCacheStatement, context);
   }
 
+  public R visitStartRepairData(StartRepairDataStatement startRepairDataStatement, C context) {
+    return visitStatement(startRepairDataStatement, context);
+  }
+
+  public R visitStopRepairData(StopRepairDataStatement stopRepairDataStatement, C context) {
+    return visitStatement(stopRepairDataStatement, context);
+  }
+
   public R visitLoadConfiguration(
       LoadConfigurationStatement loadConfigurationStatement, C context) {
     return visitStatement(loadConfigurationStatement, context);
@@ -461,6 +473,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCreatePipe(CreatePipeStatement createPipeStatement, C context) {
     return visitStatement(createPipeStatement, context);
+  }
+
+  public R visitAlterPipe(AlterPipeStatement alterPipeStatement, C context) {
+    return visitStatement(alterPipeStatement, context);
   }
 
   public R visitDropPipe(DropPipeStatement dropPipeStatement, C context) {
@@ -552,5 +568,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, C context) {
     return visitStatement(showThrottleQuotaStatement, context);
+  }
+
+  public R visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
+    return visitStatement(showCurrentTimestampStatement, context);
   }
 }

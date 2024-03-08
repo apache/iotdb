@@ -53,10 +53,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** StateMachine for ConfigRegion. */
 public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -84,6 +88,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private static final long LOG_FILE_MAX_SIZE =
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
+  private static Pattern LOG_INPROGRESS_PATTERN = Pattern.compile("\\d+");
+  private static Pattern LOG_PATTERN = Pattern.compile("(?<=_)(\\d+)$");
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
@@ -237,11 +243,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Add Metric after leader ready
     configManager.addMetrics();
 
-    // we do cq recovery async for two reasons:
-    // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+    // we do cq recovery async for performance:
+    // cq recovery may be time-consuming, we use another thread to do it in
     // make notifyLeaderChanged not blocked by it
-    // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
-    // initialized after notifyLeaderChanged finished
     threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
 
     threadPool.submit(
@@ -323,6 +327,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     dir.mkdirs();
     String[] list = new File(CURRENT_FILE_DIR).list();
     if (list != null && list.length != 0) {
+      Arrays.sort(list, new FileComparator());
       for (String logFileName : list) {
         File logFile =
             SystemFileFactory.INSTANCE.getFile(CURRENT_FILE_DIR + File.separator + logFileName);
@@ -394,5 +399,29 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           simpleLogFile.getAbsolutePath(),
           e);
     }
+  }
+
+  static class FileComparator implements Comparator<String> {
+    @Override
+    public int compare(String filename1, String filename2) {
+      long id1 = parseEndIndex(filename1);
+      long id2 = parseEndIndex(filename2);
+      return Long.compare(id1, id2);
+    }
+  }
+
+  static long parseEndIndex(String filename) {
+    if (filename.startsWith("log_inprogress_")) {
+      Matcher matcher = LOG_INPROGRESS_PATTERN.matcher(filename);
+      if (matcher.find()) {
+        return Long.parseLong(matcher.group());
+      }
+    } else {
+      Matcher matcher = LOG_PATTERN.matcher(filename);
+      if (matcher.find()) {
+        return Long.parseLong(matcher.group());
+      }
+    }
+    return 0;
   }
 }

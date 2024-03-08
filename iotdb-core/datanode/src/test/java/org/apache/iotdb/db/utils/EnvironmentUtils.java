@@ -87,9 +87,6 @@ public class EnvironmentUtils {
 
   private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
   private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
-
-  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
-
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static boolean examinePorts =
@@ -170,12 +167,11 @@ public class EnvironmentUtils {
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);
     config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
-    config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
   private static boolean examinePorts() {
     TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
-    if (!transport.isOpen()) {
+    if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
         logger.error("stop daemon failed. 6667 can be connected now.");
@@ -187,7 +183,7 @@ public class EnvironmentUtils {
     }
     // try sync service
     transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
-    if (!transport.isOpen()) {
+    if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
         logger.error("stop Sync daemon failed. 5555 can be connected now.");
@@ -286,23 +282,6 @@ public class EnvironmentUtils {
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-  }
-
-  public static void stopDaemon() {}
-
-  public static void shutdownDaemon() throws Exception {}
-
-  public static void activeDaemon() {}
-
-  public static void reactiveDaemon() {}
-
-  public static void restartDaemon() throws Exception {
-    shutdownDaemon();
-    stopDaemon();
-    TsFileResourceManager.getInstance().clear();
-    WALManager.getInstance().clear();
-    WALRecoverManager.getInstance().clear();
-    reactiveDaemon();
   }
 
   private static void createAllDir() {

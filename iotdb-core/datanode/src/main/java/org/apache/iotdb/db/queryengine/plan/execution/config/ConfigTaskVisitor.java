@@ -71,6 +71,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
@@ -111,6 +114,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -138,6 +142,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -242,6 +248,18 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitClearCache(
       ClearCacheStatement clearCacheStatement, MPPQueryContext context) {
     return new ClearCacheTask(clearCacheStatement);
+  }
+
+  @Override
+  public IConfigTask visitStartRepairData(
+      StartRepairDataStatement startRepairDataStatement, MPPQueryContext context) {
+    return new StartRepairDataTask(startRepairDataStatement);
+  }
+
+  @Override
+  public IConfigTask visitStopRepairData(
+      StopRepairDataStatement stopRepairDataStatement, MPPQueryContext context) {
+    return new StopRepairDataTask(stopRepairDataStatement);
   }
 
   @Override
@@ -405,6 +423,12 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitCreatePipe(
       CreatePipeStatement createPipeStatement, MPPQueryContext context) {
     return new CreatePipeTask(createPipeStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterPipe(
+      AlterPipeStatement alterPipeStatement, MPPQueryContext context) {
+    return new AlterPipeTask(alterPipeStatement);
   }
 
   @Override

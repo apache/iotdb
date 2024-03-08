@@ -107,9 +107,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -138,9 +138,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   false),
@@ -166,6 +166,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
+
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -173,9 +174,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -203,6 +204,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
+
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -210,9 +212,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -244,6 +246,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
+
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -251,9 +254,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   false),
@@ -285,9 +288,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -319,9 +322,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -352,9 +355,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -383,6 +386,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     aggregationTypes.add(TAggregationType.MIN_TIME);
     aggregationTypes.add(TAggregationType.MAX_TIME);
+
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       TSDataType dataType = measurementSchemas.get(i).getType();
@@ -390,9 +394,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   aggregationTypes.get(i),
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -429,9 +433,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -469,9 +473,9 @@ public class AlignedSeriesAggregationScanOperatorTest {
       inputLocations.add(new InputLocation[] {new InputLocation(0, i)});
       aggregators.add(
           new Aggregator(
-              AccumulatorFactory.createAccumulator(
+              AccumulatorFactory.createBuiltinAccumulator(
                   TAggregationType.COUNT,
-                  dataType,
+                  Collections.singletonList(dataType),
                   Collections.emptyList(),
                   Collections.emptyMap(),
                   true),
@@ -512,10 +516,11 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -556,10 +561,11 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.MIN_VALUE);
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -590,10 +596,11 @@ public class AlignedSeriesAggregationScanOperatorTest {
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
     List<TAggregationType> aggregationTypes = Collections.singletonList(TAggregationType.COUNT);
+
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -625,7 +632,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -662,12 +669,13 @@ public class AlignedSeriesAggregationScanOperatorTest {
     aggregationTypes.add(TAggregationType.LAST_VALUE);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 149, new TimeDuration(0, 50), new TimeDuration(0, 30), true);
     List<Aggregator> aggregators = new ArrayList<>();
     List<InputLocation[]> inputLocations =
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 1)});
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

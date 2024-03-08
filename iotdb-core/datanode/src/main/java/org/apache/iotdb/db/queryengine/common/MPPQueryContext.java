@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.time.ZoneId;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -59,7 +60,7 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
-  private boolean acquiredLock;
+  private int acquiredLockNum;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -157,12 +158,12 @@ public class MPPQueryContext {
     return sql;
   }
 
-  public boolean getAcquiredLock() {
-    return acquiredLock;
+  public int getAcquiredLockNum() {
+    return acquiredLockNum;
   }
 
-  public void setAcquiredLock(boolean acuqired) {
-    acquiredLock = acuqired;
+  public void addAcquiredLockNum() {
+    acquiredLockNum++;
   }
 
   public void generateGlobalTimeFilter(Analysis analysis) {
@@ -173,5 +174,9 @@ public class MPPQueryContext {
   public Filter getGlobalTimeFilter() {
     // time filter may be stateful, so we need to copy it
     return globalTimeFilter != null ? globalTimeFilter.copy() : null;
+  }
+
+  public ZoneId getZoneId() {
+    return session.getZoneId();
   }
 }

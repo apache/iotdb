@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -324,6 +326,14 @@ public interface IManager {
   TSStatus deleteDatabases(List<String> deletedPaths);
 
   /**
+   * Create many databases.
+   *
+   * @return status
+   */
+  @TestOnly
+  TSStatus createManyDatabases();
+
+  /**
    * Get SchemaPartition.
    *
    * @return TSchemaPartitionResp
@@ -456,6 +466,12 @@ public interface IManager {
   /** Clear cache on all DataNodes. */
   TSStatus clearCache();
 
+  /** Check and repair unsorted tsfile by compaction. */
+  TSStatus startRepairData();
+
+  /** Stop repair data task */
+  TSStatus stopRepairData();
+
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();
 
@@ -561,6 +577,14 @@ public interface IManager {
    * @return TSStatus
    */
   TSStatus createPipe(TCreatePipeReq req);
+
+  /**
+   * Alter Pipe.
+   *
+   * @param req Info about Pipe
+   * @return TSStatus
+   */
+  TSStatus alterPipe(TAlterPipeReq req);
 
   /**
    * Start Pipe.

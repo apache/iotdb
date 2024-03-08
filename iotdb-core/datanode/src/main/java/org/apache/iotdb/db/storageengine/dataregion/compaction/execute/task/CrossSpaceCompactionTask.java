@@ -199,8 +199,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             selectedSequenceFiles,
             selectedUnsequenceFiles,
             targetTsfileResourceList,
-            timePartition,
-            true);
+            timePartition);
 
         // find empty target files and add log
         for (TsFileResource targetResource : targetTsfileResourceList) {
@@ -251,7 +250,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       isSuccess = false;
-      printLogWhenException(LOGGER, e);
+      handleException(LOGGER, e);
       recover();
     } finally {
       releaseAllLocks();
@@ -260,7 +259,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           Files.deleteIfExists(logFile.toPath());
         }
       } catch (IOException e) {
-        printLogWhenException(LOGGER, e);
+        handleException(LOGGER, e);
       }
       for (TsFileResource resource : targetTsfileResourceList) {
         // may failed to set status if the status of current resource is DELETED

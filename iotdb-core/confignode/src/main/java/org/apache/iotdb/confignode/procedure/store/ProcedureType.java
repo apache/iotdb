@@ -30,12 +30,11 @@ public enum ProcedureType {
   /** DataNode */
   REMOVE_DATA_NODE_PROCEDURE((short) 100),
 
-  /** StorageGroup */
+  /** StorageGroup and Region */
   DELETE_STORAGE_GROUP_PROCEDURE((short) 200),
-
-  /** Region */
   REGION_MIGRATE_PROCEDURE((short) 201),
   CREATE_REGION_GROUPS((short) 202),
+  CREATE_MANY_DATABASES_PROCEDURE((short) 203),
 
   /** Timeseries */
   DELETE_TIMESERIES_PROCEDURE((short) 300),
@@ -69,6 +68,7 @@ public enum ProcedureType {
   START_PIPE_PROCEDURE_V2((short) 1001),
   STOP_PIPE_PROCEDURE_V2((short) 1002),
   DROP_PIPE_PROCEDURE_V2((short) 1003),
+  ALTER_PIPE_PROCEDURE_V2((short) 1004),
 
   /** Pipe Runtime */
   PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100),

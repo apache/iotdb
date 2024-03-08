@@ -97,9 +97,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.MILLI_OF_SECOND, 3)
-            .optionalEnd()
+            .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true)
             .toFormatter();
   }
 
@@ -115,9 +113,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.MICRO_OF_SECOND, 6)
-            .optionalEnd()
+            .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
             .toFormatter();
   }
 
@@ -133,8 +129,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.NANO_OF_SECOND, 9)
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
             .optionalEnd()
             .toFormatter();
   }
@@ -450,6 +445,14 @@ public class DateTimeUtils {
           /** such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456789+01:00'. */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
           .toFormatter();
+
+  public static long convertTimestampOrDatetimeStrToLongWithDefaultZone(String timeStr) {
+    try {
+      return Long.parseLong(timeStr);
+    } catch (NumberFormatException e) {
+      return DateTimeUtils.convertDatetimeStrToLong(timeStr, ZoneId.systemDefault());
+    }
+  }
 
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(
@@ -771,8 +774,8 @@ public class DateTimeUtils {
   public static TimeDuration constructTimeDuration(String duration) {
     duration = duration.toLowerCase();
     String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    int temp = 0;
-    int monthDuration = 0;
+    long temp = 0;
+    long monthDuration = 0;
     long nonMonthDuration = 0;
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
@@ -801,6 +804,6 @@ public class DateTimeUtils {
         temp = 0;
       }
     }
-    return new TimeDuration(monthDuration, nonMonthDuration);
+    return new TimeDuration((int) monthDuration, nonMonthDuration);
   }
 }

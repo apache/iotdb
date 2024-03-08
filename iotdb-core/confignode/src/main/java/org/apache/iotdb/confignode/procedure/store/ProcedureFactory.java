@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -29,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProc
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.AlterPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
@@ -130,6 +132,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE_V2:
         procedure = new DropPipeProcedureV2();
         break;
+      case ALTER_PIPE_PROCEDURE_V2:
+        procedure = new AlterPipeProcedureV2();
+        break;
       case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
         procedure = new PipeHandleLeaderChangeProcedure();
         break;
@@ -164,6 +169,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case SET_TTL_PROCEDURE:
         procedure = new SetTTLProcedure();
+        break;
+      case CREATE_MANY_DATABASES_PROCEDURE:
+        procedure = new CreateManyDatabasesProcedure();
         break;
       default:
         LOGGER.error("unknown Procedure type: " + typeCode);
@@ -220,6 +228,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.STOP_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof DropPipeProcedureV2) {
       return ProcedureType.DROP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof AlterPipeProcedureV2) {
+      return ProcedureType.ALTER_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof PipeHandleLeaderChangeProcedure) {
       return ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE;
     } else if (procedure instanceof PipeMetaSyncProcedure) {
@@ -234,8 +244,11 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.AUTH_OPERATE_PROCEDURE;
     } else if (procedure instanceof SetTTLProcedure) {
       return ProcedureType.SET_TTL_PROCEDURE;
+    } else if (procedure instanceof CreateManyDatabasesProcedure) {
+      return ProcedureType.CREATE_MANY_DATABASES_PROCEDURE;
     }
-    return null;
+    throw new UnsupportedOperationException(
+        "Procedure type " + procedure.getClass() + " is not supported");
   }
 
   private static class ProcedureFactoryHolder {

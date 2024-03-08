@@ -240,7 +240,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public TabletInsertionEvent parseEventWithPatternOrTime() {
+  @Override
+  public boolean shouldParsePattern() {
+    final InsertNode node = getInsertNodeViaCacheIfPossible();
+    return super.shouldParsePattern()
+        && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
+  }
+
+  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, true);
   }
@@ -254,5 +261,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainer)
         + " - "
         + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
+            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe)
+        + " - "
+        + super.coreReportMessage();
   }
 }

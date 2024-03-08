@@ -70,8 +70,8 @@ public abstract class PipeDataNodeSubtask extends PipeSubtask {
           throwable);
     }
 
-    if (retryCount.get() < MAX_RETRY_TIMES) {
-      retryCount.incrementAndGet();
+    retryCount.incrementAndGet();
+    if (retryCount.get() <= MAX_RETRY_TIMES) {
       LOGGER.warn(
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}]",
           taskID,

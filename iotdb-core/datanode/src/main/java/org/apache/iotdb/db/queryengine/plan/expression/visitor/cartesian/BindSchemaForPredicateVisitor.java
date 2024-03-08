@@ -43,7 +43,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.recon
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
-import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForPredicateVisitor
@@ -88,13 +88,11 @@ public class BindSchemaForPredicateVisitor
               suffixExpression,
               new Context(context.getPrefixPaths(), context.getSchemaTree(), false)));
 
-      // We just process first input Expression of AggregationFunction,
+      // We just process first input Expression of Count_IF,
       // keep other input Expressions as origin and bind Type
-      // If AggregationFunction need more than one input series,
-      // we need to reconsider the process of it
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (SqlConstant.COUNT_IF.equalsIgnoreCase(predicate.getFunctionName())) {
         List<Expression> children = predicate.getExpressions();
-        bindTypeForAggregationNonSeriesInputExpressions(
+        bindTypeForBuiltinAggregationNonSeriesInputExpressions(
             predicate.getFunctionName(), children, extendedExpressions);
         break;
       }
