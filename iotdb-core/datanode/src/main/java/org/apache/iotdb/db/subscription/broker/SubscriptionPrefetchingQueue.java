@@ -65,10 +65,10 @@ public class SubscriptionPrefetchingQueue {
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
   public ByteBuffer fetch() {
-//    if (!prefetchingQueue.isEmpty()) {
-//      prefetchOnce(16);
-//      serializeOnce();
-//    }
+    //    if (!prefetchingQueue.isEmpty()) {
+    //      prefetchOnce(16);
+    //      serializeOnce();
+    //    }
 
     // fetch
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
