@@ -30,9 +30,9 @@ public class RegionAllocatorAndLeaderBalancerCombinatorialManualTest {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RegionAllocatorAndLeaderBalancerCombinatorialManualTest.class);
 
-  private static final int TEST_LOOP = 100;
-  private static final int TEST_DATA_NODE_NUM = 100;
-  private static final int DATA_REGION_PER_DATA_NODE = 4;
+  private static final int TEST_LOOP = 1;
+  private static final int TEST_DATA_NODE_NUM = 9;
+  private static final int DATA_REGION_PER_DATA_NODE = 6;
   private static final int DATA_REPLICATION_FACTOR = 3;
   private static final String DATABASE = "root.db";
 

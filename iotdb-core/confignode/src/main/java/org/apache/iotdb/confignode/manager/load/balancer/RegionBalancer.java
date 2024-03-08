@@ -153,7 +153,8 @@ public class RegionBalancer {
 
   public enum RegionGroupAllocatePolicy {
     GREEDY,
-    RANDOM,
+    COPY_SET,
+    TIERED_REPLICATION,
     GREEDY_COPY_SET
   }
 }
