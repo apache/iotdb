@@ -221,8 +221,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // handle exception, delete all_deleted files
@@ -311,8 +310,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // delete source file
@@ -407,8 +405,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // delete source file
@@ -500,8 +497,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // delete source file
@@ -723,8 +719,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // handle exception, delete all_deleted files
@@ -890,8 +885,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // delete source file
@@ -980,8 +974,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
       compactionLogger.logEmptyTargetFile(targetResource);
       compactionLogger.force();
       targetResource.getTsFile().delete();
@@ -1076,8 +1069,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
           Collections.emptyList(),
           partialDeletedFiles,
           Collections.singletonList(targetResource),
-          0,
-          false);
+          0);
     }
 
     // delete source file

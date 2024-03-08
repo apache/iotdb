@@ -332,7 +332,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),
@@ -719,7 +721,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),

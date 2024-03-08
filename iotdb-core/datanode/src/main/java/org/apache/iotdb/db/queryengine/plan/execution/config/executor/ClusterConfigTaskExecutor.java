@@ -1223,7 +1223,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Map<String, Long> databaseToTTL = new HashMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // TODO: need to set user authority scope? Currently all users can query all ttls
       TShowTTLResp resp = client.showAllTTL();
       databaseToTTL.putAll(resp.getPathTTLMap());
     } catch (ClientManagerException | TException e) {

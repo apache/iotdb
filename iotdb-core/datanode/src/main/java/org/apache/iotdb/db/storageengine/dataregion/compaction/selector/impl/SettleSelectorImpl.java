@@ -154,10 +154,8 @@ public class SettleSelectorImpl implements ISettleSelector {
           partialDirtyResource = new PartialDirtyResource();
           if (!heavySelect) {
             // Non-heavy selection is triggered more frequently. In order to avoid selecting too
-            // many
-            // files containing mods for compaction when the disk is insufficient, the number and
-            // size
-            // of files are limited here.
+            // many files containing mods for compaction when the disk is insufficient, the number
+            // and size of files are limited here.
             break;
           }
         }

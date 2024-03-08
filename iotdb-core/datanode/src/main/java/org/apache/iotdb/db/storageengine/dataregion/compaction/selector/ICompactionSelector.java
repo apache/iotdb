@@ -27,7 +27,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -60,10 +59,6 @@ public interface ICompactionSelector {
 
   default List<SettleCompactionTask> selectSettleTask(List<TsFileResource> tsFileResources) {
     throw new RuntimeException("This kind of selector cannot be used to select settle task");
-  }
-
-  default List<Long> getCompactionMemoryCost() {
-    return Collections.emptyList();
   }
 
   static AbstractCompactionEstimator getCompactionEstimator(

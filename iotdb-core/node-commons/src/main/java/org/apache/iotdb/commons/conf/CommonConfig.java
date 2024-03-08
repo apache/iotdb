@@ -118,10 +118,10 @@ public class CommonConfig {
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** The threshold for the number of TTL stored in the system, the default is 1000. */
-  private int TTLCountThreshold = 3;
+  private int TTLCountThreshold = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(3);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its

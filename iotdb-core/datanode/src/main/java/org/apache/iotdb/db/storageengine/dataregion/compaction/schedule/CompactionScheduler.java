@@ -112,8 +112,9 @@ public class CompactionScheduler {
       trySubmitCount +=
           tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary, false);
     } catch (InterruptedException e) {
-      LOGGER.error("Exception occurs when selecting compaction tasks", e);
-      Thread.currentThread().interrupt();
+      throw e;
+    } catch (Throwable e) {
+      LOGGER.error("Meet error in compaction schedule.", e);
     }
     return trySubmitCount;
   }

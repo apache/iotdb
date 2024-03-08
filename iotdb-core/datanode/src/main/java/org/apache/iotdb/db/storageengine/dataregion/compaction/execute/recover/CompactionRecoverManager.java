@@ -93,6 +93,7 @@ public class CompactionRecoverManager {
               "{} [Compaction][Recover] recover compaction in time partition dir {}",
               logicalStorageGroupName,
               timePartitionDir.getAbsolutePath());
+          // including repair task
           recoverCompaction(CompactionTaskType.INNER_SEQ, timePartitionDir);
           recoverCompaction(CompactionTaskType.INNER_UNSEQ, timePartitionDir);
           recoverCompaction(CompactionTaskType.CROSS, timePartitionDir);
@@ -137,6 +138,7 @@ public class CompactionRecoverManager {
       switch (type) {
         case INNER_SEQ:
         case INNER_UNSEQ:
+        case REPAIR:
           new CompactionRecoverTask(
                   logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, true)
               .doCompaction();

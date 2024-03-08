@@ -102,6 +102,7 @@ public class CompactionLogger implements AutoCloseable {
     switch (type) {
       case INNER_SEQ:
       case INNER_UNSEQ:
+      case REPAIR:
         logNameSuffix = INNER_COMPACTION_LOG_NAME_SUFFIX;
         break;
       case CROSS:

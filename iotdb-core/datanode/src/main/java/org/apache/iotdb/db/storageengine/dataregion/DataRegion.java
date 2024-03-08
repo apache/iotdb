@@ -2336,7 +2336,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  protected int executeCompaction() throws InterruptedException {
+  public int executeCompaction() throws InterruptedException {
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
@@ -2368,10 +2368,6 @@ public class DataRegion implements IDataRegionForQuery {
           try {
             trySubmitCount +=
                 CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
-          } catch (InterruptedException e) {
-            throw e;
-          } catch (Throwable e) {
-            logger.error("Meet error in compaction schedule.", e);
           } finally {
             CompactionScheduler.sharedUnlockCompactionSelection();
           }
@@ -2385,6 +2381,7 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     } finally {
+      isCompactionSelecting.set(false);
       scheduleCount++;
     }
     return trySubmitCount;
@@ -2402,7 +2399,6 @@ public class DataRegion implements IDataRegionForQuery {
                 tsFileManager, timePartition, summary, true);
       } finally {
         CompactionScheduler.sharedUnlockCompactionSelection();
-        isCompactionSelecting.set(false);
       }
     }
     return trySubmitCount;
