@@ -105,7 +105,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void handleTaskCleanup() {
-    if (phaser != null && phaser.getRegisteredParties() > 0) {
+    if (phaser != null) {
       phaser.arrive();
     }
   }

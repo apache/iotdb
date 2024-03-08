@@ -2453,7 +2453,7 @@ public class DataRegion implements IDataRegionForQuery {
                   tsFileManager, timePartition, insertionTaskPhaser);
         }
         trySubmitCount += currentSubmitCount;
-        insertionTaskPhaser.arriveAndAwaitAdvance();
+        insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
         if (currentSubmitCount != 0) {
           continue;
         }
