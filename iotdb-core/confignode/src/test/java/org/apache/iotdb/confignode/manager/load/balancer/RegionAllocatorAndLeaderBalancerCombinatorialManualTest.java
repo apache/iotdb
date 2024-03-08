@@ -30,11 +30,8 @@ public class RegionAllocatorAndLeaderBalancerCombinatorialManualTest {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RegionAllocatorAndLeaderBalancerCombinatorialManualTest.class);
 
-  private static final IRegionGroupAllocator ALLOCATOR = new GreedyCopySetRegionGroupAllocator();
-  private static final ILeaderBalancer BALANCER = new MinCostFlowLeaderBalancer();
-
-  private static final int TEST_LOOP = 100;
-  private static final int TEST_DATA_NODE_NUM = 10;
+  private static final int TEST_LOOP = 10;
+  private static final int TEST_DATA_NODE_NUM = 12;
   private static final int DATA_REGION_PER_DATA_NODE = 4;
   private static final int DATA_REPLICATION_FACTOR = 3;
   private static final String DATABASE = "root.db";
@@ -42,6 +39,11 @@ public class RegionAllocatorAndLeaderBalancerCombinatorialManualTest {
   private static final Map<Integer, TDataNodeConfiguration> AVAILABLE_DATA_NODE_MAP =
       new TreeMap<>();
   private static final Map<Integer, Double> FREE_SPACE_MAP = new TreeMap<>();
+
+  private static final IRegionGroupAllocator ALLOCATOR = new GreedyCopySetRegionGroupAllocator();
+  //      new TieredReplicationAllocator(
+  //          TEST_DATA_NODE_NUM, DATA_REPLICATION_FACTOR, DATA_REGION_PER_DATA_NODE);
+  private static final ILeaderBalancer BALANCER = new MinCostFlowLeaderBalancer();
 
   @BeforeClass
   public static void setUp() {
@@ -106,25 +108,27 @@ public class RegionAllocatorAndLeaderBalancerCombinatorialManualTest {
       int minScatterWidth = Integer.MAX_VALUE;
       int maxScatterWidth = Integer.MIN_VALUE;
       for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
-        int scatterWidth = scatterWidthMap.get(i).cardinality();
+        int scatterWidth =
+            scatterWidthMap.containsKey(i) ? scatterWidthMap.get(i).cardinality() : 0;
         scatterWidthSum += scatterWidth;
         minScatterWidth = Math.min(minScatterWidth, scatterWidth);
         maxScatterWidth = Math.max(maxScatterWidth, scatterWidth);
-        regionCountList.add(regionCounter.get(i));
+        regionCountList.add(regionCounter.getOrDefault(i, 0));
         scatterWidthList.add(scatterWidth);
       }
-      LOGGER.info(
-          "Loop: {}, Test :{}, {}",
-          loop,
-          ALLOCATOR.getClass().getSimpleName(),
-          BALANCER.getClass().getSimpleName());
-      LOGGER.info(
-          "Allocate {} DataRegionGroups for {} DataNodes", dataRegionGroupNum, TEST_DATA_NODE_NUM);
-      LOGGER.info(
-          "Scatter width avg: {}, min: {}, max: {}",
-          (double) scatterWidthSum / TEST_DATA_NODE_NUM,
-          minScatterWidth,
-          maxScatterWidth);
+      //      LOGGER.info(
+      //          "Loop: {}, Test :{}, {}",
+      //          loop,
+      //          ALLOCATOR.getClass().getSimpleName(),
+      //          BALANCER.getClass().getSimpleName());
+      //      LOGGER.info(
+      //          "Allocate {} DataRegionGroups for {} DataNodes", dataRegionGroupNum,
+      // TEST_DATA_NODE_NUM);
+      //      LOGGER.info(
+      //          "Scatter width avg: {}, min: {}, max: {}",
+      //          (double) scatterWidthSum / TEST_DATA_NODE_NUM,
+      //          minScatterWidth,
+      //          maxScatterWidth);
 
       /* Balance Leader */
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap =
@@ -145,7 +149,7 @@ public class RegionAllocatorAndLeaderBalancerCombinatorialManualTest {
       int minLeaderCount = leaderCounter.values().stream().min(Integer::compareTo).orElse(0);
       int maxLeaderCount = leaderCounter.values().stream().max(Integer::compareTo).orElse(0);
       leaderCounter.forEach((dataNodeId, leaderCount) -> leaderCountList.add(leaderCount));
-      LOGGER.info("Leader count min: {}, max: {}", minLeaderCount, maxLeaderCount);
+      // LOGGER.info("Leader count min: {}, max: {}", minLeaderCount, maxLeaderCount);
     }
 
     LOGGER.info("All tests done.");

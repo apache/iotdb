@@ -59,7 +59,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   // RegionGroups is minimal
   int optimalCombinationSum;
   List<int[]> optimalReplicaSets;
-  private static final int MAX_OPTIMAL_PLAN_NUM = 100;
+  private static final int MAX_OPTIMAL_PLAN_NUM = 1000;
 
   private static class DataNodeEntry {
 
@@ -126,6 +126,11 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       for (int i = 0; i < replicationFactor; i++) {
         result.addToDataNodeLocations(availableDataNodeMap.get(optimalReplicaSet[i]).getLocation());
       }
+
+      if (optimalCombinationSum > 0) {
+        System.out.println("The optimal combination sum is " + optimalCombinationSum);
+      }
+
       return result;
     } finally {
       clear();
