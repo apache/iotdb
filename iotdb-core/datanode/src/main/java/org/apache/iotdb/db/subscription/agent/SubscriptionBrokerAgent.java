@@ -7,11 +7,11 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.pipe.subscription.task.subtask.PipePullOnlyConnectorSubtask;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +30,7 @@ public class SubscriptionBrokerAgent {
         consumerGroupID, new SubscriptionBroker(consumerGroupID));
   }
 
-  public List<EnrichedTablets> poll(ConsumerConfig consumerConfig) {
+  public List<ByteBuffer> poll(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {

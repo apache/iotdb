@@ -40,7 +40,6 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestTyp
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -57,6 +56,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -219,10 +219,12 @@ public class SubscriptionRpcAgent {
     }
 
     // poll
-    List<EnrichedTablets> enrichedTabletsList = SubscriptionAgent.broker().poll(consumerConfig);
+    List<ByteBuffer> serializedEnrichedTabletsList =
+        SubscriptionAgent.broker().poll(consumerConfig);
 
     LOGGER.info("Subscription: consumer poll successfully, consumer config: {}", consumerConfig);
-    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, enrichedTabletsList);
+    return PipeSubscribePollResp.directToTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS, serializedEnrichedTabletsList);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {

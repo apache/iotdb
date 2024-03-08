@@ -81,7 +81,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     for (ByteBuffer byteBuffer : pollResp.body) {
-      if (byteBuffer.hasRemaining()) {
+      if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
         resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
       }
     }

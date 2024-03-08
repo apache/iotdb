@@ -21,8 +21,8 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,15 +41,18 @@ public class SubscriptionBroker {
     this.topicNameToPrefetchingQueue = new TreeMap<>();
   }
 
-  public List<EnrichedTablets> poll(Set<String> topicNames) {
-    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+  public List<ByteBuffer> poll(Set<String> topicNames) {
+    List<ByteBuffer> serializedEnrichedTabletsList = new ArrayList<>();
     topicNameToPrefetchingQueue.forEach(
         (topicName, prefetchingQueue) -> {
           if (topicNames.contains(topicName)) {
-            enrichedTabletsList.add(prefetchingQueue.fetch());
+            ByteBuffer byteBuffer = prefetchingQueue.fetch();
+            if (Objects.nonNull(byteBuffer)) {
+              serializedEnrichedTabletsList.add(byteBuffer);
+            }
           }
         });
-    return enrichedTabletsList;
+    return serializedEnrichedTabletsList;
   }
 
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
