@@ -356,7 +356,9 @@ public abstract class AbstractEnv implements BaseEnv {
         logger.error("Delete lock file {} failed", lockPath);
       }
     }
-    clientManager.close();
+    if (clientManager != null) {
+      clientManager.close();
+    }
     testMethodName = null;
     clusterConfig = new MppClusterConfig();
   }

@@ -93,7 +93,9 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
-    clientManager.close();
+    if (clientManager != null) {
+      clientManager.close();
+    }
     clusterConfig = new RemoteClusterConfig();
   }
 
