@@ -203,7 +203,9 @@ public enum PlanNodeType {
   INNER_TIME_JOIN((short) 87),
   LEFT_OUTER_TIME_JOIN((short) 88),
 
-  AGG_MERGE_SORT((short) 89);
+  AGG_MERGE_SORT((short) 89),
+
+  EXPLAIN_ANALYZE((short) 90);
 
   public static final int BYTES = Short.BYTES;
 
@@ -430,6 +432,8 @@ public enum PlanNodeType {
         return LeftOuterTimeJoinNode.deserialize(buffer);
       case 89:
         return AggregationMergeSortNode.deserialize(buffer);
+      case 90:
+        return ExplainAnalyzeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

@@ -456,6 +456,86 @@ struct TExecuteCQ {
   7: required string username
 }
 
+/**
+* BEGIN: Used for EXPLAIN ANALYZE
+**/
+struct TOperatorStatistics{
+  1: required string planNodeId
+  2: required string operatorType
+  3: required i64 totalExecutionTimeInNanos
+  4: required i64 nextCalledCount
+  5: required i64 hasNextCalledCount
+  6: required map<string,string> specifiedInfo
+  7: required i64 inputRows
+  8: required i64 memoryUsage
+  9: optional i64 count
+}
+
+struct TQueryStatistics {
+  1: i64 loadTimeSeriesMetadataDiskSeqCount,
+  2: i64 loadTimeSeriesMetadataDiskUnSeqCount,
+  3: i64 loadTimeSeriesMetadataMemSeqCount,
+  4: i64 loadTimeSeriesMetadataMemUnSeqCount,
+  5: i64 loadTimeSeriesMetadataAlignedDiskSeqCount,
+  6: i64 loadTimeSeriesMetadataAlignedDiskUnSeqCount,
+  7: i64 loadTimeSeriesMetadataAlignedMemSeqCount,
+  8: i64 loadTimeSeriesMetadataAlignedMemUnSeqCount,
+
+  9: i64 loadTimeSeriesMetadataDiskSeqTime,
+  10: i64 loadTimeSeriesMetadataDiskUnSeqTime,
+  11: i64 loadTimeSeriesMetadataMemSeqTime,
+  12: i64 loadTimeSeriesMetadataMemUnSeqTime,
+  13: i64 loadTimeSeriesMetadataAlignedDiskSeqTime,
+  14: i64 loadTimeSeriesMetadataAlignedDiskUnSeqTime,
+  15: i64 loadTimeSeriesMetadataAlignedMemSeqTime,
+  16: i64 loadTimeSeriesMetadataAlignedMemUnSeqTime,
+
+  17: i64 constructNonAlignedChunkReadersDiskCount,
+  18: i64 constructNonAlignedChunkReadersMemCount,
+  19: i64 constructAlignedChunkReadersDiskCount,
+  20: i64 constructAlignedChunkReadersMemCount,
+
+  21: i64 constructNonAlignedChunkReadersDiskTime,
+  22: i64 constructNonAlignedChunkReadersMemTime,
+  23: i64 constructAlignedChunkReadersDiskTime,
+  24: i64 constructAlignedChunkReadersMemTime,
+
+  25: i64 pageReadersDecodeAlignedDiskCount,
+  26: i64 pageReadersDecodeAlignedDiskTime,
+  27: i64 pageReadersDecodeAlignedMemCount,
+  28: i64 pageReadersDecodeAlignedMemTime,
+  29: i64 pageReadersDecodeNonAlignedDiskCount,
+  30: i64 pageReadersDecodeNonAlignedDiskTime,
+  31: i64 pageReadersDecodeNonAlignedMemCount,
+  32: i64 pageReadersDecodeNonAlignedMemTime
+}
+
+
+struct TFetchFragmentInstanceStatisticsReq {
+  1: required TFragmentInstanceId fragmentInstanceId
+}
+
+struct TFetchFragmentInstanceStatisticsResp {
+  1: required common.TSStatus status
+  2: optional TFragmentInstanceId fragmentInstanceId
+  3: optional string dataRegion
+  4: optional i64 startTimeInMS
+  5: optional i64 endTimeInMS
+  6: optional TQueryStatistics queryStatistics
+  7: optional map<string, TOperatorStatistics> operatorStatisticsMap
+  8: optional i64 initDataQuerySourceCost
+  9: optional i64 seqUnclosedNum
+  10: optional i64 seqClosednNum
+  11: optional i64 unseqClosedNum
+  12: optional i64 unseqUnclosedNum
+  13: optional i64 readyQueuedTime
+  14: optional i64 blockQueuedTime
+  15: optional string ip
+}
+/**
+* END: Used for EXPLAIN ANALYZE
+**/
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -789,6 +869,11 @@ service IDataNodeRPCService {
    * Set throttle quota
    **/
   common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+
+  /**
+  * Fetch fragment instance statistics for EXPLAIN ANALYZE
+  */
+  TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
 }
 
 service MPPDataExchangeService {
