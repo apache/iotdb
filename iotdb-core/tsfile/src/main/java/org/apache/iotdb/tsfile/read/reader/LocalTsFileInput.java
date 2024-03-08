@@ -45,18 +45,33 @@ public class LocalTsFileInput implements TsFileInput {
 
   @Override
   public long size() throws IOException {
-    return channel.size();
+    try {
+      return channel.size();
+    } catch (IOException e) {
+      logger.warn("Error happened while getting {} size", filePath);
+      throw e;
+    }
   }
 
   @Override
   public long position() throws IOException {
-    return channel.position();
+    try {
+      return channel.position();
+    } catch (IOException e) {
+      logger.warn("Error happened while getting {} current position", filePath);
+      throw e;
+    }
   }
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    channel.position(newPosition);
-    return this;
+    try {
+      channel.position(newPosition);
+      return this;
+    } catch (IOException e) {
+      logger.warn("Error happened while changing {} position to {}", filePath, newPosition);
+      throw e;
+    }
   }
 
   @Override
@@ -64,7 +79,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.read(dst);
     } catch (ClosedByInterruptException e) {
-      logger.warn(
+      logger.info(
           "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
       return -1;
     } catch (IOException e) {
@@ -78,7 +93,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.read(dst, position);
     } catch (ClosedByInterruptException e) {
-      logger.warn(
+      logger.info(
           "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
       return -1;
     } catch (IOException e) {

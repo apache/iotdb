@@ -145,6 +145,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (loadMetadataSize) {
         loadMetadataSize();
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable e) {
       tsFileInput.close();
       throw e;
@@ -183,6 +185,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable e) {
       tsFileInput.close();
       throw e;
