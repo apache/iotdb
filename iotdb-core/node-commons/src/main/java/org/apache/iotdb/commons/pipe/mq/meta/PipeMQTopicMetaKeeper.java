@@ -35,22 +35,26 @@ public class PipeMQTopicMetaKeeper {
     topicNameToPipeMQTopicMetaMap = new ConcurrentHashMap<>();
   }
 
-  /////////////////////////////////  PipeMeta  /////////////////////////////////
+  /////////////////////////////////  TopicMeta  /////////////////////////////////
 
-  public void addPipeMQTopicMeta(String pipeName, PipeMQTopicMeta pipeMQTopicMeta) {
-    topicNameToPipeMQTopicMetaMap.put(pipeName, pipeMQTopicMeta);
+  public void addPipeMQTopicMeta(String topicName, PipeMQTopicMeta pipeMQTopicMeta) {
+    topicNameToPipeMQTopicMetaMap.put(topicName, pipeMQTopicMeta);
   }
 
-  public PipeMQTopicMeta getPipeMQTopicMeta(String pipeName) {
-    return topicNameToPipeMQTopicMetaMap.get(pipeName);
+  public PipeMQTopicMeta getPipeMQTopicMeta(String topicName) {
+    return topicNameToPipeMQTopicMetaMap.get(topicName);
   }
 
-  public void removePipeMQTopicMeta(String pipeName) {
-    topicNameToPipeMQTopicMetaMap.remove(pipeName);
+  public Iterable<PipeMQTopicMeta> getAllPipeMQTopicMeta() {
+    return topicNameToPipeMQTopicMetaMap.values();
   }
 
-  public boolean containsPipeMQTopicMeta(String pipeName) {
-    return topicNameToPipeMQTopicMetaMap.containsKey(pipeName);
+  public void removePipeMQTopicMeta(String topicName) {
+    topicNameToPipeMQTopicMetaMap.remove(topicName);
+  }
+
+  public boolean containsPipeMQTopicMeta(String topicName) {
+    return topicNameToPipeMQTopicMetaMap.containsKey(topicName);
   }
 
   public Iterable<PipeMQTopicMeta> getPipeMQTopicMetaList() {
@@ -59,10 +63,6 @@ public class PipeMQTopicMetaKeeper {
 
   public int getPipeMQTopicMetaCount() {
     return topicNameToPipeMQTopicMetaMap.size();
-  }
-
-  public PipeMQTopicMeta getPipeMQTopicMetaByPipeName(String pipeName) {
-    return topicNameToPipeMQTopicMetaMap.get(pipeName);
   }
 
   public void clear() {

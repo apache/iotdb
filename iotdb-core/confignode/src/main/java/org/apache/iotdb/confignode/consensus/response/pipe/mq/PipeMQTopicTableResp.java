@@ -56,14 +56,14 @@ public class PipeMQTopicTableResp implements DataSet {
   }
 
   public TShowTopicResp convertToTShowTopicResp() {
-    final List<TShowTopicInfo> showPipeInfoList = new ArrayList<>();
+    final List<TShowTopicInfo> showTopicInfoList = new ArrayList<>();
 
     for (PipeMQTopicMeta pipeMQTopicMeta : allPipeMQTopicMeta) {
-      showPipeInfoList.add(
+      showTopicInfoList.add(
           new TShowTopicInfo(pipeMQTopicMeta.getTopicName(), pipeMQTopicMeta.getCreationTime())
               .setTopicAttributes(pipeMQTopicMeta.getConfig().toString()));
     }
-    return new TShowTopicResp(status);
+    return new TShowTopicResp(status).setTopicInfoList(showTopicInfoList);
   }
 
   public TGetAllTopicInfoResp convertToTGetAllTopicInfoResp() throws IOException {

@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -81,6 +82,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -108,6 +110,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
@@ -151,14 +154,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -990,6 +997,36 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetAllTopicInfoResp getAllTopicInfo() {
     return configManager.getAllTopicInfo();
+  }
+
+  @Override
+  public TSStatus createConsumer(TCreateConsumerReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus closeConsumer(TCloseConsumerReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus createSubscription(TSubscribeReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus dropSubscription(TUnsubscribeReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() throws TException {
+    return null;
   }
 
   @Override

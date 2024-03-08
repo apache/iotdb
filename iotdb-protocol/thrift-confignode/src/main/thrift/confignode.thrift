@@ -740,7 +740,7 @@ struct TAlterLogicalViewReq{
   2: required binary viewBinary
 }
 
-// Topic
+// MQ topic
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
@@ -764,11 +764,57 @@ struct TShowTopicInfo {
 struct TAlterTopicReq {
     1: required string topicName
     2: required map<string, string> topicAttributes
+    3: required set<string> subscribedConsumerGroupIds
 }
 
 struct TGetAllTopicInfoResp {
     1: required common.TSStatus status
     2: required list<binary> allTopicInfo
+}
+
+// MQ consumer
+
+struct TCreateConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: optional map<string, string> consumerAttributes
+}
+
+struct TCloseConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+}
+
+struct TSubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TUnsubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TShowSubscriptionReq {
+    1: optional string topicName
+}
+
+struct TShowSubscriptionResp {
+    1: required common.TSStatus status
+    2: optional list<TShowSubscriptionInfo> subscriptionInfoList
+}
+
+struct TShowSubscriptionInfo {
+    1: required string topicName
+    2: required string consumerGroupId
+    3: required set<string> consumerIds
+}
+
+struct TGetAllSubscriptionInfoResp {
+    1: required common.TSStatus status
+    2: required list<binary> allSubscriptionInfo
 }
 
 // ====================================================
@@ -1390,7 +1436,7 @@ service IConfigNodeRPCService {
   common.TSStatus executeSyncCommand(binary configPhysicalPlanBinary)
 
   // ======================================================
-  // Topic
+  // MQ topic
   // ======================================================
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
@@ -1403,6 +1449,30 @@ service IConfigNodeRPCService {
 
   /** Get all topic information. It is used for DataNode registration and restart*/
   TGetAllTopicInfoResp getAllTopicInfo()
+
+  // ======================================================
+  // MQ consumer
+  // ======================================================
+  /** Create consumer */
+  common.TSStatus createConsumer(TCreateConsumerReq req)
+
+  /** Close consumer */
+  common.TSStatus closeConsumer(TCloseConsumerReq req)
+
+  // ======================================================
+  // MQ subscription
+  // ======================================================
+  /** Create consumer */
+  common.TSStatus createSubscription(TSubscribeReq req)
+
+  /** Close consumer */
+  common.TSStatus dropSubscription(TUnsubscribeReq req)
+
+  /** Show Subscription on topic name, if name is empty, show all subscriptions */
+  TShowSubscriptionResp showSubscription(TShowSubscriptionReq req)
+
+  /** Get all subscription information. It is used for DataNode registration and restart */
+  TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
 
   // ======================================================
   // TestTools

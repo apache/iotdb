@@ -47,7 +47,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
 
     // Do nothing
@@ -55,21 +55,21 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
 
     // Do nothing
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
@@ -82,28 +82,28 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
 
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
 
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
     // Do nothing

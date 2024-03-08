@@ -75,7 +75,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -93,7 +93,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -130,8 +130,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -153,7 +152,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
@@ -168,14 +167,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromValidateTask({})", createPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -183,7 +182,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -204,7 +203,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());

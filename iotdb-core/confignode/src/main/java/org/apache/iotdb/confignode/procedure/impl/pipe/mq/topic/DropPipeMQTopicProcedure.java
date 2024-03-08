@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic;
 
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
-import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -53,18 +53,18 @@ public class DropPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   @Override
   protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeMQTopicProcedure: executeFromLock({})", topicName);
-    final PipeMQTopicCoordinator pipeMQTopicCoordinator =
-        env.getConfigManager().getMQManager().getPipeMQTopicCoordinator();
+    final PipeMQCoordinator pipeMQCoordinator =
+        env.getConfigManager().getMQManager().getPipeMQCoordinator();
 
-    pipeMQTopicCoordinator.lock();
+    pipeMQCoordinator.lock();
 
     try {
-      pipeMQTopicCoordinator.getPipeMQInfo().validateBeforeDroppingTopic(topicName);
+      pipeMQCoordinator.getPipeMQInfo().validateBeforeDroppingTopic(topicName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
-      pipeMQTopicCoordinator.unlock();
+      pipeMQCoordinator.unlock();
       throw e;
     }
 
@@ -100,13 +100,13 @@ public class DropPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeMQTopicProcedure: executeFromUnlock({})", topicName);
 
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
   protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeMQTopicProcedure: rollbackFromLock({})", topicName);
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override

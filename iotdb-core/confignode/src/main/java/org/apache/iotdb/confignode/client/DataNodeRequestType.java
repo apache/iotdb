@@ -75,6 +75,7 @@ public enum DataNodeRequestType {
 
   // Pipe MQ
   PIPE_MQ_TOPIC_PUSH_SINGLE_META,
+  PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META,
 
   // CQ
   EXECUTE_CQ,

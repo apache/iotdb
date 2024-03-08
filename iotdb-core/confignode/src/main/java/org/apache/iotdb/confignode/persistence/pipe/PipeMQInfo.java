@@ -19,12 +19,28 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMetaKeeper;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQSubscriptionMeta;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMetaKeeper;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.response.pipe.mq.PipeMQSubscriptionTableResp;
+import org.apache.iotdb.confignode.consensus.response.pipe.mq.PipeMQTopicTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +49,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeMQInfo implements SnapshotProcessor {
 
@@ -142,6 +163,287 @@ public class PipeMQInfo implements SnapshotProcessor {
     }
   }
 
+  public PipeMQTopicMeta getPipeMQTopicMeta(String topicName) {
+    acquireReadLock();
+    try {
+      return pipeMQTopicMetaKeeper.getPipeMQTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private Iterable<PipeMQTopicMeta> getAllPipeMQTopicMeta() {
+    return pipeMQTopicMetaKeeper.getAllPipeMQTopicMeta();
+  }
+
+  public DataSet showTopics() {
+    acquireReadLock();
+    try {
+      return new PipeMQTopicTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          StreamSupport.stream(getAllPipeMQTopicMeta().spliterator(), false)
+              .collect(Collectors.toList()));
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TSStatus createTopic(CreatePipeMQTopicPlan plan) {
+    acquireWriteLock();
+    try {
+      pipeMQTopicMetaKeeper.addPipeMQTopicMeta(
+          plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus alterTopic(AlterPipeMQTopicPlan plan) {
+    acquireWriteLock();
+    try {
+      pipeMQTopicMetaKeeper.removePipeMQTopicMeta(plan.getTopicMeta().getTopicName());
+      pipeMQTopicMetaKeeper.addPipeMQTopicMeta(
+          plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus dropTopic(DropPipeMQTopicPlan plan) {
+    acquireWriteLock();
+    try {
+      pipeMQTopicMetaKeeper.removePipeMQTopicMeta(plan.getTopicName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /////////////////////////////////  Consumer  /////////////////////////////////
+
+  public void validateBeforeCreatingConsumer(TCreateConsumerReq createConsumerReq)
+      throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeCreateConsumerInternal(createConsumerReq);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeCreateConsumerInternal(TCreateConsumerReq createConsumerReq)
+      throws PipeException {
+    if (!isConsumerGroupExisted(createConsumerReq.getConsumerGroupId())
+        || !isConsumerExisted(
+            createConsumerReq.getConsumerGroupId(), createConsumerReq.getConsumerId())) {
+      return;
+    }
+
+    // A consumer with same consumerId and consumerGroupId has already existed, we should end the
+    // procedure
+    final String exceptionMessage =
+        String.format(
+            "Failed to create pipe consumer %s in consumer group %s, the consumer with the same name has been created",
+            createConsumerReq.getConsumerId(), createConsumerReq.getConsumerGroupId());
+    LOGGER.warn(exceptionMessage);
+    throw new PipeException(exceptionMessage);
+  }
+
+  public void validateBeforeDroppingConsumer(TCloseConsumerReq dropConsumerReq)
+      throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeDropConsumerInternal(dropConsumerReq);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeDropConsumerInternal(TCloseConsumerReq dropConsumerReq)
+      throws PipeException {
+    if (isConsumerExisted(dropConsumerReq.getConsumerGroupId(), dropConsumerReq.getConsumerId())) {
+      return;
+    }
+
+    // There is no consumer with the same consumerId and consumerGroupId, we should end the
+    // procedure
+    final String exceptionMessage =
+        String.format(
+            "Failed to drop pipe consumer %s in consumer group %s, the consumer with the same name does not exist",
+            dropConsumerReq.getConsumerId(), dropConsumerReq.getConsumerGroupId());
+    LOGGER.warn(exceptionMessage);
+    throw new PipeException(exceptionMessage);
+  }
+
+  public void validateBeforeAlterConsumerGroup(PipeMQConsumerGroupMeta consumerGroupMeta)
+      throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeAlterConsumerGroupInternal(consumerGroupMeta);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void checkBeforeAlterConsumerGroupInternal(PipeMQConsumerGroupMeta consumerGroupMeta)
+      throws PipeException {
+    if (!isConsumerGroupExisted(consumerGroupMeta.getConsumerGroupId())) {
+      // Consumer group not exist, not allowed to alter
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter consumer group because the consumer group %s does not exist",
+              consumerGroupMeta.getConsumerGroupId());
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+  }
+
+  public boolean isConsumerGroupExisted(String consumerGroupName) {
+    acquireReadLock();
+    try {
+      return pipeMQConsumerGroupMetaKeeper.containsPipeMQConsumerGroupMeta(consumerGroupName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isConsumerExisted(String consumerGroupName, String consumerId) {
+    acquireReadLock();
+    try {
+      PipeMQConsumerGroupMeta consumerGroupMeta =
+          pipeMQConsumerGroupMetaKeeper.getPipeMQConsumerGroupMeta(consumerGroupName);
+      return consumerGroupMeta == null || consumerGroupMeta.containsConsumer(consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public PipeMQConsumerGroupMeta getPipeMQConsumerGroupMeta(String consumerGroupName) {
+    acquireReadLock();
+    try {
+      return pipeMQConsumerGroupMetaKeeper.getPipeMQConsumerGroupMeta(consumerGroupName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TSStatus alterConsumerGroup(AlterPipeMQConsumerGroupPlan plan) {
+    acquireWriteLock();
+    try {
+      pipeMQConsumerGroupMetaKeeper.removePipeMQConsumerGroupMeta(
+          plan.getConsumerGroupMeta().getConsumerGroupId());
+      if (plan.getConsumerGroupMeta() != null) {
+        pipeMQConsumerGroupMetaKeeper.addPipeMQConsumerGroupMeta(
+            plan.getConsumerGroupMeta().getConsumerGroupId(), plan.getConsumerGroupMeta());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /////////////////////////////////  Subscription  /////////////////////////////////
+
+  public void validateBeforeSubscribe(TSubscribeReq subscribeReq) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeSubscribeInternal(subscribeReq);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeSubscribeInternal(TSubscribeReq subscribeReq) throws PipeException {
+    // 1. Check if the consumer exists
+    if (!isConsumerExisted(subscribeReq.getConsumerGroupId(), subscribeReq.getConsumerId())) {
+      // There is no consumer with the same consumerId and consumerGroupId, we should end the
+      // procedure
+      final String exceptionMessage =
+          String.format(
+              "Failed to subscribe because the consumer %s in consumer group %s does not exist",
+              subscribeReq.getConsumerId(), subscribeReq.getConsumerGroupId());
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+
+    // 2. Check if all topics exist. No need to check if already subscribed.
+    for (String topic : subscribeReq.getTopicNames()) {
+      if (!isTopicExisted(topic)) {
+        final String exceptionMessage =
+            String.format("Failed to subscribe because the topic %s does not exist", topic);
+        LOGGER.warn(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+    }
+  }
+
+  /**
+   * @return A set of topics from the TSubscribeReq that will have no consumer in this group after
+   *     this unsubscribe.
+   */
+  public void validateBeforeUnsubscribe(TUnsubscribeReq unsubscribeReq) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeUnsubscribeInternal(unsubscribeReq);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeUnsubscribeInternal(TUnsubscribeReq unsubscribeReq) throws PipeException {
+    // 1. Check if the consumer exists
+    if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
+      // There is no consumer with the same consumerId and consumerGroupId, we should end the
+      // procedure
+      final String exceptionMessage =
+          String.format(
+              "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
+              unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+
+    // 2. Check if all topics exist. No need to check if already subscribed.
+    for (String topic : unsubscribeReq.getTopicNames()) {
+      if (!isTopicExisted(topic)) {
+        final String exceptionMessage =
+            String.format("Failed to unsubscribe because the topic %s does not exist", topic);
+        LOGGER.warn(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+    }
+  }
+
+  public DataSet showSubscriptions() {
+    acquireReadLock();
+    try {
+      return new PipeMQSubscriptionTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          getAllPipeMQSubscriptionMeta());
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private List<PipeMQSubscriptionMeta> getAllPipeMQSubscriptionMeta() {
+    List<PipeMQSubscriptionMeta> allSubscriptions = new ArrayList<>();
+    for (PipeMQTopicMeta topicMeta : pipeMQTopicMetaKeeper.getAllPipeMQTopicMeta()) {
+      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIDs()) {
+        Set<String> subscribedConsumerIDs =
+            pipeMQConsumerGroupMetaKeeper.getConsumersSubscribingTopic(
+                consumerGroupId, topicMeta.getTopicName());
+        if (!subscribedConsumerIDs.isEmpty()) {
+          allSubscriptions.add(
+              new PipeMQSubscriptionMeta(
+                  topicMeta.getTopicName(), consumerGroupId, subscribedConsumerIDs));
+        }
+      }
+    }
+    return allSubscriptions;
+  }
+
   /////////////////////////////////  Snapshot  /////////////////////////////////
 
   @Override
@@ -158,8 +460,7 @@ public class PipeMQInfo implements SnapshotProcessor {
 
       try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
         pipeMQTopicMetaKeeper.processTakeSnapshot(fileOutputStream);
-        // todo:
-        // pipeMQConsumerGroupMetaKeeper.processTakeSnapshot(fileOutputStream);
+        pipeMQConsumerGroupMetaKeeper.processTakeSnapshot(fileOutputStream);
         fileOutputStream.getFD().sync();
       }
 
@@ -183,8 +484,7 @@ public class PipeMQInfo implements SnapshotProcessor {
 
       try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
         pipeMQTopicMetaKeeper.processLoadSnapshot(fileInputStream);
-        // todo:
-        // pipeMQConsumerGroupMetaKeeper.processTakeSnapshot(fileOutputStream);
+        pipeMQConsumerGroupMetaKeeper.processLoadSnapshot(fileInputStream);
       }
     } finally {
       releaseWriteLock();

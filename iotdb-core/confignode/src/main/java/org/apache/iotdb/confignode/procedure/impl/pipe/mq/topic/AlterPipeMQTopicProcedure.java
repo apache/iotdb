@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
-import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.AbstractOperatePipeMQProcedure;
@@ -55,26 +55,30 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
     this.alterTopicReq = alterTopicReq;
   }
 
+  public AlterPipeMQTopicProcedure(PipeMQTopicMeta updatedTopicMeta) {
+    super();
+    this.updatedPipeMQTopicMeta = updatedTopicMeta;
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.ALTER_TOPIC;
   }
 
   @Override
-  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterPipeMQTopicProcedure: executeFromLock, try to acquire pipeMQ lock");
 
-    final PipeMQTopicCoordinator pipeMQTopicCoordinator =
-        env.getConfigManager().getMQManager().getPipeMQTopicCoordinator();
+    final PipeMQCoordinator pipeMQCoordinator =
+        env.getConfigManager().getMQManager().getPipeMQCoordinator();
 
-    pipeMQTopicCoordinator.lock();
+    pipeMQCoordinator.lock();
 
     // check if the topic exists
     // todo
     try {
-      pipeMQTopicCoordinator.getPipeMQInfo().validateBeforeAlteringTopic(alterTopicReq);
+      pipeMQCoordinator.getPipeMQInfo().validateBeforeAlteringTopic(alterTopicReq);
     } catch (PipeException e) {
-      // if the pipe  is a built-in plugin, we should not drop it
       LOGGER.error(
           "AlterPipeMQTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
       throw e;
@@ -82,14 +86,17 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   }
 
   @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterPipeMQTopicProcedure: executeFromOperateOnConfigNodes, try to alter topic");
 
-    updatedPipeMQTopicMeta =
-        new PipeMQTopicMeta(
-            alterTopicReq.getTopicName(),
-            System.currentTimeMillis(),
-            new HashMap<>(alterTopicReq.getTopicAttributes()));
+    if (updatedPipeMQTopicMeta == null) {
+      // updatedPipeMQTopicMeta == null means this procedure is constructed from TAlterTopicReq.
+      updatedPipeMQTopicMeta =
+          new PipeMQTopicMeta(
+              alterTopicReq.getTopicName(),
+              System.currentTimeMillis(),
+              new HashMap<>(alterTopicReq.getTopicAttributes()));
+    }
 
     TSStatus response;
     try {
@@ -108,7 +115,7 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "AlterPipeMQTopicProcedure: executeFromOperateOnDataNodes({})",
         alterTopicReq.getTopicName());
@@ -117,24 +124,24 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   }
 
   @Override
-  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterPipeMQTopicProcedure: executeFromUnlock({})", alterTopicReq.getTopicName());
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
-  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  public void rollbackFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("AlterPipeMQTopicProcedure: rollbackFromLock({})", alterTopicReq.getTopicName());
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
-  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
     // do nothing
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     // do nothing
   }
 }

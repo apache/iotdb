@@ -182,6 +182,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQConsumerGroupMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -998,6 +1000,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
+  }
+
+  @Override
+  public TPushPipeMetaResp pushSinglePipeMQTopicMeta(TPushSinglePipeMQTopicMetaReq req)
+      throws TException {
+    // TODO
+    return null;
+  }
+
+  @Override
+  public TPushPipeMetaResp pushSinglePipeMQConsumerGroupMeta(
+      TPushSinglePipeMQConsumerGroupMetaReq req) throws TException {
+    // TODO
+    return null;
   }
 
   @Override

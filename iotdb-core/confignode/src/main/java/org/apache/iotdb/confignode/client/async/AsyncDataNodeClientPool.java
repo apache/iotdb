@@ -63,6 +63,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQConsumerGroupMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -268,6 +270,18 @@ public class AsyncDataNodeClientPool {
         case PIPE_PUSH_SINGLE_META:
           client.pushSinglePipeMeta(
               (TPushSinglePipeMetaReq) clientHandler.getRequest(requestId),
+              (PipePushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case PIPE_MQ_TOPIC_PUSH_SINGLE_META:
+          client.pushSinglePipeMQTopicMeta(
+              (TPushSinglePipeMQTopicMetaReq) clientHandler.getRequest(requestId),
+              (PipePushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META:
+          client.pushSinglePipeMQConsumerGroupMeta(
+              (TPushSinglePipeMQConsumerGroupMetaReq) clientHandler.getRequest(requestId),
               (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

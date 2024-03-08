@@ -738,6 +738,10 @@ STOP
     : S T O P
     ;
 
+SUBSCRIPTIONS
+    : S U B S C R I P T I O N S
+    ;
+
 SUBSTRING
     : S U B S T R I N G
     ;

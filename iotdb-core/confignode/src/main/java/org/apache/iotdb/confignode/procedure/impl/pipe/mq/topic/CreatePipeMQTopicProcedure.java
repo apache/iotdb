@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
-import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -60,14 +60,14 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("CreatePipeMQTopicProcedure: executeFromLock, try to acquire pipeMQ lock");
 
-    final PipeMQTopicCoordinator pipeMQTopicCoordinator =
-        env.getConfigManager().getMQManager().getPipeMQTopicCoordinator();
+    final PipeMQCoordinator pipeMQCoordinator =
+        env.getConfigManager().getMQManager().getPipeMQCoordinator();
 
-    pipeMQTopicCoordinator.lock();
+    pipeMQCoordinator.lock();
 
     // 1. check if the topic exists
     try {
-      pipeMQTopicCoordinator.getPipeMQInfo().validateBeforeCreatingTopic(createTopicReq);
+      pipeMQCoordinator.getPipeMQInfo().validateBeforeCreatingTopic(createTopicReq);
     } catch (PipeException e) {
       // The topic has already created, we should end the procedure
       LOGGER.warn(
@@ -75,7 +75,7 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
           createTopicReq.getTopicName(),
           createTopicReq.getTopicName());
       setFailure(new ProcedureException(e.getMessage()));
-      pipeMQTopicCoordinator.unlock();
+      pipeMQCoordinator.unlock();
       throw e;
     }
 
@@ -135,13 +135,13 @@ public class CreatePipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeMQTopicProcedure: executeFromUnlock({})", pipeMQTopicMeta.getTopicName());
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
   protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
     LOGGER.info("CreatePipeMQTopicProcedure: rollbackFromLock({})", pipeMQTopicMeta.getTopicName());
-    env.getConfigManager().getMQManager().getPipeMQTopicCoordinator().unlock();
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override

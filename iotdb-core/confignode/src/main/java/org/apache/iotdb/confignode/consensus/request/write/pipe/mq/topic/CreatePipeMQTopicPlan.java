@@ -40,6 +40,10 @@ public class CreatePipeMQTopicPlan extends ConfigPhysicalPlan {
     this.topicMeta = topicMeta;
   }
 
+  public PipeMQTopicMeta getTopicMeta() {
+    return topicMeta;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());

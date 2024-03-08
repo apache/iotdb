@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.mq.topic.ShowPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -35,6 +34,8 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.mq.subscription.ShowPipeMQSubscriptionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.mq.topic.ShowPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
@@ -76,6 +77,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
@@ -442,6 +444,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AlterTopic:
           plan = new AlterPipeMQTopicPlan();
+          break;
+        case AlterConsumerGroup:
+          plan = new AlterPipeMQConsumerGroupPlan();
+          break;
+        case ShowSubscription:
+          plan = new ShowPipeMQSubscriptionPlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

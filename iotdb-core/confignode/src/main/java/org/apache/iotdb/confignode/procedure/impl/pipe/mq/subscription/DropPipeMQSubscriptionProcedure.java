@@ -1,0 +1,198 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription;
+
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
+import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.AbstractOperatePipeMQProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer.AlterPipeMQConsumerGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.AlterPipeMQTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+public class DropPipeMQSubscriptionProcedure extends AbstractOperatePipeMQProcedure {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(DropPipeMQSubscriptionProcedure.class);
+
+  private TUnsubscribeReq unsubscribeReq;
+  private AlterPipeMQConsumerGroupProcedure consumerGroupProcedure;
+  private List<AlterPipeMQTopicProcedure> topicProcedures = new ArrayList<>();
+  private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+
+  public DropPipeMQSubscriptionProcedure(TUnsubscribeReq unsubscribeReq) {
+    this.unsubscribeReq = unsubscribeReq;
+  }
+
+  @Override
+  protected PipeTaskOperation getOperation() {
+    return PipeTaskOperation.DROP_SUBSCRIPTION;
+  }
+
+  @Override
+  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: executeFromLock, try to acquire pipeMQ lock");
+
+    final PipeMQCoordinator pipeMQCoordinator =
+        env.getConfigManager().getMQManager().getPipeMQCoordinator();
+
+    pipeMQCoordinator.lock();
+
+    // check if the consumer and all topics exists
+    try {
+      pipeMQCoordinator.getPipeMQInfo().validateBeforeUnsubscribe(unsubscribeReq);
+    } catch (PipeException e) {
+      LOGGER.error(
+          "DropPipeMQSubscriptionProcedure: executeFromLock, validateBeforeUnsubscribe failed", e);
+      throw e;
+    }
+
+    // Construct AlterPipeMQConsumerGroupProcedure
+    PipeMQConsumerGroupMeta updatedConsumerGroupMeta =
+        pipeMQCoordinator
+            .getPipeMQInfo()
+            .getPipeMQConsumerGroupMeta(unsubscribeReq.getConsumerGroupId())
+            .copy();
+
+    // Get topics subscribed by no consumers in this group after this un-subscription
+    Set<String> topicsUnsubByGroup =
+        updatedConsumerGroupMeta.removeSubscription(
+            unsubscribeReq.getConsumerId(), unsubscribeReq.getTopicNames());
+    consumerGroupProcedure = new AlterPipeMQConsumerGroupProcedure(updatedConsumerGroupMeta);
+
+    for (String topic : unsubscribeReq.getTopicNames()) {
+      if (topicsUnsubByGroup.contains(topic)) {
+        // Topic will be subscribed by no consumers in this group
+
+        PipeMQTopicMeta updatedTopicMeta =
+            pipeMQCoordinator.getPipeMQInfo().getPipeMQTopicMeta(topic).copy();
+        updatedTopicMeta.removeSubscribedConsumerGroup(unsubscribeReq.getConsumerGroupId());
+
+        topicProcedures.add(new AlterPipeMQTopicProcedure(updatedTopicMeta));
+        pipeProcedures.add(
+            new StopPipeProcedureV2(topic + "_" + unsubscribeReq.getConsumerGroupId()));
+      }
+    }
+  }
+
+  @Override
+  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: executeFromOperateOnConfigNodes");
+
+    int topicCount = topicProcedures.size();
+    for (int i = 0; i < topicCount; ++i) {
+      pipeProcedures.get(i).executeFromValidateTask(env);
+    }
+
+    for (int i = 0; i < topicCount; ++i) {
+      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+    }
+
+    consumerGroupProcedure.executeFromOperateOnConfigNodes(env);
+
+    for (int i = 0; i < topicCount; ++i) {
+      topicProcedures.get(i).executeFromOperateOnConfigNodes(env);
+      pipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
+    }
+  }
+
+  @Override
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: executeFromOperateOnDataNodes");
+
+    consumerGroupProcedure.executeFromOperateOnDataNodes(env);
+
+    int topicCount = topicProcedures.size();
+    for (int i = 0; i < topicCount; ++i) {
+      topicProcedures.get(i).executeFromOperateOnDataNodes(env);
+      try {
+        pipeProcedures.get(i).executeFromOperateOnDataNodes(env);
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to stop pipe task for subscription on datanode, because {}", e.getMessage());
+        throw new PipeException(e.getMessage());
+      }
+    }
+  }
+
+  @Override
+  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: executeFromUnlock");
+  }
+
+  @Override
+  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: rollbackFromLock");
+    env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
+  }
+
+  @Override
+  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+
+    int topicCount = topicProcedures.size();
+    for (int i = topicCount; i >= 0; --i) {
+      pipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
+      topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
+    }
+
+    consumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
+
+    for (int i = topicCount; i >= 0; --i) {
+      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+    }
+
+    for (int i = topicCount; i >= 0; --i) {
+      pipeProcedures.get(i).executeFromValidateTask(env);
+    }
+  }
+
+  @Override
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("DropPipeMQSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+
+    int topicCount = topicProcedures.size();
+    for (int i = topicCount; i >= 0; --i) {
+      try {
+        pipeProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to roll back stop pipe task for subscription on datanode, because {}",
+            e.getMessage());
+        throw new PipeException(e.getMessage());
+      }
+      topicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+    }
+
+    consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+  }
+}

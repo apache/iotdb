@@ -72,6 +72,10 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -112,6 +116,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -163,6 +168,8 @@ public class ConfigPlanExecutor {
 
   private final PipeInfo pipeInfo;
 
+  private final PipeMQInfo pipeMqInfo;
+
   private final QuotaInfo quotaInfo;
 
   public ConfigPlanExecutor(
@@ -176,6 +183,7 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
       PipeInfo pipeInfo,
+      PipeMQInfo pipeMqInfo,
       QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
@@ -206,6 +214,9 @@ public class ConfigPlanExecutor {
 
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
+
+    this.pipeMqInfo = pipeMqInfo;
+    this.snapshotProcessorList.add(pipeMqInfo);
 
     this.procedureInfo = procedureInfo;
 
@@ -280,6 +291,10 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
+      case ShowTopic:
+        return pipeMqInfo.showTopics();
+      case ShowSubscription:
+        return pipeMqInfo.showSubscriptions();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -430,6 +445,14 @@ public class ConfigPlanExecutor {
         return pipeInfo
             .getPipeTaskInfo()
             .handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
+      case CreateTopic:
+        return pipeMqInfo.createTopic((CreatePipeMQTopicPlan) physicalPlan);
+      case DropTopic:
+        return pipeMqInfo.dropTopic((DropPipeMQTopicPlan) physicalPlan);
+      case AlterTopic:
+        return pipeMqInfo.alterTopic((AlterPipeMQTopicPlan) physicalPlan);
+      case AlterConsumerGroup:
+        return pipeMqInfo.alterConsumerGroup((AlterPipeMQConsumerGroupPlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

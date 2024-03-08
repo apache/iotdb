@@ -88,6 +88,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -136,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.S
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -166,6 +169,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -1796,6 +1800,25 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowSubscriptionReq showSubscriptionReq = new TShowSubscriptionReq();
+      if (showSubscriptionsStatement.getTopicName() != null) {
+        showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
+      }
+      List<TShowSubscriptionInfo> tShowSubscriptionInfoList =
+          configNodeClient.showSubscription(showSubscriptionReq).getSubscriptionInfoList();
+      ShowSubscriptionTask.buildTSBlock(tShowSubscriptionInfoList, future);
     } catch (Exception e) {
       future.setException(e);
     }

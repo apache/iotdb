@@ -110,12 +110,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -133,6 +135,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
@@ -168,14 +171,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -273,6 +280,7 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
+    PipeMQInfo pipeMqInfo = new PipeMQInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
     PipeMQInfo pipeMQInfo = new PipeMQInfo();
 
@@ -289,6 +297,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             cqInfo,
             pipeInfo,
+            pipeMqInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
@@ -1842,7 +1851,7 @@ public class ConfigManager implements IManager {
   public TSStatus createTopic(TCreateTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQTopicCoordinator().createTopic(req)
+        ? mqManager.getPipeMQCoordinator().createTopic(req)
         : status;
   }
 
@@ -1850,7 +1859,7 @@ public class ConfigManager implements IManager {
   public TSStatus dropTopic(String topicName) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQTopicCoordinator().dropTopic(topicName)
+        ? mqManager.getPipeMQCoordinator().dropTopic(topicName)
         : status;
   }
 
@@ -1858,7 +1867,7 @@ public class ConfigManager implements IManager {
   public TShowTopicResp showTopic(TShowTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQTopicCoordinator().showTopic(req)
+        ? mqManager.getPipeMQCoordinator().showTopic(req)
         : new TShowTopicResp().setStatus(status);
   }
 
@@ -1866,8 +1875,56 @@ public class ConfigManager implements IManager {
   public TGetAllTopicInfoResp getAllTopicInfo() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQTopicCoordinator().getAllTopicInfo()
+        ? mqManager.getPipeMQCoordinator().getAllTopicInfo()
         : new TGetAllTopicInfoResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createConsumer(TCreateConsumerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().createConsumer(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus closeConsumer(TCloseConsumerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().dropConsumer(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus createSubscription(TSubscribeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().createSubscription(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropSubscription(TUnsubscribeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().dropSubscription(req)
+        : status;
+  }
+
+  @Override
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().showSubscription(req)
+        : new TShowSubscriptionResp().setStatus(status);
+  }
+
+  @Override
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? mqManager.getPipeMQCoordinator().getAllSubscriptionInfo()
+        : new TGetAllSubscriptionInfoResp(status, Collections.emptyList());
   }
 
   @Override

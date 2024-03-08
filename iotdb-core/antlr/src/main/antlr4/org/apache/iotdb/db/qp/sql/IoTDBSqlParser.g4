@@ -58,6 +58,8 @@ ddlStatement
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // TOPIC
     | createPipeMQTopic | dropPipeMQTopic | showPipeMQTopic | showPipeMQTopics
+    // Subscription
+    | showSubscriptions
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -613,7 +615,7 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
-// Topic =========================================================================================
+// MQ topic =========================================================================================
 createPipeMQTopic
     : CREATE TOPIC topicName=identifier topicAttributesClause?
     ;
@@ -637,6 +639,12 @@ showPipeMQTopic
 showPipeMQTopics
     : SHOW TOPICS
     ;
+
+// MQ subscriptions =========================================================================================
+showSubscriptions
+    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths

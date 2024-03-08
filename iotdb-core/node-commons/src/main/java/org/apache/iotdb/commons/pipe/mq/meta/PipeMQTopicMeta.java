@@ -28,6 +28,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,6 +55,15 @@ public class PipeMQTopicMeta {
     this.config = new PipeMQTopicConfig(topicAttributes);
   }
 
+  public PipeMQTopicMeta copy() {
+    PipeMQTopicMeta copy = new PipeMQTopicMeta();
+    copy.topicName = topicName;
+    copy.creationTime = creationTime;
+    copy.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
+    copy.config = new PipeMQTopicConfig(new HashMap<>(config.getAttributes()));
+    return copy;
+  }
+
   public String getTopicName() {
     return topicName;
   }
@@ -61,8 +72,21 @@ public class PipeMQTopicMeta {
     return creationTime;
   }
 
+  /** @return true if the consumer group did not already subscribe this topic */
+  public boolean addSubscribedConsumerGroup(String consumerGroupId) {
+    return subscribedConsumerGroupIDs.add(consumerGroupId);
+  }
+
+  public void removeSubscribedConsumerGroup(String consumerGroupId) {
+    subscribedConsumerGroupIDs.remove(consumerGroupId);
+  }
+
   public Set<String> getSubscribedConsumerGroupIDs() {
     return subscribedConsumerGroupIDs;
+  }
+
+  public boolean isSubscribedByConsumerGroup(String consumerGroupId) {
+    return subscribedConsumerGroupIDs.contains(consumerGroupId);
   }
 
   public PipeMQTopicConfig getConfig() {

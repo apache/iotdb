@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.mq.topic;
+package org.apache.iotdb.confignode.consensus.request.read.pipe.mq.topic;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;

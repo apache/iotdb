@@ -20,18 +20,18 @@
 package org.apache.iotdb.confignode.manager.pipe.mq;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.topic.PipeMQTopicCoordinator;
+import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
 
 public class MQManager {
 
-  private final PipeMQTopicCoordinator pipeMQTopicCoordinator;
+  private final PipeMQCoordinator pipeMQCoordinator;
 
   public MQManager(ConfigManager configManager, PipeMQInfo pipeMQInfo) {
-    this.pipeMQTopicCoordinator = new PipeMQTopicCoordinator(configManager, pipeMQInfo);
+    this.pipeMQCoordinator = new PipeMQCoordinator(configManager, pipeMQInfo);
   }
 
-  public PipeMQTopicCoordinator getPipeMQTopicCoordinator() {
-    return pipeMQTopicCoordinator;
+  public PipeMQCoordinator getPipeMQCoordinator() {
+    return pipeMQCoordinator;
   }
 }

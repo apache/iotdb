@@ -30,7 +30,13 @@ public enum PipeTaskOperation {
   HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
   CREATE_TOPIC("createTopic"),
   DROP_TOPIC("dropTopic"),
-  ALTER_TOPIC("alterTopic");
+  ALTER_TOPIC("alterTopic"),
+  CREATE_CONSUMER("createConsumer"),
+  DROP_CONSUMER("dropConsumer"),
+  ALTER_CONSUMER_GROUP("alterConsumerGroup"),
+  CREATE_SUBSCRIPTION("createSubscription"),
+  DROP_SUBSCRIPTION("dropSubscription"),
+  ;
 
   private final String name;
 

@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowPipeMQTopicsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -505,6 +506,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowPipeMQTopics(ShowPipeMQTopicsStatement showPipeMQTopicsStatement, C context) {
     return visitStatement(showPipeMQTopicsStatement, context);
+  }
+
+  public R visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, C context) {
+    return visitStatement(showSubscriptionsStatement, context);
   }
 
   public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {

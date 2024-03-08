@@ -170,6 +170,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -3806,6 +3807,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowPipeMQTopics(IoTDBSqlParser.ShowPipeMQTopicsContext ctx) {
     return new ShowPipePluginsStatement();
+  }
+
+  @Override
+  public Statement visitShowSubscriptions(IoTDBSqlParser.ShowSubscriptionsContext ctx) {
+    final ShowSubscriptionsStatement showSubscriptionsStatement = new ShowSubscriptionsStatement();
+
+    if (ctx.topicName != null) {
+      showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showSubscriptionsStatement;
   }
 
   @Override

@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -440,6 +442,12 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   @Override
   public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, MPPQueryContext context) {
     return new StopPipeTask(stopPipeStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
+    return new ShowSubscriptionTask(showSubscriptionsStatement);
   }
 
   @Override

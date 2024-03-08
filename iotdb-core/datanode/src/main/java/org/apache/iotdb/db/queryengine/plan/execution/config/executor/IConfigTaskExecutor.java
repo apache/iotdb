@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -173,6 +174,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
   SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
+
+  SettableFuture<ConfigTaskResult> showSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement);
 
   SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
 
