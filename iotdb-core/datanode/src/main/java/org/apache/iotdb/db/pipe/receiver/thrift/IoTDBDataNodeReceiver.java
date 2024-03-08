@@ -28,7 +28,6 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
@@ -249,7 +248,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected String getClusterId() {
-    return PipeAgent.runtime().getClusterIdIfPossible();
+    return IoTDBDescriptor.getInstance().getConfig().getClusterId();
   }
 
   @Override
@@ -325,7 +324,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .execute(
                 statement,
                 SessionManager.getInstance().requestQueryId(),
-                new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+                new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
                 "",
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),

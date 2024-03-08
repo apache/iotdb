@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -65,7 +65,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
 
   @Override
   protected String getClusterId() {
-    return PipeAgent.runtime().getClusterIdIfPossible();
+    return IoTDBDescriptor.getInstance().getConfig().getClusterId();
   }
 
   public Pair<IoTDBSyncClient, Boolean> getClient(String deviceId) {
