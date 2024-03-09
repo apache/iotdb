@@ -180,6 +180,7 @@ public class DProfileIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.next();
+      Object result = resultSet.getObject(2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

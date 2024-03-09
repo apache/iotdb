@@ -151,24 +151,22 @@ public class UDFEnvelopeAnalysis implements UDTF {
 
   public double getValueAsDouble(Row row, int index) throws IOException {
     double ans = 0;
-    try {
-      switch (row.getDataType(index)) {
-        case INT32:
-          ans = row.getInt(index);
-          break;
-        case INT64:
-          ans = row.getLong(index);
-          break;
-        case FLOAT:
-          ans = row.getFloat(index);
-          break;
-        case DOUBLE:
-          ans = row.getDouble(index);
-          break;
-      }
-    } catch (IOException e) {
-      throw new UDFOutputSeriesDataTypeNotValidException(
-          index, "Fail to get data type in row " + row.getTime());
+    switch (row.getDataType(index)) {
+      case INT32:
+        ans = row.getInt(index);
+        break;
+      case INT64:
+        ans = row.getLong(index);
+        break;
+      case FLOAT:
+        ans = row.getFloat(index);
+        break;
+      case DOUBLE:
+        ans = row.getDouble(index);
+        break;
+      default:
+        throw new UDFOutputSeriesDataTypeNotValidException(
+            index, "Fail to get data type in row " + row.getTime());
     }
     return ans;
   }
