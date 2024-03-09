@@ -575,6 +575,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // force balance region leader to skip waiting for leader election
+    getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
     getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }

@@ -206,59 +206,67 @@ public class DMatchIT {
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              100, 100, 100, 100, 100, 101, 101, 101, 101));
+              200, 100, 100, 100, 100, 101, 101, 101, 101));
+      statement.addBatch(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              300, 101, 101, 101, 101));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              100, 100, 100, 100, 100, 101, 101, 101, 101));
+              400, 102, 102, 102, 102, 101, 101, 101, 101));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              200, 102, 102, 102, 102, 101, 101, 101, 101));
+              600, 104, 104, 104, 104, 102, 102, 102, 102));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              300, 104, 104, 104, 104, 102, 102, 102, 102));
+              800, 126, 126, 126, 126, 102, 102, 102, 102));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              400, 126, 126, 126, 126, 102, 102, 102, 102));
+              1000, 108, 108, 108, 108, 103, 103, 103, 103));
+      statement.addBatch(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s5,s6,s7,s8) values(%d,%d,%d,%d,%d)",
+              1200, 103, 103, 103, 103));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              500, 108, 108, 108, 108, 103, 103, 103, 103));
+              1400, 112, 112, 112, 112, 104, 104, 104, 104));
+      statement.addBatch(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              1500, 113, 113, 113, 113));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              600, 112, 112, 112, 112, 104, 104, 104, 104));
+              1600, 114, 114, 114, 114, 104, 104, 104, 104));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              700, 114, 114, 114, 114, 104, 104, 104, 104));
+              1800, 116, 116, 116, 116, 105, 105, 105, 105));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              800, 116, 116, 116, 116, 105, 105, 105, 105));
+              2000, 118, 118, 118, 118, 105, 105, 105, 105));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              900, 118, 118, 118, 118, 105, 105, 105, 105));
+              2200, 100, 100, 100, 100, 106, 106, 106, 106));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              1000, 100, 100, 100, 100, 106, 106, 106, 106));
+              2600, 124, 124, 124, 124, 108, 108, 108, 108));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              1100, 124, 124, 124, 124, 108, 108, 108, 108));
+              2800, 126, 126, 126, 126, 108, 108, 108, 108));
       statement.addBatch(
           String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              1200, 126, 126, 126, 126, 108, 108, 108, 108));
-      statement.addBatch(
-          String.format(
-              "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-              1300, 116, 116, 116, 116, 105, 105, 105, 105));
+              "insert into root.vehicle.d1(timestamp,s5,s6,s7,s8) values(%d,%d,%d,%d,%d)",
+              3000, 108, 108, 108, 108));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4,s5,s6,s7,s8) values(%d,%d,%d,%d,%d,%d,%d,%d,%d)",
@@ -294,19 +302,23 @@ public class DMatchIT {
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
-              100, 1, 1, 1, 1));
+              0, 1, 1, 1, 1));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
-              200, 2, 2, 2, 2));
+              100, 2, 2, 2, 2));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
-              300, 3, 3, 3, 3));
+              200, 3, 3, 3, 3));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
-              400, 2, 2, 2, 2));
+              300, 2, 2, 2, 2));
+      statement.addBatch(
+          String.format(
+              "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
+              400, 1, 1, 1, 1));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d3(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
@@ -379,7 +391,6 @@ public class DMatchIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testCov1() {
     String sqlStr = "select cov(d1.s1,d1.s5) from root.vehicle";
@@ -395,7 +406,6 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testCov2() {
     String sqlStr = "select cov(d1.s2,d1.s6) from root.vehicle";
@@ -411,7 +421,6 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testCov3() {
     String sqlStr = "select cov(d1.s3,d1.s7) from root.vehicle";
@@ -427,7 +436,6 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testCov4() {
     String sqlStr = "select cov(d1.s4,d1.s8) from root.vehicle";
@@ -563,10 +571,9 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testPthSym1() {
-    String sqlStr = "select ptnsym(d1.s1, 'window'='3', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d3.s1, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
@@ -582,10 +589,9 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testPtnSym2() {
-    String sqlStr = "select ptnsym(d1.s2, 'window'='3', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d3.s2, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
@@ -601,10 +607,9 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testPtnSym3() {
-    String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d3.s3, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
@@ -620,10 +625,9 @@ public class DMatchIT {
     }
   }
 
-  @Ignore // TODO: This test case failed, please check the function implementation
   @Test
   public void testPtnSym4() {
-    String sqlStr = "select ptnsym(d2.s2, 'window'='3', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d3.s4, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);

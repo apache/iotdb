@@ -74,6 +74,7 @@ public class FragmentInstanceExecutionTest {
               sinkHandle,
               stateMachine,
               timeOut,
+              false,
               exchangeManager);
       assertEquals(FragmentInstanceState.RUNNING, execution.getInstanceState());
       FragmentInstanceInfo instanceInfo = execution.getInstanceInfo();

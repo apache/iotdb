@@ -122,6 +122,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
@@ -164,6 +166,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
@@ -1122,6 +1126,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return throttleQuotaManager.setThrottleQuota(req);
   }
 
+  @Override
+  public TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(
+      TFetchFragmentInstanceStatisticsReq req) throws TException {
+    FragmentInstanceManager fragmentInstanceManager = FragmentInstanceManager.getInstance();
+    TFetchFragmentInstanceStatisticsResp resp;
+    try {
+      resp =
+          fragmentInstanceManager.getFragmentInstanceStatistics(
+              FragmentInstanceId.fromThrift(req.getFragmentInstanceId()));
+      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+    } catch (Exception e) {
+      resp = new TFetchFragmentInstanceStatisticsResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXPLAIN_ANALYZE_FETCH_ERROR, e.getMessage()));
+      LOGGER.error(e.getMessage());
+    }
+    return resp;
+  }
+
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
@@ -1336,8 +1358,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (storageEngine.repairData()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+        if (CompactionScheduleTaskManager.getRepairTaskManagerInstance().getRepairTaskStatus()
+            == RepairTaskStatus.STOPPING) {
+          return RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "previous repair task is still stopping");
+        } else {
+          return RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+        }
       }
     } catch (StorageEngineException e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

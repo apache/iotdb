@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -378,6 +379,23 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   @Override
   public PlanNode visitProject(ProjectNode node, NodeGroupContext context) {
     return processOneChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitExplainAnalyze(ExplainAnalyzeNode node, NodeGroupContext context) {
+    ExplainAnalyzeNode newNode = (ExplainAnalyzeNode) node.clone();
+
+    PlanNode child = newNode.getChild();
+    child = visit(child, context);
+
+    // todo judge if the child is in current region, if so, there is no need to add exchange node
+    ExchangeNode exchangeNode = new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+    exchangeNode.setChild(child);
+    exchangeNode.setOutputColumnNames(node.getChild().getOutputColumnNames());
+    newNode.setChild(exchangeNode);
+
+    context.hasExchangeNode = true;
+    return newNode;
   }
 
   private PlanNode processMultiChildNode(MultiChildProcessNode node, NodeGroupContext context) {

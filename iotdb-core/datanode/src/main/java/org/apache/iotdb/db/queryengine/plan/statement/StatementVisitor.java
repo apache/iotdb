@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -101,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -365,6 +367,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(explainStatement, context);
   }
 
+  public R visitExplainAnalyze(ExplainAnalyzeStatement explainAnalyzeStatement, C context) {
+    return visitStatement(explainAnalyzeStatement, context);
+  }
+
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
     return visitStatement(deleteDataStatement, context);
   }
@@ -567,5 +573,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, C context) {
     return visitStatement(showThrottleQuotaStatement, context);
+  }
+
+  public R visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
+    return visitStatement(showCurrentTimestampStatement, context);
   }
 }

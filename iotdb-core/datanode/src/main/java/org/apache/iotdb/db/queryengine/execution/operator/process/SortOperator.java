@@ -75,6 +75,10 @@ public class SortOperator implements ProcessOperator {
   private final int maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
+  private long prepareUntilReadyCost = 0;
+  private long dataSize = 0;
+  private long sortCost = 0;
+
   public SortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -104,7 +108,6 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-
     if (!inputOperator.hasNextWithTimer()) {
       if (diskSpiller.hasSpilledData()) {
         try {
@@ -116,33 +119,47 @@ public class SortOperator implements ProcessOperator {
         }
       } else {
         if (curRow == -1) {
+          long startTime = System.nanoTime();
           cachedData.sort(comparator);
+          sortCost += System.nanoTime() - startTime;
           curRow = 0;
         }
         return buildTsBlockInMemory();
       }
     }
-
-    TsBlock tsBlock = inputOperator.nextWithTimer();
-    if (tsBlock == null) {
-      return null;
-    }
-
+    long startTime = System.nanoTime();
     try {
+      TsBlock tsBlock = inputOperator.nextWithTimer();
+      if (tsBlock == null) {
+        return null;
+      }
+      dataSize += tsBlock.getRetainedSizeInBytes();
       cacheTsBlock(tsBlock);
     } catch (IoTDBException e) {
       clear();
       throw e;
+    } finally {
+      prepareUntilReadyCost += System.nanoTime() - startTime;
     }
 
     return null;
+  }
+
+  private void recordMetrics() {
+    operatorContext.recordSpecifiedInfo("prepareCost/ns", Long.toString(prepareUntilReadyCost));
+    operatorContext.recordSpecifiedInfo("sortedDataSize", Long.toString(dataSize));
+    operatorContext.recordSpecifiedInfo("sortCost/ns", Long.toString(sortCost));
+    int spilledFileSize = diskSpiller.getFileSize();
+    if (spilledFileSize > 0) {
+      operatorContext.recordSpecifiedInfo(
+          "merge sort branch", Integer.toString(diskSpiller.getFileSize() + 1));
+    }
   }
 
   private void prepareSortReaders() throws IoTDBException {
     if (sortReaders != null) {
       return;
     }
-
     sortReaders = new ArrayList<>();
     if (cachedBytes != 0) {
       cachedData.sort(comparator);
@@ -252,6 +269,7 @@ public class SortOperator implements ProcessOperator {
         break;
       }
     }
+    sortCost += System.nanoTime() - startTime;
     return tsBlockBuilder.build();
   }
 
@@ -318,6 +336,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
+    recordMetrics();
     cachedData = null;
     clear();
     inputOperator.close();
@@ -330,7 +349,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return inputOperator.calculateMaxPeekMemory()
+    return inputOperator.calculateMaxPeekMemoryWithCounter()
         + inputOperator.calculateRetainedSizeAfterCallingNext()
         + SORT_BUFFER_SIZE;
   }

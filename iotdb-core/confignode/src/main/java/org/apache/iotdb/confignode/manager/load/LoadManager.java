@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -412,5 +413,15 @@ public class LoadManager {
    */
   public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
     loadCache.removeRegionRouteCache(regionGroupId);
+  }
+
+  /** Force balance the region leader and broadcast RouteChangeEvent if necessary. */
+  public void forceBalanceRegionLeader() {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
+        routeBalancer.balanceRegionLeader();
+    Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentRegionPriorityMap =
+        routeBalancer.balanceRegionPriority();
+    statisticsService.broadcastRouteChangeEventIfNecessary(
+        differentRegionLeaderMap, differentRegionPriorityMap);
   }
 }

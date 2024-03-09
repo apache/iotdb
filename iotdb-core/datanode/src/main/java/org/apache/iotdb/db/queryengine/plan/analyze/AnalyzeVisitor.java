@@ -116,6 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
@@ -131,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -229,6 +231,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = visitQuery(explainStatement.getQueryStatement(), context);
     analysis.setStatement(explainStatement);
     analysis.setFinishQueryAfterAnalyze(true);
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitExplainAnalyze(
+      ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
+    Analysis analysis = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
+    context.setExplainAnalyze(true);
+    analysis.setStatement(explainAnalyzeStatement);
+    analysis.setRespDatasetHeader(
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT, null)),
+            true));
     return analysis;
   }
 
@@ -357,7 +373,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analyzeOutput(analysis, queryStatement, outputExpressions);
 
       // fetch partition information
-      analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
+      analyzeDataPartition(analysis, queryStatement, schemaTree, context);
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
@@ -401,8 +417,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       updateSchemaTreeByViews(analysis, schemaTree, context);
     } finally {
       logger.debug("[EndFetchSchema]");
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+      long schemaFetchCost = System.nanoTime() - startTime;
+      context.setFetchSchemaCost(schemaFetchCost);
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(SCHEMA_FETCHER, schemaFetchCost);
     }
 
     analysis.setSchemaTree(schemaTree);
@@ -477,7 +494,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
     // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree, context.getGlobalTimeFilter());
+    analyzeDataPartition(analysis, queryStatement, schemaTree, context);
 
     return analysis;
   }
@@ -1891,7 +1908,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Filter globalTimeFilter) {
+      MPPQueryContext context) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
       deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
@@ -1900,17 +1917,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
       }
     }
-    DataPartition dataPartition =
-        fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter);
+    DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree, context);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
   private DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet, ISchemaTree schemaTree, Filter globalTimeFilter) {
+      Set<String> deviceSet, ISchemaTree schemaTree, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(globalTimeFilter);
+          getTimePartitionSlotList(context.getGlobalTimeFilter());
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(
@@ -1933,8 +1949,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       }
     } finally {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
+      long partitionFetchCost = System.nanoTime() - startTime;
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(PARTITION_FETCHER, partitionFetchCost);
+      context.setFetchPartitionCost(partitionFetchCost);
     }
   }
 
@@ -2767,8 +2784,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Collections.singletonList(
               new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
           schemaTree);
-      analyzeDataPartition(
-          analysis, new QueryStatement(), schemaTree, context.getGlobalTimeFilter());
+      analyzeDataPartition(analysis, new QueryStatement(), schemaTree, context);
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
@@ -3554,4 +3570,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
   // endregion view
+
+  @Override
+  public Analysis visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showCurrentTimestampStatement);
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowCurrentTimestampHeader());
+    return analysis;
+  }
 }
