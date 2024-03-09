@@ -127,10 +127,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
         result.addToDataNodeLocations(availableDataNodeMap.get(optimalReplicaSet[i]).getLocation());
       }
 
-      if (optimalCombinationSum > 0) {
-        System.out.println("The optimal combination sum is " + optimalCombinationSum);
-      }
-
       return result;
     } finally {
       clear();
@@ -276,7 +272,9 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
         optimalCombinationSum = combinationSum;
         optimalReplicaSets.clear();
       }
-      optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
+      if (combinationSum == optimalCombinationSum) {
+        optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
+      }
       return;
     }
 
