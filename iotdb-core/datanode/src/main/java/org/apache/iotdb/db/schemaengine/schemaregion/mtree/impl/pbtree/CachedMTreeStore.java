@@ -297,14 +297,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   @Override
   public ICachedMNode addChild(ICachedMNode parent, String childName, ICachedMNode child) {
     lockManager.globalReadLock();
-    //    lockManager.threadReadLock(parent);
     try {
       child.setParent(parent);
       memoryManager.updateCacheStatusAfterAppend(child);
       ensureMemoryStatus();
       return parent.getChild(childName);
     } finally {
-      //      lockManager.threadReadUnlock(parent);
       lockManager.globalReadUnlock();
     }
   }
@@ -657,7 +655,6 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     @Override
     public ICachedMNode next() {
       ICachedMNode node = mergeIterator.next();
-      System.out.println(node.getFullPath() + "  " + node.getCacheEntry().getVolatileStatus());
       return node;
     }
 
