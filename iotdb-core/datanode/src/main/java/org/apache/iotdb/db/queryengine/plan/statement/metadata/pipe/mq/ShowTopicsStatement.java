@@ -33,16 +33,26 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Collections;
 import java.util.List;
 
-public class ShowPipeMQTopicsStatement extends Statement implements IConfigStatement {
+public class ShowTopicsStatement extends Statement implements IConfigStatement {
 
-  public ShowPipeMQTopicsStatement() {
+  private String topicName;
+
+  public ShowTopicsStatement() {
     super();
     statementType = StatementType.SHOW_PIPE_MQ_TOPICS;
   }
 
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public void setTopicName(String topicName) {
+    this.topicName = topicName;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipeMQTopics(this, context);
+    return visitor.visitShowTopics(this, context);
   }
 
   @Override

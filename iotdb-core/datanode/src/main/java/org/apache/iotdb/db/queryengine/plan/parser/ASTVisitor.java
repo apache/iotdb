@@ -171,6 +171,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -3757,7 +3758,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitCreatePipeMQTopic(IoTDBSqlParser.CreatePipeMQTopicContext ctx) {
+  public Statement visitCreateTopic(IoTDBSqlParser.CreateTopicContext ctx) {
     final CreatePipeMQTopicStatement createPipeMQTopicStatement =
         new CreatePipeMQTopicStatement(StatementType.CREATE_PIPE_MQ_TOPIC);
 
@@ -3790,7 +3791,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitDropPipeMQTopic(IoTDBSqlParser.DropPipeMQTopicContext ctx) {
+  public Statement visitDropTopic(IoTDBSqlParser.DropTopicContext ctx) {
     final DropPipeMQTopicStatement dropPipeMQTopicStatement =
         new DropPipeMQTopicStatement(StatementType.DROP_PIPE_MQ_TOPIC);
 
@@ -3805,8 +3806,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitShowPipeMQTopics(IoTDBSqlParser.ShowPipeMQTopicsContext ctx) {
-    return new ShowPipePluginsStatement();
+  public Statement visitShowTopics(IoTDBSqlParser.ShowTopicsContext ctx) {
+    final ShowTopicsStatement showTopicsStatement = new ShowTopicsStatement();
+
+    if (ctx.topicName != null) {
+      showTopicsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showTopicsStatement;
   }
 
   @Override

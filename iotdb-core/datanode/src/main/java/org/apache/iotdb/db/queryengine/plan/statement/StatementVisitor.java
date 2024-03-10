@@ -84,8 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowPipeMQTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -504,8 +504,8 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(dropPipeMQTopicStatement, context);
   }
 
-  public R visitShowPipeMQTopics(ShowPipeMQTopicsStatement showPipeMQTopicsStatement, C context) {
-    return visitStatement(showPipeMQTopicsStatement, context);
+  public R visitShowTopics(ShowTopicsStatement showTopicsStatement, C context) {
+    return visitStatement(showTopicsStatement, context);
   }
 
   public R visitShowSubscriptions(

@@ -31,11 +31,13 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class PipeMQTopicMeta {
   private String topicName;
-  private long creationTime;
+
+  private long createTime;
 
   private Set<String> subscribedConsumerGroupIDs;
   private PipeMQTopicConfig config;
@@ -44,21 +46,15 @@ public class PipeMQTopicMeta {
     // Empty constructor
   }
 
-  public PipeMQTopicMeta(String topicName, PipeMQTopicConfig config) {
+  public PipeMQTopicMeta(String topicName, long createTime, Map<String, String> topicAttributes) {
     this.topicName = topicName;
-    this.config = config;
-  }
-
-  public PipeMQTopicMeta(String topicName, long creationTime, Map<String, String> topicAttributes) {
-    this.topicName = topicName;
-    this.creationTime = creationTime;
+    this.createTime = createTime;
     this.config = new PipeMQTopicConfig(topicAttributes);
   }
 
   public PipeMQTopicMeta copy() {
     PipeMQTopicMeta copy = new PipeMQTopicMeta();
     copy.topicName = topicName;
-    copy.creationTime = creationTime;
     copy.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
     copy.config = new PipeMQTopicConfig(new HashMap<>(config.getAttributes()));
     return copy;
@@ -69,7 +65,7 @@ public class PipeMQTopicMeta {
   }
 
   public long getCreationTime() {
-    return creationTime;
+    return createTime;
   }
 
   /** @return true if the consumer group did not already subscribe this topic */
@@ -104,7 +100,7 @@ public class PipeMQTopicMeta {
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(creationTime, outputStream);
+    ReadWriteIOUtils.write(createTime, outputStream);
 
     ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
     for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
@@ -120,7 +116,7 @@ public class PipeMQTopicMeta {
 
   public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(creationTime, outputStream);
+    ReadWriteIOUtils.write(createTime, outputStream);
 
     ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
     for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
@@ -138,7 +134,7 @@ public class PipeMQTopicMeta {
     final PipeMQTopicMeta pipeMQTopicMeta = new PipeMQTopicMeta();
 
     pipeMQTopicMeta.topicName = ReadWriteIOUtils.readString(inputStream);
-    pipeMQTopicMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
+    pipeMQTopicMeta.createTime = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
@@ -159,15 +155,55 @@ public class PipeMQTopicMeta {
     final PipeMQTopicMeta pipeMQTopicMeta = new PipeMQTopicMeta();
 
     pipeMQTopicMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
-    pipeMQTopicMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
+    pipeMQTopicMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
       pipeMQTopicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
-    // todo: der PipeMQTopicConfig
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      final String key = ReadWriteIOUtils.readString(byteBuffer);
+      final String value = ReadWriteIOUtils.readString(byteBuffer);
+      pipeMQTopicMeta.config.getAttributes().put(key, value);
+    }
 
     return pipeMQTopicMeta;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeMQTopicMeta that = (PipeMQTopicMeta) obj;
+    return createTime == that.createTime
+        && topicName.equals(that.topicName)
+        && subscribedConsumerGroupIDs.equals(that.subscribedConsumerGroupIDs)
+        && config.equals(that.config);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicName, createTime, subscribedConsumerGroupIDs, config);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMQTopicMeta{"
+        + "topicName='"
+        + topicName
+        + '\''
+        + ", createTime="
+        + createTime
+        + ", subscribedConsumerGroupIDs="
+        + subscribedConsumerGroupIDs
+        + ", config="
+        + config
+        + '}';
   }
 }

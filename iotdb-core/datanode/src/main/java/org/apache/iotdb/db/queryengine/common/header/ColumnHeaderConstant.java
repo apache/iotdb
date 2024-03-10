@@ -110,8 +110,16 @@ public class ColumnHeaderConstant {
   public static final String PLUGIN_TYPE = "PluginType";
   public static final String PLUGIN_JAR = "PluginJar";
 
-  // column names for show subscriptions statement
+  // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
+  public static final String PATH = "Path";
+  public static final String PATH_FORMAT = "Path.Format";
+
+  public static final String END_TIME = "EndTime";
+
+  public static final String FORMAT = "Format";
+
+  // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
   public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
 
@@ -407,6 +415,16 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(PATH, TSDataType.TEXT),
+          new ColumnHeader(PATH_FORMAT, TSDataType.TEXT),
+          new ColumnHeader(START_TIME, TSDataType.TEXT),
+          new ColumnHeader(END_TIME, TSDataType.TEXT),
+          new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
+          new ColumnHeader(FORMAT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(

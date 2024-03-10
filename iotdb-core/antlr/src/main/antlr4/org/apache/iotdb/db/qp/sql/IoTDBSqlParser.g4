@@ -57,7 +57,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // TOPIC
-    | createPipeMQTopic | dropPipeMQTopic | showPipeMQTopic | showPipeMQTopics
+    | createTopic | dropTopic | showTopics
     // Subscription
     | showSubscriptions
     // CQ
@@ -616,7 +616,7 @@ showPipePlugins
     ;
 
 // MQ topic =========================================================================================
-createPipeMQTopic
+createTopic
     : CREATE TOPIC topicName=identifier topicAttributesClause?
     ;
 
@@ -628,16 +628,12 @@ topicAttributeClause
     : topicKey=STRING_LITERAL OPERATOR_SEQ topicValue=STRING_LITERAL
     ;
 
-dropPipeMQTopic
+dropTopic
     : DROP TOPIC topicName=identifier
     ;
 
-showPipeMQTopic
-    : SHOW TOPIC topicName=identifier
-    ;
-
-showPipeMQTopics
-    : SHOW TOPICS
+showTopics
+    : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
 // MQ subscriptions =========================================================================================

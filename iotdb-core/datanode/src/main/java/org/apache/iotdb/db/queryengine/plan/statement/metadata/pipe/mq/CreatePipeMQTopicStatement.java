@@ -72,11 +72,6 @@ public class CreatePipeMQTopicStatement extends Statement implements IConfigStat
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreatePipeMQTopic(this, context);
-  }
-
-  @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -84,5 +79,10 @@ public class CreatePipeMQTopicStatement extends Statement implements IConfigStat
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
         PrivilegeType.USE_PIPE);
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCreatePipeMQTopic(this, context);
   }
 }
