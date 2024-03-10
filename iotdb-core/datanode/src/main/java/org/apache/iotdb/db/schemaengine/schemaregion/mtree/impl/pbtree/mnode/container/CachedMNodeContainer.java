@@ -409,11 +409,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     private boolean changeStatus() {
       switch (status) {
         case 0:
-          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
+          iterator = getChildCache().values().iterator();
           status = 1;
           return true;
         case 1:
-          iterator = getUpdatedChildBuffer().getMNodeChildBufferIterator();
+          iterator = getNewChildBuffer().getMNodeChildBufferIterator();
           status = 2;
           return true;
         case 2:
