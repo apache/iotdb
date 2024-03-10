@@ -622,7 +622,6 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     Iterator<ICachedMNode> diskIterator;
 
     boolean needLock;
-    boolean isLocked;
 
     CachedMNodeIterator(ICachedMNode parent, boolean needLock)
         throws MetadataException, IOException {
@@ -630,7 +629,6 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       if (needLock) {
         lockManager.globalReadLock();
       }
-      isLocked = true;
       try {
         this.parent = parent;
         ICachedMNodeContainer container = ICachedMNodeContainer.getCachedMNodeContainer(parent);
@@ -642,7 +640,6 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         if (needLock) {
           lockManager.globalReadUnlock();
         }
-        isLocked = false;
         throw e;
       }
     }
@@ -665,11 +662,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     @Override
     public void close() {
-      if (isLocked) {
-        if (needLock) {
-          lockManager.globalReadUnlock();
-        }
-        isLocked = false;
+      if (needLock) {
+        lockManager.globalReadUnlock();
       }
     }
 
