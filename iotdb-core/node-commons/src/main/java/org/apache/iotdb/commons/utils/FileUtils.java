@@ -181,4 +181,80 @@ public class FileUtils {
     }
     return file;
   }
+
+  /**
+   * Move source file to target file. The move will be divided into three steps: 1. Copy the source
+   * file to the "target.unfinished" location 2. Rename the "target.unfinished" to "target" 3.
+   * Delete the source file
+   *
+   * @param source source file, which can be a directory.
+   * @param target target file, which can be a directory.
+   * @return success or not
+   */
+  public static boolean moveFileSafe(File source, File target) {
+    if (target.exists()) {
+      LOGGER.info(
+          "won't move file again because target file already exists: {}", target.getAbsolutePath());
+      LOGGER.info("you may manually delete source file if necessary: {}", source.getAbsolutePath());
+      return true;
+    }
+
+    final String fromTo =
+        String.format("from %s to %s", source.getAbsolutePath(), target.getAbsolutePath());
+    LOGGER.info("start to move file, {}", fromTo);
+
+    // Prepare the xxx.unfinished File, delete it if it's already exist
+    File unfinishedTarget = new File(target.getAbsolutePath() + ".unfinished");
+    try {
+      if (unfinishedTarget.exists()) {
+        if (unfinishedTarget.isFile()) {
+          org.apache.commons.io.FileUtils.delete(unfinishedTarget);
+        } else {
+          recursiveDeleteFolder(unfinishedTarget.getAbsolutePath());
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.error(
+          "delete unfinished target file failed: {}", unfinishedTarget.getAbsolutePath(), e);
+      return false;
+    }
+    LOGGER.info(
+        "unfinished target file which was created last time has been deleted: {}",
+        unfinishedTarget.getAbsolutePath());
+
+    // copy
+    try {
+      if (source.isDirectory()) {
+        if (!copyDir(source, unfinishedTarget)) {
+          LOGGER.error("file copy fail");
+          return false;
+        }
+      } else {
+        org.apache.commons.io.FileUtils.copyFile(source, unfinishedTarget);
+      }
+    } catch (IOException e) {
+      LOGGER.error("file copy fail", e);
+      return false;
+    }
+
+    // rename
+    if (!unfinishedTarget.renameTo(target)) {
+      LOGGER.error("file rename fail");
+      return false;
+    }
+
+    // delete old file
+    try {
+      if (source.isDirectory()) {
+        recursiveDeleteFolder(source.getAbsolutePath());
+      } else {
+        org.apache.commons.io.FileUtils.delete(source);
+      }
+    } catch (IOException e) {
+      LOGGER.error("delete source file fail: {}", source.getAbsolutePath(), e);
+    }
+
+    LOGGER.info("move file success, {}", fromTo);
+    return true;
+  }
 }

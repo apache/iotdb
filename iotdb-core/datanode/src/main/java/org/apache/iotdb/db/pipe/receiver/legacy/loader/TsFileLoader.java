@@ -66,7 +66,7 @@ public class TsFileLoader implements ILoader {
               .execute(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,

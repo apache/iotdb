@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -66,4 +68,40 @@ public class QueryStatistics {
   public AtomicLong pageReadersDecodeNonAlignedDiskTime = new AtomicLong(0);
   public AtomicLong pageReadersDecodeNonAlignedMemCount = new AtomicLong(0);
   public AtomicLong pageReadersDecodeNonAlignedMemTime = new AtomicLong(0);
+
+  public TQueryStatistics toThrift() {
+    return new TQueryStatistics(
+        loadTimeSeriesMetadataDiskSeqCount.get(),
+        loadTimeSeriesMetadataDiskUnSeqCount.get(),
+        loadTimeSeriesMetadataMemSeqCount.get(),
+        loadTimeSeriesMetadataMemUnSeqCount.get(),
+        loadTimeSeriesMetadataAlignedDiskSeqCount.get(),
+        loadTimeSeriesMetadataAlignedDiskUnSeqCount.get(),
+        loadTimeSeriesMetadataAlignedMemSeqCount.get(),
+        loadTimeSeriesMetadataAlignedMemUnSeqCount.get(),
+        loadTimeSeriesMetadataDiskSeqTime.get(),
+        loadTimeSeriesMetadataDiskUnSeqTime.get(),
+        loadTimeSeriesMetadataMemSeqTime.get(),
+        loadTimeSeriesMetadataMemUnSeqTime.get(),
+        loadTimeSeriesMetadataAlignedDiskSeqTime.get(),
+        loadTimeSeriesMetadataAlignedDiskUnSeqTime.get(),
+        loadTimeSeriesMetadataAlignedMemSeqTime.get(),
+        loadTimeSeriesMetadataAlignedMemUnSeqTime.get(),
+        constructNonAlignedChunkReadersDiskCount.get(),
+        constructNonAlignedChunkReadersMemCount.get(),
+        constructAlignedChunkReadersDiskCount.get(),
+        constructAlignedChunkReadersMemCount.get(),
+        constructNonAlignedChunkReadersDiskTime.get(),
+        constructNonAlignedChunkReadersMemTime.get(),
+        constructAlignedChunkReadersDiskTime.get(),
+        constructAlignedChunkReadersMemTime.get(),
+        pageReadersDecodeAlignedDiskCount.get(),
+        pageReadersDecodeAlignedDiskTime.get(),
+        pageReadersDecodeAlignedMemCount.get(),
+        pageReadersDecodeAlignedMemTime.get(),
+        pageReadersDecodeNonAlignedDiskCount.get(),
+        pageReadersDecodeNonAlignedDiskTime.get(),
+        pageReadersDecodeNonAlignedMemCount.get(),
+        pageReadersDecodeNonAlignedMemTime.get());
+  }
 }

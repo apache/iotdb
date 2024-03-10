@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -106,7 +106,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   private String pipeName;
   private Long creationTime;
 
-  private IoTDBThriftSyncConnectorClient client;
+  private IoTDBSyncClient client;
 
   private SessionPool sessionPool;
 
@@ -218,7 +218,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
     try {
       client =
-          new IoTDBThriftSyncConnectorClient(
+          new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())

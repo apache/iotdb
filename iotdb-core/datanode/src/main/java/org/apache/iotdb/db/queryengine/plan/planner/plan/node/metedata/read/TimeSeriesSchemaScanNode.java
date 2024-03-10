@@ -151,6 +151,11 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TIME_SERIES_SCHEMA_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TimeSeriesSchemaScanNode(
         getPlanNodeId(),

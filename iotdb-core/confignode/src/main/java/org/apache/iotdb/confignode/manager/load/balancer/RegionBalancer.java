@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -41,7 +42,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The RegionBalancer provides interfaces to generate optimal Region allocation and migration plans
+ * The {@link RegionBalancer} provides interfaces to generate optimal Region allocation and
+ * migration plans
  */
 public class RegionBalancer {
 
@@ -62,10 +64,10 @@ public class RegionBalancer {
   }
 
   /**
-   * Generate a RegionGroups' allocation plan(CreateRegionGroupsPlan)
+   * Generate a RegionGroups' allocation plan({@link CreateRegionGroupsPlan})
    *
    * @param allotmentMap Map<DatabaseName, RegionGroup allotment>
-   * @param consensusGroupType TConsensusGroupType of the new RegionGroups
+   * @param consensusGroupType {@link TConsensusGroupType} of the new RegionGroups
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
    * @throws DatabaseNotExistsException When some StorageGroups don't exist
