@@ -85,15 +85,15 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnConfigNodes");
 
-    final Map<TConsensusGroupId, Integer> newDataRegionGroupIdToLeaderDataRegionIdMap =
+    final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
         new HashMap<>();
     dataRegionGroupToOldAndNewLeaderPairMap.forEach(
         (regionGroupId, oldNewLeaderPair) ->
-            newDataRegionGroupIdToLeaderDataRegionIdMap.put(
+            newConsensusGroupIdToLeaderConsensusIdMap.put(
                 regionGroupId, oldNewLeaderPair.getRight()));
 
     final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
-        new PipeHandleLeaderChangePlan(newDataRegionGroupIdToLeaderDataRegionIdMap);
+        new PipeHandleLeaderChangePlan(newConsensusGroupIdToLeaderConsensusIdMap);
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
@@ -178,12 +178,16 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       return false;
     }
     PipeHandleLeaderChangeProcedure that = (PipeHandleLeaderChangeProcedure) o;
-    return this.dataRegionGroupToOldAndNewLeaderPairMap.equals(
-        that.dataRegionGroupToOldAndNewLeaderPairMap);
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && this.dataRegionGroupToOldAndNewLeaderPairMap.equals(
+            that.dataRegionGroupToOldAndNewLeaderPairMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataRegionGroupToOldAndNewLeaderPairMap);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), dataRegionGroupToOldAndNewLeaderPairMap);
   }
 }

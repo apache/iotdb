@@ -125,7 +125,7 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = root.calculateMaxPeekMemory();
+    long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
 
     synchronized (this) {
       if (estimatedMemorySize > freeMemoryForOperators) {

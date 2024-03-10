@@ -27,18 +27,31 @@ import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
+import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 
 import io.airlift.stats.CounterStat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FAILED;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.merge;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeAllOperatorStatistics;
+import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeOperatorStatisticsIfDuplicate;
 
 public class FragmentInstanceExecution {
 
@@ -58,6 +71,13 @@ public class FragmentInstanceExecution {
 
   private final MPPDataExchangeManager exchangeManager;
 
+  // This lock is used to guarantee the atomicity of buildStatistics() and the set of
+  // statisticsRemoved,
+  // so that fetchStatistics() in FragmentInstanceManager won't get the statistics which was just
+  // cleared.
+  private final ReadWriteLock statisticsLock = new ReentrantReadWriteLock();
+  private boolean staticsRemoved = false;
+
   @SuppressWarnings("squid:S107")
   public static FragmentInstanceExecution createFragmentInstanceExecution(
       IDriverScheduler scheduler,
@@ -68,12 +88,13 @@ public class FragmentInstanceExecution {
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances,
       long timeOut,
+      boolean isExplainAnalyze,
       MPPDataExchangeManager exchangeManager)
       throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
-    execution.initialize(failedInstances, scheduler);
+    execution.initialize(failedInstances, scheduler, isExplainAnalyze);
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -115,13 +136,146 @@ public class FragmentInstanceExecution {
     return timeoutInMs;
   }
 
+  public FragmentInstanceContext getFragmentInstanceContext() {
+    return context;
+  }
+
+  public List<IDriver> getDrivers() {
+    return drivers;
+  }
+
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
   }
 
+  // Fill Fragment-Level info for statistics
+  private boolean fillFragmentInstanceStatistics(
+      FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
+    statistics.setFragmentInstanceId(context.getId().toThrift());
+    statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
+
+    IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
+    if (dataRegionForQuery instanceof VirtualDataRegion) {
+      // We don't need to output the region having ExplainAnalyzeOperator only.
+      return false;
+    }
+    statistics.setDataRegion(((DataRegion) context.getDataRegion()).getDataRegionId());
+    statistics.setIp(IoTDBDescriptor.getInstance().getConfig().getAddressAndPort().ip);
+    statistics.setStartTimeInMS(context.getStartTime());
+    statistics.setEndTimeInMS(
+        context.isEndTimeUpdate() ? context.getEndTime() : System.currentTimeMillis());
+
+    statistics.setBlockQueuedTime(context.getBlockQueueTime());
+    statistics.setReadyQueuedTime(context.getReadyQueueTime());
+
+    statistics.setInitDataQuerySourceCost(context.getInitQueryDataSourceCost());
+
+    statistics.setSeqClosednNum(context.getClosedSeqFileNum());
+    statistics.setSeqUnclosedNum(context.getUnclosedSeqFileNum());
+    statistics.setUnseqClosedNum(context.getClosedUnseqFileNum());
+    statistics.setUnseqUnclosedNum(context.getUnclosedUnseqFileNum());
+    return true;
+  }
+
+  // Fill Operator-Level info for statistics
+  // Return needMerge to indicate if operatorStatistics in current fragmentInstance is merged.
+  private boolean fillFragmentInstanceStatistics(
+      List<OperatorContext> contexts,
+      Map<String, TOperatorStatistics> operatorStatisticsMap,
+      Map<String, Integer> operatorCoutMap,
+      Map<String, String> leadOverloadOperators,
+      boolean needMerge) {
+    for (OperatorContext operatorContext : contexts) {
+      TOperatorStatistics operatorStatistics = new TOperatorStatistics();
+      // some exchange operators don't have planNodeId
+      if (operatorContext.getPlanNodeId() == null) continue;
+
+      String operatorType = operatorContext.getOperatorType();
+      // If the operatorType is already overloaded, then merge all operatorStatistics with the
+      // leadOverloadOperator
+      if (needMerge) {
+        setOperatorStatistics(operatorStatistics, operatorContext);
+        if (leadOverloadOperators.containsKey(operatorType)) {
+          merge(
+              operatorStatisticsMap.get(leadOverloadOperators.get(operatorType)),
+              operatorStatistics);
+        } else {
+          String planNodeId = operatorContext.getPlanNodeId().toString();
+          operatorStatistics.setCount(1);
+          operatorStatistics.getSpecifiedInfo().clear();
+          leadOverloadOperators.put(operatorType, planNodeId);
+          operatorStatisticsMap.put(planNodeId, operatorStatistics);
+        }
+      } else {
+        setOperatorStatistics(operatorStatistics, operatorContext);
+        operatorStatisticsMap.put(operatorContext.getPlanNodeId().toString(), operatorStatistics);
+        operatorCoutMap.put(operatorType, operatorCoutMap.getOrDefault(operatorType, 0) + 1);
+        if (operatorCoutMap.get(operatorType) >= 10) {
+          needMerge = true;
+          // merge all the operatorStatistics with the overload type and remain only one in
+          // operatorStatisticsMap
+          mergeAllOperatorStatistics(operatorStatisticsMap, leadOverloadOperators);
+        }
+      }
+    }
+    return needMerge;
+  }
+
+  private void setOperatorStatistics(
+      TOperatorStatistics operatorStatistics, OperatorContext operatorContext) {
+    operatorStatistics.setPlanNodeId(operatorContext.getPlanNodeId().toString());
+    operatorStatistics.setOperatorType(operatorContext.getOperatorType());
+    operatorStatistics.setTotalExecutionTimeInNanos(operatorContext.getTotalExecutionTimeInNanos());
+    operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
+    operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
+    operatorStatistics.setInputRows(operatorContext.getInputRows());
+    operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
+    operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
+  }
+
+  // Directly build statistics from FragmentInstanceExecution, which is still running.
+  public TFetchFragmentInstanceStatisticsResp buildStatistics() {
+    TFetchFragmentInstanceStatisticsResp statistics = new TFetchFragmentInstanceStatisticsResp();
+
+    boolean res = fillFragmentInstanceStatistics(context, statistics);
+    if (!res) {
+      return statistics;
+    }
+
+    Map<String, TOperatorStatistics> operatorStatisticsMap = new HashMap<>();
+    Map<String, Integer> operatorCountMap = new HashMap<>();
+    Map<String, String> leadOverloadOperators = new HashMap<>();
+    boolean merge = false;
+    // Currently, they should be the drivers for each pipeline
+    for (IDriver driver : drivers) {
+      merge =
+          fillFragmentInstanceStatistics(
+              driver.getDriverContext().getOperatorContexts(),
+              operatorStatisticsMap,
+              operatorCountMap,
+              leadOverloadOperators,
+              merge);
+    }
+
+    if (merge) {
+      Map<String, TOperatorStatistics> newOperatorStatisticsMap = new HashMap<>();
+      for (Map.Entry<String, String> entry : leadOverloadOperators.entrySet()) {
+        newOperatorStatisticsMap.put(entry.getValue(), operatorStatisticsMap.get(entry.getValue()));
+      }
+      statistics.setOperatorStatisticsMap(newOperatorStatisticsMap);
+    } else {
+      statistics.setOperatorStatisticsMap(operatorStatisticsMap);
+    }
+
+    mergeOperatorStatisticsIfDuplicate(statistics.getOperatorStatisticsMap());
+
+    return statistics;
+  }
+
   // this is a separate method to ensure that the `this` reference is not leaked during construction
   @SuppressWarnings("squid:S1181")
-  private void initialize(CounterStat failedInstances, IDriverScheduler scheduler) {
+  private void initialize(
+      CounterStat failedInstances, IDriverScheduler scheduler, boolean isExplainAnalyze) {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
         newState -> {
@@ -138,6 +292,14 @@ public class FragmentInstanceExecution {
             if (newState == FAILED) {
               failedInstances.update(1);
             }
+
+            statisticsLock.writeLock().lock();
+            // Store statistics in context for EXPLAIN ANALYZE to avoid being released.
+            if (isExplainAnalyze) {
+              context.setFragmentInstanceStatistics(buildStatistics());
+            }
+            staticsRemoved = true;
+            statisticsLock.writeLock().unlock();
 
             clearShuffleSinkHandle(newState);
 
@@ -194,5 +356,17 @@ public class FragmentInstanceExecution {
         FileUtils.deleteDirectory(tmpFile);
       }
     }
+  }
+
+  public boolean isStaticsRemoved() {
+    return staticsRemoved;
+  }
+
+  public void lockStatistics() {
+    statisticsLock.readLock().lock();
+  }
+
+  public void unlockStatistics() {
+    statisticsLock.readLock().unlock();
   }
 }

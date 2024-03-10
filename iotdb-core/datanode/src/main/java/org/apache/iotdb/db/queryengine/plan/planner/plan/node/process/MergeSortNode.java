@@ -60,6 +60,11 @@ public class MergeSortNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.MERGE_SORT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new MergeSortNode(getPlanNodeId(), getMergeOrderParameter(), outputColumns);
   }

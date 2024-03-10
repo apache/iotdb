@@ -133,6 +133,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of Insert is not implemented");
   }

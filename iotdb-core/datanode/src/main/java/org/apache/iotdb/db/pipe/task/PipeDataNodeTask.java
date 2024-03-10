@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 
@@ -30,8 +29,8 @@ public class PipeDataNodeTask implements PipeTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTask.class);
 
-  protected final String pipeName;
-  protected final TConsensusGroupId regionId;
+  private final String pipeName;
+  private final int regionId;
 
   private final PipeTaskStage extractorStage;
   private final PipeTaskStage processorStage;
@@ -39,7 +38,7 @@ public class PipeDataNodeTask implements PipeTask {
 
   public PipeDataNodeTask(
       String pipeName,
-      TConsensusGroupId regionId,
+      int regionId,
       PipeTaskStage extractorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
@@ -99,7 +98,7 @@ public class PipeDataNodeTask implements PipeTask {
         System.currentTimeMillis() - startTime);
   }
 
-  public TConsensusGroupId getRegionId() {
+  public int getRegionId() {
     return regionId;
   }
 

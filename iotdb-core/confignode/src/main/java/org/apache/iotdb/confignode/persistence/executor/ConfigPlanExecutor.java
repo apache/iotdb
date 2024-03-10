@@ -71,7 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -103,6 +103,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -211,6 +212,8 @@ public class ConfigPlanExecutor {
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
+
+    this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -415,21 +418,17 @@ public class ConfigPlanExecutor {
       case ExtendSchemaTemplate:
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
       case CreatePipeV2:
-        return pipeInfo.getPipeTaskInfo().createPipe((CreatePipePlanV2) physicalPlan);
+        return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:
-        return pipeInfo.getPipeTaskInfo().setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
+        return pipeInfo.setPipeStatus((SetPipeStatusPlanV2) physicalPlan);
       case DropPipeV2:
-        return pipeInfo.getPipeTaskInfo().dropPipe((DropPipePlanV2) physicalPlan);
+        return pipeInfo.dropPipe((DropPipePlanV2) physicalPlan);
       case AlterPipeV2:
-        return pipeInfo.getPipeTaskInfo().alterPipe((AlterPipePlanV2) physicalPlan);
+        return pipeInfo.alterPipe((AlterPipePlanV2) physicalPlan);
       case PipeHandleLeaderChange:
-        return pipeInfo
-            .getPipeTaskInfo()
-            .handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
+        return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:
-        return pipeInfo
-            .getPipeTaskInfo()
-            .handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
+        return pipeInfo.handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -457,6 +456,16 @@ public class ConfigPlanExecutor {
         return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       case PipeEnriched:
         return executeNonQueryPlan(((PipeEnrichedPlan) physicalPlan).getInnerPlan());
+      case PipeDeleteTimeSeries:
+      case PipeDeleteLogicalView:
+      case PipeDeactivateTemplate:
+        // Pipe payload, used to trigger plan extraction.
+        // Will not be actually executed.
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      case PipeUnsetTemplate:
+        // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
+        // collects UnsetTemplatePlan and before receiver calls ConfigManager.
+        throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

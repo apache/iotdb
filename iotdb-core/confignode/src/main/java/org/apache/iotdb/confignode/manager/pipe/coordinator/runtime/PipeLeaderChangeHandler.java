@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
@@ -44,6 +45,17 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     // do nothing, because pipe task is not related to statistics
   }
 
+  public void onConfigRegionGroupLeaderChanged() {
+    Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap = new HashMap<>();
+    // The old leader id can be arbitrarily assigned because pipe task do not need this
+    leaderMap.put(
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
+        new Pair<>(
+            Integer.MIN_VALUE, ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+
+    onRegionGroupLeaderChanged(new RouteChangeEvent(leaderMap, null));
+  }
+
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     // if no pipe task, return
@@ -52,31 +64,30 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     }
 
     // we only care about data region leader change
-    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
+    final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
         .getLeaderMap()
         .forEach(
             (regionGroupId, pair) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-                // pipe only collect user's data, filter metric database here.
-                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
-                  // null or -1 means empty origin leader
-                  final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
-                  final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
+              final String databaseName =
+                  configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
+              // pipe only collect user's data, filter metric database here.
+              // databaseName may be null for config region group
+              if (!SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
+                // null or -1 means empty origin leader
+                final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left);
+                final int newLeaderNodeId = (pair.right == null ? -1 : pair.right);
 
-                  if (oldLeaderDataNodeId != newLeaderDataNodeId) {
-                    dataRegionGroupToOldAndNewLeaderPairMap.put(
-                        regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
-                  }
+                if (oldLeaderNodeId != newLeaderNodeId) {
+                  regionGroupToOldAndNewLeaderPairMap.put(
+                      regionGroupId, new Pair<>(oldLeaderNodeId, newLeaderNodeId));
                 }
               }
             });
 
-    // if no data region leader change, return
-    if (dataRegionGroupToOldAndNewLeaderPairMap.isEmpty()) {
+    // if no region leader change, return
+    if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return;
     }
 
@@ -89,6 +100,6 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
             () ->
                 configManager
                     .getProcedureManager()
-                    .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
+                    .pipeHandleLeaderChange(regionGroupToOldAndNewLeaderPairMap));
   }
 }

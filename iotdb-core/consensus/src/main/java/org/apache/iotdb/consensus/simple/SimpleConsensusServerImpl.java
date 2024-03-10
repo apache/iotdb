@@ -26,11 +26,13 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SimpleConsensusServerImpl implements IStateMachine {
 
   private final Peer peer;
   private final IStateMachine stateMachine;
+  private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   public SimpleConsensusServerImpl(Peer peer, IStateMachine stateMachine) {
     this.peer = peer;
@@ -47,10 +49,12 @@ public class SimpleConsensusServerImpl implements IStateMachine {
 
   @Override
   public void start() {
-    stateMachine.start();
-    // Notify itself as the leader
-    stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
-    stateMachine.event().notifyLeaderReady();
+    if (initialized.compareAndSet(false, true)) {
+      stateMachine.start();
+      // Notify itself as the leader
+      stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
+      stateMachine.event().notifyLeaderReady();
+    }
   }
 
   @Override
