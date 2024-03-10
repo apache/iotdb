@@ -88,6 +88,11 @@ public class GroupByTagNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.GROUP_BY_TAG;
+  }
+
+  @Override
   public PlanNode clone() {
     // TODO: better do deep copy
     return new GroupByTagNode(

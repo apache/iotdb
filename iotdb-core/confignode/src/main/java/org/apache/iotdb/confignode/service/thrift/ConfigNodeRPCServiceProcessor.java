@@ -134,6 +134,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -218,7 +220,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetClusterIdResp getClusterId() throws TException {
+  public TGetClusterIdResp getClusterId() {
     TGetClusterIdResp resp = new TGetClusterIdResp();
     String clusterId = configManager.getClusterManager().getClusterId();
     if (clusterId == null) {
@@ -430,14 +432,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
-    String prefixPath = tDeleteReq.getPrefixPath();
-    return configManager.deleteDatabases(Collections.singletonList(prefixPath));
+    return configManager.deleteDatabases(
+        new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
+            .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe()));
   }
 
   @Override
   public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    List<String> prefixList = tDeleteReq.getPrefixPathList();
-    return configManager.deleteDatabases(prefixList);
+    return configManager.deleteDatabases(tDeleteReq);
   }
 
   @Override
@@ -920,7 +922,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) {
     return configManager.alterSchemaTemplate(req);
   }
 
@@ -935,7 +937,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
     return configManager.alterLogicalView(req);
   }
 
@@ -975,8 +977,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
-    return configManager.executeSyncCommand(configPhysicalPlanBinary);
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+      throws TException {
+    return configManager.handleTransferConfigPlan(req);
   }
 
   @Override

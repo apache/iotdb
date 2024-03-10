@@ -36,6 +36,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
+  public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
   public static final String DATABASE = "Database";

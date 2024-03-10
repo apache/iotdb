@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * PipeTaskCoordinatorLock is a cross thread lock for pipe task coordinator. It is used to ensure
- * that only one thread can execute the pipe task coordinator at the same time.
+ * {@link PipeTaskCoordinatorLock} is a cross thread lock for pipe task coordinator. It is used to
+ * ensure that only one thread can execute the pipe task coordinator at the same time.
  */
 public class PipeTaskCoordinatorLock {
 

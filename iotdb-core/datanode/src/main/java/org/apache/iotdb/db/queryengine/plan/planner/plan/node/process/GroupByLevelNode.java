@@ -88,6 +88,11 @@ public class GroupByLevelNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.GROUP_BY_LEVEL;
+  }
+
+  @Override
   public PlanNode clone() {
     return new GroupByLevelNode(
         getPlanNodeId(), getGroupByLevelDescriptors(), this.groupByTimeParameter, this.scanOrder);

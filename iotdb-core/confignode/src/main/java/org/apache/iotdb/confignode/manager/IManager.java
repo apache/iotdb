@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
@@ -97,6 +99,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -119,8 +123,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -132,79 +136,86 @@ public interface IManager {
   ClusterManager getClusterManager();
 
   /**
-   * Get DataManager.
+   * Get {@link NodeManager}.
    *
-   * @return DataNodeManager instance
+   * @return {@link NodeManager} instance
    */
   NodeManager getNodeManager();
 
   /**
-   * Get ConsensusManager.
+   * Get {@link ConsensusManager}.
    *
-   * @return ConsensusManager instance
+   * @return {@link ConsensusManager} instance
    */
   ConsensusManager getConsensusManager();
 
   /**
-   * Get ClusterSchemaManager.
+   * Get {@link ClusterSchemaManager}.
    *
-   * @return ClusterSchemaManager instance
+   * @return {@link ClusterSchemaManager} instance
    */
   ClusterSchemaManager getClusterSchemaManager();
 
   /**
-   * Get PartitionManager.
+   * Get {@link PartitionManager}.
    *
-   * @return PartitionManager instance
+   * @return {@link PartitionManager} instance
    */
   PartitionManager getPartitionManager();
 
   /**
-   * Get LoadManager.
+   * Get {@link PermissionManager}.
    *
-   * @return LoadManager instance
+   * @return {@link PermissionManager} instance
+   */
+  PermissionManager getPermissionManager();
+
+  /**
+   * Get {@link LoadManager}.
+   *
+   * @return {@link LoadManager} instance
    */
   LoadManager getLoadManager();
 
   /**
-   * Get UDFManager.
+   * Get {@link UDFManager}.
    *
-   * @return UDFManager instance
+   * @return {@link UDFManager} instance
    */
   UDFManager getUDFManager();
 
   /**
-   * Get TriggerManager.
+   * Get {@link TriggerManager}.
    *
-   * @return TriggerManager instance
+   * @return {@link TriggerManager} instance
    */
   TriggerManager getTriggerManager();
 
   /**
-   * Get ProcedureManager.
+   * Get {@link ProcedureManager}.
    *
-   * @return ProcedureManager instance
+   * @return {@link ProcedureManager} instance
    */
   ProcedureManager getProcedureManager();
 
   /**
-   * Get CQManager.
+   * Get {@link CQManager}.
    *
-   * @return CQManager instance
+   * @return {@link CQManager} instance
    */
   CQManager getCQManager();
 
   /**
-   * Get PipeManager.
+   * Get {@link PipeManager}.
    *
-   * @return PipeManager instance
+   * @return {@link PipeManager} instance
    */
   PipeManager getPipeManager();
 
   /**
-   * Get ClusterQuotaManager.
+   * Get {@link ClusterQuotaManager}.
    *
-   * @return ClusterQuotaManager instance
+   * @return {@link ClusterQuotaManager} instance
    */
   ClusterQuotaManager getClusterQuotaManager();
 
@@ -217,8 +228,9 @@ public interface IManager {
 
   /**
    * Get RetryFailedTasksThread.
+   * Get {@link RetryFailedTasksThread}.
    *
-   * @return RetryFailedTasksThread instance
+   * @return {@link RetryFailedTasksThread} instance
    */
   RetryFailedTasksThread getRetryFailedTasksThread();
 
@@ -240,7 +252,8 @@ public interface IManager {
    * Restart DataNode.
    *
    * @param req TDataNodeRestartReq
-   * @return SUCCESS_STATUS if allow DataNode to restart, REJECT_START otherwise
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if allow DataNode to restart, {@link
+   *     TSStatusCode#REJECT_NODE_START} otherwise
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req);
 
@@ -255,9 +268,9 @@ public interface IManager {
   /**
    * Report that the specified DataNode will be shutdown.
    *
-   * <p>The ConfigNode-leader will mark it as Unknown
+   * <p>The ConfigNode-leader will mark it as {@link NodeStatus#Unknown}
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
    */
   TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
 
@@ -329,10 +342,10 @@ public interface IManager {
   /**
    * Delete StorageGroups.
    *
-   * @param deletedPaths List{@literal <}String{@literal >}
+   * @param tDeleteReq TDeleteDatabaseReq
    * @return status
    */
-  TSStatus deleteDatabases(List<String> deletedPaths);
+  TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq);
 
   /**
    * Create many databases.
@@ -424,7 +437,7 @@ public interface IManager {
    * Report that the specified ConfigNode will be shutdown. The ConfigNode-leader will mark it as
    * Unknown.
    *
-   * @return SUCCESS_STATUS if reporting successfully
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
    */
   TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation);
 
@@ -583,7 +596,8 @@ public interface IManager {
    * Create Pipe.
    *
    * @param req Info about Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if created the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
   TSStatus createPipe(TCreatePipeReq req);
 
@@ -599,7 +613,8 @@ public interface IManager {
    * Start Pipe.
    *
    * @param pipeName name of Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if started the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
   TSStatus startPipe(String pipeName);
 
@@ -607,7 +622,8 @@ public interface IManager {
    * Stop Pipe.
    *
    * @param pipeName name of Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if stopped the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
   TSStatus stopPipe(String pipeName);
 
@@ -615,7 +631,8 @@ public interface IManager {
    * Drop Pipe.
    *
    * @param pipeName name of Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure.
    */
   TSStatus dropPipe(String pipeName);
 
@@ -635,11 +652,11 @@ public interface IManager {
   TGetAllPipeInfoResp getAllPipeInfo();
 
   /**
-   * Execute the config plan received from pipe.
+   * Execute the config req received from pipe.
    *
    * @return The result of the command execution.
    */
-  TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
+  TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req);
 
   /** Create Topic. */
   TSStatus createTopic(TCreateTopicReq topic);

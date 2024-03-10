@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -96,11 +97,11 @@ public interface BaseEnv {
   List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
-    return getConnection("root", "root");
+    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   default Connection getConnection(Constant.Version version) throws SQLException {
-    return getConnection(version, "root", "root");
+    return getConnection(version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   Connection getConnection(Constant.Version version, String username, String password)
@@ -108,9 +109,20 @@ public interface BaseEnv {
 
   Connection getConnection(String username, String password) throws SQLException;
 
+  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
+      throws SQLException {
+    return getWriteOnlyConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  // This is useful when you shut down a dataNode.
+  Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException;
+
   default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
-    return getConnectionWithSpecifiedDataNode(dataNode, "root", "root");
+    return getConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   Connection getConnectionWithSpecifiedDataNode(
@@ -134,6 +146,13 @@ public interface BaseEnv {
   ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
+
+  /**
+   * Get the index of the first dataNode with a SchemaRegion leader.
+   *
+   * @return The index of DataNode with SchemaRegion-leader in dataNodeWrapperList
+   */
+  int getFirstLeaderSchemaRegionDataNodeIndex() throws IOException, InterruptedException;
 
   /**
    * Get the index of the ConfigNode leader.

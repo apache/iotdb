@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -91,6 +92,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.pipe.mq.MQManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -130,6 +132,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
@@ -158,6 +161,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -190,6 +195,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -239,6 +246,7 @@ public class ConfigManager implements IManager {
   /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
+  /** Manage load balancing. */
   private final LoadManager loadManager;
 
   /** Manage procedure. */
@@ -524,7 +532,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan);
+      return clusterSchemaManager.setTTL(setTTLPlan, false);
     } else {
       return status;
     }
@@ -591,7 +599,7 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
@@ -601,16 +609,17 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(List<String> deletedPaths) {
+  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
       Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
@@ -621,7 +630,9 @@ public class ConfigManager implements IManager {
       }
       ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
-      return procedureManager.deleteDatabases(parsedDeleteDatabases);
+      return procedureManager.deleteDatabases(
+          parsedDeleteDatabases,
+          tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe());
     } else {
       return status;
     }
@@ -639,7 +650,7 @@ public class ConfigManager implements IManager {
       return new ArrayList<>();
     }
     List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    if (innerPathList.size() == 0) {
+    if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
     PartialPath innerPath = innerPathList.get(0);
@@ -1022,6 +1033,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public PermissionManager getPermissionManager() {
+    return permissionManager;
+  }
+
+  @Override
   public LoadManager getLoadManager() {
     return loadManager;
   }
@@ -1045,7 +1061,7 @@ public class ConfigManager implements IManager {
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan);
+      return permissionManager.operatePermission(authorPlan, false);
     } else {
       return status;
     }
@@ -1644,7 +1660,11 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.setSchemaTemplate(req.getQueryId(), req.getName(), req.getPath());
+      return procedureManager.setSchemaTemplate(
+          req.getQueryId(),
+          req.getName(),
+          req.getPath(),
+          req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
     } else {
       return status;
     }
@@ -1711,7 +1731,10 @@ public class ConfigManager implements IManager {
       templateSetInfo = filteredTemplateSetInfo;
     }
 
-    return procedureManager.deactivateTemplate(req.getQueryId(), templateSetInfo);
+    return procedureManager.deactivateTemplate(
+        req.getQueryId(),
+        templateSetInfo,
+        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   @Override
@@ -1725,7 +1748,10 @@ public class ConfigManager implements IManager {
     if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
         return procedureManager.unsetSchemaTemplate(
-            req.getQueryId(), checkResult.right, new PartialPath(req.getPath()));
+            req.getQueryId(),
+            checkResult.right,
+            new PartialPath(req.getPath()),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
@@ -1753,7 +1779,7 @@ public class ConfigManager implements IManager {
           TemplateAlterOperationUtil.parseOperationType(buffer);
       if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
         return clusterSchemaManager.extendSchemaTemplate(
-            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     } else {
@@ -1929,9 +1955,21 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req) {
     TSStatus status = confirmLeader();
-    // TODO: determine whether to use procedure based on plan type
-    return status;
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TPipeConfigTransferResp(status);
+    }
+    TPipeTransferResp result =
+        PipeConfigNodeAgent.receiver()
+            .receive(
+                req.isAirGap
+                    ? new AirGapPseudoTPipeTransferRequest()
+                        .setVersion(req.version)
+                        .setType(req.type)
+                        .setBody(req.body)
+                    : new TPipeTransferReq(req.version, req.type, req.body));
+    return new TPipeConfigTransferResp(result.status).setBody(result.body);
   }
 
   @Override

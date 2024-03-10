@@ -309,96 +309,99 @@ struct TUpdateConfigNodeGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeLocations
 }
 
-struct TUpdateTemplateReq{
+struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
 }
 
-struct TTsFilePieceReq{
+struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
 }
 
-struct TLoadCommandReq{
+struct TLoadCommandReq {
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
     4: optional binary progressIndex
 }
 
-struct TLoadResp{
+struct TLoadResp {
   1: required bool accepted
   2: optional string message
   3: optional common.TSStatus status
 }
 
-struct TConstructSchemaBlackListReq{
+struct TConstructSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TRollbackSchemaBlackListReq{
+struct TRollbackSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TInvalidateMatchedSchemaCacheReq{
+struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
 }
 
-struct TFetchSchemaBlackListReq{
+struct TFetchSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TFetchSchemaBlackListResp{
+struct TFetchSchemaBlackListResp {
   1: required common.TSStatus status
   2: required binary pathPatternTree
 }
 
-struct TDeleteDataForDeleteSchemaReq{
+struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
-struct TDeleteTimeSeriesReq{
+struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
 }
 
-struct TConstructSchemaBlackListWithTemplateReq{
+struct TConstructSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
 }
 
-struct TRollbackSchemaBlackListWithTemplateReq{
+struct TRollbackSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
 }
 
-struct TDeactivateTemplateReq{
+struct TDeactivateTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
+  3: optional bool isGeneratedByPipe
 }
 
-struct TCountPathsUsingTemplateReq{
+struct TCountPathsUsingTemplateReq {
   1: required i32 templateId
   2: required binary patternTree
   3: required list<common.TConsensusGroupId> schemaRegionIdList
 }
 
-struct TCountPathsUsingTemplateResp{
+struct TCountPathsUsingTemplateResp {
   1: required common.TSStatus status
   2: optional i64 count
 }
 
-struct TCheckTimeSeriesExistenceReq{
+struct TCheckTimeSeriesExistenceReq {
   1: required binary patternTree
   2: required list<common.TConsensusGroupId> schemaRegionIdList
 }
 
-struct TCheckTimeSeriesExistenceResp{
+struct TCheckTimeSeriesExistenceResp {
   1: required common.TSStatus status
   2: optional bool exists
 }
@@ -433,24 +436,26 @@ struct TPushSinglePipeMQConsumerGroupMetaReq {
    2: optional string consumerGroupNameToDrop
 }
 
-struct TConstructViewSchemaBlackListReq{
+struct TConstructViewSchemaBlackListReq {
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
 }
 
-struct TRollbackViewSchemaBlackListReq{
+struct TRollbackViewSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
 }
 
-struct TDeleteViewSchemaReq{
+struct TDeleteViewSchemaReq {
    1: required list<common.TConsensusGroupId> schemaRegionIdList
    2: required binary pathPatternTree
+   3: optional bool isGeneratedByPipe
 }
 
-struct TAlterViewReq{
+struct TAlterViewReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required list<binary> viewBinaryList
+  3: optional bool isGeneratedByPipe
 }
 
 // ====================================================
@@ -465,6 +470,86 @@ struct TExecuteCQ {
   6: required string cqId
   7: required string username
 }
+
+/**
+* BEGIN: Used for EXPLAIN ANALYZE
+**/
+struct TOperatorStatistics{
+  1: required string planNodeId
+  2: required string operatorType
+  3: required i64 totalExecutionTimeInNanos
+  4: required i64 nextCalledCount
+  5: required i64 hasNextCalledCount
+  6: required map<string,string> specifiedInfo
+  7: required i64 inputRows
+  8: required i64 memoryUsage
+  9: optional i64 count
+}
+
+struct TQueryStatistics {
+  1: i64 loadTimeSeriesMetadataDiskSeqCount,
+  2: i64 loadTimeSeriesMetadataDiskUnSeqCount,
+  3: i64 loadTimeSeriesMetadataMemSeqCount,
+  4: i64 loadTimeSeriesMetadataMemUnSeqCount,
+  5: i64 loadTimeSeriesMetadataAlignedDiskSeqCount,
+  6: i64 loadTimeSeriesMetadataAlignedDiskUnSeqCount,
+  7: i64 loadTimeSeriesMetadataAlignedMemSeqCount,
+  8: i64 loadTimeSeriesMetadataAlignedMemUnSeqCount,
+
+  9: i64 loadTimeSeriesMetadataDiskSeqTime,
+  10: i64 loadTimeSeriesMetadataDiskUnSeqTime,
+  11: i64 loadTimeSeriesMetadataMemSeqTime,
+  12: i64 loadTimeSeriesMetadataMemUnSeqTime,
+  13: i64 loadTimeSeriesMetadataAlignedDiskSeqTime,
+  14: i64 loadTimeSeriesMetadataAlignedDiskUnSeqTime,
+  15: i64 loadTimeSeriesMetadataAlignedMemSeqTime,
+  16: i64 loadTimeSeriesMetadataAlignedMemUnSeqTime,
+
+  17: i64 constructNonAlignedChunkReadersDiskCount,
+  18: i64 constructNonAlignedChunkReadersMemCount,
+  19: i64 constructAlignedChunkReadersDiskCount,
+  20: i64 constructAlignedChunkReadersMemCount,
+
+  21: i64 constructNonAlignedChunkReadersDiskTime,
+  22: i64 constructNonAlignedChunkReadersMemTime,
+  23: i64 constructAlignedChunkReadersDiskTime,
+  24: i64 constructAlignedChunkReadersMemTime,
+
+  25: i64 pageReadersDecodeAlignedDiskCount,
+  26: i64 pageReadersDecodeAlignedDiskTime,
+  27: i64 pageReadersDecodeAlignedMemCount,
+  28: i64 pageReadersDecodeAlignedMemTime,
+  29: i64 pageReadersDecodeNonAlignedDiskCount,
+  30: i64 pageReadersDecodeNonAlignedDiskTime,
+  31: i64 pageReadersDecodeNonAlignedMemCount,
+  32: i64 pageReadersDecodeNonAlignedMemTime
+}
+
+
+struct TFetchFragmentInstanceStatisticsReq {
+  1: required TFragmentInstanceId fragmentInstanceId
+}
+
+struct TFetchFragmentInstanceStatisticsResp {
+  1: required common.TSStatus status
+  2: optional TFragmentInstanceId fragmentInstanceId
+  3: optional string dataRegion
+  4: optional i64 startTimeInMS
+  5: optional i64 endTimeInMS
+  6: optional TQueryStatistics queryStatistics
+  7: optional map<string, TOperatorStatistics> operatorStatisticsMap
+  8: optional i64 initDataQuerySourceCost
+  9: optional i64 seqUnclosedNum
+  10: optional i64 seqClosednNum
+  11: optional i64 unseqClosedNum
+  12: optional i64 unseqUnclosedNum
+  13: optional i64 readyQueuedTime
+  14: optional i64 blockQueuedTime
+  15: optional string ip
+}
+/**
+* END: Used for EXPLAIN ANALYZE
+**/
 
 service IDataNodeRPCService {
 
@@ -488,7 +573,7 @@ service IDataNodeRPCService {
 
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
-  TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+  TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req);
 
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
@@ -512,24 +597,24 @@ service IDataNodeRPCService {
   common.TSStatus createDataRegion(TCreateDataRegionReq req)
 
   /**
-     * Config node will invalidate Partition Info cache.
-     *
-     * @param bool:isStorageGroup, string:fullPath
-     */
+   * Config node will invalidate Partition Info cache.
+   *
+   * @param bool:isStorageGroup, string:fullPath
+   */
   common.TSStatus invalidatePartitionCache(TInvalidateCacheReq req)
 
   /**
-     * Config node will invalidate Schema Info cache.
-     *
-     * @param bool:isStorageGroup, string:fullPath
-     */
+   * Config node will invalidate Schema Info cache.
+   *
+   * @param bool:isStorageGroup, string:fullPath
+   */
   common.TSStatus invalidateSchemaCache(TInvalidateCacheReq req)
 
   /**
-     * Config node will delete a data/schema region of a certain storageGroup.
-     *
-     * @param data nodes of the data region, and data region id generated by config node
-     */
+   * Config node will delete a data/schema region of a certain storageGroup.
+   *
+   * @param data nodes of the data region, and data region id generated by config node
+   */
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
@@ -537,59 +622,59 @@ service IDataNodeRPCService {
    *
    * @param The specified RegionGroup and the new leader DataNode
    */
-  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
+  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req)
 
   /**
    * Create a new Region peer in the given DataNode for the specified RegionGroup
    *
    * @param TCreatePeerReq which contains RegionId and its colleagues' locations
    */
-  common.TSStatus createNewRegionPeer(TCreatePeerReq req);
+  common.TSStatus createNewRegionPeer(TCreatePeerReq req)
 
   /**
    * Add a Region peer to the specified RegionGroup
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the add peer process
    */
-  common.TSStatus addRegionPeer(TMaintainPeerReq req);
+  common.TSStatus addRegionPeer(TMaintainPeerReq req)
 
   /**
    * Remove a Region peer from the specified RegionGroup
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation that selected to perform the remove peer process
    */
-  common.TSStatus removeRegionPeer(TMaintainPeerReq req);
+  common.TSStatus removeRegionPeer(TMaintainPeerReq req)
 
   /**
    * Delete a Region peer in the given ConsensusGroup and all of its data on the specified DataNode
    *
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
-  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
+  common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req)
 
   /**
-  * Config node will disable the Data node, the Data node will not accept read/write request when disabled
-  * @param data node location
-  */
+   * Config node will disable the Data node, the Data node will not accept read/write request when disabled
+   * @param data node location
+   */
   common.TSStatus disableDataNode(TDisableDataNodeReq req)
 
   /**
-  * Config node will stop the Data node.
-  */
+   * Config node will stop the Data node.
+   */
   common.TSStatus stopDataNode()
 
   /**
-  * ConfigNode will ask DataNode for heartbeat in every few seconds.
-  *
-  * @param ConfigNode will send the latest config_node_list and load balancing policies in TDataNodeHeartbeatReq
-  **/
+   * ConfigNode will ask DataNode for heartbeat in every few seconds.
+   *
+   * @param ConfigNode will send the latest config_node_list and load balancing policies in TDataNodeHeartbeatReq
+   **/
   TDataNodeHeartbeatResp getDataNodeHeartBeat(TDataNodeHeartbeatReq req)
 
   /**
-  * ConfigNode will ask DataNode to update region cache
-  *
-  * @param ConfigNode will send timestamp and new regionRouteMap in TRegionRouteReq
-  **/
+   * ConfigNode will ask DataNode to update region cache
+   *
+   * @param ConfigNode will send timestamp and new regionRouteMap in TRegionRouteReq
+   **/
   common.TSStatus updateRegionCache(TRegionRouteReq req)
 
   /**
@@ -644,10 +729,10 @@ service IDataNodeRPCService {
   common.TSStatus updateTriggerLocation (TUpdateTriggerLocationReq req)
 
   /**
-    * Fire a stateful trigger on current data node.
-    *
-    * @param trigger name, tablet and event
-    **/
+   * Fire a stateful trigger on current data node.
+   *
+   * @param trigger name, tablet and event
+   **/
   TFireTriggerResp fireTrigger(TFireTriggerReq req)
 
   /**
@@ -809,6 +894,11 @@ service IDataNodeRPCService {
    * Set throttle quota
    **/
   common.TSStatus setThrottleQuota(common.TSetThrottleQuotaReq req)
+
+  /**
+  * Fetch fragment instance statistics for EXPLAIN ANALYZE
+  */
+  TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
 }
 
 service MPPDataExchangeService {

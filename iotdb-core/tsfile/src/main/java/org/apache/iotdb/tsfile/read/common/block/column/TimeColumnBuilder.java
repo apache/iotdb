@@ -21,19 +21,18 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.openjdk.jol.info.ClassLayout;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 
-import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.Math.max;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.calculateBlockResetSize;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOf;
 
 public class TimeColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(TimeColumnBuilder.class).instanceSize();
+      (int) RamUsageEstimator.shallowSizeOfInstance(TimeColumnBuilder.class);
 
   private final ColumnBuilderStatus columnBuilderStatus;
   private boolean initialized;

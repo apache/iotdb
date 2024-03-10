@@ -173,12 +173,20 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
       return false;
     }
     PipeHandleMetaChangeProcedure that = (PipeHandleMetaChangeProcedure) o;
-    return needWriteConsensusOnConfigNodes == that.needWriteConsensusOnConfigNodes
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && needWriteConsensusOnConfigNodes == that.needWriteConsensusOnConfigNodes
         && needPushPipeMetaToDataNodes == that.needPushPipeMetaToDataNodes;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        needWriteConsensusOnConfigNodes,
+        needPushPipeMetaToDataNodes);
   }
 }

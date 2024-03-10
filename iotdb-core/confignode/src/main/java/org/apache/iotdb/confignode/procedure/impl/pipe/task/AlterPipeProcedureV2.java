@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -49,6 +48,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -107,7 +108,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     currentPipeStaticMeta = currentPipeMeta.getStaticMeta();
     currentPipeRuntimeMeta = currentPipeMeta.getRuntimeMeta();
 
-    final Map<TConsensusGroupId, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
+    final Map<Integer, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
         currentPipeRuntimeMeta.getConsensusGroupId2TaskMetaMap();
 
     // deep copy reused attributes
@@ -122,8 +123,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
-    final Map<TConsensusGroupId, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
-        new HashMap<>();
+    final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
+        new ConcurrentHashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -135,13 +136,13 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
                 final PipeTaskMeta currentPipeTaskMeta =
-                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId);
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
                 if (databaseName != null
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && currentPipeTaskMeta.getLeaderDataNodeId() == regionLeaderNodeId) {
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
-                      regionGroupId,
+                      regionGroupId.getId(),
                       new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
                 }
               }

@@ -81,6 +81,11 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.Alte
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -173,7 +178,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
       }
 
       ConfigPhysicalPlan plan;
@@ -450,6 +455,17 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowSubscription:
           plan = new ShowPipeMQSubscriptionPlan();
+        case PipeUnsetTemplate:
+          plan = new PipeUnsetSchemaTemplatePlan();
+          break;
+        case PipeDeleteTimeSeries:
+          plan = new PipeDeleteTimeSeriesPlan();
+          break;
+        case PipeDeleteLogicalView:
+          plan = new PipeDeleteLogicalViewPlan();
+          break;
+        case PipeDeactivateTemplate:
+          plan = new PipeDeactivateTemplatePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

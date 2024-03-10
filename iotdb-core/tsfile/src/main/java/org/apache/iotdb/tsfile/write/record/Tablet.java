@@ -767,7 +767,7 @@ public class Tablet {
     }
     if (thisBitMaps == null) {
       for (int i = 0; i < columns; i++) {
-        if (thatBitMaps[i] != null) {
+        if (thatBitMaps[i] != null && !thatBitMaps[i].isAllMarked()) {
           return false;
         }
       }
@@ -775,7 +775,7 @@ public class Tablet {
     }
     if (thatBitMaps == null) {
       for (int i = 0; i < columns; i++) {
-        if (thisBitMaps[i] != null) {
+        if (thisBitMaps[i] != null && !thisBitMaps[i].isAllMarked()) {
           return false;
         }
       }

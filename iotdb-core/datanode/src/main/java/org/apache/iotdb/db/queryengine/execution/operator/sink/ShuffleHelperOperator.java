@@ -136,7 +136,7 @@ public class ShuffleHelperOperator implements Operator {
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = 0;
     for (Operator child : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
     }
     return maxPeekMemory;
   }
