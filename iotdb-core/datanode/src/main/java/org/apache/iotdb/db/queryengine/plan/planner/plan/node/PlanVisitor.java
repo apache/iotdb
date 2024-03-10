@@ -53,10 +53,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -480,22 +481,26 @@ public abstract class PlanVisitor<R, C> {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Pipe Enriched Node
+  // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public R visitPipeEnrichedInsert(PipeEnrichedInsertNode node, C context) {
+  public R visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, C context) {
+  public R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedWriteSchema(PipeEnrichedWriteSchemaNode node, C context) {
+  public R visitPipeEnrichedWritePlanNode(PipeEnrichedWritePlanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedConfigSchema(PipeEnrichedConfigSchemaNode node, C context) {
+  public R visitPipeEnrichedNonWritePlanNode(PipeEnrichedNonWritePlanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
     return visitPlan(node, context);
   }
 

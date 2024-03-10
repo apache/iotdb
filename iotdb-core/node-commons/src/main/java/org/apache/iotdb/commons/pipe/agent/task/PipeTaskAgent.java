@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.agent.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -28,17 +31,23 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -53,7 +62,7 @@ import java.util.stream.Collectors;
  *                                             | ----------------------> drop pipe -----------------------> |
  * </code>
  *
- * <p>Other transitions are not allowed, will be ignored when received in the pipe task agent.
+ * <p>Other transitions are not allowed, will be ignored when received in the {@link PipeTaskAgent}.
  */
 public abstract class PipeTaskAgent {
 
@@ -65,7 +74,7 @@ public abstract class PipeTaskAgent {
   protected final PipeMetaKeeper pipeMetaKeeper;
   protected final PipeTaskManager pipeTaskManager;
 
-  public PipeTaskAgent() {
+  protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
   }
@@ -144,7 +153,8 @@ public abstract class PipeTaskAgent {
 
   protected abstract boolean isShutdown();
 
-  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator) {
+  private void executeSinglePipeMetaChanges(final PipeMeta metaFromCoordinator)
+      throws IllegalPathException {
     final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
     final PipeMeta metaInAgent = pipeMetaKeeper.getPipeMeta(pipeName);
 
@@ -182,18 +192,19 @@ public abstract class PipeTaskAgent {
   private void executeSinglePipeRuntimeMetaChanges(
       /* @NotNull */ PipeStaticMeta pipeStaticMeta,
       /* @NotNull */ PipeRuntimeMeta runtimeMetaFromCoordinator,
-      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent) {
+      /* @NotNull */ PipeRuntimeMeta runtimeMetaInAgent)
+      throws IllegalPathException {
     // 1. Handle region group leader changed first
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromCoordinator =
         runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap();
-    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
+    final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMapInAgent =
         runtimeMetaInAgent.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in coordinator's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryFromCoordinator :
+    for (final Map.Entry<Integer, PipeTaskMeta> entryFromCoordinator :
         consensusGroupIdToTaskMetaMapFromCoordinator.entrySet()) {
-      final TConsensusGroupId consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
+      final int consensusGroupIdFromCoordinator = entryFromCoordinator.getKey();
 
       final PipeTaskMeta taskMetaFromCoordinator = entryFromCoordinator.getValue();
       final PipeTaskMeta taskMetaInAgent =
@@ -203,10 +214,9 @@ public abstract class PipeTaskAgent {
       if (taskMetaInAgent == null) {
         createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
         // We keep the new created task's status consistent with the status recorded in local
-        // agent's
-        // pipe runtime meta. please note that the status recorded in local agent's pipe runtime
-        // meta
-        // is not reliable, but we will have a check later to make sure the status is correct.
+        // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
+        // runtime meta is not reliable, but we will have a check later to make sure the status is
+        // correct.
         if (runtimeMetaInAgent.getStatus().get() == PipeStatus.RUNNING) {
           startPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         }
@@ -214,17 +224,16 @@ public abstract class PipeTaskAgent {
       }
 
       // If task meta exists on local agent, check if it has changed
-      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderDataNodeId();
-      final int nodeIdInAgent = taskMetaInAgent.getLeaderDataNodeId();
+      final int nodeIdFromCoordinator = taskMetaFromCoordinator.getLeaderNodeId();
+      final int nodeIdInAgent = taskMetaInAgent.getLeaderNodeId();
 
       if (nodeIdFromCoordinator != nodeIdInAgent) {
         dropPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         createPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta, taskMetaFromCoordinator);
         // We keep the new created task's status consistent with the status recorded in local
-        // agent's
-        // pipe runtime meta. please note that the status recorded in local agent's pipe runtime
-        // meta
-        // is not reliable, but we will have a check later to make sure the status is correct.
+        // agent's pipe runtime meta. please note that the status recorded in local agent's pipe
+        // runtime meta is not reliable, but we will have a check later to make sure the status is
+        // correct.
         if (runtimeMetaInAgent.getStatus().get() == PipeStatus.RUNNING) {
           startPipeTask(consensusGroupIdFromCoordinator, pipeStaticMeta);
         }
@@ -232,12 +241,11 @@ public abstract class PipeTaskAgent {
     }
 
     // 1.2 Iterate over all consensus group ids on local agent's pipe runtime meta, decide if we
-    // need
-    // to drop any task. we do not need to create any new task here because we have already done
-    // that in 1.1.
-    for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> entryInAgent :
+    // need to drop any task. we do not need to create any new task here because we have already
+    // done that in 1.1.
+    for (final Map.Entry<Integer, PipeTaskMeta> entryInAgent :
         consensusGroupIdToTaskMetaMapInAgent.entrySet()) {
-      final TConsensusGroupId consensusGroupIdInAgent = entryInAgent.getKey();
+      final int consensusGroupIdInAgent = entryInAgent.getKey();
       final PipeTaskMeta taskMetaFromCoordinator =
           consensusGroupIdToTaskMetaMapFromCoordinator.get(consensusGroupIdInAgent);
       if (taskMetaFromCoordinator == null) {
@@ -319,9 +327,9 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
+  protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromCoordinator) {
-    // Do nothing if node is removing or removed
+    // Do nothing if the node is removing or removed
     if (isShutdown()) {
       return Collections.emptyList();
     }
@@ -399,12 +407,12 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Manage by Pipe Name //////////////////////////
 
   /**
-   * Create a new pipe. If the pipe already exists, do nothing and return false. Otherwise, create
-   * the pipe and return true.
+   * Create a new pipe. If the pipe already exists, do nothing and return {@code false}. Otherwise,
+   * create the pipe and return {@code true}.
    *
-   * @param pipeMetaFromCoordinator pipe meta from coordinator
-   * @return true if the pipe is created successfully and should be started, false if the pipe
-   *     already exists or is created but should not be started
+   * @param pipeMetaFromCoordinator {@link PipeMeta} from coordinator
+   * @return {@code true} if the pipe is created successfully and should be started, {@code false}
+   *     if the pipe already exists or is created but should not be started
    * @throws IllegalStateException if the status is illegal
    */
   private boolean createPipe(PipeMeta pipeMetaFromCoordinator) {
@@ -425,7 +433,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Create pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
+    final Map<Integer, PipeTask> pipeTasks = buildPipeTasks(pipeMetaFromCoordinator);
 
     // Trigger create() method for each pipe task by parallel stream
     final long startTime = System.currentTimeMillis();
@@ -451,8 +459,7 @@ public abstract class PipeTaskAgent {
     return needToStartPipe;
   }
 
-  protected abstract Map<TConsensusGroupId, PipeTask> buildPipeTasks(
-      PipeMeta pipeMetaFromCoordinator);
+  protected abstract Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromCoordinator);
 
   private void dropPipe(String pipeName, long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
@@ -467,7 +474,7 @@ public abstract class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -503,7 +510,7 @@ public abstract class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
     // Drop pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -531,7 +538,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Get pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -568,7 +575,7 @@ public abstract class PipeTaskAgent {
     }
 
     // Get pipe tasks
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+    final Map<Integer, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
@@ -594,10 +601,10 @@ public abstract class PipeTaskAgent {
   ////////////////////////// Checker //////////////////////////
 
   /**
-   * Check if we need to create pipe tasks.
+   * Check if we need to create {@link PipeTask}s.
    *
-   * @return {@code true} if need to create pipe tasks, {@code false} if no need to create.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to create {@link PipeTask}s, {@code false} if no need to create.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeCreatePipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -638,10 +645,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually start the pipe tasks.
+   * Check if we need to actually start the {@link PipeTask}s.
    *
-   * @return {@code true} if need to start the pipe tasks, {@code false} if no need to start.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to start the {@link PipeTask}s, {@code false} if no need to start.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStartPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -704,10 +711,10 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to actually stop the pipe tasks.
+   * Check if we need to actually stop the {@link PipeTask}s.
    *
-   * @return {@code true} if need to stop the pipe tasks, {@code false} if no need to stop.
-   * @throws IllegalStateException if current pipe status is illegal.
+   * @return {@code true} if need to stop the {@link PipeTask}s, {@code false} if no need to stop.
+   * @throws IllegalStateException if current {@link PipeStatus} is illegal.
    */
   protected boolean checkBeforeStopPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) throws IllegalStateException {
@@ -768,9 +775,9 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
    */
   protected boolean checkBeforeDropPipe(
       PipeMeta existedPipeMeta, String pipeName, long creationTime) {
@@ -797,9 +804,9 @@ public abstract class PipeTaskAgent {
   }
 
   /**
-   * Check if we need to drop pipe tasks.
+   * Check if we need to drop {@link PipeTask}s.
    *
-   * @return {@code true} if need to drop pipe tasks, {@code false} if no need to drop.
+   * @return {@code true} if need to drop {@link PipeTask}s, {@code false} if no need to drop.
    */
   protected boolean checkBeforeDropPipe(PipeMeta existedPipeMeta, String pipeName) {
     if (existedPipeMeta == null) {
@@ -814,9 +821,10 @@ public abstract class PipeTaskAgent {
   ///////////////////////// Manage by consensusGroupId /////////////////////////
 
   protected abstract void createPipeTask(
-      TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta);
+      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      throws IllegalPathException;
 
-  private void dropPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void dropPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
@@ -828,10 +836,159 @@ public abstract class PipeTaskAgent {
     }
   }
 
-  private void startPipeTask(TConsensusGroupId consensusGroupId, PipeStaticMeta pipeStaticMeta) {
+  private void startPipeTask(int consensusGroupId, PipeStaticMeta pipeStaticMeta) {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
     if (pipeTask != null) {
       pipeTask.start();
     }
   }
+
+  /**
+   * Using try lock method to prevent deadlock when stopping all pipes with critical exceptions and
+   * {@link PipeTaskAgent#handlePipeMetaChanges(List)}} concurrently.
+   */
+  protected void stopAllPipesWithCriticalException(final int currentNodeId) {
+    // To avoid deadlock, we use a new thread to stop all pipes.
+    CompletableFuture.runAsync(
+        () -> {
+          try {
+            int retryCount = 0;
+            while (true) {
+              if (tryWriteLockWithTimeOut(5)) {
+                try {
+                  stopAllPipesWithCriticalExceptionInternal(currentNodeId);
+                  LOGGER.info("Stopped all pipes with critical exception.");
+                  return;
+                } finally {
+                  releaseWriteLock();
+                }
+              } else {
+                Thread.sleep(1000);
+                LOGGER.warn(
+                    "Failed to stop all pipes with critical exception, retry count: {}.",
+                    ++retryCount);
+              }
+            }
+          } catch (InterruptedException e) {
+            LOGGER.error(
+                "Interrupted when trying to stop all pipes with critical exception, exception message: {}",
+                e.getMessage(),
+                e);
+            Thread.currentThread().interrupt();
+          } catch (Exception e) {
+            LOGGER.error(
+                "Failed to stop all pipes with critical exception, exception message: {}",
+                e.getMessage(),
+                e);
+          }
+        });
+  }
+
+  private void stopAllPipesWithCriticalExceptionInternal(int currentNodeId) {
+    // 1. track exception in all pipe tasks that share the same connector that have critical
+    // exceptions.
+    final Map<PipeParameters, PipeRuntimeConnectorCriticalException>
+        reusedConnectorParameters2ExceptionMap = new HashMap<>();
+
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderNodeId() != currentNodeId) {
+                          return;
+                        }
+
+                        for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                          if (e instanceof PipeRuntimeConnectorCriticalException) {
+                            reusedConnectorParameters2ExceptionMap.putIfAbsent(
+                                staticMeta.getConnectorParameters(),
+                                (PipeRuntimeConnectorCriticalException) e);
+                          }
+                        }
+                      });
+            });
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              runtimeMeta
+                  .getConsensusGroupId2TaskMetaMap()
+                  .values()
+                  .forEach(
+                      pipeTaskMeta -> {
+                        if (pipeTaskMeta.getLeaderNodeId() == currentNodeId
+                            && reusedConnectorParameters2ExceptionMap.containsKey(
+                                staticMeta.getConnectorParameters())
+                            && !pipeTaskMeta.containsExceptionMessage(
+                                reusedConnectorParameters2ExceptionMap.get(
+                                    staticMeta.getConnectorParameters()))) {
+                          final PipeRuntimeConnectorCriticalException exception =
+                              reusedConnectorParameters2ExceptionMap.get(
+                                  staticMeta.getConnectorParameters());
+                          pipeTaskMeta.trackExceptionMessage(exception);
+                          LOGGER.warn(
+                              "Pipe {} (creation time = {}) will be stopped because of critical exception "
+                                  + "(occurred time {}) in connector {}.",
+                              staticMeta.getPipeName(),
+                              staticMeta.getCreationTime(),
+                              exception.getTimeStamp(),
+                              staticMeta.getConnectorParameters());
+                        }
+                      });
+            });
+
+    // 2. stop all pipes that have critical exceptions.
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                runtimeMeta
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              LOGGER.warn(
+                                  "Pipe {} (creation time = {}) was stopped because of critical exception "
+                                      + "(occurred time {}).",
+                                  staticMeta.getPipeName(),
+                                  staticMeta.getCreationTime(),
+                                  e.getTimeStamp());
+                              return;
+                            }
+                          }
+                        });
+              }
+            });
+  }
+
+  public void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListInternal(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  protected abstract void collectPipeMetaListInternal(
+      TPipeHeartbeatReq req, TPipeHeartbeatResp resp) throws TException;
 }

@@ -96,6 +96,11 @@ public class DeviceViewNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEVICE_VIEW;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeviceViewNode(
         getPlanNodeId(),

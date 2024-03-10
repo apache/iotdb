@@ -210,7 +210,7 @@ public class DataNode implements DataNodeMBean {
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
-      logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
+      logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
     } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
