@@ -44,8 +44,6 @@
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
-        <airlift-slice.version>0.41</airlift-slice.version>
-        <!-- This was the last version to support Java 8 -->
         <airlift-units.version>1.7</airlift-units.version>
         <airlift.version>206</airlift.version>
         <!--airlift-stats.version>235</airlift-stats.version-->
@@ -111,14 +109,6 @@
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.23.0</jline.version>
         <jna.version>5.14.0</jna.version>
-        <!--
-      do not upgrade this package unless we have to...
-      Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
-      jol v0.2, scan tsfile package and calculate the classes size, time cost: 600ms
-      jol v0.4: time cost is 980ms,
-      jol v0.14, time cost is 1600ms
-    -->
-        <jol-core.version>0.2</jol-core.version>
         <json-smart.version>2.5.0</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
@@ -853,17 +843,6 @@
                 <version>${airlift-units.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>stats</artifactId>
-                <version>${airlift.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.annotation</groupId>
-                        <artifactId>javax.annotation-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
                 <version>${jjwt.version}</version>
@@ -888,11 +867,6 @@
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
                 <version>${checker-qual.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openjdk.jol</groupId>
-                <artifactId>jol-core</artifactId>
-                <version>${jol-core.version}</version>
             </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
@@ -996,11 +970,6 @@
                 <groupId>org.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>${lz4-java.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>slice</artifactId>
-                <version>${airlift-slice.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.tukaani</groupId>

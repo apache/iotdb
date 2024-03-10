@@ -36,7 +36,6 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 
-import io.airlift.stats.CounterStat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +46,6 @@ import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState.FAILED;
 import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.merge;
 import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeAllOperatorStatistics;
 import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.mergeOperatorStatisticsIfDuplicate;
@@ -86,7 +83,6 @@ public class FragmentInstanceExecution {
       List<IDriver> drivers,
       ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
-      CounterStat failedInstances,
       long timeOut,
       boolean isExplainAnalyze,
       MPPDataExchangeManager exchangeManager)
@@ -94,7 +90,7 @@ public class FragmentInstanceExecution {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
-    execution.initialize(failedInstances, scheduler, isExplainAnalyze);
+    execution.initialize(scheduler, isExplainAnalyze);
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -274,9 +270,7 @@ public class FragmentInstanceExecution {
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction
   @SuppressWarnings("squid:S1181")
-  private void initialize(
-      CounterStat failedInstances, IDriverScheduler scheduler, boolean isExplainAnalyze) {
-    requireNonNull(failedInstances, "failedInstances is null");
+  private void initialize(IDriverScheduler scheduler, boolean isExplainAnalyze) {
     stateMachine.addStateChangeListener(
         newState -> {
           try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
@@ -286,11 +280,6 @@ public class FragmentInstanceExecution {
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug("Enter the stateChangeListener");
-            }
-
-            // Update failed tasks counter
-            if (newState == FAILED) {
-              failedInstances.update(1);
             }
 
             statisticsLock.writeLock().lock();
