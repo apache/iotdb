@@ -55,9 +55,10 @@ public class PermissionManager {
    * Write permission.
    *
    * @param authorPlan AuthorReq
+   * @param isGeneratedByPipe whether the plan is operated by pipe receiver
    * @return TSStatus
    */
-  public TSStatus operatePermission(AuthorPlan authorPlan) {
+  public TSStatus operatePermission(AuthorPlan authorPlan, boolean isGeneratedByPipe) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
     try {
@@ -67,7 +68,10 @@ public class PermissionManager {
       } else {
         List<TDataNodeConfiguration> allDataNodes =
             configManager.getNodeManager().getRegisteredDataNodes();
-        tsStatus = configManager.getProcedureManager().operateAuthPlan(authorPlan, allDataNodes);
+        tsStatus =
+            configManager
+                .getProcedureManager()
+                .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
       }
       return tsStatus;
     } catch (ConsensusException e) {

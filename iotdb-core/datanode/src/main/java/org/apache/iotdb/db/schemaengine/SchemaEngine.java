@@ -255,6 +255,10 @@ public class SchemaEngine {
     return schemaRegionMap.values();
   }
 
+  public List<SchemaRegionId> getAllSchemaRegionIds() {
+    return new ArrayList<>(schemaRegionMap.keySet());
+  }
+
   public synchronized void createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);

@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -128,6 +129,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
+      if (e instanceof ClosedByInterruptException || Thread.interrupted()) {
+        Thread.currentThread().interrupt();
+        return new CrossCompactionTaskResource();
+      }
       throw new MergeException(e);
     } finally {
       compactionEstimator.cleanup();
