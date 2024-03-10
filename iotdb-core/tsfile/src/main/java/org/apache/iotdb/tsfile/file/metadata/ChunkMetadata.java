@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.openjdk.jol.info.ClassLayout;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,10 +41,10 @@ import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
 
-  private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(ChunkMetadata.class).instanceSize()
-          + ClassLayout.parseClass(TSDataType.class).instanceSize()
-          + ClassLayout.parseClass(ArrayList.class).instanceSize();
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ChunkMetadata.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TSDataType.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
 
   private String measurementUid;
 

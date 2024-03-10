@@ -201,6 +201,10 @@ public class PlanFragment {
     typeProvider = null;
   }
 
+  public void clearTypeProvider() {
+    typeProvider = null;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

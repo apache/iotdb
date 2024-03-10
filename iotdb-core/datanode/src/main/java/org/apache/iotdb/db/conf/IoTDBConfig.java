@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -617,16 +618,16 @@ public class IoTDBConfig {
    */
   private int dataNodeId = -1;
 
-  /** whether use chunkBufferPool. */
+  /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
 
-  /** register time series as which type when receiving boolean string "true" or "false" */
+  /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** register time series as which type when receiving an integer string "67" */
+  /** Register time series as which type when receiving an integer string "67" */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**

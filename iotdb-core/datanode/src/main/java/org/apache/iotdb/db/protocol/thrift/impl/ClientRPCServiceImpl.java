@@ -114,6 +114,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -2562,7 +2564,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.receiver().thrift().receive(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.receiver().thrift().receive(req);
+  }
+
+  @Override
+  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) {
+    // TODO: SubscriptionAgent
+    return null;
   }
 
   @Override

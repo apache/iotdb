@@ -161,10 +161,12 @@ struct TSetDataNodeStatusReq {
 // Database
 struct TDeleteDatabaseReq {
   1: required string prefixPath
+  2: optional bool isGeneratedByPipe
 }
 
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
+  2: optional bool isGeneratedByPipe
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -459,20 +461,22 @@ enum TTriggerState {
 
 struct TCreateTriggerReq {
   1: required string triggerName
-  2: required string className,
-  3: required byte triggerEvent,
+  2: required string className
+  3: required byte triggerEvent
   4: required byte triggerType
-  5: required binary pathPattern,
-  6: required map<string, string> attributes,
+  5: required binary pathPattern
+  6: required map<string, string> attributes
   7: required i32 failureStrategy
-  8: required bool isUsingURI,
-  9: optional string jarName,
-  10: optional binary jarFile,
-  11: optional string jarMD5,
+  8: required bool isUsingURI
+  9: optional string jarName
+  10: optional binary jarFile
+  11: optional string jarMD5
+  12: optional bool isGeneratedByPipe
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
+  2: optional bool isGeneratedByPipe
 }
 
 struct TGetLocationForTriggerResp {
@@ -593,7 +597,7 @@ struct TDatabaseInfo {
   11: required i32 maxDataRegionNum
 }
 
-struct TGetDatabaseReq{
+struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
 }
@@ -664,6 +668,7 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 struct TGetPathsSetTemplatesReq {
@@ -725,19 +730,34 @@ struct TShowPipeResp {
   2: optional list<TShowPipeInfo> pipeInfoList
 }
 
-struct TDeleteTimeSeriesReq{
-  1: required string queryId
-  2: required binary pathPatternTree
+struct TPipeConfigTransferReq {
+  1: required i8 version
+  2: required i16 type
+  3: required binary body
+  4: required bool isAirGap
 }
 
-struct TDeleteLogicalViewReq{
-  1: required string queryId
-  2: required binary pathPatternTree
+struct TPipeConfigTransferResp {
+  1: required common.TSStatus status
+  2: optional binary body
 }
 
-struct TAlterLogicalViewReq{
+struct TDeleteTimeSeriesReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
+}
+
+struct TDeleteLogicalViewReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
+}
+
+struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
+  3: optional bool isGeneratedByPipe
 }
 
 // ====================================================
@@ -772,33 +792,35 @@ struct TShowCQResp {
 }
 
 
-struct TDeactivateSchemaTemplateReq{
+struct TDeactivateSchemaTemplateReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
+  4: optional bool isGeneratedByPipe
 }
 
-struct TUnsetSchemaTemplateReq{
+struct TUnsetSchemaTemplateReq {
   1: required string queryId
   2: required string templateName
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 // ====================================================
 // Quota
 // ====================================================
-struct TSpaceQuotaResp{
+struct TSpaceQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TSpaceQuota> spaceQuota
   3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
 }
 
-struct TThrottleQuotaResp{
+struct TThrottleQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TThrottleQuota> throttleQuota
 }
 
-struct TShowThrottleReq{
+struct TShowThrottleReq {
   1: optional string userName;
 }
 
@@ -1158,18 +1180,18 @@ service IConfigNodeRPCService {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
 
   /**
-     * Return the trigger table
-     */
+   * Return the trigger table
+   */
   TGetTriggerTableResp getTriggerTable()
 
   /**
-     * Return the Stateful trigger table
-     */
+   * Return the Stateful trigger table
+   */
   TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
-     * Return the trigger jar list of the trigger name list
-     */
+   * Return the trigger jar list of the trigger name list
+   */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
@@ -1355,8 +1377,8 @@ service IConfigNodeRPCService {
   /** Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo()
 
-  /** Execute schema language from external pipes */
-  common.TSStatus executeSyncCommand(binary configPhysicalPlanBinary)
+ /** Execute schema language from external pipes */
+  TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
 
   // ======================================================
   // TestTools

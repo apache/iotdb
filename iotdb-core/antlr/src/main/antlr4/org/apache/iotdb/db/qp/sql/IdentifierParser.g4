@@ -39,6 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
+    | ANALYZE
     | AND
     | ANY
     | APPEND

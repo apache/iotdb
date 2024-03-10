@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.builder;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
@@ -35,29 +35,25 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class PipeDataNodeTaskBuilder {
+public class PipeDataNodeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
-  private final TConsensusGroupId regionId;
+  private final int regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
   protected final PipeProcessorSubtaskExecutor processorExecutor;
   protected final PipeConnectorSubtaskExecutor connectorExecutor;
 
-  protected final Map<String, String> systemParameters;
+  protected final Map<String, String> systemParameters = new HashMap<>();
 
-  protected PipeDataNodeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta,
-      TConsensusGroupId regionId,
-      PipeTaskMeta pipeTaskMeta,
-      PipeProcessorSubtaskExecutor processorExecutor,
-      PipeConnectorSubtaskExecutor connectorExecutor) {
+  public PipeDataNodeTaskBuilder(
+      PipeStaticMeta pipeStaticMeta, int regionId, PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
-    this.processorExecutor = processorExecutor;
-    this.connectorExecutor = connectorExecutor;
-    systemParameters = generateSystemParameters();
+    this.processorExecutor = PipeSubtaskExecutorManager.getInstance().getProcessorExecutor();
+    this.connectorExecutor = PipeSubtaskExecutorManager.getInstance().getConnectorExecutor();
+    generateSystemParameters();
   }
 
   public PipeDataNodeTask build() {
@@ -95,12 +91,10 @@ public abstract class PipeDataNodeTaskBuilder {
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);
   }
 
-  private Map<String, String> generateSystemParameters() {
-    final Map<String, String> systemParameters = new HashMap<>();
+  private void generateSystemParameters() {
     if (!(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)) {
       systemParameters.put(SystemConstant.RESTART_KEY, Boolean.TRUE.toString());
     }
-    return systemParameters;
   }
 
   private PipeParameters blendUserAndSystemParameters(PipeParameters userParameters) {

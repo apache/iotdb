@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -196,7 +196,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return deviceIsAlignedResultMap;
   }
 
-  /** @return TabletInsertionEvent in a streaming way */
+  /** @return {@link TabletInsertionEvent} in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {

@@ -61,7 +61,7 @@ public class CreateTriggerProcedureTest {
             FailureStrategy.OPTIMISTIC,
             "testMD5test");
     CreateTriggerProcedure p1 =
-        new CreateTriggerProcedure(triggerInformation, new Binary(new byte[] {1, 2, 3}));
+        new CreateTriggerProcedure(triggerInformation, new Binary(new byte[] {1, 2, 3}), false);
 
     try {
       p1.serialize(outputStream);
@@ -98,7 +98,7 @@ public class CreateTriggerProcedureTest {
             null,
             FailureStrategy.OPTIMISTIC,
             "testMD5test");
-    CreateTriggerProcedure p1 = new CreateTriggerProcedure(triggerInformation, null);
+    CreateTriggerProcedure p1 = new CreateTriggerProcedure(triggerInformation, null, false);
 
     try {
       p1.serialize(outputStream);

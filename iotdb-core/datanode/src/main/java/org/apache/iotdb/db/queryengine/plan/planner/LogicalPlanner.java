@@ -47,12 +47,15 @@ public class LogicalPlanner {
 
     // optimize the query logical plan
     if (analysis.getStatement().isQuery()) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);
 
+      long planFinishTime = System.nanoTime();
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - planFinishTime);
+      context.setLogicalPlanCost(planFinishTime - startTime);
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
       }
+      context.setLogicalOptimizationCost(System.nanoTime() - planFinishTime);
     }
 
     return new LogicalQueryPlan(context, rootNode);
