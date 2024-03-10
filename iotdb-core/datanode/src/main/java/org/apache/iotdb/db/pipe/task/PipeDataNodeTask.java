@@ -108,6 +108,6 @@ public class PipeDataNodeTask implements PipeTask {
 
   @Override
   public String toString() {
-    return pipeName + "@" + regionId.id;
+    return pipeName + "@" + regionId;
   }
 }
