@@ -18,6 +18,4 @@
  */
 package org.apache.iotdb.session.util;
 
-public class ValueBufferBuilder {
-
-}
+public class ValueBufferBuilder {}
