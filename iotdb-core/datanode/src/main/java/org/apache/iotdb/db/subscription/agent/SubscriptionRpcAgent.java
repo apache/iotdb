@@ -131,7 +131,7 @@ public class SubscriptionRpcAgent {
     // create consumer (group)
     SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
 
-    // tmp
+    // TODO: REMOVE ME BEFORE MERGING
     SubscriptionAgent.topic().createTopic(new TopicConfig("demo", "root.**"));
 
     // get DN configs

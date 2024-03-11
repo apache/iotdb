@@ -4,9 +4,6 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 
@@ -20,7 +17,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriptionConsumerAgent implements IService {
+public class SubscriptionConsumerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
@@ -110,19 +107,5 @@ public class SubscriptionConsumerAgent implements IService {
       return Collections.emptySet();
     }
     return consumerGroupMeta.subscribedTopics(consumerClientID);
-  }
-
-  //////////////////////////// System Service Interface ////////////////////////////
-
-  // TODO: fetch meta when started
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {}
-
-  @Override
-  public ServiceType getID() {
-    return null;
   }
 }

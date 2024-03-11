@@ -23,19 +23,13 @@ public class SubscriptionAgent {
 
   private final SubscriptionRpcAgent rpcAgent;
 
-  private final SubscriptionConsumerAgent consumerAgent;
-
-  private final SubscriptionBrokerAgent brokerAgent;
-
-  private final SubscriptionTopicAgent topicAgent;
+  private final SubscriptionRuntimeAgent runtimeAgent;
 
   //////////////////////////// singleton ////////////////////////////
 
   private SubscriptionAgent() {
     rpcAgent = new SubscriptionRpcAgent();
-    consumerAgent = new SubscriptionConsumerAgent();
-    brokerAgent = new SubscriptionBrokerAgent();
-    topicAgent = new SubscriptionTopicAgent();
+    runtimeAgent = new SubscriptionRuntimeAgent();
   }
 
   private static class SubscriptionAgentHolder {
@@ -47,14 +41,14 @@ public class SubscriptionAgent {
   }
 
   public static SubscriptionConsumerAgent consumer() {
-    return SubscriptionAgentHolder.HANDLE.consumerAgent;
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.consumer();
   }
 
   public static SubscriptionBrokerAgent broker() {
-    return SubscriptionAgentHolder.HANDLE.brokerAgent;
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.broker();
   }
 
   public static SubscriptionTopicAgent topic() {
-    return SubscriptionAgentHolder.HANDLE.topicAgent;
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.topic();
   }
 }

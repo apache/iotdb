@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.subscription.meta.TopicMeta;
 import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
 
@@ -32,7 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SubscriptionTopicAgent implements IService {
+public class SubscriptionTopicAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
@@ -78,19 +75,5 @@ public class SubscriptionTopicAgent implements IService {
 
   public boolean isTopicExist(String topicName) {
     return topicNameToTopicMeta.containsKey(topicName);
-  }
-
-  //////////////////////////// System Service Interface ////////////////////////////
-
-  // TODO: fetch meta when started
-  @Override
-  public void start() throws StartupException {}
-
-  @Override
-  public void stop() {}
-
-  @Override
-  public ServiceType getID() {
-    return null;
   }
 }
