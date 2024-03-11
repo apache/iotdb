@@ -52,7 +52,7 @@ public enum BuiltinPipePlugin {
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
   DOWN_SAMPLING_PROCESSOR("tumbling-time-processor", TumblingTimeProcessor.class),
-  STD_FILTER_PROCESSOR("sdt-filter-processor", SwingingDoorTrendingFilterProcessor.class),
+  SDT_FILTER_PROCESSOR("sdt-filter-processor", SwingingDoorTrendingFilterProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),

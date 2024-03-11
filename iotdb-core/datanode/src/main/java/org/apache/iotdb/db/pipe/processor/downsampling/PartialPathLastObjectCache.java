@@ -49,7 +49,7 @@ public class PartialPathLastObjectCache implements AutoCloseable {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
                   LOGGER.info(
-                      "PartialPathLastTimeCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                      "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
                       newMemory);
                 })
@@ -59,7 +59,7 @@ public class PartialPathLastObjectCache implements AutoCloseable {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
                   LOGGER.info(
-                      "PartialPathLastTimeCache.allocatedMemoryBlock has expanded from {} to {}.",
+                      "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,
                       newMemory);
                 });
@@ -70,7 +70,7 @@ public class PartialPathLastObjectCache implements AutoCloseable {
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                // Here partial path is a part of full path adequate to inspect the last time
+                // Here partial path is a part of full path adequate to inspect the last object
                 (Weigher<String, Object>)
                     (partialPath, object) -> {
                       final long weightInLong =
