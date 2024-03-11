@@ -48,7 +48,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHandleLeaderChangeProcedure.class);
 
-  private Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
+  private Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
       new HashMap<>();
 
   public PipeHandleLeaderChangeProcedure() {
@@ -56,9 +56,9 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   public PipeHandleLeaderChangeProcedure(
-      Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap) {
+      Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap) {
     super();
-    this.dataRegionGroupToOldAndNewLeaderPairMap = dataRegionGroupToOldAndNewLeaderPairMap;
+    this.regionGroupToOldAndNewLeaderPairMap = regionGroupToOldAndNewLeaderPairMap;
   }
 
   @Override
@@ -87,7 +87,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
     final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
         new HashMap<>();
-    dataRegionGroupToOldAndNewLeaderPairMap.forEach(
+    regionGroupToOldAndNewLeaderPairMap.forEach(
         (regionGroupId, oldNewLeaderPair) ->
             newConsensusGroupIdToLeaderConsensusIdMap.put(
                 regionGroupId, oldNewLeaderPair.getRight()));
@@ -146,9 +146,9 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ReadWriteIOUtils.write(dataRegionGroupToOldAndNewLeaderPairMap.size(), stream);
+    ReadWriteIOUtils.write(regionGroupToOldAndNewLeaderPairMap.size(), stream);
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> entry :
-        dataRegionGroupToOldAndNewLeaderPairMap.entrySet()) {
+        regionGroupToOldAndNewLeaderPairMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), stream);
       ReadWriteIOUtils.write(entry.getValue().getLeft(), stream);
       ReadWriteIOUtils.write(entry.getValue().getRight(), stream);
@@ -163,7 +163,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       final int dataRegionGroupId = ReadWriteIOUtils.readInt(byteBuffer);
       final int oldDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       final int newDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
-      dataRegionGroupToOldAndNewLeaderPairMap.put(
+      regionGroupToOldAndNewLeaderPairMap.put(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, dataRegionGroupId),
           new Pair<>(oldDataRegionLeaderId, newDataRegionLeaderId));
     }
@@ -181,13 +181,13 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     return getProcId() == that.getProcId()
         && getCurrentState().equals(that.getCurrentState())
         && getCycles() == that.getCycles()
-        && this.dataRegionGroupToOldAndNewLeaderPairMap.equals(
-            that.dataRegionGroupToOldAndNewLeaderPairMap);
+        && this.regionGroupToOldAndNewLeaderPairMap.equals(
+            that.regionGroupToOldAndNewLeaderPairMap);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), dataRegionGroupToOldAndNewLeaderPairMap);
+        getProcId(), getCurrentState(), getCycles(), regionGroupToOldAndNewLeaderPairMap);
   }
 }
