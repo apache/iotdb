@@ -216,6 +216,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.batch.enable", "false");
 
       if (withParsing) {
         extractorAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
