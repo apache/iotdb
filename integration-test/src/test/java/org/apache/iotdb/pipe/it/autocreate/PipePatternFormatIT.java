@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -41,7 +41,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class PipePatternFormatIT extends AbstractPipeDualIT {
+public class PipePatternFormatIT extends AbstractPipeDualAutoIT {
   @Test
   public void testPrefixPattern() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -85,7 +85,7 @@ public class PipePatternFormatIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s,root.db.d1.s1,", expectedResSet);
     }
   }
@@ -135,7 +135,7 @@ public class PipePatternFormatIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,1.0,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
@@ -187,7 +187,7 @@ public class PipePatternFormatIT extends AbstractPipeDualIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,1.0,1.0,");
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
