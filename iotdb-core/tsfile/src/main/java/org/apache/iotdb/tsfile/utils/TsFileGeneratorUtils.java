@@ -52,6 +52,8 @@ public class TsFileGeneratorUtils {
   public static final String testStorageGroup = "root.testsg";
   public static int alignDeviceOffset = 10000;
 
+  public static boolean useMultiType = false;
+
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,
       String deviceId,
@@ -419,6 +421,9 @@ public class TsFileGeneratorUtils {
   }
 
   public static TSDataType getDataType(int num) {
+    if (!useMultiType) {
+      return TSDataType.INT64;
+    }
     switch (num % 6) {
       case 0:
         return TSDataType.BOOLEAN;

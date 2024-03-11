@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Set
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -43,17 +44,20 @@ import java.util.Collections;
 import java.util.List;
 
 public class SettleCompactionSelectorTest extends AbstractCompactionTest {
+  boolean originUseMultiType = TsFileGeneratorUtils.useMultiType;
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    TsFileGeneratorUtils.useMultiType = true;
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     DataNodeTTLCache.getInstance().clearAllTTL();
+    TsFileGeneratorUtils.useMultiType = originUseMultiType;
   }
 
   @Test
@@ -536,8 +540,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   /**
-   * File 0 2 4 6 8 is partial_deleted, file 2 3 7 is all_deleted. Partial_deleted group is (0) (4)
-   * (6 8).
+   * File 0 4 6 8 is partial_deleted, file 2 3 7 is all_deleted. Partial_deleted group is (0) (4) (6
+   * 8).
    */
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2()
@@ -550,7 +554,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
 
     // select first time
-    // file 0 2 4 6 8 is partial_deleted, file 2 3 7 is all_deleted
+    // file 0 4 6 8 is partial_deleted, file 2 3 7 is all_deleted
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 0) {
         seqResources

@@ -112,6 +112,7 @@ public class FastCompactionPerformer
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
+      readModification();
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -304,5 +305,12 @@ public class FastCompactionPerformer
   @Override
   public void setSourceFiles(List<TsFileResource> unseqFiles) {
     this.seqFiles = unseqFiles;
+  }
+
+  private void readModification() {
+    seqFiles.forEach(
+        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
+    unseqFiles.forEach(
+        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
   }
 }

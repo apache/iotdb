@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -494,7 +495,8 @@ public abstract class SeriesCompactionExecutor {
   }
 
   /**
-   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
+   * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
+   * modification from ttl cache.
    *
    * @param path name of the time series
    */
@@ -502,26 +504,7 @@ public abstract class SeriesCompactionExecutor {
       TsFileResource tsFileResource, PartialPath path) {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications =
-        modificationCacheMap.computeIfAbsent(
-            tsFileResource,
-            resource -> {
-              List<Modification> list = new ArrayList<>(resource.getModFile().getModifications());
-              // add outdated device mods by ttl
-              for (String device : resource.getDevices()) {
-                long timeLowerBound =
-                    CommonDateTimeUtils.currentTime()
-                        - DataNodeTTLCache.getInstance().getTTL(device);
-                if (resource.getStartTime(device) < timeLowerBound) {
-                  list.add(
-                      new Deletion(
-                          path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
-                          Long.MAX_VALUE,
-                          Long.MIN_VALUE,
-                          timeLowerBound));
-                }
-              }
-              return list;
-            });
+        modificationCacheMap.computeIfAbsent(tsFileResource, x -> Collections.emptyList());
     List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     while (modificationIterator.hasNext()) {
@@ -530,6 +513,14 @@ public abstract class SeriesCompactionExecutor {
         pathModifications.add(modification);
       }
     }
+    long timeLowerBound =
+        CommonDateTimeUtils.currentTime() - DataNodeTTLCache.getInstance().getTTL(path.getDevice());
+    pathModifications.add(
+        new Deletion(
+            path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            timeLowerBound));
     return pathModifications;
   }
 
