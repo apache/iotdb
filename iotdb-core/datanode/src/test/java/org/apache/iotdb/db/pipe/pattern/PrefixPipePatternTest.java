@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.pattern;
 
+import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
+
 import org.junit.Assert;
 import org.junit.Test;
 

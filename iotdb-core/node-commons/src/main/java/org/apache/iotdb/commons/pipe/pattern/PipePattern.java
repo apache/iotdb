@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.pattern;
+package org.apache.iotdb.commons.pipe.pattern;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
