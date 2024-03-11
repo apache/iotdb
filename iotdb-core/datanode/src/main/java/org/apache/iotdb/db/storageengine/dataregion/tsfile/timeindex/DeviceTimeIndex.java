@@ -46,6 +46,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceTimeIndex.class);
+
   private static final Logger logger = LoggerFactory.getLogger(DeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
@@ -208,7 +211,9 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex)
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfMap(
+            deviceToIndex, RamUsageEstimator.shallowSizeOfInstance(Integer.class))
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -68,10 +69,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
-
-import java.nio.ByteBuffer;
 
 public interface IConfigTaskExecutor {
 
@@ -174,8 +175,6 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
 
-  SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
-
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 
@@ -188,8 +187,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
-      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context);
+  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
@@ -224,4 +222,6 @@ public interface IConfigTaskExecutor {
       ShowThrottleQuotaStatement showThrottleQuotaStatement);
 
   TThrottleQuotaResp getThrottleQuota();
+
+  TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req);
 }

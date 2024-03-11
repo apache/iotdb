@@ -85,4 +85,13 @@ public interface Accumulator {
   TSDataType[] getIntermediateType();
 
   TSDataType getFinalType();
+
+  /**
+   * The return value equals to the length of tsBlockBuilder in {@link
+   * #outputIntermediate(ColumnBuilder[])}}. Currently only aggregation `Avg, FirstValue, LastValue,
+   * TimeDuration` will return 2.
+   */
+  default int getPartialResultSize() {
+    return 1;
+  }
 }

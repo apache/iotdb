@@ -474,9 +474,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
 
         task.setStatus(DriverTaskStatus.READY);
-        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(
-            BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
-        task.setLastEnterReadyQueueTime(System.nanoTime());
+        long currentTime = System.nanoTime();
+        long blockQueuedTime = currentTime - task.getLastEnterBlockQueueTime();
+        task.getDriver()
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .addBlockQueuedTime(blockQueuedTime);
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(BLOCK_QUEUED_TIME, blockQueuedTime);
+        task.setLastEnterReadyQueueTime(currentTime);
         task.resetLevelScheduledTime();
         readyQueue.repush(task);
         blockedTasks.remove(task);
@@ -494,8 +499,12 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
 
         task.setStatus(DriverTaskStatus.RUNNING);
-        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(
-            READY_QUEUED_TIME, System.nanoTime() - task.getLastEnterReadyQueueTime());
+        long readyQueuedTime = System.nanoTime() - task.getLastEnterReadyQueueTime();
+        task.getDriver()
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .addReadyQueuedTime(readyQueuedTime);
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(READY_QUEUED_TIME, readyQueuedTime);
       } finally {
         task.unlock();
       }

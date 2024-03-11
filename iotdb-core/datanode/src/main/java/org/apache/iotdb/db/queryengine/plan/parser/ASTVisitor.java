@@ -148,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -184,6 +185,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -2555,7 +2557,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
     QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
-    return new ExplainStatement(queryStatement);
+    if (ctx.ANALYZE() == null) {
+      return new ExplainStatement(queryStatement);
+    }
+    ExplainAnalyzeStatement explainAnalyzeStatement = new ExplainAnalyzeStatement(queryStatement);
+    if (ctx.VERBOSE() != null) {
+      explainAnalyzeStatement.setVerbose(true);
+    }
+    return explainAnalyzeStatement;
   }
 
   @Override
@@ -4129,5 +4138,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showSpaceQuotaStatement.setDatabases(null);
     }
     return showSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitShowCurrentTimestamp(IoTDBSqlParser.ShowCurrentTimestampContext ctx) {
+    return new ShowCurrentTimestampStatement();
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
@@ -38,6 +39,10 @@ import java.util.List;
 public class MPPQueryContext {
   private String sql;
   private QueryId queryId;
+
+  // LocalQueryId is kept to adapt to the old client, it's unique in current datanode.
+  // Now it's only be used by EXPLAIN ANALYZE to get queryExecution.
+  private long localQueryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
   private long timeOut;
@@ -62,6 +67,10 @@ public class MPPQueryContext {
 
   private int acquiredLockNum;
 
+  private boolean isExplainAnalyze = false;
+
+  QueryPlanStatistics queryPlanStatistics = null;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -82,6 +91,22 @@ public class MPPQueryContext {
     this.initResultNodeContext();
   }
 
+  public MPPQueryContext(
+      String sql,
+      QueryId queryId,
+      long localQueryId,
+      SessionInfo session,
+      TEndPoint localDataBlockEndpoint,
+      TEndPoint localInternalEndpoint) {
+    this(queryId);
+    this.sql = sql;
+    this.session = session;
+    this.localQueryId = localQueryId;
+    this.localDataBlockEndpoint = localDataBlockEndpoint;
+    this.localInternalEndpoint = localInternalEndpoint;
+    this.initResultNodeContext();
+  }
+
   public void prepareForRetry() {
     this.initResultNodeContext();
   }
@@ -92,6 +117,10 @@ public class MPPQueryContext {
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public long getLocalQueryId() {
+    return localQueryId;
   }
 
   public QueryType getQueryType() {
@@ -178,5 +207,79 @@ public class MPPQueryContext {
 
   public ZoneId getZoneId() {
     return session.getZoneId();
+  }
+
+  public void setExplainAnalyze(boolean explainAnalyze) {
+    isExplainAnalyze = explainAnalyze;
+  }
+
+  public boolean isExplainAnalyze() {
+    return isExplainAnalyze;
+  }
+
+  public long getAnalyzeCost() {
+    return queryPlanStatistics.getAnalyzeCost();
+  }
+
+  public long getDistributionPlanCost() {
+    return queryPlanStatistics.getDistributionPlanCost();
+  }
+
+  public long getFetchPartitionCost() {
+    return queryPlanStatistics.getFetchPartitionCost();
+  }
+
+  public long getFetchSchemaCost() {
+    return queryPlanStatistics.getFetchSchemaCost();
+  }
+
+  public long getLogicalPlanCost() {
+    return queryPlanStatistics.getLogicalPlanCost();
+  }
+
+  public long getLogicalOptimizationCost() {
+    return queryPlanStatistics.getLogicalOptimizationCost();
+  }
+
+  public void setAnalyzeCost(long analyzeCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setAnalyzeCost(analyzeCost);
+  }
+
+  public void setDistributionPlanCost(long distributionPlanCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setDistributionPlanCost(distributionPlanCost);
+  }
+
+  public void setFetchPartitionCost(long fetchPartitionCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setFetchPartitionCost(fetchPartitionCost);
+  }
+
+  public void setFetchSchemaCost(long fetchSchemaCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setFetchSchemaCost(fetchSchemaCost);
+  }
+
+  public void setLogicalPlanCost(long logicalPlanCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setLogicalPlanCost(logicalPlanCost);
+  }
+
+  public void setLogicalOptimizationCost(long logicalOptimizeCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
   }
 }

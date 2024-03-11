@@ -326,7 +326,7 @@ public class ResourceManagerTest {
     }
     assertEquals(10, tsFileResourceManager.getPriorityQueueSize());
     for (int i = 0; i < seqFileNum; i++) {
-      if (i < 7) {
+      if (i < 8) {
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX,
             TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));

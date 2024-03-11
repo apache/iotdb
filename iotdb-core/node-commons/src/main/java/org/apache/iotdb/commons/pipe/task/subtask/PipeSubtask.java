@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.subtask;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -95,10 +96,11 @@ public abstract class PipeSubtask
   }
 
   /**
-   * Try to consume an event by the pipe plugin.
+   * Try to consume an {@link Event} by the pipe plugin.
    *
-   * @return true if the event is consumed successfully, false if no more event can be consumed
-   * @throws Exception if any error occurs when consuming the event
+   * @return {@code true} if the {@link Event} is consumed successfully, {@code false} if no more
+   *     {@link Event} can be consumed
+   * @throws Exception if any error occurs when consuming the {@link Event}
    */
   @SuppressWarnings("squid:S112") // Allow to throw Exception
   protected abstract boolean executeOnce() throws Exception;
@@ -119,8 +121,8 @@ public abstract class PipeSubtask
   }
 
   /**
-   * Submit the subTask. Be sure to add parallel check since a subtask is currently not designed to
-   * run in parallel.
+   * Submit the {@link PipeSubtask}. Be sure to add parallel check since a {@link PipeSubtask} is
+   * currently not designed to run in parallel.
    */
   public abstract void submitSelf();
 
@@ -130,11 +132,11 @@ public abstract class PipeSubtask
   }
 
   /**
-   * Set the shouldStopSubmittingSelf state from false to true, in order to stop submitting the
-   * subtask.
+   * Set the {@link PipeSubtask#shouldStopSubmittingSelf} state from {@code false} to {@code true},
+   * in order to stop submitting the {@link PipeSubtask}.
    *
-   * @return true if the shouldStopSubmittingSelf state is changed from false to true, false
-   *     otherwise
+   * @return {@code true} if the {@link PipeSubtask#shouldStopSubmittingSelf} state is changed from
+   *     {@code false} to {@code true}, {@code false} otherwise
    */
   public boolean disallowSubmittingSelf() {
     return !shouldStopSubmittingSelf.getAndSet(true);
@@ -152,7 +154,14 @@ public abstract class PipeSubtask
     releaseLastEvent(false);
   }
 
-  protected abstract void releaseLastEvent(boolean shouldReport);
+  protected synchronized void releaseLastEvent(boolean shouldReport) {
+    if (lastEvent != null) {
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
+      }
+      lastEvent = null;
+    }
+  }
 
   public String getTaskID() {
     return taskID;

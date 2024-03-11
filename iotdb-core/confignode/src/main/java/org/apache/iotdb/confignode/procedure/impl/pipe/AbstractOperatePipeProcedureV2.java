@@ -388,7 +388,7 @@ public abstract class AbstractOperatePipeProcedureV2
   /**
    * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
    *
-   * @param pipeName The given pipe's pipe name, null if report all pipes' exceptions.
+   * @param pipeName The given pipe's pipe name, {@code null} if report all pipes' exceptions.
    * @param respMap The responseMap after pushing pipe meta
    * @return Error messages for the given pipe after pushing pipe meta
    */

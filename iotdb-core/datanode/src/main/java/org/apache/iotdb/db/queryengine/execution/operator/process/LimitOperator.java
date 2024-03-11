@@ -84,7 +84,7 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return child.calculateMaxPeekMemoryWithCounter();
   }
 
   @Override
