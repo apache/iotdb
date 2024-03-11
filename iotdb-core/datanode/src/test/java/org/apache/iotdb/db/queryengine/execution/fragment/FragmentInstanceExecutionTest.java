@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
-import io.airlift.stats.CounterStat;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -64,7 +63,6 @@ public class FragmentInstanceExecutionTest {
       fragmentInstanceContext.setDataRegion(dataRegion);
       List<IDriver> drivers = Collections.emptyList();
       ISink sinkHandle = Mockito.mock(ISink.class);
-      CounterStat failedInstances = new CounterStat();
       long timeOut = -1;
       MPPDataExchangeManager exchangeManager = Mockito.mock(MPPDataExchangeManager.class);
       FragmentInstanceExecution execution =
@@ -75,7 +73,6 @@ public class FragmentInstanceExecutionTest {
               drivers,
               sinkHandle,
               stateMachine,
-              failedInstances,
               timeOut,
               false,
               exchangeManager);

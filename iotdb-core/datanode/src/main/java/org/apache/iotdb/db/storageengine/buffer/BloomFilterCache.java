@@ -25,11 +25,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,8 +132,8 @@ public class BloomFilterCache {
 
   public static class BloomFilterCacheKey {
 
-    private static final int INSTANCE_SIZE =
-        ClassLayout.parseClass(BloomFilterCacheKey.class).instanceSize();
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(BloomFilterCacheKey.class);
 
     // There is no need to add this field size while calculating the size of BloomFilterCacheKey,
     // because filePath is get from TsFileResource, different BloomFilterCacheKey of the same file

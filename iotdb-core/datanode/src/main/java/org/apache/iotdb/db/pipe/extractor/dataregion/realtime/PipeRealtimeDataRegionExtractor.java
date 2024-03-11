@@ -36,7 +36,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimeP
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -46,6 +45,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +79,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
   protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
-  private final AtomicBoolean enableSkippingTimeParseByTimePartition = new AtomicBoolean(false);
   private boolean disableSkippingTimeParse = false;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
@@ -178,19 +177,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final Pair<Long, Long> timePartitionIdBound =
-        TimePartitionManager.getInstance()
-            .getTimePartitionIdBound(new DataRegionId(Integer.parseInt(dataRegionId)));
-    if (Objects.nonNull(timePartitionIdBound)) {
-      setDataRegionTimePartitionIdBound(timePartitionIdBound);
-    } else {
-      LOGGER.warn(
-          "Something unexpected happened when PipeRealtimeDataRegionExtractor({}) obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
-          taskID,
-          dataRegionId);
-      enableSkippingTimeParseByTimePartition.set(false);
-    }
-
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -242,7 +228,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (!disableSkippingTimeParse && enableSkippingTimeParseByTimePartition.get()) {
+    if (!disableSkippingTimeParse && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
@@ -391,20 +377,18 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(@NonNull Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording partition id bound: {}, set enableTimeParseSkipByTimePartition to true.",
+        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
         dataRegionId,
         timePartitionIdBound);
     dataRegionTimePartitionIdBound.set(timePartitionIdBound);
-    enableSkippingTimeParseByTimePartition.set(true);
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
     Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
-    return Objects.nonNull(timePartitionIdBound)
-        && startTimePartitionIdLowerBound <= timePartitionIdBound.left
+    return startTimePartitionIdLowerBound <= timePartitionIdBound.left
         && timePartitionIdBound.right <= endTimePartitionIdUpperBound;
   }
 
