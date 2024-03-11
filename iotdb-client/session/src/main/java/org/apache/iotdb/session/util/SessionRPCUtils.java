@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.session.util;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.session.req.InsertRecordsRequest;
+import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,8 +57,20 @@ public class SessionRPCUtils {
     PublicBAOS schemaBufferOS = new PublicBAOS();
     serializeDictionary(dictionary, schemaBufferOS);
     dictionaryEncoding(dictionary, deviceIds, measurementIdsList, schemaBufferOS);
-    ByteBuffer schemaBuffer = ByteBuffer.allocate(schemaBufferOS.size());
-    schemaBuffer.put(schemaBufferOS.getBuf(), 0, schemaBufferOS.size());
+    ByteBuffer schemaBuffer = null;
+    if (SessionConfig.enableRPCCompression) {
+      ICompressor compressor = ICompressor.getCompressor(SessionConfig.rpcCompressionType);
+      byte[] compressedData =
+          compressor.compress(schemaBufferOS.getBuf(), 0, schemaBufferOS.size());
+      schemaBuffer = ByteBuffer.allocate(compressedData.length + 5);
+      schemaBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(schemaBufferOS.size(), schemaBuffer);
+      schemaBuffer.put(compressedData);
+    } else {
+      schemaBuffer = ByteBuffer.allocate(schemaBufferOS.size() + 1);
+      schemaBuffer.put((byte) 0);
+      schemaBuffer.put(schemaBufferOS.getBuf(), 0, schemaBufferOS.size());
+    }
     schemaBuffer.flip();
     return schemaBuffer;
   }
@@ -63,11 +78,22 @@ public class SessionRPCUtils {
   private static void deserializeSchema(
       ByteBuffer schemaBuffer,
       List<String> decodedDeviceIds,
-      List<List<String>> decodedMeasurementIdsList) {
-    String[] dictionary = getDictionary(schemaBuffer);
+      List<List<String>> decodedMeasurementIdsList)
+      throws IOException {
+    boolean compressed = ReadWriteIOUtils.readBool(schemaBuffer);
+    ByteBuffer buffer = schemaBuffer;
+    if (compressed) {
+      int uncompressedLength = ReadWriteIOUtils.readInt(schemaBuffer);
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(SessionConfig.rpcCompressionType);
+      byte[] uncompressed = new byte[uncompressedLength];
+      unCompressor.uncompress(schemaBuffer.array(), 5, schemaBuffer.limit() - 5, uncompressed, 0);
+      buffer = ByteBuffer.wrap(uncompressed);
+    }
+
+    String[] dictionary = getDictionary(buffer);
     IntRleDecoder decoder = new IntRleDecoder();
-    deserializeDevices(schemaBuffer, decoder, dictionary, decodedDeviceIds);
-    deserializeMeasurementIds(schemaBuffer, decoder, dictionary, decodedMeasurementIdsList);
+    deserializeDevices(buffer, decoder, dictionary, decodedDeviceIds);
+    deserializeMeasurementIds(buffer, decoder, dictionary, decodedMeasurementIdsList);
   }
 
   private static String[] getDictionary(ByteBuffer schemaBuffer) {
@@ -194,7 +220,9 @@ public class SessionRPCUtils {
     }
     size += measurementSize * 100;
 
+    long startTime = System.currentTimeMillis();
     ByteBuffer buffer = serializeSchema(deviceIds, measurementIdsList);
+    System.out.println("Time cost is " + (System.currentTimeMillis() - startTime));
     System.out.println("Original Size is " + size);
     System.out.println("Serialized Size is " + buffer.remaining());
     List<String> decodedDeviceIds = new ArrayList<>();

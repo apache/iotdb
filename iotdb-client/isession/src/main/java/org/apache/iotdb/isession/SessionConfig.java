@@ -20,6 +20,7 @@
 package org.apache.iotdb.isession;
 
 import org.apache.iotdb.isession.util.Version;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 public class SessionConfig {
 
@@ -55,6 +56,10 @@ public class SessionConfig {
   public static final int MAX_RETRY_COUNT = 60;
 
   public static final long RETRY_INTERVAL_IN_MS = 500;
+
+  public static boolean enableRPCCompression = true;
+
+  public static CompressionType rpcCompressionType = CompressionType.GZIP;
 
   private SessionConfig() {}
 }
