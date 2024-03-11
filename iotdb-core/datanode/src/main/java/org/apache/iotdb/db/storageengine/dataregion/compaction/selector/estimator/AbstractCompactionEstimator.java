@@ -97,9 +97,7 @@ public abstract class AbstractCompactionEstimator {
         return fileInfo;
       }
     }
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
-
+    try (TsFileSequenceReader reader = getReader(resource.getTsFilePath())) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
       synchronized (globalFileInfoCacheForFailedCompaction) {
