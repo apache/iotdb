@@ -354,7 +354,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(statementType, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -442,7 +442,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -532,7 +532,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -619,7 +619,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -953,7 +953,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -1103,7 +1103,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, t);
+        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1622,7 +1622,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, t);
+        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();

@@ -44,6 +44,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -226,7 +231,8 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
-  public void cleanupQueryExecution(Long queryId, Throwable t) {
+  public void cleanupQueryExecution(
+      Long queryId, org.apache.thrift.TBase nativeApiRequest, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
@@ -235,19 +241,71 @@ public class Coordinator {
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
-          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-            SLOW_SQL_LOGGER.info(
-                "Cost: {} ms, sql is {}",
-                costTime / 1_000_000,
-                queryExecution.getExecuteSQL().orElse("UNKNOWN"));
-          }
+          outputSlowSql(queryExecution, costTime, nativeApiRequest);
         }
       }
     }
   }
 
+  private void outputSlowSql(
+      IQueryExecution queryExecution, long costTime, org.apache.thrift.TBase request) {
+    if (costTime / 1_000_000 < CONFIG.getSlowQueryThreshold()) {
+      return;
+    }
+
+    String slowContent = "";
+    if (request == null || !queryExecution.getExecuteSQL().orElse("").isEmpty()) {
+      slowContent = queryExecution.getExecuteSQL().orElse("UNKNOWN");
+    } else if (request instanceof TSRawDataQueryReq) {
+      TSRawDataQueryReq req = (TSRawDataQueryReq) request;
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+        sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
+      }
+      slowContent =
+          String.format(
+              "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
+                  + "endTime: %s, some paths: %s",
+              req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
+    } else if (request instanceof TSLastDataQueryReq) {
+      TSLastDataQueryReq req = (TSLastDataQueryReq) request;
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+        sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
+      }
+      slowContent =
+          String.format(
+              "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
+              req.getPathsSize(), sb);
+    } else if (request instanceof TSAggregationQueryReq) {
+      TSAggregationQueryReq req = (TSAggregationQueryReq) request;
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+        sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
+      }
+      slowContent =
+          String.format(
+              "Request name: TSAggregationQueryReq, paths size: %s, some paths: %s",
+              req.getPathsSize(), sb);
+    } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
+      TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
+      slowContent =
+          String.format(
+              "Request name: TSFastLastDataQueryForOneDeviceReq, db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
+              req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
+    } else if (request instanceof TSFetchResultsReq) {
+      TSFetchResultsReq req = (TSFetchResultsReq) request;
+      slowContent =
+          String.format(
+              "Request name: TSFetchResultsReq, statement: %s, fetchSize: %s",
+              req.getStatement(), req.getFetchSize());
+    }
+
+    SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, slowContent);
+  }
+
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, null);
+    cleanupQueryExecution(queryId, null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>

@@ -810,7 +810,7 @@ public class IoTDBConfig {
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 30000;
+  private long slowQueryThreshold = 50;
 
   private int patternMatchingThreshold = 1000000;
 
@@ -1054,7 +1054,7 @@ public class IoTDBConfig {
   private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
 
   /** whether to enable the audit log * */
-  private boolean enableAuditLog = false;
+  private boolean enableAuditLog = true;
 
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
