@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingFilterProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
 
-public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
+class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
 
   PipeDataRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);

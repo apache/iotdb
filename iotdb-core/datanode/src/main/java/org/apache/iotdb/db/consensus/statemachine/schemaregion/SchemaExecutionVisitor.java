@@ -21,12 +21,15 @@ package org.apache.iotdb.db.consensus.statemachine.schemaregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
@@ -50,8 +53,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
@@ -73,7 +77,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Schema write PlanNode visitor */
+/** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
@@ -522,15 +526,35 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitPipeEnrichedWriteSchema(
-      PipeEnrichedWriteSchemaNode node, ISchemaRegion schemaRegion) {
-    return node.getWriteSchemaNode().accept(this, schemaRegion);
+  public TSStatus visitPipeEnrichedWritePlanNode(
+      PipeEnrichedWritePlanNode node, ISchemaRegion schemaRegion) {
+    return node.getWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
-  public TSStatus visitPipeEnrichedConfigSchema(
-      PipeEnrichedConfigSchemaNode node, ISchemaRegion schemaRegion) {
-    return node.getConfigSchemaNode().accept(this, schemaRegion);
+  public TSStatus visitPipeEnrichedNonWritePlanNode(
+      PipeEnrichedNonWritePlanNode node, ISchemaRegion schemaRegion) {
+    return node.getNonWritePlanNode().accept(this, schemaRegion);
+  }
+
+  @Override
+  public TSStatus visitPipeOperateSchemaQueueNode(
+      PipeOperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
+    final SchemaRegionId id = schemaRegion.getSchemaRegionId();
+    final SchemaRegionListeningQueue queue = PipeAgent.runtime().schemaListener(id);
+    try {
+      if (node.isOpen() && !queue.isOpened()) {
+        logger.info("Opened pipe listening queue on schema region {}", id);
+        queue.open();
+      } else if (!node.isOpen() && queue.isOpened()) {
+        logger.info("Closed pipe listening queue on schema region {}", id);
+        queue.close();
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IOException e) {
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage("Failed to clear the queue, because " + e.getMessage());
+    }
   }
 
   @Override

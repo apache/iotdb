@@ -21,12 +21,12 @@ package org.apache.iotdb.db.pipe.event.common.heartbeat;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -220,6 +220,14 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public void bindExtractor(PipeRealtimeDataRegionExtractor extractor) {
     this.extractor = extractor;
+  }
+
+  /////////////////////////////// For Commit Ordering ///////////////////////////////
+
+  /** {@link PipeHeartbeatEvent}s do not need to be committed in order. */
+  @Override
+  public boolean needToCommit() {
+    return false;
   }
 
   /////////////////////////////// Object ///////////////////////////////

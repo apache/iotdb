@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -486,6 +487,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       try {
         memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
       } catch (IOException e) {
+        if (e instanceof ClosedByInterruptException || Thread.interrupted()) {
+          Thread.currentThread().interrupt();
+          return -1;
+        }
         innerSpaceEstimator.cleanup();
         LOGGER.error("Meet error when estimate inner compaction memory", e);
         return -1;

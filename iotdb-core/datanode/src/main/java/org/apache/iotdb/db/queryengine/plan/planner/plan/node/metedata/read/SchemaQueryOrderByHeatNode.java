@@ -48,6 +48,11 @@ public class SchemaQueryOrderByHeatNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SCHEMA_QUERY_ORDER_BY_HEAT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SchemaQueryOrderByHeatNode(getPlanNodeId());
   }

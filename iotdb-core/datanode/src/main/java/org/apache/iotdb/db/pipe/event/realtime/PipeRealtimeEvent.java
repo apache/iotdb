@@ -20,15 +20,16 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
 import java.util.Map;
 
 /**
- * PipeRealtimeEvent is an event that decorates the EnrichedEvent with the information of
- * TsFileEpoch and schema info. It only exists in the realtime event extractor.
+ * {@link PipeRealtimeEvent} is an event that decorates the {@link EnrichedEvent} with the
+ * information of {@link TsFileEpoch} and schema info. It only exists in the realtime event
+ * extractor.
  */
 public class PipeRealtimeEvent extends EnrichedEvent {
 

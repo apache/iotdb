@@ -91,6 +91,11 @@ public class SeriesScanNode extends SeriesScanSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SERIES_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SeriesScanNode(
         getPlanNodeId(),

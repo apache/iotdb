@@ -419,7 +419,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return false;
     }
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
-    boolean isSuccess = true;
+    boolean isSuccess;
     long startTime = System.currentTimeMillis();
 
     long mtreeSnapshotStartTime = System.currentTimeMillis();
