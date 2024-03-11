@@ -32,12 +32,14 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Cr
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
+import org.apache.iotdb.confignode.manager.subscription.agent.SubscriptionConfigNodeAgent;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -188,33 +190,84 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   public TSStatus createTopic(CreateTopicPlan plan) {
-    acquireWriteLock();
     try {
-      topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } finally {
-      releaseWriteLock();
+
+      // update topicMetaKeeper
+      acquireWriteLock();
+      try {
+        topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+      } finally {
+        releaseWriteLock();
+      }
+
+      // push topic meta to SubscriptionConfigNodeAgent
+      final TPushTopicRespExceptionMessage message =
+          SubscriptionConfigNodeAgent.topic()
+              .handleSingleTopicMetaChanges(
+                  getTopicMetaByTopicName(plan.getTopicMeta().getTopicName()));
+
+      return message == null
+          ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          : new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
+              .setMessage(message.getMessage());
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to create topic", e);
+      return new TSStatus(TSStatusCode.TOPIC_ERROR.getStatusCode())
+          .setMessage("Failed to create topic, because " + e.getMessage());
     }
   }
 
   public TSStatus alterTopic(AlterTopicPlan plan) {
-    acquireWriteLock();
     try {
-      topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
-      topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+      acquireWriteLock();
+      try {
+        topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
+        topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+      } finally {
+        releaseWriteLock();
+      }
+
+      SubscriptionConfigNodeAgent.topic().handleSingleTopicMetaChanges(plan.getTopicMeta());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } finally {
-      releaseWriteLock();
+    } catch (Exception e) {
+      LOGGER.error("Failed to alter topic", e);
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage("Failed to alter topic, because " + e.getMessage());
     }
   }
 
   public TSStatus dropTopic(DropTopicPlan plan) {
-    acquireWriteLock();
+
     try {
-      topicMetaKeeper.removeTopicMeta(plan.getTopicName());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      // update topicMetaKeeper
+      acquireWriteLock();
+      try {
+        topicMetaKeeper.removeTopicMeta(plan.getTopicName());
+      } finally {
+        releaseWriteLock();
+      }
+
+      final TPushTopicRespExceptionMessage message =
+          SubscriptionConfigNodeAgent.topic().handleDropTopic(plan.getTopicName());
+      return message == null
+          ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          : new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+              .setMessage(message.getMessage());
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to drop topic", e);
+      return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+          .setMessage("Failed to drop topic, because " + e.getMessage());
+    }
+  }
+
+  public TopicMeta getTopicMetaByTopicName(String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.getTopicMeta(topicName);
     } finally {
-      releaseWriteLock();
+      releaseReadLock();
     }
   }
 

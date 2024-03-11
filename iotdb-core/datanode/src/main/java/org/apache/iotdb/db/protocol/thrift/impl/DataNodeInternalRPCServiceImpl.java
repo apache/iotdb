@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
@@ -129,6 +130,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -193,6 +195,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -1029,14 +1032,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) throws TException {
-    // TODO
-    return null;
+  public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
+    try {
+      TPushTopicRespExceptionMessage exceptionMessage;
+      if (req.isSetTopicNameToDrop()) {
+        exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
+      } else if (req.isSetTopicMeta()) {
+        final TopicMeta topicMeta = TopicMeta.deserialize(ByteBuffer.wrap(req.getTopicMeta()));
+        exceptionMessage = SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
+      } else {
+        throw new Exception("Invalid TPushSingleTopicMetaReq");
+      }
+
+      return exceptionMessage == null
+          ? new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing single topic meta", e);
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
+    }
   }
 
   @Override
-  public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
-      throws TException {
+  public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
+      TPushSingleConsumerGroupMetaReq req) {
     // TODO
     return null;
   }

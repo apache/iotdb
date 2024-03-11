@@ -17,15 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.agent;
+package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.subscription.meta.TopicMetaKeeper;
+import org.apache.iotdb.db.subscription.agent.topic.TopicDataNodeAgent;
 
-public abstract class SubscriptionAgent {
+public class SubscriptionAgent {
+  private final TopicDataNodeAgent topicDataNodeAgent;
 
-  private final TopicMetaKeeper topicMetaKeeper;
+  private SubscriptionAgent() {
+    topicDataNodeAgent = new TopicDataNodeAgent();
+  }
 
-  protected SubscriptionAgent() {
-    topicMetaKeeper = new TopicMetaKeeper();
+  private static class SubscriptionAgentHolder {
+    private static final SubscriptionAgent HANDLE = new SubscriptionAgent();
+  }
+
+  public static TopicDataNodeAgent topic() {
+    return SubscriptionAgentHolder.HANDLE.topicDataNodeAgent;
   }
 }

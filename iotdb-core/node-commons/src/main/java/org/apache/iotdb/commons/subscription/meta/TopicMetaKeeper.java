@@ -27,12 +27,34 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TopicMetaKeeper {
   private Map<String, TopicMeta> topicNameToTopicMetaMap;
 
+  private final ReentrantReadWriteLock topicMetaKeeperLock;
+
   public TopicMetaKeeper() {
     topicNameToTopicMetaMap = new ConcurrentHashMap<>();
+    topicMetaKeeperLock = new ReentrantReadWriteLock(true);
+  }
+
+  /////////////////////////////////  Lock  /////////////////////////////////
+
+  public void acquireReadLock() {
+    topicMetaKeeperLock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    topicMetaKeeperLock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    topicMetaKeeperLock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    topicMetaKeeperLock.writeLock().unlock();
   }
 
   /////////////////////////////////  TopicMeta  /////////////////////////////////
