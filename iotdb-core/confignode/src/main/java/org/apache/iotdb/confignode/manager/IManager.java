@@ -48,8 +48,8 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
-import org.apache.iotdb.confignode.manager.pipe.mq.MQManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -220,11 +220,11 @@ public interface IManager {
   ClusterQuotaManager getClusterQuotaManager();
 
   /**
-   * Get MQManager.
+   * Get SubscriptionManager.
    *
-   * @return MQManager instance
+   * @return SubscriptionManager instance
    */
-  MQManager getMQManager();
+  SubscriptionManager getSubscriptionManager();
 
   /**
    * Get RetryFailedTasksThread. Get {@link RetryFailedTasksThread}.

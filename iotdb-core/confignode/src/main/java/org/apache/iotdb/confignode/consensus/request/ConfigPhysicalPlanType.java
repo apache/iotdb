@@ -210,7 +210,7 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
 
-  /** Pipe MQ */
+  /** Subscription */
   CreateTopic((short) 1800),
   DropTopic((short) 1801),
   ShowTopic((short) 1802),

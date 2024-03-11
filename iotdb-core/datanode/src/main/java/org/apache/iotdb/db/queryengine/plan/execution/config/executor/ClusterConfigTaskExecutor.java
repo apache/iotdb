@@ -144,10 +144,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.S
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowPipeMQTopicsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
@@ -176,10 +176,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -1847,8 +1847,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createTopic(
-      CreatePipeMQTopicStatement createPipeMQTopicStatement) {
+  public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // todo: Validate before creation
@@ -1857,13 +1856,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreateTopicReq req =
           new TCreateTopicReq()
-              .setTopicName(createPipeMQTopicStatement.getTopicName())
-              .setTopicAttributes(createPipeMQTopicStatement.getTopicAttributes());
+              .setTopicName(createTopicStatement.getTopicName())
+              .setTopicAttributes(createTopicStatement.getTopicAttributes());
       TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to create topic {} in config node, status is {}.",
-            createPipeMQTopicStatement.getTopicName(),
+            createTopicStatement.getTopicName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -1876,17 +1875,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropTopic(
-      DropPipeMQTopicStatement dropPipeMQTopicStatement) {
+  public SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = configNodeClient.dropTopic(dropPipeMQTopicStatement.getTopicName());
+      TSStatus tsStatus = configNodeClient.dropTopic(dropTopicStatement.getTopicName());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to drop topic {}, status is {}.",
-            dropPipeMQTopicStatement.getTopicName(),
-            tsStatus);
+            "Failed to drop topic {}, status is {}.", dropTopicStatement.getTopicName(), tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1909,7 +1905,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       List<TShowTopicInfo> tShowTopicInfoList =
           configNodeClient.showTopic(tShowTopicReq).getTopicInfoList();
-      ShowPipeMQTopicsTask.buildTSBlock(tShowTopicInfoList, future);
+      ShowTopicsTask.buildTSBlock(tShowTopicInfoList, future);
     } catch (Exception e) {
       future.setException(e);
     }

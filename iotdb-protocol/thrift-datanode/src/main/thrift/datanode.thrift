@@ -426,14 +426,36 @@ struct TPushSinglePipeMetaReq {
   2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
 }
 
-struct TPushSinglePipeMQTopicMetaReq {
+struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
 }
 
-struct TPushSinglePipeMQConsumerGroupMetaReq {
+struct TPushTopicMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushTopicRespExceptionMessage> exceptionMessages
+}
+
+struct TPushTopicRespExceptionMessage {
+  1: required string topicName
+  2: required string message
+  3: required i64 timeStamp
+}
+
+struct TPushSingleConsumerGroupMetaReq {
    1: optional binary consumerGroupMeta // Should not set both to null.
    2: optional string consumerGroupNameToDrop
+}
+
+struct TPushConsumerGroupMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushConsumerGroupRespExceptionMessage> exceptionMessages
+}
+
+struct TPushConsumerGroupRespExceptionMessage {
+  1: required string consumerGroupId
+  2: required string message
+  3: required i64 timeStamp
 }
 
 struct TConstructViewSchemaBlackListReq {
@@ -866,14 +888,14 @@ service IDataNodeRPCService {
   TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req)
 
  /**
-  * Send one pipe MQ topic meta to DataNodes.
+  * Send one topic meta to DataNodes.
   */
-  TPushPipeMetaResp pushSinglePipeMQTopicMeta(TPushSinglePipeMQTopicMetaReq req)
+  TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req)
 
  /**
-  * Send one pipe MQ consumer group meta to DataNodes.
+  * Send one consumer group meta to DataNodes.
   */
-  TPushPipeMetaResp pushSinglePipeMQConsumerGroupMeta(TPushSinglePipeMQConsumerGroupMetaReq req)
+  TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

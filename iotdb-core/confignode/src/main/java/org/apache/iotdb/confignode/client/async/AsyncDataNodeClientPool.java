@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -63,9 +65,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -273,16 +275,15 @@ public class AsyncDataNodeClientPool {
               (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PIPE_MQ_TOPIC_PUSH_SINGLE_META:
-          client.pushSinglePipeMQTopicMeta(
-              (TPushSinglePipeMQTopicMetaReq) clientHandler.getRequest(requestId),
-              (PipePushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+        case TOPIC_PUSH_SINGLE_META:
+          client.pushSingleTopicMeta(
+              (TPushSingleTopicMetaReq) clientHandler.getRequest(requestId),
+              (TopicMetaRPCHandler) clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META:
-          client.pushSinglePipeMQConsumerGroupMeta(
-              (TPushSinglePipeMQConsumerGroupMetaReq) clientHandler.getRequest(requestId),
-              (PipePushMetaRPCHandler)
+        case CONSUMER_GROUP_PUSH_SINGLE_META:
+          client.pushSingleConsumerGroupMeta(
+              (TPushSingleConsumerGroupMetaReq) clientHandler.getRequest(requestId),
+              (ConsumerGroupMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case PIPE_HEARTBEAT:

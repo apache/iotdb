@@ -91,10 +91,10 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
-import org.apache.iotdb.confignode.manager.pipe.mq.MQManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -105,7 +105,7 @@ import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
-import org.apache.iotdb.confignode.persistence.pipe.PipeMQInfo;
+import org.apache.iotdb.confignode.persistence.pipe.SubscriptionInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
@@ -267,8 +267,8 @@ public class ConfigManager implements IManager {
   /** Manage quotas */
   private final ClusterQuotaManager clusterQuotaManager;
 
-  /** MQ */
-  private final MQManager mqManager;
+  /** Subscription */
+  private final SubscriptionManager subscriptionManager;
 
   private final ConfigRegionStateMachine stateMachine;
 
@@ -289,7 +289,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
-    PipeMQInfo pipeMQInfo = new PipeMQInfo();
+    SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -304,7 +304,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             cqInfo,
             pipeInfo,
-            pipeMQInfo,
+            subscriptionInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
@@ -324,7 +324,7 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
     this.pipeManager = new PipeManager(this, pipeInfo);
-    this.mqManager = new MQManager(this, pipeMQInfo);
+    this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -1052,8 +1052,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public MQManager getMQManager() {
-    return mqManager;
+  public SubscriptionManager getSubscriptionManager() {
+    return subscriptionManager;
   }
 
   @Override
@@ -1876,7 +1876,7 @@ public class ConfigManager implements IManager {
   public TSStatus createTopic(TCreateTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().createTopic(req)
+        ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
         : status;
   }
 
@@ -1884,7 +1884,7 @@ public class ConfigManager implements IManager {
   public TSStatus dropTopic(String topicName) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().dropTopic(topicName)
+        ? subscriptionManager.getSubscriptionCoordinator().dropTopic(topicName)
         : status;
   }
 
@@ -1892,7 +1892,7 @@ public class ConfigManager implements IManager {
   public TShowTopicResp showTopic(TShowTopicReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().showTopic(req)
+        ? subscriptionManager.getSubscriptionCoordinator().showTopic(req)
         : new TShowTopicResp().setStatus(status);
   }
 
@@ -1900,7 +1900,7 @@ public class ConfigManager implements IManager {
   public TGetAllTopicInfoResp getAllTopicInfo() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().getAllTopicInfo()
+        ? subscriptionManager.getSubscriptionCoordinator().getAllTopicInfo()
         : new TGetAllTopicInfoResp(status, Collections.emptyList());
   }
 
@@ -1908,7 +1908,7 @@ public class ConfigManager implements IManager {
   public TSStatus createConsumer(TCreateConsumerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().createConsumer(req)
+        ? subscriptionManager.getSubscriptionCoordinator().createConsumer(req)
         : status;
   }
 
@@ -1916,7 +1916,7 @@ public class ConfigManager implements IManager {
   public TSStatus closeConsumer(TCloseConsumerReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().dropConsumer(req)
+        ? subscriptionManager.getSubscriptionCoordinator().dropConsumer(req)
         : status;
   }
 
@@ -1924,7 +1924,7 @@ public class ConfigManager implements IManager {
   public TSStatus createSubscription(TSubscribeReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().createSubscription(req)
+        ? subscriptionManager.getSubscriptionCoordinator().createSubscription(req)
         : status;
   }
 
@@ -1932,7 +1932,7 @@ public class ConfigManager implements IManager {
   public TSStatus dropSubscription(TUnsubscribeReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().dropSubscription(req)
+        ? subscriptionManager.getSubscriptionCoordinator().dropSubscription(req)
         : status;
   }
 
@@ -1940,7 +1940,7 @@ public class ConfigManager implements IManager {
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().showSubscription(req)
+        ? subscriptionManager.getSubscriptionCoordinator().showSubscription(req)
         : new TShowSubscriptionResp().setStatus(status);
   }
 
@@ -1948,7 +1948,7 @@ public class ConfigManager implements IManager {
   public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? mqManager.getPipeMQCoordinator().getAllSubscriptionInfo()
+        ? subscriptionManager.getSubscriptionCoordinator().getAllSubscriptionInfo()
         : new TGetAllSubscriptionInfoResp(status, Collections.emptyList());
   }
 

@@ -760,7 +760,7 @@ struct TAlterLogicalViewReq {
   3: optional bool isGeneratedByPipe
 }
 
-// MQ topic
+// Subscription topic
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
@@ -792,7 +792,7 @@ struct TGetAllTopicInfoResp {
     2: required list<binary> allTopicInfo
 }
 
-// MQ consumer
+// Subscription consumer
 
 struct TCreateConsumerReq {
     1: required string consumerId
@@ -1458,7 +1458,7 @@ service IConfigNodeRPCService {
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
 
   // ======================================================
-  // MQ topic
+  // Subscription Topic
   // ======================================================
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
@@ -1473,7 +1473,7 @@ service IConfigNodeRPCService {
   TGetAllTopicInfoResp getAllTopicInfo()
 
   // ======================================================
-  // MQ consumer
+  // Subscription consumer
   // ======================================================
   /** Create consumer */
   common.TSStatus createConsumer(TCreateConsumerReq req)
@@ -1482,12 +1482,12 @@ service IConfigNodeRPCService {
   common.TSStatus closeConsumer(TCloseConsumerReq req)
 
   // ======================================================
-  // MQ subscription
+  // Subscription
   // ======================================================
-  /** Create consumer */
+  /** Create subscription */
   common.TSStatus createSubscription(TSubscribeReq req)
 
-  /** Close consumer */
+  /** Close subscription */
   common.TSStatus dropSubscription(TUnsubscribeReq req)
 
   /** Show Subscription on topic name, if name is empty, show all subscriptions */

@@ -73,9 +73,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -723,61 +723,53 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
-  public List<TSStatus> pushSinglePipeMQTopicOnDataNode(ByteBuffer pipeMQTopicMeta) {
+  public List<TSStatus> pushSingleTopicOnDataNode(ByteBuffer topicMeta) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPushSinglePipeMQTopicMetaReq request =
-        new TPushSinglePipeMQTopicMetaReq().setTopicMeta(pipeMQTopicMeta);
+    final TPushSingleTopicMetaReq request = new TPushSingleTopicMetaReq().setTopicMeta(topicMeta);
 
-    final AsyncClientHandler<TPushSinglePipeMQTopicMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PIPE_MQ_TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> dropSinglePipeMQTopicOnDataNode(String pipeMQTopicNameToDrop) {
+  public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPushSinglePipeMQTopicMetaReq request =
-        new TPushSinglePipeMQTopicMetaReq().setTopicNameToDrop(pipeMQTopicNameToDrop);
+    final TPushSingleTopicMetaReq request =
+        new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
 
-    final AsyncClientHandler<TPushSinglePipeMQTopicMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PIPE_MQ_TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+            DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> pushSinglePipeMQConsumerGroupOnDataNode(
-      ByteBuffer pipeMQConsumerGroupMeta) {
+  public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPushSinglePipeMQConsumerGroupMetaReq request =
-        new TPushSinglePipeMQConsumerGroupMetaReq().setConsumerGroupMeta(pipeMQConsumerGroupMeta);
+    final TPushSingleConsumerGroupMetaReq request =
+        new TPushSingleConsumerGroupMetaReq().setConsumerGroupMeta(consumerGroupMeta);
 
-    final AsyncClientHandler<TPushSinglePipeMQConsumerGroupMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META,
-            request,
-            dataNodeLocationMap);
+            DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> dropSinglePipeMQConsumerGroupOnDataNode(
-      String pipeMQConsumerGroupNameToDrop) {
+  public List<TSStatus> dropSingleConsumerGroupOnDataNode(String consumerGroupNameToDrop) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPushSinglePipeMQConsumerGroupMetaReq request =
-        new TPushSinglePipeMQConsumerGroupMetaReq()
-            .setConsumerGroupNameToDrop(pipeMQConsumerGroupNameToDrop);
+    final TPushSingleConsumerGroupMetaReq request =
+        new TPushSingleConsumerGroupMetaReq().setConsumerGroupNameToDrop(consumerGroupNameToDrop);
 
-    final AsyncClientHandler<TPushSinglePipeMQConsumerGroupMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META,
-            request,
-            dataNodeLocationMap);
+            DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

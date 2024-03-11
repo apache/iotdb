@@ -168,10 +168,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -3767,24 +3767,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateTopic(IoTDBSqlParser.CreateTopicContext ctx) {
-    final CreatePipeMQTopicStatement createPipeMQTopicStatement =
-        new CreatePipeMQTopicStatement(StatementType.CREATE_PIPE_MQ_TOPIC);
+    final CreateTopicStatement createTopicStatement = new CreateTopicStatement();
 
     if (ctx.topicName != null) {
-      createPipeMQTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+      createTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     } else {
       throw new SemanticException(
-          "Not support for this sql in CREATE PIPE MQ TOPIC, please enter topicName.");
+          "Not support for this sql in CREATE TOPIC, please enter topicName.");
     }
 
     if (ctx.topicAttributesClause() != null) {
-      createPipeMQTopicStatement.setTopicAttributes(
+      createTopicStatement.setTopicAttributes(
           parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
     } else {
-      createPipeMQTopicStatement.setTopicAttributes(new HashMap<>());
+      createTopicStatement.setTopicAttributes(new HashMap<>());
     }
 
-    return createPipeMQTopicStatement;
+    return createTopicStatement;
   }
 
   private Map<String, String> parseTopicAttributesClause(
@@ -3800,17 +3799,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropTopic(IoTDBSqlParser.DropTopicContext ctx) {
-    final DropPipeMQTopicStatement dropPipeMQTopicStatement =
-        new DropPipeMQTopicStatement(StatementType.DROP_PIPE_MQ_TOPIC);
+    final DropTopicStatement dropTopicStatement = new DropTopicStatement();
 
     if (ctx.topicName != null) {
-      dropPipeMQTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+      dropTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     } else {
       throw new SemanticException(
-          "Not support for this sql in DROP PIPE MQ TOPIC, please enter topicName.");
+          "Not support for this sql in DROP TOPIC, please enter topicName.");
     }
 
-    return dropPipeMQTopicStatement;
+    return dropTopicStatement;
   }
 
   @Override

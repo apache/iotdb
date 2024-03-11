@@ -56,12 +56,6 @@ import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer.CreatePipeMQConsumerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer.DropPipeMQConsumerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription.CreatePipeMQSubscriptionProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription.DropPipeMQSubscriptionProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.CreatePipeMQTopicProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.DropPipeMQTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -81,6 +75,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
@@ -944,7 +944,7 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreatePipeMQTopicProcedure(req));
+      long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -962,7 +962,7 @@ public class ProcedureManager {
 
   public TSStatus dropTopic(String topicName) {
     try {
-      long procedureId = executor.submitProcedure(new DropPipeMQTopicProcedure(topicName));
+      long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -979,7 +979,7 @@ public class ProcedureManager {
 
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreatePipeMQConsumerProcedure(req));
+      long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -997,7 +997,7 @@ public class ProcedureManager {
 
   public TSStatus dropConsumer(TCloseConsumerReq req) {
     try {
-      long procedureId = executor.submitProcedure(new DropPipeMQConsumerProcedure(req));
+      long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -1015,7 +1015,7 @@ public class ProcedureManager {
 
   public TSStatus createSubscription(TSubscribeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreatePipeMQSubscriptionProcedure(req));
+      long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -1033,7 +1033,7 @@ public class ProcedureManager {
 
   public TSStatus dropSubscription(TUnsubscribeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new DropPipeMQSubscriptionProcedure(req));
+      long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

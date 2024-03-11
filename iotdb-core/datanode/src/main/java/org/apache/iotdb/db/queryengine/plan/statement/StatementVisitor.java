@@ -82,10 +82,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -500,13 +500,12 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(stopPipeStatement, context);
   }
 
-  public R visitCreatePipeMQTopic(
-      CreatePipeMQTopicStatement createPipeMQTopicStatement, C context) {
-    return visitStatement(createPipeMQTopicStatement, context);
+  public R visitCreateTopic(CreateTopicStatement createTopicStatement, C context) {
+    return visitStatement(createTopicStatement, context);
   }
 
-  public R visitDropPipeMQTopic(DropPipeMQTopicStatement dropPipeMQTopicStatement, C context) {
-    return visitStatement(dropPipeMQTopicStatement, context);
+  public R visitDropTopic(DropTopicStatement dropTopicStatement, C context) {
+    return visitStatement(dropTopicStatement, context);
   }
 
   public R visitShowTopics(ShowTopicsStatement showTopicsStatement, C context) {

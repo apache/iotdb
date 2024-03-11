@@ -34,13 +34,13 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.mq.subscription.ShowPipeMQSubscriptionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.mq.topic.ShowPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -76,10 +76,6 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -101,6 +97,10 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
@@ -438,22 +438,22 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new PipeEnrichedPlan();
           break;
         case CreateTopic:
-          plan = new CreatePipeMQTopicPlan();
+          plan = new CreateTopicPlan();
           break;
         case DropTopic:
-          plan = new DropPipeMQTopicPlan();
+          plan = new DropTopicPlan();
           break;
         case ShowTopic:
-          plan = new ShowPipeMQTopicPlan();
+          plan = new ShowTopicPlan();
           break;
         case AlterTopic:
-          plan = new AlterPipeMQTopicPlan();
+          plan = new AlterTopicPlan();
           break;
         case AlterConsumerGroup:
-          plan = new AlterPipeMQConsumerGroupPlan();
+          plan = new AlterConsumerGroupPlan();
           break;
         case ShowSubscription:
-          plan = new ShowPipeMQSubscriptionPlan();
+          plan = new ShowSubscriptionPlan();
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();
           break;

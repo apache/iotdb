@@ -79,14 +79,14 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.CreatePipeMQTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.DropPipeMQTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowPipeMQTopicsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.mq.ShowSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -127,10 +127,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.CreatePipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.DropPipeMQTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowSubscriptionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.mq.ShowTopicsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -456,21 +456,21 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
     return new ShowSubscriptionTask(showSubscriptionsStatement);
   }
 
-  public IConfigTask visitCreatePipeMQTopic(
-      CreatePipeMQTopicStatement createPipeMQTopicStatement, MPPQueryContext context) {
-    return new CreatePipeMQTopicTask(createPipeMQTopicStatement);
+  public IConfigTask visitCreateTopic(
+      CreateTopicStatement createTopicStatement, MPPQueryContext context) {
+    return new CreateTopicTask(createTopicStatement);
   }
 
   @Override
-  public IConfigTask visitDropPipeMQTopic(
-      DropPipeMQTopicStatement dropPipeMQTopicStatement, MPPQueryContext context) {
-    return new DropPipeMQTopicTask(dropPipeMQTopicStatement);
+  public IConfigTask visitDropTopic(
+      DropTopicStatement dropTopicStatement, MPPQueryContext context) {
+    return new DropTopicTask(dropTopicStatement);
   }
 
   @Override
   public IConfigTask visitShowTopics(
       ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
-    return new ShowPipeMQTopicsTask(showTopicsStatement);
+    return new ShowTopicsTask(showTopicsStatement);
   }
 
   @Override

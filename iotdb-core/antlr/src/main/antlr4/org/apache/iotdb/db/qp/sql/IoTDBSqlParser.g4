@@ -615,7 +615,7 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
-// MQ topic =========================================================================================
+// Topic =========================================================================================
 createTopic
     : CREATE TOPIC topicName=identifier topicAttributesClause?
     ;
@@ -636,7 +636,7 @@ showTopics
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
-// MQ subscriptions =========================================================================================
+// Subscriptions =========================================================================================
 showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;

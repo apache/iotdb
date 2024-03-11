@@ -212,8 +212,8 @@ public class AsyncClientHandler<Q, R> {
             countDownLatch);
       case PIPE_PUSH_ALL_META:
       case PIPE_PUSH_SINGLE_META:
-      case PIPE_MQ_TOPIC_PUSH_SINGLE_META:
-      case PIPE_MQ_CONSUMER_GROUP_PUSH_SINGLE_META:
+      case TOPIC_PUSH_SINGLE_META:
+      case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,

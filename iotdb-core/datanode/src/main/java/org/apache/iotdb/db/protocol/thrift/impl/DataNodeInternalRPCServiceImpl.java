@@ -185,12 +185,14 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMQTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -1027,15 +1029,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TPushPipeMetaResp pushSinglePipeMQTopicMeta(TPushSinglePipeMQTopicMetaReq req)
-      throws TException {
+  public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) throws TException {
     // TODO
     return null;
   }
 
   @Override
-  public TPushPipeMetaResp pushSinglePipeMQConsumerGroupMeta(
-      TPushSinglePipeMQConsumerGroupMetaReq req) throws TException {
+  public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
+      throws TException {
     // TODO
     return null;
   }
