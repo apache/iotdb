@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
@@ -143,7 +144,7 @@ public class IoTDBProcedureIT {
               .forEach(databaseName -> expectedDatabases.remove(databaseName));
           return expectedDatabases.isEmpty();
         };
-    Awaitility.await().atMost(1, TimeUnit.MINUTES).until(finalCheck);
+    Awaitility.await().pollDelay(1, SECONDS).atMost(1, TimeUnit.MINUTES).until(finalCheck);
   }
 
   /**
@@ -161,8 +162,8 @@ public class IoTDBProcedureIT {
     boolean checkBeforeConfigNodeRestart = false;
     try {
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .atMost(10, TimeUnit.SECONDS)
+          .pollDelay(1, SECONDS)
+          .atMost(10, SECONDS)
           .until(
               () -> {
                 TShowDatabaseResp resp = leaderClient.showDatabase(showAllDatabasesReq);
@@ -177,14 +178,15 @@ public class IoTDBProcedureIT {
     }
 
     // Restart the ConfigNode
-    EnvFactory.getEnv().getConfigNodeWrapperList().get(0).stop();
-    EnvFactory.getEnv().getConfigNodeWrapperList().get(0).start();
+    final int leaderConfigNodeIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stop();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).start();
     SyncConfigNodeIServiceClient newLeaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    // Make sure ConfigNode is working
+    // Make sure leader ConfigNode is working
     Awaitility.await()
-        .pollDelay(1, TimeUnit.SECONDS)
-        .atMost(10, TimeUnit.SECONDS)
+        .pollDelay(1, SECONDS)
+        .atMost(10, SECONDS)
         .until(
             () -> {
               try {
@@ -198,7 +200,8 @@ public class IoTDBProcedureIT {
     boolean checkAfterConfigNodeRestart = false;
     try {
       Awaitility.await()
-          .atMost(10, TimeUnit.SECONDS)
+          .pollDelay(1, SECONDS)
+          .atMost(10, SECONDS)
           .until(
               () -> {
                 TShowDatabaseResp resp = newLeaderClient.showDatabase(showAllDatabasesReq);
