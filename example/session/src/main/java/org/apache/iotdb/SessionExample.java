@@ -93,7 +93,7 @@ public class SessionExample {
     insertRecord();
     insertTablet();
 
-    session.subscribe();
+    session.subscribeDEMO();
 
     //    //    insertTabletWithNullValues();
     //    //    insertTablets();

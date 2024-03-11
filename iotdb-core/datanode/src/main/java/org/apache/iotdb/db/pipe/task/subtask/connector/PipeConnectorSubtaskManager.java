@@ -76,26 +76,30 @@ public class PipeConnectorSubtaskManager {
         StorageEngine.getInstance()
             .getAllDataRegionIds()
             .contains(new DataRegionId(environment.getRegionId()));
+    final boolean isSubscriptionConnector =
+        SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey);
 
     final int connectorNum;
     String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
-    if (isDataRegionConnector) {
-      if (!SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey)) {
+    if (isSubscriptionConnector) {
+      // one SubscriptionConnectorSubtask for one subscription (one consumer group with one topic)
+      connectorNum = 1;
+      attributeSortedString = "subscription_" + attributeSortedString;
+    } else {
+      if (isDataRegionConnector) {
         connectorNum =
             pipeConnectorParameters.getIntOrDefault(
                 Arrays.asList(
                     PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                     PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
                 PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+        attributeSortedString = "data_" + attributeSortedString;
       } else {
+        // Do not allow parallel tasks for schema region connectors
+        // to avoid the potential disorder of the schema region data transfer
         connectorNum = 1;
+        attributeSortedString = "schema_" + attributeSortedString;
       }
-      attributeSortedString = "data_" + attributeSortedString;
-    } else {
-      // Do not allow parallel tasks for schema region connectors
-      // to avoid the potential disorder of the schema region data transfer
-      connectorNum = 1;
-      attributeSortedString = "schema_" + attributeSortedString;
     }
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
@@ -126,7 +130,7 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-        if (!SUBSCRIPTION_SINK.getPipePluginName().equals(connectorKey)) {
+        if (!isSubscriptionConnector) {
           final PipeConnectorSubtask pipeConnectorSubtask =
               new PipeConnectorSubtask(
                   String.format(

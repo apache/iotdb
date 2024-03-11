@@ -222,6 +222,7 @@ public class SubscriptionRpcAgent {
     List<ByteBuffer> serializedEnrichedTabletsList =
         SubscriptionAgent.broker().poll(consumerConfig);
 
+    // TODO: log the commit id of polled messages
     LOGGER.info("Subscription: consumer poll successfully, consumer config: {}", consumerConfig);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, serializedEnrichedTabletsList);

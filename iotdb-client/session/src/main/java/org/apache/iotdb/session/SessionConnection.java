@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -1644,21 +1645,45 @@ public class SessionConnection {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 
-  public void subscribe() {
+  public void subscribeDEMO() {
     try {
-      client.pipeSubscribe(
-          PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig("cg1", "c1")));
-      client.pipeSubscribe(
-          PipeSubscribeSubscribeReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
-      client.executeStatementV2(
-          new TSExecuteStatementReq(
-              sessionId,
-              "create pipe demo_cg1 with sink('sink'='subscription-sink', 'topic'='demo', 'consumer-group'='cg1')",
-              statementId));
-      Thread.sleep(5000);
-      TPipeSubscribeResp resp =
+      TPipeSubscribeResp resp;
+      // handshake
+      resp =
+          client.pipeSubscribe(
+              PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig("cg1", "c1")));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+        throw new RuntimeException(resp.status.toString());
+      }
+
+      // subscribe
+      resp =
+          client.pipeSubscribe(
+              PipeSubscribeSubscribeReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+        throw new RuntimeException(resp.status.toString());
+      }
+
+      // create pipe (tmp)
+      TSExecuteStatementResp executeStatementResp =
+          client.executeStatementV2(
+              new TSExecuteStatementReq(
+                  sessionId,
+                  "create pipe demo_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='demo', 'consumer-group'='cg1')",
+                  statementId));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executeStatementResp.status.code) {
+        throw new RuntimeException(executeStatementResp.status.toString());
+      }
+
+      Thread.sleep(2333);
+
+      // poll
+      resp =
           client.pipeSubscribe(
               PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+        throw new RuntimeException(resp.status.toString());
+      }
       PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
       Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
       for (EnrichedTablets enrichedTablets : pollResp.getEnrichedTabletsList()) {
@@ -1669,8 +1694,14 @@ public class SessionConnection {
             .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
             .addAll(enrichedTablets.getSubscriptionCommitIds());
       }
-      client.pipeSubscribe(
-          PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
+
+      // commit
+      resp =
+          client.pipeSubscribe(
+              PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+        throw new RuntimeException(resp.status.toString());
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }

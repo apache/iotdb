@@ -40,6 +40,10 @@ public class SubscriptionAgent {
     return SubscriptionAgentHolder.HANDLE.rpcAgent;
   }
 
+  public static SubscriptionRuntimeAgent runtime() {
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent;
+  }
+
   public static SubscriptionConsumerAgent consumer() {
     return SubscriptionAgentHolder.HANDLE.runtimeAgent.consumer();
   }

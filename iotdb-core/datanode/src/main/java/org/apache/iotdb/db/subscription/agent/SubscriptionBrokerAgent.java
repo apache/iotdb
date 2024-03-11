@@ -39,7 +39,7 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return Collections.emptyList();
     }
-    // poll all subscribed topics
+    // TODO: currently we fetch messages from all subscribed topics
     return broker.poll(SubscriptionAgent.consumer().subscribedTopic(consumerConfig));
   }
 

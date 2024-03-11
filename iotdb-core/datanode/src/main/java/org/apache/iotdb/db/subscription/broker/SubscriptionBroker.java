@@ -53,7 +53,7 @@ public class SubscriptionBroker {
     topicNameToPrefetchingQueue.forEach(
         (topicName, prefetchingQueue) -> {
           if (topicNames.contains(topicName)) {
-            ByteBuffer byteBuffer = prefetchingQueue.fetch();
+            ByteBuffer byteBuffer = prefetchingQueue.poll();
             if (Objects.nonNull(byteBuffer)) {
               serializedEnrichedTabletsList.add(byteBuffer);
             }

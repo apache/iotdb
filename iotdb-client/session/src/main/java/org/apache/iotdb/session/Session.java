@@ -3665,7 +3665,7 @@ public class Session implements ISession {
     }
   }
 
-  public void subscribe() {
-    defaultSessionConnection.subscribe();
+  public void subscribeDEMO() {
+    defaultSessionConnection.subscribeDEMO();
   }
 }

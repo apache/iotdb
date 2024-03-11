@@ -81,6 +81,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -600,6 +601,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CompactionTaskManager.getInstance());
 
     registerManager.register(PipeAgent.runtime());
+    registerManager.register(SubscriptionAgent.runtime());
   }
 
   /** Set up RPC and protocols after DataNode is available */

@@ -527,6 +527,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_tablets_per_prefetching",
                 String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
+    config.setSubscriptionPollMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_poll_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionPollMaxBlockingTimeMs()))));
+    config.setSubscriptionSerializeMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_serialize_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

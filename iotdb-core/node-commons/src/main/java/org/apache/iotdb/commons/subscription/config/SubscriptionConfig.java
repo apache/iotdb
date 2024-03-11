@@ -39,6 +39,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
   }
 
+  public int getSubscriptionPollMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
+  }
+
+  public int getSubscriptionSerializeMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -49,6 +57,9 @@ public class SubscriptionConfig {
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
         "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+    LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
+    LOGGER.info(
+        "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

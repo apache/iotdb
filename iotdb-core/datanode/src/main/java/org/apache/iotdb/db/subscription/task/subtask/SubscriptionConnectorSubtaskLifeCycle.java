@@ -55,13 +55,12 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
 
   @Override
   public void register() {
-    SubscriptionAgent.broker().bindPrefetchingQueue(subtask);
-
     if (registeredTaskCount < 0) {
       throw new IllegalStateException("registeredTaskCount < 0");
     }
 
     if (registeredTaskCount == 0) {
+      SubscriptionAgent.broker().bindPrefetchingQueue(subtask);
       executor.register(subtask);
       runningTaskCount = 0;
     }
@@ -76,8 +75,6 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
 
   @Override
   public boolean deregister(String ignored) {
-    SubscriptionAgent.broker().unbindPrefetchingQueue(subtask);
-
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
@@ -139,5 +136,6 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   @Override
   public void close() {
     executor.deregister(subtask.getTaskID());
+    SubscriptionAgent.broker().unbindPrefetchingQueue(subtask);
   }
 }
