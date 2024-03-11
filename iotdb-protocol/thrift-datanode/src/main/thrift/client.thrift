@@ -255,6 +255,12 @@ struct TSInsertRecordsReq {
   6: optional bool isAligned
 }
 
+struct TSInsertRecordsReqV2 {
+  1: required binary schemaBuffer
+  2: required binary valueBuffer
+  3: required binary auxiliaryBuffer
+}
+
 struct TSInsertRecordsOfOneDeviceReq {
     1: required i64 sessionId
     2: required string prefixPath
@@ -595,6 +601,8 @@ service IClientRPCService {
   common.TSStatus insertTablets(1:TSInsertTabletsReq req);
 
   common.TSStatus insertRecords(1:TSInsertRecordsReq req);
+
+  common.TSStatus insertRecordsV2(2:TSInsertRecordsReqV2 req);
 
   common.TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
