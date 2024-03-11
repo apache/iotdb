@@ -57,7 +57,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
 public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
