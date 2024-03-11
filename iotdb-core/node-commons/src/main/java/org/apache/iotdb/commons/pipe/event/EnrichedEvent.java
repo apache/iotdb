@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -194,9 +193,9 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Get the {@link EnrichedEvent#pattern} of this {@link EnrichedEvent}.
+   * Get the pattern string of this {@link EnrichedEvent}.
    *
-   * @return the {@link EnrichedEvent#pattern}
+   * @return the pattern string
    */
   public final String getPatternString() {
     return pipePattern != null ? pipePattern.getPattern() : null;
@@ -215,8 +214,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * If pipe's {@link EnrichedEvent#pattern} is database-level, then no need to parse {@link
-   * EnrichedEvent} by {@link EnrichedEvent#pattern} cause pipes are data-region-level.
+   * If pipe's pattern is database-level, then no need to parse {@link EnrichedEvent} by pattern
+   * cause pipes are data-region-level.
    */
   public void skipParsingPattern() {
     isPatternParsed = true;

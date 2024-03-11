@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionTsFileExtractor;
@@ -89,30 +87,30 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     super.validate(validator);
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
-            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
-                    validator.getParameters());
+        DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+            validator.getParameters());
     if (insertionDeletionListeningOptionPair.getLeft().equals(false)
-            && insertionDeletionListeningOptionPair.getRight().equals(false)) {
+        && insertionDeletionListeningOptionPair.getRight().equals(false)) {
       return;
     }
     hasNoExtractionNeed = false;
 
     // Validate extractor.pattern.format is within valid range
     validator
-            .validateAttributeValueRange(
-                    EXTRACTOR_PATTERN_FORMAT_KEY,
-                    true,
-                    EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
-                    EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE)
-            .validateAttributeValueRange(
-                    SOURCE_PATTERN_FORMAT_KEY,
-                    true,
-                    EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
-                    EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
+        .validateAttributeValueRange(
+            EXTRACTOR_PATTERN_FORMAT_KEY,
+            true,
+            EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
+            EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE)
+        .validateAttributeValueRange(
+            SOURCE_PATTERN_FORMAT_KEY,
+            true,
+            EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE,
+            EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE);
 
     // Get the pattern format to check whether the pattern is legal
     final PipePattern pattern =
-            PipePattern.getPipePatternFromSourceParameters(validator.getParameters());
+        PipePattern.getPipePatternFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
     validatePattern(pattern);
