@@ -22,6 +22,9 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionBroker {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
 
   private final String brokerID; // consumer group ID
 
@@ -59,10 +64,11 @@ public class SubscriptionBroker {
 
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
     for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
-      SubscriptionPrefetchingQueue prefetchingQueue =
-          topicNameToPrefetchingQueue.get(entry.getKey());
+      String topicName = entry.getKey();
+      SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
-        // TODO: logger warn
+        LOGGER.warn(
+            "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
         continue;
       }
       prefetchingQueue.commit(entry.getValue());
@@ -75,7 +81,8 @@ public class SubscriptionBroker {
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
-      // TODO: handle error
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] has already existed", topicName);
       return;
     }
     topicNameToPrefetchingQueue.put(
@@ -85,19 +92,19 @@ public class SubscriptionBroker {
   public void unbindPrefetchingQueue(String topicName) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      // TODO: handle error
+      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
     // TODO: do something for events on-the-fly
     topicNameToPrefetchingQueue.remove(topicName);
   }
 
-  public void prefetch(String topicName) {
+  public void executePrefetch(String topicName) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      // TODO: handle error
+      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
-    prefetchingQueue.prefetch();
+    prefetchingQueue.executePrefetch();
   }
 }

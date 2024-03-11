@@ -70,7 +70,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
-    if (commitReq.body.hasRemaining()) {
+    if (Objects.nonNull(commitReq.body) && commitReq.body.hasRemaining()) {
       int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
         String topicName = ReadWriteIOUtils.readString(commitReq.body);

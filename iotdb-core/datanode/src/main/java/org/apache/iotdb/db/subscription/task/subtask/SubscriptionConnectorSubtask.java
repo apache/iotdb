@@ -53,7 +53,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   protected boolean executeOnce() {
-    SubscriptionAgent.broker().prefetch(this);
+    SubscriptionAgent.broker().executePrefetch(this);
     // always return true
     return true;
   }

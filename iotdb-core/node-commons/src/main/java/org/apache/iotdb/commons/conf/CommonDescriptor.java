@@ -202,6 +202,7 @@ public class CommonDescriptor {
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
     loadPipeProps(properties);
+    loadSubscriptionProps(properties);
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -510,6 +511,22 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+  }
+
+  private void loadSubscriptionProps(Properties properties) {
+    config.setSubscriptionSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_subtask_executor_max_thread_num",
+                Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+    if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
+      config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
+    }
+    config.setSubscriptionMaxTabletsPerPrefetching(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_tablets_per_prefetching",
+                String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

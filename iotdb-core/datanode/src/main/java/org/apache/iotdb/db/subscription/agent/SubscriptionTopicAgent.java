@@ -44,7 +44,7 @@ public class SubscriptionTopicAgent implements IService {
   public void createTopic(TopicConfig topicConfig) {
     String topicName = topicConfig.getTopicName();
     if (isTopicExist(topicName)) {
-      LOGGER.warn("Subscription: topic {} already exist", topicName);
+      LOGGER.warn("Subscription: topic [{}] has already existed", topicName);
       return;
     }
     topicNameToTopicMeta.put(topicName, new TopicMeta(topicConfig));
@@ -53,12 +53,14 @@ public class SubscriptionTopicAgent implements IService {
 
   public void dropTopic(String topicName) {
     if (!topicNameToTopicMeta.containsKey(topicName)) {
-      LOGGER.warn("Subscription: topic {} not exist", topicName);
+      LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       return;
     }
     TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
     if (topicMeta.hasSubscribedConsumerGroup()) {
-      LOGGER.warn("Subscription: topic {} has subscribed consumer group", topicName);
+      LOGGER.warn(
+          "Subscription: drop topic [{}] failed, some consumer groups have subscribed the topic",
+          topicName);
       return;
     }
     topicNameToTopicMeta.remove(topicName);
@@ -68,7 +70,7 @@ public class SubscriptionTopicAgent implements IService {
   public void addSubscribedConsumerGroupID(String topicName, String consumerGroupID) {
     TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
     if (Objects.isNull(topicMeta)) {
-      LOGGER.warn("Subscription: topic {} not exist", topicName);
+      LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       return;
     }
     topicMeta.addSubscribedConsumerGroupID(consumerGroupID);
@@ -78,7 +80,7 @@ public class SubscriptionTopicAgent implements IService {
     return topicNameToTopicMeta.containsKey(topicName);
   }
 
-  //////////////////////////// IService ////////////////////////////
+  //////////////////////////// System Service Interface ////////////////////////////
 
   // TODO: fetch meta when started
   @Override

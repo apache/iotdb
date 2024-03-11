@@ -80,9 +80,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    for (ByteBuffer byteBuffer : pollResp.body) {
-      if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-        resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+    if (Objects.nonNull(pollResp.body)) {
+      for (ByteBuffer byteBuffer : pollResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+        }
       }
     }
 

@@ -21,12 +21,13 @@ package org.apache.iotdb.db.subscription.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 
 public class SubscriptionSubtaskExecutor extends PipeSubtaskExecutor {
 
   public SubscriptionSubtaskExecutor() {
     super(
-        4, // TODO: config
+        SubscriptionConfig.getInstance().getSubscriptionSubtaskExecutorMaxThreadNum(),
         ThreadName.SUBSCRIPTION_EXECUTOR_POOL);
   }
 }

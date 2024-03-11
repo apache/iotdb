@@ -50,7 +50,7 @@ public class SubscriptionConsumerAgent implements IService {
     String consumerClientID = consumerConfig.getConsumerClientID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return;
     }
 
@@ -66,13 +66,13 @@ public class SubscriptionConsumerAgent implements IService {
     String consumerClientID = consumerConfig.getConsumerClientID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return;
     }
 
     for (String topicName : topicNames) {
       if (!SubscriptionAgent.topic().isTopicExist(topicName)) {
-        LOGGER.warn("Subscription: topic {} not exist", topicName);
+        LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       } else {
         if (consumerGroupMeta.subscribe(consumerClientID, topicName)) {
           SubscriptionAgent.topic().addSubscribedConsumerGroupID(topicName, consumerGroupID);
@@ -87,13 +87,13 @@ public class SubscriptionConsumerAgent implements IService {
     String consumerClientID = consumerConfig.getConsumerClientID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return;
     }
 
     for (String topicName : topicNames) {
       if (!SubscriptionAgent.topic().isTopicExist(topicName)) {
-        LOGGER.warn("Subscription: topic {} not exist", topicName);
+        LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       } else {
         consumerGroupMeta.unsubscribe(consumerClientID, topicName);
         // TODO: call CN rpc
@@ -106,13 +106,13 @@ public class SubscriptionConsumerAgent implements IService {
     String consumerClientID = consumerConfig.getConsumerClientID();
     ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
     if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group {} not exist", consumerGroupID);
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return Collections.emptySet();
     }
     return consumerGroupMeta.subscribedTopics(consumerClientID);
   }
 
-  //////////////////////////// IService ////////////////////////////
+  //////////////////////////// System Service Interface ////////////////////////////
 
   // TODO: fetch meta when started
   @Override

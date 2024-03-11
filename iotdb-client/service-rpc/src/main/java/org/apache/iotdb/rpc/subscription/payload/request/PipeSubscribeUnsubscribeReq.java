@@ -66,7 +66,7 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
       TPipeSubscribeReq unsubscribeReq) {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
-    if (unsubscribeReq.body.hasRemaining()) {
+    if (Objects.nonNull(unsubscribeReq.body) && unsubscribeReq.body.hasRemaining()) {
       req.topicNames = ReadWriteIOUtils.readStringList(unsubscribeReq.body);
     }
 

@@ -225,6 +225,10 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
+  private int subscriptionSubtaskExecutorMaxThreadNum =
+      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private int subscriptionMaxTabletsPerPrefetching = 16;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -931,6 +935,26 @@ public class CommonConfig {
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+  }
+
+  public int getSubscriptionSubtaskExecutorMaxThreadNum() {
+    return subscriptionSubtaskExecutorMaxThreadNum;
+  }
+
+  public void setSubscriptionSubtaskExecutorMaxThreadNum(
+      int subscriptionSubtaskExecutorMaxThreadNum) {
+    this.subscriptionSubtaskExecutorMaxThreadNum =
+        Math.min(
+            subscriptionSubtaskExecutorMaxThreadNum,
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  }
+
+  public int getSubscriptionMaxTabletsPerPrefetching() {
+    return subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
+    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
   }
 
   public String getSchemaEngineMode() {

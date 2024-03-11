@@ -84,14 +84,16 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
-    ByteBuffer byteBuffer = handshakeResp.body.get(0);
-    if (byteBuffer.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(byteBuffer);
-      for (int i = 0; i < size; ++i) {
-        final int id = ReadWriteIOUtils.readInt(byteBuffer);
-        final String ip = ReadWriteIOUtils.readString(byteBuffer);
-        final int port = ReadWriteIOUtils.readInt(byteBuffer);
-        resp.endPoints.put(id, new TEndPoint(ip, port));
+    if (Objects.nonNull(handshakeResp.body) && !handshakeResp.body.isEmpty()) {
+      ByteBuffer byteBuffer = handshakeResp.body.get(0);
+      if (byteBuffer.hasRemaining()) {
+        int size = ReadWriteIOUtils.readInt(byteBuffer);
+        for (int i = 0; i < size; ++i) {
+          final int id = ReadWriteIOUtils.readInt(byteBuffer);
+          final String ip = ReadWriteIOUtils.readString(byteBuffer);
+          final int port = ReadWriteIOUtils.readInt(byteBuffer);
+          resp.endPoints.put(id, new TEndPoint(ip, port));
+        }
       }
     }
 
