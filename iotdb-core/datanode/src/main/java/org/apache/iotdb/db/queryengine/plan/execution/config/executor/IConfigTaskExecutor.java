@@ -189,8 +189,6 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
 
-  SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
-
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
 

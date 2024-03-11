@@ -60,7 +60,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer.CreatePipeMQC
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer.DropPipeMQConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription.CreatePipeMQSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription.DropPipeMQSubscriptionProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.AlterPipeMQTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.CreatePipeMQTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic.DropPipeMQTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
@@ -93,7 +92,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -979,24 +977,6 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus alterTopic(TAlterTopicReq req) {
-    try {
-      long procedureId = executor.submitProcedure(new AlterPipeMQTopicProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
-      } else {
-        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-          .setMessage(e.getMessage());
-    }
-  }
-
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
       long procedureId = executor.submitProcedure(new CreatePipeMQConsumerProcedure(req));
@@ -1069,7 +1049,6 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus operateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
   public TSStatus operateAuthPlan(
       AuthorPlan authorPlan, List<TDataNodeConfiguration> dns, boolean isGeneratedByPipe) {
     try {

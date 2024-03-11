@@ -61,7 +61,6 @@ public class DropPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
     try {
       pipeMQCoordinator.getPipeMQInfo().validateBeforeDroppingTopic(topicName);
     } catch (PipeException e) {
-      // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
       pipeMQCoordinator.unlock();

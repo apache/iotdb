@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.consensus.response.pipe.mq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQSubscriptionMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQSubscriptionMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;

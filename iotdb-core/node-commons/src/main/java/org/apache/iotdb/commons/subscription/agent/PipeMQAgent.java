@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.mq.config;
+package org.apache.iotdb.commons.subscription.agent;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMetaKeeper;
 
-import java.util.Map;
+public abstract class PipeMQAgent {
 
-public class PipeMQConsumerConfig extends PipeParameters {
-  public PipeMQConsumerConfig(Map<String, String> attributes) {
-    super(attributes);
+  private final PipeMQTopicMetaKeeper pipeMQTopicMetaKeeper;
+
+  protected PipeMQAgent() {
+    pipeMQTopicMetaKeeper = new PipeMQTopicMetaKeeper();
   }
 }

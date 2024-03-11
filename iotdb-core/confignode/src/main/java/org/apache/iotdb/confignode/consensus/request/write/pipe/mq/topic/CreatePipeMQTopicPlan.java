@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic;
 
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 

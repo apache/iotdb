@@ -20,19 +20,18 @@
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMetaKeeper;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQSubscriptionMeta;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMetaKeeper;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerGroupMetaKeeper;
+import org.apache.iotdb.commons.subscription.meta.PipeMQSubscriptionMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMetaKeeper;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.pipe.mq.PipeMQSubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.mq.PipeMQTopicTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -132,24 +131,25 @@ public class PipeMQInfo implements SnapshotProcessor {
     // DO NOTHING HERE!
   }
 
-  public void validateBeforeAlteringTopic(TAlterTopicReq alterTopicReq) throws PipeException {
+  public void validateBeforeAlteringTopic(PipeMQTopicMeta pipeMQTopicMeta) throws PipeException {
     acquireReadLock();
     try {
-      checkBeforeAlteringTopicInternal(alterTopicReq);
+      checkBeforeAlteringTopicInternal(pipeMQTopicMeta);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void checkBeforeAlteringTopicInternal(TAlterTopicReq alterTopicReq) throws PipeException {
-    if (isTopicExisted(alterTopicReq.getTopicName())) {
+  private void checkBeforeAlteringTopicInternal(PipeMQTopicMeta pipeMQTopicMeta)
+      throws PipeException {
+    if (isTopicExisted(pipeMQTopicMeta.getTopicName())) {
       return;
     }
 
     final String exceptionMessage =
         String.format(
             "Failed to alter pipe topic %s, the pipe topic with the same name is not existed",
-            alterTopicReq.getTopicName());
+            pipeMQTopicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }

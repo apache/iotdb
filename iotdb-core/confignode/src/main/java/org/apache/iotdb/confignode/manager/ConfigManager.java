@@ -288,7 +288,6 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
-    PipeMQInfo pipeMqInfo = new PipeMQInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
     PipeMQInfo pipeMQInfo = new PipeMQInfo();
 
@@ -305,7 +304,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             cqInfo,
             pipeInfo,
-            pipeMqInfo,
+            pipeMQInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
@@ -1954,7 +1953,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
   public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

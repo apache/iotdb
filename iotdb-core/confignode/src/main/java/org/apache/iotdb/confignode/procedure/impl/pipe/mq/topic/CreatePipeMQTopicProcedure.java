@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.CreatePipeMQTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.DropPipeMQTopicPlan;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;

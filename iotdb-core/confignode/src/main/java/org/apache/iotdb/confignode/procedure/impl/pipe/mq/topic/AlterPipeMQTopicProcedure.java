@@ -20,40 +20,30 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.topic.AlterPipeMQTopicPlan;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.pipe.mq.AbstractOperatePipeMQProcedure;
-import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.io.IOException;
 
 public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AlterPipeMQTopicProcedure.class);
 
-  private TAlterTopicReq alterTopicReq;
-
   private PipeMQTopicMeta updatedPipeMQTopicMeta;
 
-  private PipeMQTopicMeta pipeMQTopicMeta;
-
-  public AlterPipeMQTopicProcedure() {
-    super();
-  }
-
-  public AlterPipeMQTopicProcedure(TAlterTopicReq alterTopicReq) {
-    super();
-    this.alterTopicReq = alterTopicReq;
-  }
+  private PipeMQTopicMeta existedPipeMQTopicMeta;
 
   public AlterPipeMQTopicProcedure(PipeMQTopicMeta updatedTopicMeta) {
     super();
@@ -74,29 +64,27 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
 
     pipeMQCoordinator.lock();
 
-    // check if the topic exists
-    // todo
+    validateOldAndNewPipeMQTopicMeta(pipeMQCoordinator);
+  }
+
+  public void validateOldAndNewPipeMQTopicMeta(PipeMQCoordinator pipeMQCoordinator) {
     try {
-      pipeMQCoordinator.getPipeMQInfo().validateBeforeAlteringTopic(alterTopicReq);
+      pipeMQCoordinator.getPipeMQInfo().validateBeforeAlteringTopic(updatedPipeMQTopicMeta);
     } catch (PipeException e) {
       LOGGER.error(
           "AlterPipeMQTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
+      setFailure(new ProcedureException(e.getMessage()));
+      pipeMQCoordinator.unlock();
       throw e;
     }
+
+    this.existedPipeMQTopicMeta =
+        pipeMQCoordinator.getPipeMQInfo().getPipeMQTopicMeta(updatedPipeMQTopicMeta.getTopicName());
   }
 
   @Override
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterPipeMQTopicProcedure: executeFromOperateOnConfigNodes, try to alter topic");
-
-    if (updatedPipeMQTopicMeta == null) {
-      // updatedPipeMQTopicMeta == null means this procedure is constructed from TAlterTopicReq.
-      updatedPipeMQTopicMeta =
-          new PipeMQTopicMeta(
-              alterTopicReq.getTopicName(),
-              System.currentTimeMillis(),
-              new HashMap<>(alterTopicReq.getTopicAttributes()));
-    }
 
     TSStatus response;
     try {
@@ -118,30 +106,67 @@ public class AlterPipeMQTopicProcedure extends AbstractOperatePipeMQProcedure {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "AlterPipeMQTopicProcedure: executeFromOperateOnDataNodes({})",
-        alterTopicReq.getTopicName());
+        updatedPipeMQTopicMeta.getTopicName());
 
-    // do nothing
+    try {
+      if (RpcUtils.squashResponseStatusList(
+                  env.pushSinglePipeMQTopicOnDataNode(updatedPipeMQTopicMeta.serialize()))
+              .getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize the pipe mq topic meta due to: ", e);
+    }
+
+    throw new PipeException(
+        String.format(
+            "Failed to push the pipe mq topic meta to data nodes, topic name: %s",
+            updatedPipeMQTopicMeta.getTopicName()));
   }
 
   @Override
   public void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("AlterPipeMQTopicProcedure: executeFromUnlock({})", alterTopicReq.getTopicName());
+    LOGGER.info(
+        "AlterPipeMQTopicProcedure: executeFromUnlock({})", updatedPipeMQTopicMeta.getTopicName());
     env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
   public void rollbackFromLock(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterPipeMQTopicProcedure: rollbackFromLock({})", alterTopicReq.getTopicName());
+    LOGGER.info(
+        "AlterPipeMQTopicProcedure: rollbackFromLock({})", updatedPipeMQTopicMeta.getTopicName());
     env.getConfigManager().getMQManager().getPipeMQCoordinator().unlock();
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    // do nothing
+    LOGGER.info(
+        "AlterPipeMQTopicProcedure: rollbackFromOperateOnConfigNodes({})",
+        updatedPipeMQTopicMeta.getTopicName());
+
+    try {
+      if (RpcUtils.squashResponseStatusList(
+                  env.pushSinglePipeMQTopicOnDataNode(existedPipeMQTopicMeta.serialize()))
+              .getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize the pipe mq topic meta due to: ", e);
+    }
+
+    throw new PipeException(
+        String.format(
+            "Failed to push the pipe mq topic meta to data nodes, topic name: %s",
+            updatedPipeMQTopicMeta.getTopicName()));
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info(
+        "AlterPipeMQTopicProcedure: rollbackFromOperateOnDataNodes({})",
+        updatedPipeMQTopicMeta.getTopicName());
     // do nothing
   }
 }

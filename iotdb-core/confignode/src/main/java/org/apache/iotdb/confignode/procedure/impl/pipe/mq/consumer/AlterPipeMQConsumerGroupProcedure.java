@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.mq.consumer.AlterPipeMQConsumerGroupPlan;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;

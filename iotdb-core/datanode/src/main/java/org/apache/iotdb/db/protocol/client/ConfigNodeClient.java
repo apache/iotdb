@@ -976,7 +976,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) throws TException {
   public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
       throws TException {
     return executeRemoteCallWithRetry(

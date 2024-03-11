@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.mq.agent.PipeMQAgent;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
@@ -1852,18 +1851,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       CreatePipeMQTopicStatement createPipeMQTopicStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Validate before creation
-    try {
-      PipeMQAgent.topic()
-          .validate(
-              createPipeMQTopicStatement.getTopicName(),
-              createPipeMQTopicStatement.getTopicAttributes());
-    } catch (Exception e) {
-      LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
-      future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
-      return future;
-    }
+    // todo: Validate before creation
 
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1922,24 +1910,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       List<TShowTopicInfo> tShowTopicInfoList =
           configNodeClient.showTopic(tShowTopicReq).getTopicInfoList();
       ShowPipeMQTopicsTask.buildTSBlock(tShowTopicInfoList, future);
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
     } catch (Exception e) {
       future.setException(e);
     }

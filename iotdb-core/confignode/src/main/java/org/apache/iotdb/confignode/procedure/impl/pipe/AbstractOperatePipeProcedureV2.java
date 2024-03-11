@@ -191,7 +191,7 @@ public abstract class AbstractOperatePipeProcedureV2
   public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
    *
    * @throws PipeException if configNode consensus write failed
    */

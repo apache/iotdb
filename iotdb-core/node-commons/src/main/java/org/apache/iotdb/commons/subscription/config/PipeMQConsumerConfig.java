@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.mq.agent;
+package org.apache.iotdb.commons.subscription.config;
 
-public class PipeMQAgent {
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-  private final TopicDataNodeAgent topicDataNodeAgent;
+import java.util.Map;
 
-  public static TopicDataNodeAgent topic() {
-    return PipeMQAgentHolder.HANDLE.topicDataNodeAgent;
-  }
-
-  ////////////////////////// Singleton Holder //////////////////////////
-  private PipeMQAgent() {
-    topicDataNodeAgent = new TopicDataNodeAgent();
-  }
-
-  private static class PipeMQAgentHolder {
-    private static final PipeMQAgent HANDLE = new PipeMQAgent();
+public class PipeMQConsumerConfig extends PipeParameters {
+  public PipeMQConsumerConfig(Map<String, String> attributes) {
+    super(attributes);
   }
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.consumer;
 
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerMeta;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;

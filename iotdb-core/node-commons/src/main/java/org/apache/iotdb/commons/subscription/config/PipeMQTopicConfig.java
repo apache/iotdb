@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.mq.config.constant;
+package org.apache.iotdb.commons.subscription.config;
 
-public class PipeMQTopicConstant {
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-  public static final String PATH_KEY = "path";
-  public static final String PATH_DEFAULT_VALUE = "root";
-  public static final String PATH_FORMAT_KEY = "path.format";
-  public static final String PATH_FORMAT_DEFAULT_VALUE = "pattern";
+import java.util.Map;
 
-  public static final String START_TIME_KEY = "start-time";
-  public static final String END_TIME_KEY = "end-time";
-
-  public static final String FORMAT_KEY = "format";
-  public static final String FORMAT_DEFAULT_VALUE = "log";
-
-  private PipeMQTopicConstant() {
-    throw new IllegalStateException("Utility class");
+public class PipeMQTopicConfig extends PipeParameters {
+  public PipeMQTopicConfig(Map<String, String> attributes) {
+    super(attributes);
   }
 }

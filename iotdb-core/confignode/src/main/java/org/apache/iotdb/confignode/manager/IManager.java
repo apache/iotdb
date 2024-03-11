@@ -227,8 +227,7 @@ public interface IManager {
   MQManager getMQManager();
 
   /**
-   * Get RetryFailedTasksThread.
-   * Get {@link RetryFailedTasksThread}.
+   * Get RetryFailedTasksThread. Get {@link RetryFailedTasksThread}.
    *
    * @return {@link RetryFailedTasksThread} instance
    */

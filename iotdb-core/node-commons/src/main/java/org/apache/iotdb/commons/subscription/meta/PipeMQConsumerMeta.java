@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.mq.meta;
+package org.apache.iotdb.commons.subscription.meta;
 
-import org.apache.iotdb.commons.pipe.mq.config.PipeMQConsumerConfig;
+import org.apache.iotdb.commons.subscription.config.PipeMQConsumerConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

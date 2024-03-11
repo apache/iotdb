@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.mq.meta;
+package org.apache.iotdb.commons.subscription.meta;
 
-import org.apache.iotdb.commons.pipe.mq.config.PipeMQTopicConfig;
+import org.apache.iotdb.commons.subscription.config.PipeMQTopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -56,7 +56,7 @@ public class PipeMQTopicMeta {
     PipeMQTopicMeta copy = new PipeMQTopicMeta();
     copy.topicName = topicName;
     copy.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
-    copy.config = new PipeMQTopicConfig(new HashMap<>(config.getAttributes()));
+    copy.config = new PipeMQTopicConfig(new HashMap<>(config.getAttribute()));
     return copy;
   }
 
@@ -107,8 +107,8 @@ public class PipeMQTopicMeta {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
 
-    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -123,8 +123,8 @@ public class PipeMQTopicMeta {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
 
-    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -145,7 +145,7 @@ public class PipeMQTopicMeta {
     for (int i = 0; i < size; i++) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      pipeMQTopicMeta.config.getAttributes().put(key, value);
+      pipeMQTopicMeta.config.getAttribute().put(key, value);
     }
 
     return pipeMQTopicMeta;
@@ -166,7 +166,7 @@ public class PipeMQTopicMeta {
     for (int i = 0; i < size; i++) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      pipeMQTopicMeta.config.getAttributes().put(key, value);
+      pipeMQTopicMeta.config.getAttribute().put(key, value);
     }
 
     return pipeMQTopicMeta;

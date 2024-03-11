@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.mq.subscription;
 
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQConsumerGroupMeta;
-import org.apache.iotdb.commons.pipe.mq.meta.PipeMQTopicMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.PipeMQTopicMeta;
 import org.apache.iotdb.confignode.manager.pipe.mq.coordinator.PipeMQCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -102,7 +102,7 @@ public class CreatePipeMQSubscriptionProcedure extends AbstractOperatePipeMQProc
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
-                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttributes())));
+                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())));
       } else {
         // Consumer group already subscribed this topic
         pipeProcedures.add(
