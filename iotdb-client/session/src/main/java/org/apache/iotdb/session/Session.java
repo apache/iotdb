@@ -2790,7 +2790,8 @@ public class Session implements ISession {
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
-        measurementType.put(measurements.get(colIndex), types.get(colIndex));
+        int finalColIndex = colIndex;
+        measurementType.computeIfAbsent(measurements.get(colIndex), k->types.get(finalColIndex));
       }
       rowMap.merge(device, 1, Integer::sum);
     }
