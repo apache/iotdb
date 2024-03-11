@@ -32,7 +32,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {6.2844, 1.5582, 0.8503, 0.5128, 0.2636};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = i + 1;
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -41,7 +41,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {6.2844, 1.5582, 0.8503, 0.5128, 0.2636};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = 10 - i;
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -50,7 +50,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {50.0465, 19.4957, 10.2427, 5.9496, 2.0566};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = Math.pow(i + 1, 2);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -59,7 +59,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {0.9379, 0.0738, 0.0457, 0.0394, 0.0203};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = Math.sin(i * 2 * Math.PI / 9);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -68,7 +68,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {1.0437, 0.0097, 0.0163, 0.0056, 0.0005};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = Math.cos(i * 2 * Math.PI / 9);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -77,7 +77,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {6789.997, 4310.316, 2098.5, 1531.1508, 441.3};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = Math.exp(i + 1);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -86,7 +86,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {1.7149, 0.2899, 0.1784, 0.1201, 0.0943};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = Math.log(i + 1);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -95,7 +95,7 @@ public class UDFEnvelopeTest {
     double[] expectedEnvelope = {5.1938, 1.3139, 0.3249, 0.2471, 0.1196};
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++) vibData[i] = (i + 1) * Math.sin(i * 2 * Math.PI / 9);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -105,7 +105,7 @@ public class UDFEnvelopeTest {
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++)
       vibData[i] = Math.exp(-0.3 * (i + 1)) * Math.sin(i * 2 * Math.PI / 9);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 
@@ -115,7 +115,7 @@ public class UDFEnvelopeTest {
     double[] vibData = new double[10];
     for (int i = 0; i < 10; i++)
       vibData[i] = Math.sin(i * 2 * Math.PI / 9) + Math.cos(i * 4 * Math.PI / 9);
-    double[] envelope = analysis.envelope(vibData);
+    double[] envelope = analysis.envelopeAnalyze(vibData);
     Assert.assertArrayEquals(expectedEnvelope, envelope, 0.01);
   }
 }
