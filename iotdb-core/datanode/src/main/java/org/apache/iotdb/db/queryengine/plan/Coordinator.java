@@ -71,6 +71,7 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
 
   private static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
@@ -255,11 +256,11 @@ public class Coordinator {
 
     String slowContent = "";
     if (request == null || !queryExecution.getExecuteSQL().orElse("").isEmpty()) {
-      slowContent = queryExecution.getExecuteSQL().orElse("UNKNOWN");
+      slowContent = String.format("sql is %s", queryExecution.getExecuteSQL().orElse("UNKNOWN"));
     } else if (request instanceof TSRawDataQueryReq) {
       TSRawDataQueryReq req = (TSRawDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+      for (int i = 0; i < Math.min(req.getPathsSize(), MAX_SLOW_NATIVE_API_OUTPUT_NUM); i++) {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       slowContent =
@@ -270,7 +271,7 @@ public class Coordinator {
     } else if (request instanceof TSLastDataQueryReq) {
       TSLastDataQueryReq req = (TSLastDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+      for (int i = 0; i < Math.min(req.getPathsSize(), MAX_SLOW_NATIVE_API_OUTPUT_NUM); i++) {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       slowContent =
@@ -280,7 +281,7 @@ public class Coordinator {
     } else if (request instanceof TSAggregationQueryReq) {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
+      for (int i = 0; i < Math.min(req.getPathsSize(), MAX_SLOW_NATIVE_API_OUTPUT_NUM); i++) {
         sb.append(i == 0 ? "" : ",")
             .append(req.getAggregations().get(i))
             .append(":")
@@ -298,10 +299,17 @@ public class Coordinator {
               req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
     } else if (request instanceof TSFetchResultsReq) {
       TSFetchResultsReq req = (TSFetchResultsReq) request;
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0;
+          i < Math.min(queryExecution.getOutputValueColumnCount(), MAX_SLOW_NATIVE_API_OUTPUT_NUM);
+          i++) {
+        sb.append(i == 0 ? "" : ",")
+            .append(queryExecution.getDatasetHeader().getRespColumns().get(i));
+      }
       slowContent =
           String.format(
-              "Request name: TSFetchResultsReq, statement: %s, fetchSize: %s",
-              req.getStatement(), req.getFetchSize());
+              "Request name: TSFetchResultsReq, queryId: %s, fetchSize: %s, some response headers: %s",
+              req.getQueryId(), req.getFetchSize(), sb);
     }
 
     SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, slowContent);
