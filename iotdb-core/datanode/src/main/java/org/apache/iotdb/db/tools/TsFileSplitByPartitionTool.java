@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -150,7 +151,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     }
     // start to scan chunks and chunkGroups
     byte marker;
-    String deviceId = null;
+    IDeviceID deviceId = null;
     boolean firstChunkInChunkGroup = true;
     long chunkHeaderOffset;
     try {
@@ -250,7 +251,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
    * false.
    */
   protected boolean checkIfNeedToDecode(
-      MeasurementSchema schema, String deviceId, PageHeader pageHeader, long chunkHeaderOffset)
+      MeasurementSchema schema, IDeviceID deviceId, PageHeader pageHeader, long chunkHeaderOffset)
       throws IllegalPathException {
     if (pageHeader.getStatistics() == null) {
       return true;
@@ -263,7 +264,9 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         currentDeletion = (Deletion) modsIterator.next();
         if (currentDeletion
                 .getPath()
-                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+                .matchFullPath(
+                    new PartialPath(
+                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
               && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
@@ -282,7 +285,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
    * chunkWriters, finally write chunks to their own upgraded TsFiles.
    */
   protected void reWriteChunk(
-      String deviceId,
+      IDeviceID deviceId,
       boolean firstChunkInChunkGroup,
       MeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,
@@ -367,7 +370,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
   }
 
   protected void decodeAndWritePage(
-      String deviceId,
+      IDeviceID deviceId,
       MeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap,
@@ -385,7 +388,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
   }
 
   private List<TimeRange> getOldSortedDeleteIntervals(
-      String deviceId, MeasurementSchema schema, long chunkHeaderOffset)
+      IDeviceID deviceId, MeasurementSchema schema, long chunkHeaderOffset)
       throws IllegalPathException {
     if (oldModification != null) {
       ChunkMetadata chunkMetadata = new ChunkMetadata();
@@ -396,7 +399,9 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         // if deletion path match the chunkPath, then add the deletion to the list
         if (currentDeletion
                 .getPath()
-                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
+                .matchFullPath(
+                    new PartialPath(
+                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
               new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));

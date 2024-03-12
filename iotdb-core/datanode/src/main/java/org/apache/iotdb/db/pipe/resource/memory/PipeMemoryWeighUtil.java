@@ -20,17 +20,21 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 import java.util.Map;
 
 public class PipeMemoryWeighUtil {
-  /** Estimates memory usage of a {@link Map}<{@link String}, {@link Boolean}>. */
-  public static long memoryOfStr2Bool(Map<String, Boolean> map) {
+  /** Estimates memory usage of a {@link Map}<{@link IDeviceID}, {@link Boolean}>. */
+  public static long memoryOfIDeviceID2Bool(Map<IDeviceID, Boolean> map) {
     long usageInBytes = 0L;
-    for (Map.Entry<String, Boolean> entry : map.entrySet()) {
-      usageInBytes = usageInBytes + MemUtils.getStringMem(entry.getKey()) + 1L;
+    for (Map.Entry<IDeviceID, Boolean> entry : map.entrySet()) {
+      // TODO
+      usageInBytes =
+          usageInBytes + MemUtils.getStringMem(((PlainDeviceID) entry.getKey()).toStringID()) + 1L;
     }
     return usageInBytes + 16L; // add the overhead of map
   }
@@ -44,11 +48,11 @@ public class PipeMemoryWeighUtil {
     return usageInBytes + 16L; // add the overhead of map
   }
 
-  /** Estimates memory usage of a {@link Map}<{@link String}, {@link List}<{@link String}>>. */
-  public static long memoryOfStr2StrList(Map<String, List<String>> map) {
+  /** Estimates memory usage of a {@link Map}<{@link IDeviceID}, {@link List}<{@link String}>>. */
+  public static long memoryOfIDeviceID2StrList(Map<IDeviceID, List<String>> map) {
     long usageInBytes = 0L;
-    for (Map.Entry<String, List<String>> entry : map.entrySet()) {
-      usageInBytes += MemUtils.getStringMem(entry.getKey());
+    for (Map.Entry<IDeviceID, List<String>> entry : map.entrySet()) {
+      usageInBytes += MemUtils.getStringMem(((PlainDeviceID) entry.getKey()).toStringID());
       for (String str : entry.getValue()) {
         usageInBytes += MemUtils.getStringMem(str);
       }

@@ -30,6 +30,8 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
@@ -68,8 +70,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
-  private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
-  private final Map<String, Boolean> deviceIsAlignedMap;
+  private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
+  private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   private boolean shouldParsePattern = false;
@@ -100,7 +102,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
-      final Map<String, List<String>> deviceMeasurementsMap;
+      final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
       // TsFileReader is not thread-safe, so we need to create it here and close it later.
       long memoryRequiredInBytes =
@@ -116,13 +118,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       } else {
         // We need to create these objects here and remove them later.
         deviceIsAlignedMap = readDeviceIsAlignedMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceID2Bool(deviceIsAlignedMap);
 
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
         deviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
+        memoryRequiredInBytes +=
+            PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 
@@ -137,18 +140,18 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     }
   }
 
-  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(
-      Map<String, List<String>> originalDeviceMeasurementsMap) {
-    final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-    for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = entry.getKey();
+  private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
+      Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (pattern == null
           || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
         }
       }
 
@@ -170,7 +173,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
         }
       }
 
@@ -185,12 +188,12 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return filteredDeviceMeasurementsMap;
   }
 
-  private Map<String, Boolean> readDeviceIsAlignedMap() throws IOException {
-    final Map<String, Boolean> deviceIsAlignedResultMap = new HashMap<>();
+  private Map<IDeviceID, Boolean> readDeviceIsAlignedMap() throws IOException {
+    final Map<IDeviceID, Boolean> deviceIsAlignedResultMap = new HashMap<>();
     final TsFileDeviceIterator deviceIsAlignedIterator =
         tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
     while (deviceIsAlignedIterator.hasNext()) {
-      final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
+      final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
       deviceIsAlignedResultMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
     }
     return deviceIsAlignedResultMap;
@@ -211,14 +214,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                 return false;
               }
 
-              final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
+              final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
                 tabletIterator =
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
-                        entry.getKey(),
+                        ((PlainDeviceID) entry.getKey()).toStringID(),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {

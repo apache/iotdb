@@ -91,6 +91,10 @@ public class Path implements Serializable, Comparable<Path> {
     }
   }
 
+  public Path(IDeviceID device, String measurement, boolean needCheck) {
+    this(((PlainDeviceID) device).toStringID(), measurement, needCheck);
+  }
+
   /**
    * construct a Path directly using device and measurement, no need to reformat the path
    *

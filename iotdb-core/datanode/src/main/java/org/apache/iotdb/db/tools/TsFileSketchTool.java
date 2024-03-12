@@ -225,7 +225,7 @@ public class TsFileSketchTool {
             pw,
             String.format("%20s", "")
                 + "|\t\t<"
-                + metadataIndexEntry.getName()
+                + metadataIndexEntry.getCompareKey()
                 + ", "
                 + metadataIndexEntry.getOffset()
                 + ">");
@@ -247,7 +247,7 @@ public class TsFileSketchTool {
           pw,
           String.format("%20s", "")
               + "|\t\t<"
-              + metadataIndexEntry.getName()
+              + metadataIndexEntry.getCompareKey()
               + ", "
               + metadataIndexEntry.getOffset()
               + ">");
@@ -459,7 +459,7 @@ public class TsFileSketchTool {
       treeOutputStringBuffer.add(
           tableWriter.toString()
               + "└──────["
-              + metadataIndexEntry.getName()
+              + metadataIndexEntry.getCompareKey()
               + ","
               + metadataIndexEntry.getOffset()
               + "]");

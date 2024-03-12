@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -120,7 +121,10 @@ public class TimeSeriesMetadataCache {
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
         BloomFilter bloomFilter = reader.readBloomFilter();
         if (bloomFilter != null
-            && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+            && !bloomFilter.contains(
+                ((PlainDeviceID) key.device).toStringID()
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + key.measurement)) {
           return null;
         }
         TimeseriesMetadata timeseriesMetadata =
@@ -289,7 +293,7 @@ public class TimeSeriesMetadataCache {
 
     public long getRetainedSizeInBytes() {
       return INSTANCE_SIZE
-          + sizeOfCharArray(device.length())
+          + sizeOfCharArray(((PlainDeviceID) device).toStringID().length())
           + sizeOfCharArray(measurement.length());
     }
 

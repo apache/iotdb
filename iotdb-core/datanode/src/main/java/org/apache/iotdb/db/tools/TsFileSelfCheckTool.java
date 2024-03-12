@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -131,7 +132,10 @@ public class TsFileSelfCheckTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
+                    new Path(
+                        ((PlainDeviceID) deviceId).toStringID(),
+                        timeseriesMetadata.getMeasurementId(),
+                        true),
                     timeseriesMetadata));
           }
         } else {

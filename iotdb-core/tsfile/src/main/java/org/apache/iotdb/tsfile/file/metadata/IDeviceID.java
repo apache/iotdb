@@ -44,6 +44,8 @@ public interface IDeviceID extends Comparable<IDeviceID> {
 
   int memorySize();
 
+  boolean isEmpty();
+
   static IDeviceID deserializeFrom(ByteBuffer byteBuffer) {
     // TODO
     return new PlainDeviceID(ReadWriteIOUtils.readVarIntString(byteBuffer));

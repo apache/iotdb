@@ -80,6 +80,11 @@ public class PlainDeviceID implements IDeviceID {
     return deviceID.length();
   }
 
+  @Override
+  public boolean isEmpty() {
+    return deviceID.isEmpty();
+  }
+
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
     return new PlainDeviceID(ReadWriteIOUtils.readString(byteBuffer));
   }
