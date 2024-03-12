@@ -52,6 +52,10 @@ public class Path implements Serializable, Comparable<Path> {
 
   public Path() {}
 
+  public Path(IDeviceID deviceID) {
+    this(((PlainDeviceID) deviceID).toStringID());
+  }
+
   /**
    * this constructor doesn't split the path, only useful for table header.
    *

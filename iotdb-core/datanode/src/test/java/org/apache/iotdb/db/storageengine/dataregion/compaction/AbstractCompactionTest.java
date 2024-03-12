@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -608,7 +609,7 @@ public class AbstractCompactionTest {
    * Check whether target file contain empty chunk group or not. Assert fail if it contains empty
    * chunk group whose deviceID is not in the deviceIdList.
    */
-  protected void check(TsFileResource targetResource, List<String> deviceIdList)
+  protected void check(TsFileResource targetResource, List<IDeviceID> deviceIdList)
       throws IOException {
     byte marker;
     try (TsFileSequenceReader reader =
@@ -628,7 +629,7 @@ public class AbstractCompactionTest {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            String deviceID = chunkGroupHeader.getDeviceID();
+            IDeviceID deviceID = chunkGroupHeader.getDeviceID();
             if (!deviceIdList.contains(deviceID)) {
               Assert.fail(
                   "Target file "
