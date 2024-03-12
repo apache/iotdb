@@ -24,18 +24,22 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Objects;
 
 public class IoTDBPipePattern extends PipePattern {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPipePattern.class);
+  private final PartialPath patternPartialPath;
 
   public IoTDBPipePattern(String pattern) {
     super(pattern);
+
+    try {
+      patternPartialPath = new PartialPath(pattern);
+    } catch (IllegalPathException e) {
+      throw new PipeException("Illegal IoTDBPipePattern: " + pattern, e);
+    }
   }
 
   @Override
@@ -51,19 +55,18 @@ public class IoTDBPipePattern extends PipePattern {
 
     try {
       PathUtils.isLegalPath(pattern);
+      return true;
     } catch (IllegalPathException e) {
       return false;
     }
-    return true;
   }
 
   @Override
   public boolean coversDb(String db) {
     try {
-      PartialPath patternPath = new PartialPath(pattern);
-      return patternPath.include(new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+      return patternPartialPath.include(
+          new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
     } catch (IllegalPathException e) {
-      LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
   }
@@ -71,10 +74,9 @@ public class IoTDBPipePattern extends PipePattern {
   @Override
   public boolean coversDevice(String device) {
     try {
-      PartialPath patternPath = new PartialPath(pattern);
-      return patternPath.include(new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+      return patternPartialPath.include(
+          new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (IllegalPathException e) {
-      LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
   }
@@ -82,29 +84,24 @@ public class IoTDBPipePattern extends PipePattern {
   @Override
   public boolean mayOverlapWithDevice(String device) {
     try {
-      PartialPath devicePath = new PartialPath(device);
-      PartialPath patternPath = new PartialPath(pattern);
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPath.matchPrefixPath(devicePath);
+      return patternPartialPath.matchPrefixPath(new PartialPath(device));
     } catch (IllegalPathException e) {
-      LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
   }
 
   @Override
   public boolean matchesMeasurement(String device, String measurement) {
+    // For aligned timeseries, empty measurement is an alias of the time column.
     if (Objects.isNull(measurement) || measurement.isEmpty()) {
       return false;
     }
 
     try {
-      PartialPath measurementPath = new PartialPath(device, measurement);
-      PartialPath patternPath = new PartialPath(pattern);
-      return patternPath.matchFullPath(measurementPath);
+      return patternPartialPath.matchFullPath(new PartialPath(device, measurement));
     } catch (IllegalPathException e) {
-      LOGGER.warn("Illegal path exception: ", e);
       return false;
     }
   }
