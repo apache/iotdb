@@ -139,12 +139,12 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
           // so we just ASSUME the extractor matches and do more checks later.
           matchedExtractors.addAll(extractorsFilteredByDevice);
         } else {
-          // `measurements` is not empty (only in case of tablet event). match extractors by
-          // measurements.
+          // `measurements` is not empty (only in case of tablet event).
+          // Match extractors by measurements.
           extractorsFilteredByDevice.forEach(
               extractor -> {
                 final PipePattern pattern = extractor.getPipePattern();
-                if (Objects.isNull(pattern) || pattern.coversDevice(device)) {
+                if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(device)) {
                   // The pattern can match all measurements of the device.
                   matchedExtractors.add(extractor);
                 } else {
