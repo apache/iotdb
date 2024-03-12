@@ -103,8 +103,8 @@ public class PrefixPipePattern extends PipePattern {
       return true;
     }
 
-    // For example, pattern is "root.a.b.c", device is "root.a.b", then measurements "c" and "cc"
-    // can be matched,
+    // For example, pattern is "root.a.b.c", device is "root.a.b",
+    // then measurements "c" and "cc" can be matched,
     // measurements "d" or "dc" can't be matched.
     String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
     return

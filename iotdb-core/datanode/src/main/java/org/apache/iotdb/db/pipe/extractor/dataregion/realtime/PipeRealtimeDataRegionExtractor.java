@@ -152,7 +152,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
-    pipePattern = PipePattern.getPipePatternFromSourceParameters(parameters);
+    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));

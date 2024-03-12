@@ -110,7 +110,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     // Get the pattern format to check whether the pattern is legal
     final PipePattern pattern =
-        PipePattern.getPipePatternFromSourceParameters(validator.getParameters());
+        PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
     validatePattern(pattern);

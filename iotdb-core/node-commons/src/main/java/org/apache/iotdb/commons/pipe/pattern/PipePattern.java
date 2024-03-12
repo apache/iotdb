@@ -36,6 +36,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 
 public abstract class PipePattern {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePattern.class);
 
   protected final String pattern;
@@ -57,24 +58,26 @@ public abstract class PipePattern {
    *
    * @return The interpreted {@link PipePattern} which is not null.
    */
-  public static PipePattern getPipePatternFromSourceParameters(PipeParameters sourceParameters) {
-    String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
-    String pattern = sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+  public static PipePattern parsePipePatternFromSourceParameters(PipeParameters sourceParameters) {
+    final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
-    if (
-    // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path, ignoring the
-    // other 2 parameters.
-    path != null) {
+    // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
+    // ignoring the other 2 parameters.
+    if (path != null) {
       return new IoTDBPipePattern(path);
-    } else if (
-    // 2. Otherwise, If "source.pattern" is specified, it will be interpreted according to
-    // "source.pattern.format".
-    pattern != null) {
-      String patternFormat =
+    }
+
+    final String pattern =
+        sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+
+    // 2. Otherwise, If "source.pattern" is specified, it will be interpreted
+    // according to "source.pattern.format".
+    if (pattern != null) {
+      final String patternFormat =
           sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_FORMAT_KEY, SOURCE_PATTERN_FORMAT_KEY);
-      if (
+
       // If "source.pattern.format" is not specified, use prefix format by default.
-      patternFormat == null) {
+      if (patternFormat == null) {
         return new PrefixPipePattern(pattern);
       }
 
@@ -88,11 +91,11 @@ public abstract class PipePattern {
               "Unknown pattern format: {}, use prefix matching format by default.", patternFormat);
           return new PrefixPipePattern(pattern);
       }
-    } else {
-      // 3. If neither "source.path" nor "source.pattern" is specified, this pipe source will match
-      // all data.
-      return new IoTDBPipePattern(null);
     }
+
+    // 3. If neither "source.path" nor "source.pattern" is specified,
+    // this pipe source will match all data.
+    return new PrefixPipePattern(null);
   }
 
   public abstract String getDefaultPattern();

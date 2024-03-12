@@ -111,6 +111,6 @@ public class IoTDBPipePattern extends PipePattern {
 
   @Override
   public String toString() {
-    return "IotdbPipePattern" + super.toString();
+    return "IoTDBPipePattern" + super.toString();
   }
 }

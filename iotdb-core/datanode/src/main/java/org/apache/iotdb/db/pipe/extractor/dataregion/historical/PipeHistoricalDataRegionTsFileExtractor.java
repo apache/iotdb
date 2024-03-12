@@ -195,7 +195,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
     }
 
-    pipePattern = PipePattern.getPipePatternFromSourceParameters(parameters);
+    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
