@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.resource.snapshot;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -28,7 +28,7 @@ import java.util.HashSet;
 public class PipeConfigNodeSnapshotResourceManager extends PipeSnapshotResourceManager {
 
   private PipeConfigNodeSnapshotResourceManager() {
-    super(new HashSet<>(Collections.singletonList(ConfigNodeConstant.CONSENSUS_FOLDER)));
+    super(new HashSet<>(Collections.singletonList(IoTDBConstant.CONSENSUS_FOLDER_NAME)));
   }
 
   private static class PipeConfigNodeSnapshotResourceManagerHolder {
