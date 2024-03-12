@@ -31,10 +31,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -87,7 +89,6 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -1645,65 +1646,57 @@ public class SessionConnection {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 
-  public void subscribeDEMO() {
-    try {
-      TPipeSubscribeResp resp;
-      // handshake
-      resp =
-          client.pipeSubscribe(
-              PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig("cg1", "c1")));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
-        throw new RuntimeException(resp.status.toString());
-      }
+  // -------------------------------------------------------------- //
+  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
+  // -------------------------------------------------------------- //
 
-      // subscribe
-      resp =
-          client.pipeSubscribe(
-              PipeSubscribeSubscribeReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
-        throw new RuntimeException(resp.status.toString());
-      }
+  public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
+    }
+  }
 
-      // create pipe (tmp)
-      TSExecuteStatementResp executeStatementResp =
-          client.executeStatementV2(
-              new TSExecuteStatementReq(
-                  sessionId,
-                  "create pipe demo_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='demo', 'consumer-group'='cg1')",
-                  statementId));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executeStatementResp.status.code) {
-        throw new RuntimeException(executeStatementResp.status.toString());
-      }
+  public void dropConsumer() throws Exception {
+    TPipeSubscribeResp resp = client.pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
+    }
+  }
 
-      Thread.sleep(2333);
+  public void subscribe(List<String> topicNames) throws Exception {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
+    }
+  }
 
-      // poll
-      resp =
-          client.pipeSubscribe(
-              PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singletonList("demo")));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
-        throw new RuntimeException(resp.status.toString());
-      }
-      PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-      for (EnrichedTablets enrichedTablets : pollResp.getEnrichedTabletsList()) {
-        System.out.println(enrichedTablets.getTopicName());
-        System.out.println(enrichedTablets.getTablets());
-        System.out.println(enrichedTablets.getSubscriptionCommitIds());
-        topicNameToSubscriptionCommitIds
-            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-            .addAll(enrichedTablets.getSubscriptionCommitIds());
-      }
+  public void unsubscribe(List<String> topicNames) throws Exception {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
+    }
+  }
 
-      // commit
-      resp =
-          client.pipeSubscribe(
-              PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
-        throw new RuntimeException(resp.status.toString());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
+  public List<EnrichedTablets> poll(List<String> topicNames) throws Exception {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
+    }
+    PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+    return pollResp.getEnrichedTabletsList();
+  }
+
+  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(
+            PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
+    if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
+      throw new RuntimeException(resp.status.toString());
     }
   }
 }

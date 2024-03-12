@@ -41,7 +41,6 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestTyp
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
@@ -155,9 +154,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
     }
 
-    // TODO: REMOVE ME BEFORE MERGING
-    SubscriptionAgent.topic().createTopic(new TopicConfig("demo", "root.**"));
-
     // fetch DN endPoints by CN
     // TODO: cache result and listen changes
     try (ConfigNodeClient configNodeClient =
@@ -249,8 +245,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // poll
+    List<String> topicNames = req.getTopicNames();
     List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsList =
-        SubscriptionAgent.broker().poll(consumerConfig);
+        SubscriptionAgent.broker().poll(consumerConfig, topicNames);
     List<ByteBuffer> serializedEnrichedTabletsList =
         enrichedTabletsList.stream().map((pair) -> pair.left).collect(Collectors.toList());
     List<List<String>> subscriptionCommitIdsList =
@@ -259,7 +256,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .collect(Collectors.toList());
 
     LOGGER.info(
-        "Subscription: consumer poll successfully, consumer config: {}, commit ids: {}",
+        "Subscription: consumer poll topics {} successfully, consumer config: {}, commit ids: {}",
+        topicNames,
         consumerConfig,
         subscriptionCommitIdsList);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(

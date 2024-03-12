@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,15 +35,16 @@ public class SubscriptionBrokerAgent {
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
-  public List<Pair<ByteBuffer, EnrichedTablets>> poll(ConsumerConfig consumerConfig) {
+  public List<Pair<ByteBuffer, EnrichedTablets>> poll(
+      ConsumerConfig consumerConfig, List<String> topicNames) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
       return Collections.emptyList();
     }
-    // TODO: currently we fetch messages from all subscribed topics
-    return broker.poll(SubscriptionAgent.consumer().subscribedTopic(consumerConfig));
+    // TODO: currently we fetch messages from all topics
+    return broker.poll(new HashSet<>(topicNames));
   }
 
   public void commit(

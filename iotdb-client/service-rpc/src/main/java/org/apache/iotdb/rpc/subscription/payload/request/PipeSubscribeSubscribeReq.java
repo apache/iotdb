@@ -32,6 +32,7 @@ import java.util.Objects;
 
 public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
 
+  // TODO: list -> set
   private transient List<String> topicNames = new ArrayList<>();
 
   public List<String> getTopicNames() {

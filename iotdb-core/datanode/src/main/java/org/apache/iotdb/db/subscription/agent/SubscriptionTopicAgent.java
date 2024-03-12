@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,7 +35,10 @@ public class SubscriptionTopicAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   // TODO: sync from node-commons
-  private final Map<String, TopicMeta> topicNameToTopicMeta = new ConcurrentHashMap<>();
+  // REMOVE INITIAL VALUE BEFORE MERGING
+  private final Map<String, TopicMeta> topicNameToTopicMeta =
+      new ConcurrentHashMap<>(
+          Collections.singletonMap("topic1", new TopicMeta(new TopicConfig("topic1", "root.**"))));
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 

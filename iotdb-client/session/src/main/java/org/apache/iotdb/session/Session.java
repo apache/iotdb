@@ -32,6 +32,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -3665,7 +3667,37 @@ public class Session implements ISession {
     }
   }
 
-  public void subscribeDEMO() {
-    defaultSessionConnection.subscribeDEMO();
+  // -------------------------------------------------------------- //
+  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
+  // -------------------------------------------------------------- //
+
+  @Override
+  public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
+    defaultSessionConnection.createConsumer(consumerConfig);
+  }
+
+  @Override
+  public void dropConsumer() throws Exception {
+    defaultSessionConnection.dropConsumer();
+  }
+
+  @Override
+  public void subscribe(List<String> topicNames) throws Exception {
+    defaultSessionConnection.subscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(List<String> topicNames) throws Exception {
+    defaultSessionConnection.unsubscribe(topicNames);
+  }
+
+  @Override
+  public List<EnrichedTablets> poll(List<String> topicNames) throws Exception {
+    return defaultSessionConnection.poll(topicNames);
+  }
+
+  @Override
+  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
+    defaultSessionConnection.commit(topicNameToSubscriptionCommitIds);
   }
 }

@@ -26,6 +26,8 @@ import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -539,4 +541,20 @@ public interface ISession extends AutoCloseable {
   /** @deprecated */
   @Deprecated
   default void setEnableCacheLeader(boolean enableCacheLeader) {}
+
+  // -------------------------------------------------------------- //
+  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
+  // -------------------------------------------------------------- //
+
+  void createConsumer(ConsumerConfig consumerConfig) throws Exception;
+
+  void dropConsumer() throws Exception;
+
+  void subscribe(List<String> topicNames) throws Exception;
+
+  void unsubscribe(List<String> topicNames) throws Exception;
+
+  List<EnrichedTablets> poll(List<String> topicNames) throws Exception;
+
+  void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception;
 }
