@@ -102,6 +102,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -364,6 +365,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitExplain(ExplainStatement explainStatement, C context) {
     return visitStatement(explainStatement, context);
+  }
+
+  public R visitExplainAnalyze(ExplainAnalyzeStatement explainAnalyzeStatement, C context) {
+    return visitStatement(explainAnalyzeStatement, context);
   }
 
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {

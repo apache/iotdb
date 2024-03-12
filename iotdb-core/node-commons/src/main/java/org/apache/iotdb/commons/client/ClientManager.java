@@ -57,10 +57,10 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   /**
-   * return a client V for node K to the ClientManager.
+   * return a client V for node K to the {@link ClientManager}.
    *
-   * <p>Note: We do not define this interface in IClientManager to make you aware that the return of
-   * a client is automatic whenever a particular client is used.
+   * <p>Note: We do not define this interface in {@link IClientManager} to make you aware that the
+   * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
     Optional.ofNullable(node)

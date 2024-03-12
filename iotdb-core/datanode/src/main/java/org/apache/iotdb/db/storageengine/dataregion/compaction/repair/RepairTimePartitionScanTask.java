@@ -99,7 +99,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         scanUtil.scanTsFile();
         checkTaskStatusAndMayStop();
         if (scanUtil.isBrokenFile()) {
-          LOGGER.warn("[RepairScheduler] file {} is skipped because it is broken", sourceFile);
+          LOGGER.warn("[RepairScheduler] {} is skipped because it is broken", sourceFile);
           sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
           latch.countDown();
           continue;
@@ -112,8 +112,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
         sourceFile.readUnlock();
       }
       LOGGER.info(
-          "[RepairScheduler] file {} need to repair because it has internal unsorted data",
-          sourceFile);
+          "[RepairScheduler] {} need to repair because it has internal unsorted data", sourceFile);
       TsFileManager tsFileManager = timePartition.getTsFileManager();
       RepairUnsortedFileCompactionTask task =
           new RepairUnsortedFileCompactionTask(
@@ -150,7 +149,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               false,
               tsFileManager.getNextCompactionTaskId());
       LOGGER.info(
-          "[RepairScheduler] file {} need to repair because it is overlapped with other files",
+          "[RepairScheduler] {} need to repair because it is overlapped with other files",
           overlapFile);
       if (submitRepairFileTaskSafely(task)) {
         latch.await();

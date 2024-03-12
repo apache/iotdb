@@ -19,60 +19,27 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.schemaregion.PipeSchemaRegionProcessorSubtaskExecutor;
-
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
  */
-@SuppressWarnings("unused") // assignerSubtaskExecutor is for future use
 public class PipeSubtaskExecutorManager {
+  private final PipeProcessorSubtaskExecutor processorExecutor;
+  private final PipeConnectorSubtaskExecutor connectorExecutor;
 
-  private final PipeAssignerSubtaskExecutor dataRegionAssignerExecutor;
-  private final PipeProcessorSubtaskExecutor dataRegionProcessorExecutor;
-  private final PipeConnectorSubtaskExecutor dataRegionConnectorExecutor;
-
-  private final PipeAssignerSubtaskExecutor schemaRegionAssignerExecutor;
-  private final PipeProcessorSubtaskExecutor schemaRegionProcessorExecutor;
-  private final PipeConnectorSubtaskExecutor schemaRegionConnectorExecutor;
-
-  public PipeAssignerSubtaskExecutor getDataRegionAssignerExecutor() {
-    throw new UnsupportedOperationException("currently not needed");
+  public PipeProcessorSubtaskExecutor getProcessorExecutor() {
+    return processorExecutor;
   }
 
-  public PipeProcessorSubtaskExecutor getDataRegionProcessorExecutor() {
-    return dataRegionProcessorExecutor;
-  }
-
-  public PipeConnectorSubtaskExecutor getDataRegionConnectorExecutor() {
-    return dataRegionConnectorExecutor;
-  }
-
-  public PipeAssignerSubtaskExecutor getSchemaRegionAssignerExecutor() {
-    throw new UnsupportedOperationException("currently not needed");
-  }
-
-  public PipeProcessorSubtaskExecutor getSchemaRegionProcessorExecutor() {
-    return schemaRegionProcessorExecutor;
-  }
-
-  public PipeConnectorSubtaskExecutor getSchemaRegionConnectorExecutor() {
-    return schemaRegionConnectorExecutor;
+  public PipeConnectorSubtaskExecutor getConnectorExecutor() {
+    return connectorExecutor;
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
-    dataRegionAssignerExecutor = null;
-    dataRegionProcessorExecutor = new PipeDataRegionProcessorSubtaskExecutor();
-    dataRegionConnectorExecutor = new PipeDataRegionConnectorSubtaskExecutor();
-
-    schemaRegionAssignerExecutor = null;
-    schemaRegionProcessorExecutor = new PipeSchemaRegionProcessorSubtaskExecutor();
-    schemaRegionConnectorExecutor = new PipeSchemaRegionConnectorSubtaskExecutor();
+    processorExecutor = new PipeProcessorSubtaskExecutor();
+    connectorExecutor = new PipeConnectorSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {

@@ -138,4 +138,26 @@ public class CreateMultiTimeSeriesStatement extends Statement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateMultiTimeseries(this, context);
   }
+
+  @Override
+  public String toString() {
+    return "CreateMultiTimeSeriesStatement{"
+        + "paths="
+        + paths
+        + ", dataTypes="
+        + dataTypes
+        + ", encodings="
+        + encodings
+        + ", compressors="
+        + compressors
+        + ", propsList="
+        + propsList
+        + ", aliasList="
+        + aliasList
+        + ", tagsList="
+        + tagsList
+        + ", attributesList="
+        + attributesList
+        + "}";
+  }
 }

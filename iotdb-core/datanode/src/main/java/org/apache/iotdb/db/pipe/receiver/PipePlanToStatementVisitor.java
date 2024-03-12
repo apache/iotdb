@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.receiver;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
@@ -38,25 +40,35 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePlanToStatementVisitor.class);
 
   @Override
   public Statement visitPlan(PlanNode node, Void context) {
     throw new UnsupportedOperationException(
-        "PipePlanToStatementVisitor does not support visiting general plan.");
+        String.format(
+            "PipePlanToStatementVisitor does not support visiting general plan, PlanNode: %s",
+            node));
   }
 
   @Override
@@ -70,6 +82,21 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setAttributes(node.getAttributes());
     statement.setAlias(node.getAlias());
     statement.setTags(node.getTags());
+    return statement;
+  }
+
+  @Override
+  public CreateAlignedTimeSeriesStatement visitCreateAlignedTimeSeries(
+      CreateAlignedTimeSeriesNode node, Void context) {
+    CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
+    statement.setDataTypes(node.getDataTypes());
+    statement.setCompressors(node.getCompressors());
+    statement.setEncodings(node.getEncodings());
+    statement.setAttributesList(node.getAttributesList());
+    statement.setAliasList(node.getAliasList());
+    statement.setDevicePath(node.getDevicePath());
+    statement.setMeasurements(node.getMeasurements());
+    statement.setTagsList(node.getTagsList());
     return statement;
   }
 
@@ -90,15 +117,34 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
       MeasurementGroup group = path2Group.getValue();
-      dataTypes.addAll(group.getDataTypes());
-      encodings.addAll(group.getEncodings());
-      compressors.addAll(group.getCompressors());
-      propsList.addAll(group.getPropsList());
-      aliasList.addAll(group.getAliasList());
-      tagsList.addAll(group.getTagsList());
-      attributesList.addAll(group.getAttributesList());
-      for (int i = 0; i < group.getAttributesList().size(); ++i) {
-        paths.add(path2Group.getKey());
+      dataTypes.addAll(
+          Objects.nonNull(group.getDataTypes()) ? group.getDataTypes() : new ArrayList<>());
+      encodings.addAll(
+          Objects.nonNull(group.getEncodings()) ? group.getEncodings() : new ArrayList<>());
+      compressors.addAll(
+          Objects.nonNull(group.getCompressors()) ? group.getCompressors() : new ArrayList<>());
+      propsList.addAll(
+          Objects.nonNull(group.getPropsList()) ? group.getPropsList() : new ArrayList<>());
+      aliasList.addAll(
+          Objects.nonNull(group.getAliasList()) ? group.getAliasList() : new ArrayList<>());
+      tagsList.addAll(
+          Objects.nonNull(group.getTagsList()) ? group.getTagsList() : new ArrayList<>());
+      attributesList.addAll(
+          Objects.nonNull(group.getAttributesList())
+              ? group.getAttributesList()
+              : new ArrayList<>());
+      try {
+        if (Objects.nonNull(group.getMeasurements())) {
+          for (int i = 0; i < group.getMeasurements().size(); ++i) {
+            paths.add(
+                new PartialPath(path2Group.getKey().getFullPath(), group.getMeasurements().get(i)));
+          }
+        }
+      } catch (IllegalPathException e) {
+        LOGGER.error(
+            "failed to create multi timeseries statement because of {}", e.getMessage(), e);
+        throw new PipeException(
+            "failed to create multi timeseries statement because of " + e.getMessage(), e);
       }
     }
 
@@ -106,10 +152,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setDataTypes(dataTypes);
     statement.setEncodings(encodings);
     statement.setCompressors(compressors);
-    statement.setPropsList(propsList);
-    statement.setAliasList(aliasList);
-    statement.setTagsList(tagsList);
-    statement.setAttributesList(attributesList);
+    statement.setPropsList(propsList.isEmpty() ? null : propsList);
+    statement.setAliasList(aliasList.isEmpty() ? null : aliasList);
+    statement.setTagsList(tagsList.isEmpty() ? null : tagsList);
+    statement.setAttributesList(attributesList.isEmpty() ? null : attributesList);
     return statement;
   }
 

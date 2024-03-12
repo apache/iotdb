@@ -310,7 +310,9 @@ public class QueryExecution implements IQueryExecution {
     try {
       result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
     } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(System.nanoTime() - startTime);
+      long analyzeCost = System.nanoTime() - startTime;
+      context.setAnalyzeCost(analyzeCost);
+      PERFORMANCE_OVERVIEW_METRICS.recordAnalyzeCost(analyzeCost);
     }
     return result;
   }
@@ -369,8 +371,9 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      long distributionPlanCost = System.nanoTime() - startTime;
+      context.setDistributionPlanCost(distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
@@ -775,7 +778,15 @@ public class QueryExecution implements IQueryExecution {
     return analysis.getStatement();
   }
 
+  public MPPQueryContext getContext() {
+    return context;
+  }
+
   public String toString() {
     return String.format("QueryExecution[%s]", context.getQueryId());
+  }
+
+  public ScheduledExecutorService getScheduledExecutor() {
+    return scheduledExecutor;
   }
 }
