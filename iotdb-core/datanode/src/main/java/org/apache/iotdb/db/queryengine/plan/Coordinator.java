@@ -281,12 +281,15 @@ public class Coordinator {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < Math.min(req.getPathsSize(), 10); i++) {
-        sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
+        sb.append(i == 0 ? "" : ",")
+            .append(req.getAggregations().get(i))
+            .append(":")
+            .append(req.getPaths().get(i));
       }
       slowContent =
           String.format(
-              "Request name: TSAggregationQueryReq, paths size: %s, some paths: %s",
-              req.getPathsSize(), sb);
+              "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, paths size: %s, some paths: %s",
+              req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
       slowContent =

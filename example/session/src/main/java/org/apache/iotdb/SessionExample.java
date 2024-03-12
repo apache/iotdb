@@ -77,42 +77,6 @@ public class SessionExample {
     session.open(false);
 
     // set session fetchSize
-    session.setFetchSize(10);
-
-    SessionDataSet dataSet;
-    dataSet =
-        session.executeRawDataQuery(
-            Arrays.asList(
-                "root.sg2.d1.s1",
-                "root.sg2.d1.s2",
-                "root.sg2.d1.s3",
-                "root.sg2.d2.s1",
-                "root.sg2.d2.s2",
-                "root.sg2.d2.s3"),
-            1L,
-            1000000L);
-    System.out.println(dataSet.getColumnNames());
-    dataSet.setFetchSize(1024); // default is 10000
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
-
-    dataSet = session.executeQueryStatement(SELECT_D1);
-  }
-
-  public static void main1(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
-    session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
-            .username("root")
-            .password("root")
-            .version(Version.V_1_0)
-            .build();
-    session.open(false);
-
-    // set session fetchSize
     session.setFetchSize(10000);
 
     try {
