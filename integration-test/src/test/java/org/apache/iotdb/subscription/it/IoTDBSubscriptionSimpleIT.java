@@ -25,13 +25,10 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -44,6 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.fail;
 
@@ -65,57 +63,124 @@ public class IoTDBSubscriptionSimpleIT {
 
   @Test
   public void basicSubscriptionTest() {
+    // insert some history data
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      // prepare data
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
-      schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
-      schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
-
-      Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
-
-      long timestamp = System.currentTimeMillis();
-
-      for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
-        tablet.addTimestamp(rowIndex, timestamp);
-        tablet.addValue("s1", rowIndex, 1L);
-        tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
-          session.insertTablet(tablet, true);
-          tablet.reset();
-        }
-        timestamp++;
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
-      if (tablet.rowSize != 0) {
-        session.insertTablet(tablet);
-        tablet.reset();
-      }
+    int count = 0;
 
-      // subscription
+    // subscription
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.createConsumer(new ConsumerConfig("cg1", "c1"));
       session.subscribe(Collections.singletonList("topic1"));
       // TODO: manually create pipe
       session.executeNonQueryStatement(
           "create pipe topic1_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='topic1', 'consumer-group'='cg1')");
-      Thread.sleep(2333);
-      List<EnrichedTablets> enrichedTabletsList = session.poll(Collections.singletonList("topic1"));
-      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-      for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        System.out.println(enrichedTablets.getTopicName());
-        System.out.println(enrichedTablets.getTablets());
-        System.out.println(enrichedTablets.getSubscriptionCommitIds());
-        topicNameToSubscriptionCommitIds
-            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-            .addAll(enrichedTablets.getSubscriptionCommitIds());
+
+      List<EnrichedTablets> enrichedTabletsList;
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        enrichedTabletsList = session.poll(Collections.singletonList("topic1"));
+        if (enrichedTabletsList.isEmpty()) {
+          break;
+        }
+        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+          for (Tablet tablet : enrichedTablets.getTablets()) {
+            count += tablet.rowSize;
+          }
+          topicNameToSubscriptionCommitIds
+              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+              .addAll(enrichedTablets.getSubscriptionCommitIds());
+        }
+        session.commit(topicNameToSubscriptionCommitIds);
       }
-      session.commit(topicNameToSubscriptionCommitIds);
       session.unsubscribe(Collections.singletonList("topic1"));
       session.dropConsumer();
     } catch (Exception e) {
       fail(e.getMessage());
     }
+
+    Assert.assertEquals(count, 100);
+  }
+
+  @Test
+  public void multiConsumersSubscriptionTest() throws Exception {
+    ConcurrentHashMap<Long, Long> timestamps = new ConcurrentHashMap<>();
+
+    List<Thread> threads = new ArrayList<>();
+    Thread t =
+        new Thread(
+            () -> {
+              try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+                for (int i = 0; i < 100; ++i) {
+                  session.executeNonQueryStatement(
+                      String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+                }
+                session.executeNonQueryStatement("flush");
+              } catch (Exception e) {
+                fail(e.getMessage());
+              }
+            });
+    t.start();
+    threads.add(t);
+
+    for (int i = 0; i < 3; ++i) {
+      final int idx = i;
+      t =
+          new Thread(
+              () -> {
+                try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+                  session.createConsumer(new ConsumerConfig("cg1", String.format("c%s", idx)));
+                  session.subscribe(Collections.singletonList("topic1"));
+                  if (idx == 0) {
+                    // TODO: manually create pipe
+                    session.executeNonQueryStatement(
+                        "create pipe topic1_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='topic1', 'consumer-group'='cg1')");
+                  }
+
+                  List<EnrichedTablets> enrichedTabletsList;
+                  while (true) {
+                    Thread.sleep(1000); // wait some time
+                    enrichedTabletsList = session.poll(Collections.singletonList("topic1"));
+                    if (enrichedTabletsList.isEmpty()) {
+                      break;
+                    }
+                    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+                    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+                      for (Tablet tablet : enrichedTablets.getTablets()) {
+                        for (Long time : tablet.timestamps) {
+                          timestamps.put(time, time);
+                        }
+                      }
+                      topicNameToSubscriptionCommitIds
+                          .computeIfAbsent(
+                              enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+                          .addAll(enrichedTablets.getSubscriptionCommitIds());
+                    }
+                    session.commit(topicNameToSubscriptionCommitIds);
+                  }
+                  session.unsubscribe(Collections.singletonList("topic1"));
+                  session.dropConsumer();
+                } catch (Exception e) {
+                  fail(e.getMessage());
+                }
+              });
+      t.start();
+      threads.add(t);
+    }
+
+    for (Thread thread : threads) {
+      thread.join();
+    }
+
+    Assert.assertEquals(timestamps.size(), 100);
   }
 }

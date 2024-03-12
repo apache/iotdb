@@ -35,7 +35,7 @@ public class SubscriptionTopicAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   // TODO: sync from node-commons
-  // REMOVE INITIAL VALUE BEFORE MERGING
+  // TODO: REMOVE INITIAL VALUE BEFORE LINKING WITH CN
   private final Map<String, TopicMeta> topicNameToTopicMeta =
       new ConcurrentHashMap<>(
           Collections.singletonMap("topic1", new TopicMeta(new TopicConfig("topic1", "root.**"))));
