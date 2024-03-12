@@ -112,7 +112,9 @@ public abstract class PipePattern {
   /**
    * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
+   * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is false.
+   *
+   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
    */
   public abstract boolean mayOverlapWithDevice(String device);
