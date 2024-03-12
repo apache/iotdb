@@ -126,7 +126,7 @@ public class ProcedureManager {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
-  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
+  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
