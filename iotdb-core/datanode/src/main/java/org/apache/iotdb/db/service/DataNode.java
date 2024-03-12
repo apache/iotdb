@@ -949,7 +949,7 @@ public class DataNode implements DataNodeMBean {
       // TsFileProcessor
       Class.forName(TsFileProcessor.class.getName());
     } catch (ClassNotFoundException e) {
-      logger.error("Init query engine error", e);
+      logger.error("load class error: ", e);
     }
   }
 
