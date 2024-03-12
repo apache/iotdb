@@ -65,7 +65,7 @@ public abstract class PipePattern {
     // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path, ignoring the
     // other 2 parameters.
     path != null) {
-      return new IotdbPipePattern(path);
+      return new IoTDBPipePattern(path);
     } else if (
     // 2. Otherwise, If "source.pattern" is specified, it will be interpreted according to
     // "source.pattern.format".
@@ -80,7 +80,7 @@ public abstract class PipePattern {
 
       switch (patternFormat.toLowerCase()) {
         case EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE:
-          return new IotdbPipePattern(pattern);
+          return new IoTDBPipePattern(pattern);
         case EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE:
           return new PrefixPipePattern(pattern);
         default:
@@ -91,7 +91,7 @@ public abstract class PipePattern {
     } else {
       // 3. If neither "source.path" nor "source.pattern" is specified, this pipe source will match
       // all data.
-      return new IotdbPipePattern(null);
+      return new IoTDBPipePattern(null);
     }
   }
 

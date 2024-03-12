@@ -30,10 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-public class IotdbPipePattern extends PipePattern {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IotdbPipePattern.class);
+public class IoTDBPipePattern extends PipePattern {
 
-  public IotdbPipePattern(String pattern) {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPipePattern.class);
+
+  public IoTDBPipePattern(String pattern) {
     super(pattern);
   }
 

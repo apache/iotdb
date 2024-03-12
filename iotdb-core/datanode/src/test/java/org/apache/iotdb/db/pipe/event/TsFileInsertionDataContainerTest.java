@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event;
 
-import org.apache.iotdb.commons.pipe.pattern.IotdbPipePattern;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -292,7 +292,7 @@ public class TsFileInsertionDataContainerTest {
         break;
       case IOTDB_FORMAT:
       default:
-        rootPattern = new IotdbPipePattern("root.**");
+        rootPattern = new IoTDBPipePattern("root.**");
         break;
     }
 
@@ -450,8 +450,8 @@ public class TsFileInsertionDataContainerTest {
         break;
       case IOTDB_FORMAT:
       default:
-        oneAlignedDevicePattern = new IotdbPipePattern(oneDeviceInAlignedTsFile.get() + ".**");
-        oneNonAlignedDevicePattern = new IotdbPipePattern(oneDeviceInUnalignedTsFile.get() + ".**");
+        oneAlignedDevicePattern = new IoTDBPipePattern(oneDeviceInAlignedTsFile.get() + ".**");
+        oneNonAlignedDevicePattern = new IoTDBPipePattern(oneDeviceInUnalignedTsFile.get() + ".**");
         break;
     }
 
@@ -577,9 +577,9 @@ public class TsFileInsertionDataContainerTest {
         break;
       case IOTDB_FORMAT:
       default:
-        oneAlignedMeasurementPattern = new IotdbPipePattern(oneMeasurementInAlignedTsFile.get());
+        oneAlignedMeasurementPattern = new IoTDBPipePattern(oneMeasurementInAlignedTsFile.get());
         oneNonAlignedMeasurementPattern =
-            new IotdbPipePattern(oneMeasurementInUnalignedTsFile.get());
+            new IoTDBPipePattern(oneMeasurementInUnalignedTsFile.get());
         break;
     }
 
@@ -700,7 +700,7 @@ public class TsFileInsertionDataContainerTest {
         break;
       case IOTDB_FORMAT:
       default:
-        notExistPattern = new IotdbPipePattern("not-exist-pattern");
+        notExistPattern = new IoTDBPipePattern("not-exist-pattern");
         break;
     }
 

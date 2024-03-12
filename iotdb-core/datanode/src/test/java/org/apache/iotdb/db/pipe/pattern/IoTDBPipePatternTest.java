@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.pattern;
 
-import org.apache.iotdb.commons.pipe.pattern.IotdbPipePattern;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class IotdbPipePatternTest {
+public class IoTDBPipePatternTest {
 
   @Test
   public void testIotdbPipePattern() {
@@ -36,10 +36,10 @@ public class IotdbPipePatternTest {
       "root.", "roo", "", "root..", "root./",
     };
     for (String s : legalPatterns) {
-      Assert.assertTrue(new IotdbPipePattern(s).isLegal());
+      Assert.assertTrue(new IoTDBPipePattern(s).isLegal());
     }
     for (String t : illegalPatterns) {
-      Assert.assertFalse(new IotdbPipePattern(t).isLegal());
+      Assert.assertFalse(new IoTDBPipePattern(t).isLegal());
     }
 
     // Test pattern cover db
@@ -51,10 +51,10 @@ public class IotdbPipePatternTest {
       "root.db", "root.*", "root.*.*", "root.db.*.**", "root.db.d1", "root.**.db.**",
     };
     for (String s : patternsCoverDb) {
-      Assert.assertTrue(new IotdbPipePattern(s).coversDb(db));
+      Assert.assertTrue(new IoTDBPipePattern(s).coversDb(db));
     }
     for (String t : patternsNotCoverDb) {
-      Assert.assertFalse(new IotdbPipePattern(t).coversDb(db));
+      Assert.assertFalse(new IoTDBPipePattern(t).coversDb(db));
     }
 
     String device = "root.db.d1";
@@ -67,10 +67,10 @@ public class IotdbPipePatternTest {
       "root.*", "root.*.*", "root.db.d1", "root.db.d2.*", "root.**.d2.**",
     };
     for (String s : patternsCoverDevice) {
-      Assert.assertTrue(new IotdbPipePattern(s).coversDevice(device));
+      Assert.assertTrue(new IoTDBPipePattern(s).coversDevice(device));
     }
     for (String t : patternsNotCoverDevice) {
-      Assert.assertFalse(new IotdbPipePattern(t).coversDevice(device));
+      Assert.assertFalse(new IoTDBPipePattern(t).coversDevice(device));
     }
 
     // Test pattern may overlap with device
@@ -81,10 +81,10 @@ public class IotdbPipePatternTest {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
     };
     for (String s : patternsOverlapWithDevice) {
-      Assert.assertTrue(new IotdbPipePattern(s).mayOverlapWithDevice(device));
+      Assert.assertTrue(new IoTDBPipePattern(s).mayOverlapWithDevice(device));
     }
     for (String t : patternsNotOverlapWithDevice) {
-      Assert.assertFalse(new IotdbPipePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new IoTDBPipePattern(t).mayOverlapWithDevice(device));
     }
 
     // Test pattern match measurement
@@ -96,10 +96,10 @@ public class IotdbPipePatternTest {
       "root.db.d1", "root.db.d1", "root.db.d1.*.*",
     };
     for (String s : patternsMatchMeasurement) {
-      Assert.assertTrue(new IotdbPipePattern(s).matchesMeasurement(device, measurement));
+      Assert.assertTrue(new IoTDBPipePattern(s).matchesMeasurement(device, measurement));
     }
     for (String t : patternsNotMatchMeasurement) {
-      Assert.assertFalse(new IotdbPipePattern(t).matchesMeasurement(device, measurement));
+      Assert.assertFalse(new IoTDBPipePattern(t).matchesMeasurement(device, measurement));
     }
   }
 }
