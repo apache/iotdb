@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 import org.slf4j.Logger;
@@ -38,7 +39,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   protected ProgressIndex progressIndex;
 
   protected PipeWritePlanEvent(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, boolean isGeneratedByPipe) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, PipePattern pattern, boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
