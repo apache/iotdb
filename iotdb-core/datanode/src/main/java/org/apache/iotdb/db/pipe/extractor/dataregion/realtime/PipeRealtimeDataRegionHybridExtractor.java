@@ -354,6 +354,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case USING_BOTH:
       default:
         if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+          LOGGER.info("Supplied tsFile event {}", event);
           return event.getEvent();
         } else {
           // if the event's reference count can not be increased, it means the data represented by

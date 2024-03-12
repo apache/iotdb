@@ -100,9 +100,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
+        LOGGER.info("Transferred tablet event {}", event);
         PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        LOGGER.info("Transferred tsFile event {}", event);
         PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);

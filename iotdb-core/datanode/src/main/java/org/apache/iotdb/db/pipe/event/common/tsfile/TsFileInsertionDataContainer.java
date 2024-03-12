@@ -87,6 +87,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent)
       throws IOException {
+    LOGGER.info("Container invoked for event {}", sourceEvent);
     this.pattern = pattern;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
