@@ -102,7 +102,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }
 

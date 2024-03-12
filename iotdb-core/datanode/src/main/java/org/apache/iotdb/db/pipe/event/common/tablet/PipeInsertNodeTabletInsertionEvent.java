@@ -166,7 +166,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
       InsertNode insertNode = getInsertNode();
       if (insertNode instanceof InsertRowNode) {

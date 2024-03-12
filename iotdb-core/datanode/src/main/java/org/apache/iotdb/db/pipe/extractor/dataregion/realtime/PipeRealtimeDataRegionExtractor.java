@@ -245,7 +245,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // 2. Check if the timestamps of the data contained in this event intersect with the time range.
     // If there is no intersection, it indicates that this data will be filtered out by the
     // extractor, and the extract process is skipped.
-    if (!event.shouldParseTime() || event.getEvent().isEventTimeOverlappedWithTimeRange()) {
+    if (!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange()) {
       doExtract(event);
     } else {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
