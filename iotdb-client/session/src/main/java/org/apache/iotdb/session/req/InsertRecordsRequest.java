@@ -20,6 +20,7 @@ package org.apache.iotdb.session.req;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class InsertRecordsRequest {
@@ -42,7 +43,13 @@ public class InsertRecordsRequest {
     this.valuesList = valuesList;
   }
 
-  public InsertRecordsRequest() {}
+  public InsertRecordsRequest() {
+    this.deviceIds = new ArrayList<>();
+    this.measurementsIdsList = new ArrayList<>();
+    this.timestamps = new ArrayList<>();
+    this.dataTypesList = new ArrayList<>();
+    this.valuesList = new ArrayList<>();
+  }
 
   public List<String> getDeviceIds() {
     return deviceIds;

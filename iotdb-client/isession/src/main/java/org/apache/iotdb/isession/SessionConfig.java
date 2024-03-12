@@ -61,5 +61,7 @@ public class SessionConfig {
 
   public static CompressionType rpcCompressionType = CompressionType.GZIP;
 
+  public static boolean enableInsertRecordsV2 = true;
+
   private SessionConfig() {}
 }

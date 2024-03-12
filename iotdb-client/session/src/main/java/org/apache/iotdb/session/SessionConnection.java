@@ -48,6 +48,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReqV2;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -865,9 +866,55 @@ public class SessionConnection {
     }
   }
 
+  public void insertRecordsV2(TSInsertRecordsReqV2 request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    TException lastTException = null;
+    TSStatus status = null;
+    for (int i = 0; i <= maxRetryCount; i++) {
+      if (i > 0) {
+        // re-init the TException and TSStatus
+        lastTException = null;
+        status = null;
+        // not first time, we need to sleep and then reconnect
+        try {
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMs);
+        } catch (InterruptedException e) {
+          // just ignore
+        }
+        if (!reconnect()) {
+          // reconnect failed, just continue to make another retry.
+          continue;
+        }
+      }
+      try {
+        status = insertRecordsV2Internal(request);
+        // need retry
+        if (status.isSetNeedRetry() && status.isNeedRetry()) {
+          continue;
+        }
+        RpcUtils.verifySuccess(status);
+      } catch (TException e) {
+        // all network exception need retry until reaching maxRetryCount
+        lastTException = e;
+      }
+    }
+
+    if (status != null) {
+      RpcUtils.verifySuccess(status);
+    } else if (lastTException != null) {
+      throw new IoTDBConnectionException(lastTException);
+    } else {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
+    }
+  }
+
   private TSStatus insertRecordsInternal(TSInsertRecordsReq request) throws TException {
     request.setSessionId(sessionId);
     return client.insertRecords(request);
+  }
+
+  private TSStatus insertRecordsV2Internal(TSInsertRecordsReqV2 request) throws TException {
+    return client.insertRecordsV2(request);
   }
 
   protected void insertRecords(TSInsertStringRecordsReq request)

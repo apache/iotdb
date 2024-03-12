@@ -48,12 +48,12 @@ public class SessionRPCUtils {
       List<String> deviceIds,
       List<List<String>> measurementIdsList,
       List<Long> timestamp,
-      List<List<TSDataType>> tpyesList,
+      List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IOException {
     ByteBuffer schemaBuffer = serializeSchema(deviceIds, measurementIdsList);
-
-    return null;
+    ByteBuffer dataBuffer = serializeValue(timestamp, typesList, valuesList);
+    return new ByteBuffer[] {schemaBuffer, dataBuffer};
   }
 
   private static ByteBuffer serializeSchema(

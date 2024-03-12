@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReqV2;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -56,8 +57,10 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.req.InsertRecordsRequest;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
+import org.apache.iotdb.session.util.SessionRPCUtils;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -2405,29 +2408,118 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
-    for (int i = 0; i < deviceIds.size(); i++) {
-      final SessionConnection connection = getSessionConnection(deviceIds.get(i));
-      TSInsertRecordsReq request = recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
-      request.setIsAligned(isAligned);
+    if (!SessionConfig.enableInsertRecordsV2) {
+      Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
+      for (int i = 0; i < deviceIds.size(); i++) {
+        final SessionConnection connection = getSessionConnection(deviceIds.get(i));
+        TSInsertRecordsReq request =
+            recordsGroup.getOrDefault(connection, new TSInsertRecordsReq());
+        request.setIsAligned(isAligned);
+        try {
+          filterAndUpdateTSInsertRecordsReq(
+              request,
+              deviceIds.get(i),
+              times.get(i),
+              measurementsList.get(i),
+              typesList.get(i),
+              valuesList.get(i));
+          recordsGroup.putIfAbsent(connection, request);
+        } catch (NoValidValueException e) {
+          logger.warn(
+              "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
+              deviceIds.get(i),
+              times.get(i),
+              measurementsList.get(i));
+        }
+      }
+      insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    } else {
+      logger.info("Insert using insertRecordsV2");
+      Map<SessionConnection, InsertRecordsRequest> requestMap = new HashMap<>();
+      for (int i = 0; i < deviceIds.size(); ++i) {
+        final SessionConnection connection = getSessionConnection(deviceIds.get(i));
+        InsertRecordsRequest request =
+            requestMap.getOrDefault(connection, new InsertRecordsRequest());
+        request.getDeviceIds().add(deviceIds.get(i));
+        request.getTimestamps().add(times.get(i));
+        request.getDataTypesList().add(typesList.get(i));
+        request.getValuesList().add(valuesList.get(i));
+        request.getMeasurementsIdsList().add(measurementsList.get(i));
+      }
+      insertRecordsV2ByGroupInParallel(requestMap);
+    }
+  }
+
+  private void insertRecordsV2ByGroupInParallel(
+      Map<SessionConnection, InsertRecordsRequest> requestMap)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<CompletableFuture<Void>> completableFutures =
+        requestMap.entrySet().stream()
+            .map(
+                entry -> {
+                  try {
+                    SessionConnection connection = entry.getKey();
+                    InsertRecordsRequest recordsReq = entry.getValue();
+                    TSInsertRecordsReqV2 req = genInsertRecordsReqV2(recordsReq);
+                    return CompletableFuture.runAsync(
+                        () -> {
+                          try {
+                            connection.insertRecordsV2(req);
+                          } catch (RedirectException e) {
+                            e.getDeviceEndPointMap().forEach(this::handleRedirection);
+                          } catch (StatementExecutionException e) {
+                            throw new CompletionException(e);
+                          } catch (IoTDBConnectionException e) {
+                            // remove the broken session
+                            removeBrokenSessionConnection(connection);
+                            try {
+                              defaultSessionConnection.insertRecordsV2(req);
+                            } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                              throw new CompletionException(ex);
+                            } catch (RedirectException ignored) {
+                            }
+                          }
+                        },
+                        OPERATION_EXECUTOR);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
+
+    StringBuilder errMsgBuilder = new StringBuilder();
+    for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
-        filterAndUpdateTSInsertRecordsReq(
-            request,
-            deviceIds.get(i),
-            times.get(i),
-            measurementsList.get(i),
-            typesList.get(i),
-            valuesList.get(i));
-        recordsGroup.putIfAbsent(connection, request);
-      } catch (NoValidValueException e) {
-        logger.warn(
-            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
-            deviceIds.get(i),
-            times.get(i),
-            measurementsList.get(i));
+        completableFuture.join();
+      } catch (CompletionException completionException) {
+        Throwable cause = completionException.getCause();
+        logger.error("Meet error when async insert!", cause);
+        if (cause instanceof IoTDBConnectionException) {
+          throw (IoTDBConnectionException) cause;
+        } else {
+          errMsgBuilder.append(cause.getMessage());
+        }
       }
     }
-    insertByGroup(recordsGroup, SessionConnection::insertRecords);
+    if (errMsgBuilder.length() > 0) {
+      throw new StatementExecutionException(errMsgBuilder.toString());
+    }
+  }
+
+  private TSInsertRecordsReqV2 genInsertRecordsReqV2(InsertRecordsRequest request)
+      throws IOException {
+    TSInsertRecordsReqV2 req = new TSInsertRecordsReqV2();
+    ByteBuffer[] buffers =
+        SessionRPCUtils.serializeInsertRecordsReq(
+            request.getDeviceIds(),
+            request.getMeasurementsIdsList(),
+            request.getTimestamps(),
+            request.getDataTypesList(),
+            request.getValuesList());
+    req.schemaBuffer = buffers[0];
+    req.valueBuffer = buffers[1];
+    req.auxiliaryBuffer = ByteBuffer.wrap(new byte[0]);
+    return req;
   }
 
   private TSInsertRecordsReq filterAndGenTSInsertRecordsReq(
