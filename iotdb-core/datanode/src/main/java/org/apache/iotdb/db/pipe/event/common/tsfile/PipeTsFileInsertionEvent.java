@@ -180,6 +180,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public boolean isEventTimeOverlappedWithTimeRange() {
+    LOGGER.info(
+        "startTime: {}, endTime: {}, fileStartTime: {}, fileEndTime: {}",
+        startTime,
+        endTime,
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
     return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
