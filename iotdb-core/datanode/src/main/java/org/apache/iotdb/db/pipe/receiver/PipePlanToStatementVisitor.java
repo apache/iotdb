@@ -204,7 +204,6 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   public CreateLogicalViewStatement visitCreateLogicalView(
       CreateLogicalViewNode node, Void context) {
     CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
-    statement.setSourceFullPaths(new ArrayList<>());
     statement.setTargetFullPaths(node.getViewPathList());
     statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
     return statement;
