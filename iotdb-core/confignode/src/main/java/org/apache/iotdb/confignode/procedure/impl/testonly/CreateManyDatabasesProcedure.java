@@ -17,16 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl;
+package org.apache.iotdb.confignode.procedure.impl.testonly;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -71,11 +69,7 @@ public class CreateManyDatabasesProcedure
 
   private void createDatabase(ConfigNodeProcedureEnv env, int id) throws ProcedureException {
     String databaseName = DATABASE_NAME_PREFIX + id;
-    TDatabaseSchema databaseSchema = new TDatabaseSchema(databaseName);
-    TSStatus status =
-        env.getConfigManager()
-            .setDatabase(
-                new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+    TSStatus status = ProcedureTestUtils.createDatabase(env.getConfigManager(), databaseName);
     if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == status.getCode()) {
       // First mistakes are forgivable, but a second signals a problem.
       if (!createFailedOnce) {

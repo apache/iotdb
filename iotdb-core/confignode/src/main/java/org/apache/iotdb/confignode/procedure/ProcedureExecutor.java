@@ -195,7 +195,14 @@ public class ProcedureExecutor<Env> {
 
     waitingList.forEach(
         procedure -> {
-          if (procedure.hasChildren()) {
+          if (!procedure.hasChildren()) {
+            // Normally, WAITING procedures should be wakened by its children.
+            // But, there is a case that, all the children are successful, and before
+            // they can wake up their parent procedure, the master was killed.
+            // So, during recovering the procedures from ProcedureWal, its children
+            // are not loaded because of their SUCCESS state.
+            // So we need to continue to run this WAITING procedure. Before
+            // executing, we need to set its state to RUNNABLE.
             procedure.setState(ProcedureState.RUNNABLE);
             runnableList.add(procedure);
           } else {
@@ -485,7 +492,7 @@ public class ProcedureExecutor<Env> {
   }
 
   /**
-   * Serve as a countdown latch to check whether all children has completed.
+   * Serve as a countdown latch to check whether all children have already completed.
    *
    * @param rootProcStack root procedure stack
    * @param proc proc

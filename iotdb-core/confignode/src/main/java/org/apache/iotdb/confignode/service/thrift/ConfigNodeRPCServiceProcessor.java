@@ -155,6 +155,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -483,8 +484,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createManyDatabases() throws TException {
-    return configManager.createManyDatabases();
+  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
+    switch (operation) {
+      case TEST_PROCEDURE_RECOVER:
+        return configManager.getProcedureManager().createManyDatabases();
+      case TEST_SUB_PROCEDURE:
+        return configManager.getProcedureManager().testSubProcedure();
+      default:
+        String msg = String.format("operation %s is not supported", operation);
+        LOGGER.error(msg);
+        throw new UnsupportedOperationException(msg);
+    }
   }
 
   @Override
