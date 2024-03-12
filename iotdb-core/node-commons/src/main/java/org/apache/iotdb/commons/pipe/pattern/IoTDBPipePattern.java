@@ -36,9 +36,9 @@ public class IoTDBPipePattern extends PipePattern {
     super(pattern);
 
     try {
-      patternPartialPath = new PartialPath(pattern);
+      patternPartialPath = new PartialPath(getPattern());
     } catch (IllegalPathException e) {
-      throw new PipeException("Illegal IoTDBPipePattern: " + pattern, e);
+      throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
     }
   }
 

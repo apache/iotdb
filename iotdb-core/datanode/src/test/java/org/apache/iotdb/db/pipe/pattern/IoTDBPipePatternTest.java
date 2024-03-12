@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,7 +40,11 @@ public class IoTDBPipePatternTest {
       Assert.assertTrue(new IoTDBPipePattern(s).isLegal());
     }
     for (String t : illegalPatterns) {
-      Assert.assertFalse(new IoTDBPipePattern(t).isLegal());
+      try {
+        Assert.assertFalse(new IoTDBPipePattern(t).isLegal());
+      } catch (Exception e) {
+        Assert.assertTrue(e instanceof PipeException);
+      }
     }
 
     // Test pattern cover db
@@ -75,7 +80,7 @@ public class IoTDBPipePatternTest {
 
     // Test pattern may overlap with device
     String[] patternsOverlapWithDevice = {
-      "root.db.**", "root.db.d1", "root.db.d1.*", "root.db.d1.s1", "root.**.d2.**",
+      "root.db.**", "root.db.d1", "root.db.d1.*", "root.db.d1.s1", "root.**.d2.**", "root.*.d*.**",
     };
     String[] patternsNotOverlapWithDevice = {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",

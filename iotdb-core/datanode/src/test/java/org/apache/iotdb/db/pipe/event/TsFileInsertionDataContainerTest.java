@@ -696,11 +696,11 @@ public class TsFileInsertionDataContainerTest {
     final PipePattern notExistPattern;
     switch (patternFormat) {
       case PREFIX_FORMAT:
-        notExistPattern = new PrefixPipePattern("not-exist-pattern");
+        notExistPattern = new PrefixPipePattern("root.`not-exist-pattern`");
         break;
       case IOTDB_FORMAT:
       default:
-        notExistPattern = new IoTDBPipePattern("not-exist-pattern");
+        notExistPattern = new IoTDBPipePattern("root.`not-exist-pattern`");
         break;
     }
 
