@@ -27,6 +27,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSche
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 
 public class PipeDataRegionAssigner implements Closeable {
@@ -41,6 +44,8 @@ public class PipeDataRegionAssigner implements Closeable {
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -82,6 +87,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
+              LOGGER.info("Extracted event {}", copiedEvent);
 
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeHeartbeatEvent) {

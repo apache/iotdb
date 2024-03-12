@@ -122,6 +122,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   private void collectEvent(Event event) {
+    LOGGER.info("Collected event {}", event);
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {
