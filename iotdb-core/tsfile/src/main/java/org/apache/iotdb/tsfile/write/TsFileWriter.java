@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkGroupWriterImpl;
@@ -311,7 +312,8 @@ public class TsFileWriter implements AutoCloseable {
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
       throws WriteProcessException, IOException {
     // initial ChunkGroupWriter of this device in the TSRecord
-    IChunkGroupWriter groupWriter = tryToInitialGroupWriter(record.deviceId, isAligned);
+    IChunkGroupWriter groupWriter =
+        tryToInitialGroupWriter(new PlainDeviceID(record.deviceId), isAligned);
 
     // initial all SeriesWriters of measurements in this TSRecord
     Path devicePath = new Path(record.deviceId);
@@ -322,9 +324,10 @@ public class TsFileWriter implements AutoCloseable {
               record.dataPointList, schema.getSeriesSchema(devicePath), isAligned);
       if (isAligned) {
         for (IMeasurementSchema s : measurementSchemas) {
-          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+          if (flushedMeasurementsInDeviceMap.containsKey(
+                  new PlainDeviceID(devicePath.getFullPath()))
               && !flushedMeasurementsInDeviceMap
-                  .get(devicePath.getFullPath())
+                  .get(new PlainDeviceID(devicePath.getFullPath()))
                   .contains(s.getMeasurementId())) {
             throw new WriteProcessException(
                 "TsFile has flushed chunk group and should not add new measurement "
@@ -350,7 +353,8 @@ public class TsFileWriter implements AutoCloseable {
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
       throws WriteProcessException, IOException {
-    IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.deviceId, isAligned);
+    IChunkGroupWriter groupWriter =
+        tryToInitialGroupWriter(new PlainDeviceID(tablet.deviceId), isAligned);
 
     Path devicePath = new Path(tablet.deviceId);
     List<MeasurementSchema> schemas = tablet.getSchemas();
@@ -358,9 +362,10 @@ public class TsFileWriter implements AutoCloseable {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
       if (isAligned) {
         for (IMeasurementSchema s : schemas) {
-          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+          if (flushedMeasurementsInDeviceMap.containsKey(
+                  new PlainDeviceID(devicePath.getFullPath()))
               && !flushedMeasurementsInDeviceMap
-                  .get(devicePath.getFullPath())
+                  .get(new PlainDeviceID(devicePath.getFullPath()))
                   .contains(s.getMeasurementId())) {
             throw new WriteProcessException(
                 "TsFile has flushed chunk group and should not add new measurement "
@@ -489,13 +494,19 @@ public class TsFileWriter implements AutoCloseable {
    */
   public boolean write(TSRecord record) throws IOException, WriteProcessException {
     checkIsTimeseriesExist(record, false);
-    recordCount += groupWriters.get(record.deviceId).write(record.time, record.dataPointList);
+    recordCount +=
+        groupWriters
+            .get(new PlainDeviceID(record.deviceId))
+            .write(record.time, record.dataPointList);
     return checkMemorySizeAndMayFlushChunks();
   }
 
   public boolean writeAligned(TSRecord record) throws IOException, WriteProcessException {
     checkIsTimeseriesExist(record, true);
-    recordCount += groupWriters.get(record.deviceId).write(record.time, record.dataPointList);
+    recordCount +=
+        groupWriters
+            .get(new PlainDeviceID(record.deviceId))
+            .write(record.time, record.dataPointList);
     return checkMemorySizeAndMayFlushChunks();
   }
 
@@ -510,7 +521,7 @@ public class TsFileWriter implements AutoCloseable {
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet
-    recordCount += groupWriters.get(tablet.deviceId).write(tablet);
+    recordCount += groupWriters.get(new PlainDeviceID(tablet.deviceId)).write(tablet);
     return checkMemorySizeAndMayFlushChunks();
   }
 
@@ -518,7 +529,7 @@ public class TsFileWriter implements AutoCloseable {
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, true);
     // get corresponding ChunkGroupWriter and write this Tablet
-    recordCount += groupWriters.get(tablet.deviceId).write(tablet);
+    recordCount += groupWriters.get(new PlainDeviceID(tablet.deviceId)).write(tablet);
     return checkMemorySizeAndMayFlushChunks();
   }
 

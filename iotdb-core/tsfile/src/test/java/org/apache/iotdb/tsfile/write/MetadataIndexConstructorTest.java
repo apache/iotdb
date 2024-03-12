@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -230,7 +231,7 @@ public class MetadataIndexConstructorTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
       Iterator<Pair<IDeviceID, Boolean>> iterator = reader.getAllDevicesIteratorWithIsAligned();
       while (iterator.hasNext()) {
-        for (String correctDevice : correctDevices) {
+        for (IDeviceID correctDevice : correctDevices) {
           assertEquals(correctDevice, iterator.next().left);
         }
       }
@@ -293,7 +294,7 @@ public class MetadataIndexConstructorTest {
 
   /** DFS in device level load actual devices */
   private void deviceDFS(
-      List<String> devices,
+      List<IDeviceID> devices,
       List<List<String>> measurements,
       TsFileSequenceReader reader,
       MetadataIndexNode node) {
@@ -313,7 +314,7 @@ public class MetadataIndexConstructorTest {
             reader.readMetadataIndexNode(
                 metadataIndexEntry.getOffset(), endOffset, currentChildLevelIsDevice);
         if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          devices.add(metadataIndexEntry.getName());
+          devices.add(((DeviceMetadataIndexEntry) metadataIndexEntry).getDeviceID());
           measurements.add(new ArrayList<>());
           measurementDFS(devices.size() - 1, measurements, reader, subNode);
         } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
@@ -384,19 +385,21 @@ public class MetadataIndexConstructorTest {
       if (singleMeasurement != null) {
         for (String measurement : singleMeasurement[i]) {
           measurements.add(measurement);
-          correctPaths.add(new Path(device, measurement, true).getFullPath());
+          correctPaths.add(
+              new Path(((PlainDeviceID) device).toStringID(), measurement, true).getFullPath());
         }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
-        correctPaths.add(new Path(device, "", true).getFullPath());
+        correctPaths.add(new Path(((PlainDeviceID) device).toStringID(), "", true).getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
-          correctPaths.add(new Path(device, measurementName, true).getFullPath());
+          correctPaths.add(
+              new Path(((PlainDeviceID) device).toStringID(), measurementName, true).getFullPath());
         }
       }
       Collections.sort(measurements);
@@ -424,13 +427,13 @@ public class MetadataIndexConstructorTest {
           IDeviceID device = devices[i];
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
-                new Path(device),
+                new Path(((PlainDeviceID) device).toStringID()),
                 new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
           for (int row = 0; row < rowNum; row++) {
-            TSRecord tsRecord = new TSRecord(row, device);
+            TSRecord tsRecord = new TSRecord(row, ((PlainDeviceID) device).toStringID());
             for (String measurement : singleMeasurement[i]) {
               DataPoint dPoint = new LongDataPoint(measurement, row);
               tsRecord.addTuple(dPoint);
@@ -466,10 +469,10 @@ public class MetadataIndexConstructorTest {
             tabletSchema.add(schema1);
           }
           MeasurementGroup group = new MeasurementGroup(true, schemas);
-          schema.registerMeasurementGroup(new Path(device), group);
+          schema.registerMeasurementGroup(new Path(((PlainDeviceID) device).toStringID()), group);
           // add measurements into TSFileWriter
           // construct the tablet
-          Tablet tablet = new Tablet(device, tabletSchema);
+          Tablet tablet = new Tablet(((PlainDeviceID) device).toStringID(), tabletSchema);
           long[] timestamps = tablet.timestamps;
           Object[] values = tablet.values;
           long timestamp = 1;

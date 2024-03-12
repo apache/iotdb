@@ -366,8 +366,8 @@ public class TsFileIOWriter implements AutoCloseable {
             : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
     Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-    String currentDevice = null;
-    String prevDevice = null;
+    IDeviceID currentDevice = null;
+    IDeviceID prevDevice = null;
     Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
@@ -387,7 +387,7 @@ public class TsFileIOWriter implements AutoCloseable {
       filter.add(currentPath.getFullPath());
       // construct the index tree node for the series
 
-      currentDevice = currentPath.getDevice();
+      currentDevice = currentPath.getIDeviceID();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);

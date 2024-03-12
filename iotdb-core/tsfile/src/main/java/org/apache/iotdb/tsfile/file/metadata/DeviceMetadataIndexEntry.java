@@ -56,7 +56,10 @@ public class DeviceMetadataIndexEntry implements IMetadataIndexEntry {
 
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
-    return 0;
+    int byteLen = 0;
+    byteLen += deviceID.serialize(outputStream);
+    byteLen += ReadWriteIOUtils.write(offset, outputStream);
+    return byteLen;
   }
 
   @Override
@@ -70,16 +73,14 @@ public class DeviceMetadataIndexEntry implements IMetadataIndexEntry {
   }
 
   public static DeviceMetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
-    // TODO
-    IDeviceID device = new PlainDeviceID(ReadWriteIOUtils.readVarIntString(buffer));
+    IDeviceID device = IDeviceID.deserializeFrom(buffer);
     long offset = ReadWriteIOUtils.readLong(buffer);
     return new DeviceMetadataIndexEntry(device, offset);
   }
 
   public static DeviceMetadataIndexEntry deserializeFrom(InputStream inputStream)
       throws IOException {
-    // TODO
-    IDeviceID device = new PlainDeviceID(ReadWriteIOUtils.readVarIntString(inputStream));
+    IDeviceID device = IDeviceID.deserializeFrom(inputStream);
     long offset = ReadWriteIOUtils.readLong(inputStream);
     return new DeviceMetadataIndexEntry(device, offset);
   }

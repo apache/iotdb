@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -59,8 +61,13 @@ public class PlainDeviceID implements IDeviceID {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(deviceID, byteBuffer);
+  public int serialize(ByteBuffer byteBuffer) {
+    return ReadWriteIOUtils.write(deviceID, byteBuffer);
+  }
+
+  @Override
+  public int serialize(OutputStream outputStream) throws IOException {
+    return ReadWriteIOUtils.writeVar(deviceID, outputStream);
   }
 
   @Override

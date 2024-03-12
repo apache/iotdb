@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -98,10 +99,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     // group measurements by device
     TreeMap<IDeviceID, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
-        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      if (!deviceMeasurementsMap.containsKey(path.getIDeviceID())) {
+        deviceMeasurementsMap.put(path.getIDeviceID(), new HashSet<>());
       }
-      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+      deviceMeasurementsMap.get(path.getIDeviceID()).add(path.getMeasurement());
     }
     int count = 0;
     boolean enough = false;
@@ -133,7 +134,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           measurementId = ((TimeseriesMetadata) timeseriesMetadata).getMeasurementId();
         }
         this.chunkMetaDataCache.put(
-            new Path(selectedDevice, measurementId, true), chunkMetadataList);
+            new Path(((PlainDeviceID) selectedDevice).toStringID(), measurementId, true),
+            chunkMetadataList);
         count += chunkMetadataList.size();
         if (count == CACHED_ENTRY_NUMBER) {
           enough = true;
@@ -175,7 +177,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     TreeMap<IDeviceID, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
       deviceMeasurementsMap
-          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+          .computeIfAbsent(path.getIDeviceID(), key -> new HashSet<>())
           .add(path.getMeasurement());
     }
     for (Map.Entry<IDeviceID, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {

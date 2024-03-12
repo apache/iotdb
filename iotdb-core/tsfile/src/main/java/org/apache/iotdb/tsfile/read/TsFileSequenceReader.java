@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -434,7 +435,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<IMetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, path.getDevice(), true);
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, path.getIDeviceID(), true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
@@ -835,7 +836,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     for (IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (String measurementId : timeseriesMetadataMap.keySet()) {
-        paths.add(new Path(device, measurementId, true));
+        paths.add(new Path(((PlainDeviceID) device).toStringID(), measurementId, true));
       }
     }
     return paths;
@@ -879,7 +880,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           while (nextBuffer.hasRemaining()) {
             paths.add(
                 new Path(
-                    startEndPair.left,
+                    ((PlainDeviceID) startEndPair.left).toStringID(),
                     TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId(),
                     true));
           }
@@ -1341,7 +1342,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       throw new IllegalArgumentException();
     }
     try {
-      if (MetadataIndexNodeType.INTERNAL_DEVICE.equals(metadataIndex.getNodeType())) {
+      if (MetadataIndexNodeType.INTERNAL_MEASUREMENT.equals(metadataIndex.getNodeType())) {
         Pair<IMetadataIndexEntry, Long> childIndexEntry =
             metadataIndex.getChildIndexEntry(measurement, false);
         ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
@@ -1881,7 +1882,11 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
+                      new Path(
+                          ((PlainDeviceID) lastDeviceId).toStringID(),
+                          tsSchema.getMeasurementId(),
+                          true),
+                      tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1900,7 +1905,11 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
+                      new Path(
+                          ((PlainDeviceID) lastDeviceId).toStringID(),
+                          tsSchema.getMeasurementId(),
+                          true),
+                      tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1923,7 +1932,9 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (newSchema != null) {
           for (IMeasurementSchema tsSchema : measurementSchemaList) {
             newSchema.putIfAbsent(
-                new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
+                new Path(
+                    ((PlainDeviceID) lastDeviceId).toStringID(), tsSchema.getMeasurementId(), true),
+                tsSchema);
           }
         }
         // last chunk group Metadata
@@ -2089,7 +2100,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<ChunkMetadata> getChunkMetadataList(Path path, boolean ignoreNotExists)
       throws IOException {
     TimeseriesMetadata timeseriesMetaData =
-        readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
+        readTimeseriesMetadata(path.getIDeviceID(), path.getMeasurement(), ignoreNotExists);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

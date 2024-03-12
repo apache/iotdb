@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.file.header;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -55,7 +56,8 @@ public class ChunkGroupHeader {
 
   private int getSerializedSize(IDeviceID deviceID) {
     // TODO: add an interface in IDeviceID
-    int length = deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
+    int length =
+        ((PlainDeviceID) deviceID).toStringID().getBytes(TSFileConfig.STRING_CHARSET).length;
     return Byte.BYTES + ReadWriteForEncodingUtils.varIntSize(length) + length;
   }
 
@@ -79,7 +81,7 @@ public class ChunkGroupHeader {
     if (deviceID == null || deviceID.isEmpty()) {
       throw new IOException("DeviceId is empty");
     }
-    return new ChunkGroupHeader(deviceID);
+    return new ChunkGroupHeader(new PlainDeviceID(deviceID));
   }
 
   /**
@@ -96,7 +98,7 @@ public class ChunkGroupHeader {
     }
     // TODO: add an interface in IDeviceID
     String deviceID = input.readVarIntString(offsetVar);
-    return new ChunkGroupHeader(deviceID);
+    return new ChunkGroupHeader(new PlainDeviceID(deviceID));
   }
 
   public IDeviceID getDeviceID() {
@@ -113,7 +115,7 @@ public class ChunkGroupHeader {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;
     length += ReadWriteIOUtils.write(MARKER, outputStream);
-    length += ReadWriteIOUtils.writeVar(deviceID, outputStream);
+    length += ReadWriteIOUtils.writeVar(((PlainDeviceID) deviceID).toStringID(), outputStream);
     return length;
   }
 

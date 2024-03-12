@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -120,7 +121,10 @@ public class TSMIterator {
         chunkMetadataMap
             .get(chunkGroupMetadata.getDevice())
             .computeIfAbsent(
-                new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid(), false),
+                new Path(
+                    ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID(),
+                    chunkMetadata.getMeasurementUid(),
+                    false),
                 x -> new ArrayList<>())
             .add(chunkMetadata);
       }
@@ -130,7 +134,10 @@ public class TSMIterator {
         chunkMetadataMap
             .computeIfAbsent(currentDevice, x -> new TreeMap<>())
             .computeIfAbsent(
-                new Path(currentDevice, chunkMetadata.getMeasurementUid(), false),
+                new Path(
+                    ((PlainDeviceID) currentDevice).toStringID(),
+                    chunkMetadata.getMeasurementUid(),
+                    false),
                 x -> new ArrayList<>())
             .add(chunkMetadata);
       }

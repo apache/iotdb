@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /** Device id interface. */
@@ -31,9 +36,21 @@ public interface IDeviceID extends Comparable<IDeviceID> {
    */
   String toStringID();
 
-  void serialize(ByteBuffer byteBuffer);
+  int serialize(ByteBuffer byteBuffer);
+
+  int serialize(OutputStream outputStream) throws IOException;
 
   byte[] getBytes();
 
   int memorySize();
+
+  static IDeviceID deserializeFrom(ByteBuffer byteBuffer) {
+    // TODO
+    return new PlainDeviceID(ReadWriteIOUtils.readVarIntString(byteBuffer));
+  }
+
+  static IDeviceID deserializeFrom(InputStream inputStream) throws IOException {
+    // TODO
+    return new PlainDeviceID(ReadWriteIOUtils.readVarIntString(inputStream));
+  }
 }

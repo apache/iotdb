@@ -57,7 +57,10 @@ public class MeasurementMetadataIndexEntry implements IMetadataIndexEntry {
 
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
-    return 0;
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.writeVar(name, outputStream);
+    byteLen += ReadWriteIOUtils.write(offset, outputStream);
+    return byteLen;
   }
 
   @Override
