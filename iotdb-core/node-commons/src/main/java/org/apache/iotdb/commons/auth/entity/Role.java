@@ -311,7 +311,19 @@ public class Role {
         + ", pathPrivilegeList="
         + pathPrivilegeList
         + ", systemPrivilegeSet="
-        + sysPrivilegeSet
+        + sysPriToString()
         + '}';
+  }
+
+  private Set<String> sysPriToString() {
+    Set<String> priSet = new HashSet<>();
+    for (Integer pri : sysPrivilegeSet) {
+      StringBuilder str = new StringBuilder(String.valueOf(PrivilegeType.values()[pri].toString()));
+      if (sysPriGrantOpt.contains(pri)) {
+        str.append("_with_grant_option ");
+      }
+      priSet.add(str.toString());
+    }
+    return priSet;
   }
 }

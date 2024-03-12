@@ -56,10 +56,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
@@ -188,19 +190,26 @@ public enum PlanNodeType {
   DELETE_LOGICAL_VIEW((short) 76),
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
   ALTER_LOGICAL_VIEW((short) 78),
-  PIPE_ENRICHED_INSERT((short) 79),
+  PIPE_ENRICHED_INSERT_DATA((short) 79),
 
   // NodeId 80 is used by IoTDB-ML which shouldn't be used.
 
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82),
   COLUMN_INJECT((short) 83),
+
   PIPE_ENRICHED_DELETE_DATA((short) 84),
-  PIPE_ENRICHED_WRITE_SCHEMA((short) 85),
-  PIPE_ENRICHED_DELETE_SCHEMA((short) 86),
+  PIPE_ENRICHED_WRITE((short) 85),
+  PIPE_ENRICHED_NON_WRITE((short) 86),
 
   INNER_TIME_JOIN((short) 87),
-  LEFT_OUTER_TIME_JOIN((short) 88);
+  LEFT_OUTER_TIME_JOIN((short) 88),
+  AGG_MERGE_SORT((short) 89),
+
+  EXPLAIN_ANALYZE((short) 90),
+
+  PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -418,13 +427,19 @@ public enum PlanNodeType {
       case 84:
         return PipeEnrichedDeleteDataNode.deserialize(buffer);
       case 85:
-        return PipeEnrichedWriteSchemaNode.deserialize(buffer);
+        return PipeEnrichedWritePlanNode.deserialize(buffer);
       case 86:
-        return PipeEnrichedConfigSchemaNode.deserialize(buffer);
+        return PipeEnrichedNonWritePlanNode.deserialize(buffer);
       case 87:
         return InnerTimeJoinNode.deserialize(buffer);
       case 88:
         return LeftOuterTimeJoinNode.deserialize(buffer);
+      case 89:
+        return AggregationMergeSortNode.deserialize(buffer);
+      case 90:
+        return ExplainAnalyzeNode.deserialize(buffer);
+      case 91:
+        return PipeOperateSchemaQueueNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -439,6 +454,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
       case 65:
         return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
+      case 32:
+        return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

@@ -144,7 +144,7 @@ public class DistributionPlanner {
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
         TRegionReplicaSet regionOfChild =
-            context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).region;
+            context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion();
         MultiChildrenSinkNode newChild =
             memo.computeIfAbsent(
                 regionOfChild,

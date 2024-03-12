@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -87,7 +87,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
             insertNode));
   }
 
-  /////////////////////////////// WriteBack ///////////////////////////////
+  /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReq(InsertNode insertNode) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
@@ -124,7 +124,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
-  public static byte[] toTransferInsertNodeBytes(InsertNode insertNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(InsertNode insertNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -145,10 +145,10 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
       return false;
     }
     PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
-    return insertNode.equals(that.insertNode)
+    return Objects.equals(insertNode, that.insertNode)
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && Objects.equals(body, that.body);
   }
 
   @Override

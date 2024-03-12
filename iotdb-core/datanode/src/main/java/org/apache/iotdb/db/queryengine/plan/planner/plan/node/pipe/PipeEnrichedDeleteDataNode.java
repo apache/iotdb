@@ -93,6 +93,11 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PIPE_ENRICHED_DELETE_DATA;
+  }
+
+  @Override
   public DeleteDataNode clone() {
     return new PipeEnrichedDeleteDataNode((DeleteDataNode) deleteDataNode.clone());
   }
@@ -121,7 +126,7 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPipeEnrichedDeleteData(this, context);
+    return visitor.visitPipeEnrichedDeleteDataNode(this, context);
   }
 
   @Override

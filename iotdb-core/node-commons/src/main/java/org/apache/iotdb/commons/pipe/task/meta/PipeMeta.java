@@ -75,6 +75,10 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
+  public PipeMeta deepCopy() throws IOException {
+    return PipeMeta.deserialize(serialize());
+  }
+
   public String coreReportMessage() {
     return "PipeName="
         + staticMeta.getPipeName()

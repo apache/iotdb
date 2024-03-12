@@ -36,6 +36,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
+  public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
   public static final String DATABASE = "Database";
@@ -187,6 +188,9 @@ public class ColumnHeaderConstant {
   // column names for views (e.g. logical view)
   public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
+
+  // column names for show current timestamp
+  public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -463,4 +467,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(SOURCE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
+      ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
 }

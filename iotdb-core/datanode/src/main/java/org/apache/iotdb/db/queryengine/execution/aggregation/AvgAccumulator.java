@@ -163,6 +163,11 @@ public class AvgAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
+  @Override
+  public int getPartialResultSize() {
+    return 2;
+  }
+
   private void addIntInput(Column[] column, BitMap bitMap) {
     int count = column[0].getPositionCount();
     for (int i = 0; i < count; i++) {

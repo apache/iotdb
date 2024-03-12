@@ -389,16 +389,6 @@ public class IoTDBSimpleQueryIT {
         count++;
       }
       assertEquals(15, count);
-
-      // no sdt encoding when merging
-      statement.execute("merge");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
-      count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      assertEquals(15, count);
-
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -443,16 +433,6 @@ public class IoTDBSimpleQueryIT {
         count++;
       }
       assertEquals(18, count);
-
-      // no sdt encoding when merging
-      statement.execute("merge");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
-      count = 0;
-      while (resultSet.next()) {
-        count++;
-      }
-      assertEquals(18, count);
-
     } catch (SQLException e) {
       e.printStackTrace();
     }

@@ -78,10 +78,11 @@ dclStatement
     ;
 
 utilityStatement
-    : | flush | clearCache | settle | repairData | explain
+    : flush | clearCache | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
+    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
+    | removeFile | unloadFile
     ;
 
 /**
@@ -806,21 +807,21 @@ insertStatement
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? nodeNameWithoutWildcard)+ RR_BRACKET
+    : LR_BRACKET insertColumn (COMMA insertColumn)* RR_BRACKET
+    ;
+
+insertColumn
+    : identifier
+    | TIME
+    | TIMESTAMP
     ;
 
 insertValuesSpec
-    : (COMMA? insertMultiValue)*
+    : row (COMMA row)*
     ;
 
-insertMultiValue
-    : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
-    ;
-
-measurementValue
-    : constant
-    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
+row
+    : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
 // Delete Statement
@@ -948,14 +949,19 @@ settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
     ;
 
-// Repair Data
-repairData
-    : REPAIR DATA (ON (LOCAL | CLUSTER))?
+// Start Repair Data
+startRepairData
+    : START REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Stop Repair Data
+stopRepairData
+    : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain
 explain
-    : EXPLAIN selectStatement
+    : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
     ;
 
 // Set System To readonly/running/error
@@ -990,6 +996,11 @@ showQueries
     whereClause?
     orderByClause?
     rowPaginationClause?
+    ;
+
+// Show Current Timestamp
+showCurrentTimestamp
+    : SHOW CURRENT_TIMESTAMP
     ;
 
 // Kill Query

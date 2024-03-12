@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -39,9 +40,12 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters extractorParameters,
-      TConsensusGroupId dataRegionId,
+      int regionId,
       PipeTaskMeta pipeTaskMeta) {
-    pipeExtractor = PipeAgent.plugin().dataRegion().reflectExtractor(extractorParameters);
+    pipeExtractor =
+        StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+            ? PipeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
+            : PipeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
@@ -53,7 +57,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
+                  pipeName, creationTime, regionId, pipeTaskMeta));
       pipeExtractor.customize(extractorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
