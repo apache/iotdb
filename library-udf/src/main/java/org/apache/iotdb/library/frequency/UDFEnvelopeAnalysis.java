@@ -41,15 +41,16 @@ import java.util.Map;
 
 public class UDFEnvelopeAnalysis implements UDTF {
   private double frequency;
-
+  private static final String frequencyConstant = "frequency";
+  private int amplification;
+  private static final String amplificationConstant = "amplification";
   public static final String msPrecision = "ms";
   public static final String usPrecision = "us";
   public static final String nsPrecision = "ns";
-  private String timestampPrecision = msPrecision;
+  private String timestampPrecision;
   private static final String timestampPrecisionConstant = "timestamp_precision";
   private final DoubleArrayList signals = new DoubleArrayList();
   private final LongArrayList timestamps = new LongArrayList();
-  private static final String frequencyConstant = "frequency";
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -57,18 +58,26 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> validator.getParameters().getAttributes().size() <= 1,
-            "The 'envelope' function takes only 'frequency' as an argument.",
-            validator.getParameters());
+            x -> (double) x >= 0,
+            "The param 'frequency' must greater than 0.",
+            validator.getParameters().getDoubleOrDefault(frequencyConstant, 0))
+        .validate(
+            x -> (int) x >= 1,
+            "The param 'amplification' must greater than 1.",
+            validator.getParameters().getIntOrDefault(amplificationConstant, 1));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    this.frequency = parameters.getIntOrDefault(frequencyConstant, Integer.MIN_VALUE);
-    this.timestampPrecision =
-        parameters.getStringOrDefault(timestampPrecisionConstant, msPrecision);
+    frequency = parameters.getDoubleOrDefault(frequencyConstant, Double.MIN_VALUE);
+    amplification = parameters.getIntOrDefault(amplificationConstant, 1);
+    timestampPrecision = parameters.getStringOrDefault(timestampPrecisionConstant, msPrecision);
+
+    // It needs to be removed from attributes after the value is taken, otherwise it will be shown
+    // to the user, which is unnecessary
+    parameters.getAttributes().remove(timestampPrecisionConstant);
   }
 
   @Override
@@ -82,11 +91,11 @@ public class UDFEnvelopeAnalysis implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     double[] envelopeValues = envelopeAnalyze(signals.toArray());
-    frequency = frequency != Integer.MIN_VALUE ? frequency : calculateFrequency(timestamps);
+    frequency = frequency != Double.MIN_VALUE ? frequency : calculateFrequency(timestamps);
     int signalSize = signals.size();
     double[] frequencies = new double[signalSize / 2];
     for (int i = 0; i < signalSize / 2; i++) {
-      frequencies[i] = i * (frequency / signalSize);
+      frequencies[i] = i * (frequency * amplification / signalSize);
     }
 
     for (int i = 0; i < envelopeValues.length; i++) {
