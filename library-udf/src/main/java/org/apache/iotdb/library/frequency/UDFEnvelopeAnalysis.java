@@ -30,28 +30,34 @@ import org.apache.iotdb.udf.api.exception.UDFOutputSeriesDataTypeNotValidExcepti
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.math3.complex.Complex;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class UDFEnvelopeAnalysis implements UDTF {
-  private int frequency;
+  private double frequency;
 
-  private final List<Double> signals = new ArrayList<>();
-
-  public static final String frequencyConstant = "frequency";
+  public static final String msPrecision = "ms";
+  public static final String usPrecision = "us";
+  public static final String nsPrecision = "ns";
+  private String timestampPrecision = msPrecision;
+  private static final String timestampPrecisionConstant = "timestamp_precision";
+  private final DoubleArrayList signals = new DoubleArrayList();
+  private final LongArrayList timestamps = new LongArrayList();
+  private static final String frequencyConstant = "frequency";
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateRequiredAttribute(frequencyConstant)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> validator.getParameters().getAttributes().size() == 1,
+            x -> validator.getParameters().getAttributes().size() <= 1,
             "The 'envelope' function takes only 'frequency' as an argument.",
             validator.getParameters());
   }
@@ -60,27 +66,39 @@ public class UDFEnvelopeAnalysis implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    this.frequency = Integer.parseInt(parameters.getStringOrDefault(frequencyConstant, "0"));
+    this.frequency = parameters.getIntOrDefault(frequencyConstant, Integer.MIN_VALUE);
+    this.timestampPrecision =
+        parameters.getStringOrDefault(timestampPrecisionConstant, msPrecision);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     signals.add(getValueAsDouble(row, 0));
+    if (timestamps.size() < 10) {
+      timestamps.add(row.getTime());
+    }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    double[] envelopeValues = envelopeAnalyze(signals.toArray());
+    frequency = frequency != Integer.MIN_VALUE ? frequency : calculateFrequency(timestamps);
     int signalSize = signals.size();
-    double[] signals = this.signals.stream().mapToDouble(Double::doubleValue).toArray();
-    double[] envelopeValues = envelopeAnalyze(signals);
     double[] frequencies = new double[signalSize / 2];
     for (int i = 0; i < signalSize / 2; i++) {
-      frequencies[i] = i * ((double) frequency / signalSize);
+      frequencies[i] = i * (frequency / signalSize);
     }
 
     for (int i = 0; i < envelopeValues.length; i++) {
       collector.putDouble((long) frequencies[i], envelopeValues[i]);
     }
+  }
+
+  public double[] envelopeAnalyze(double[] signals) {
+    Complex[] hilbertTransformed = calculateHilbert(signals);
+    double[] hilbertAbs = calculateAbs(hilbertTransformed);
+    double[] fftTransformed = calculateFFT(hilbertAbs);
+    return calculateEnvelope(signals.length, fftTransformed);
   }
 
   public Complex[] calculateHilbert(double[] timeDomainSignal) {
@@ -128,13 +146,6 @@ public class UDFEnvelopeAnalysis implements UDTF {
     return analyticSignals;
   }
 
-  public double[] envelopeAnalyze(double[] signals) {
-    Complex[] hilbertTransformed = calculateHilbert(signals);
-    double[] hilbertAbs = calculateAbs(hilbertTransformed);
-    double[] fftTransformed = calculateFFT(hilbertAbs);
-    return calculateEnvelope(signals.length, fftTransformed);
-  }
-
   private double[] calculateAbs(Complex[] complexNumbers) {
     double[] magnitudes = new double[complexNumbers.length];
     for (int i = 0; i < complexNumbers.length; i++) {
@@ -165,6 +176,36 @@ public class UDFEnvelopeAnalysis implements UDTF {
     return envelope;
   }
 
+  public double calculateFrequency(LongArrayList timestamps) {
+    LongArrayList timeDifferences = calculateTimeDifferences(timestamps);
+    long modeTimeDifference = calculateMode(timeDifferences);
+    return calculateFrequencyByTimeUnit(modeTimeDifference, timestampPrecision);
+  }
+
+  public LongArrayList calculateTimeDifferences(LongArrayList timestamps) {
+    LongArrayList timeDifferences = new LongArrayList();
+    for (int i = 1; i < timestamps.size(); i++) {
+      timeDifferences.add(timestamps.get(i) - timestamps.get(i - 1));
+    }
+    return timeDifferences;
+  }
+
+  public long calculateMode(LongArrayList timestamps) {
+    Map<Long, Integer> countMap = new HashMap<>();
+    int maxCount = 0;
+    long modeTimeDifference = 0L;
+
+    for (long diff : timestamps.toArray()) {
+      int count = countMap.getOrDefault(diff, 0) + 1;
+      countMap.put(diff, count);
+      if (count > maxCount) {
+        maxCount = count;
+        modeTimeDifference = diff;
+      }
+    }
+    return modeTimeDifference;
+  }
+
   public double getValueAsDouble(Row row, int index) throws IOException {
     double ans;
     switch (row.getDataType(index)) {
@@ -185,5 +226,18 @@ public class UDFEnvelopeAnalysis implements UDTF {
             index, "Fail to get data type in row " + row.getTime());
     }
     return ans;
+  }
+
+  public static double calculateFrequencyByTimeUnit(long time, String timeUnit) {
+    switch (timeUnit) {
+      case msPrecision:
+        return 1000.0 / time;
+      case usPrecision:
+        return 1_000_000.0 / time;
+      case nsPrecision:
+        return 1_000_000_000.0 / time;
+      default:
+        throw new IllegalArgumentException("Unsupported time unit.");
+    }
   }
 }
