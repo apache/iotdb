@@ -22,8 +22,9 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -206,7 +207,7 @@ public class MetadataIndexConstructorTest {
         new ArrayList<>(); // contains all measurements group by device
     readMetaDataDFS(actualDevices, actualMeasurements);
     // 3. generate correct result
-    List<String> correctDevices = new ArrayList<>(); // contains all device by sequence
+    List<IDeviceID> correctDevices = new ArrayList<>(); // contains all device by sequence
     List<List<String>> correctFirstMeasurements =
         new ArrayList<>(); // contains first measurements of every leaf, group by device
     List<String> correctPaths = new ArrayList<>(); // contains all paths by sequence
@@ -279,7 +280,7 @@ public class MetadataIndexConstructorTest {
    * @param devices load actual devices
    * @param measurements load actual measurement(first of every leaf)
    */
-  private void readMetaDataDFS(List<String> devices, List<List<String>> measurements) {
+  private void readMetaDataDFS(List<IDeviceID> devices, List<List<String>> measurements) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
       MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -301,13 +302,16 @@ public class MetadataIndexConstructorTest {
           node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)
               || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE));
       for (int i = 0; i < node.getChildren().size(); i++) {
-        MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
+        IMetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
         long endOffset = node.getEndOffset();
         if (i != node.getChildren().size() - 1) {
           endOffset = node.getChildren().get(i + 1).getOffset();
         }
+        boolean currentChildLevelIsDevice =
+            MetadataIndexNodeType.INTERNAL_DEVICE.equals(node.getNodeType());
         MetadataIndexNode subNode =
-            reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
+            reader.readMetadataIndexNode(
+                metadataIndexEntry.getOffset(), endOffset, currentChildLevelIsDevice);
         if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
           devices.add(metadataIndexEntry.getName());
           measurements.add(new ArrayList<>());
@@ -333,16 +337,18 @@ public class MetadataIndexConstructorTest {
           node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)
               || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT));
       for (int i = 0; i < node.getChildren().size(); i++) {
-        MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
+        IMetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
         long endOffset = node.getEndOffset();
         if (i != node.getChildren().size() - 1) {
           endOffset = node.getChildren().get(i + 1).getOffset();
         }
         if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-          measurements.get(deviceIndex).add(metadataIndexEntry.getName());
+          measurements
+              .get(deviceIndex)
+              .add(((MeasurementMetadataIndexEntry) metadataIndexEntry).getName());
         } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
           MetadataIndexNode subNode =
-              reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
+              reader.readMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset, false);
           measurementDFS(deviceIndex, measurements, reader, subNode);
         }
       }

@@ -154,9 +154,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   }
 
   @Override
-  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+  public MetadataIndexNode readMetadataIndexNode(long start, long end, boolean isDeviceLevel)
+      throws IOException {
     long before = readDataSize.get();
-    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end);
+    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end, isDeviceLevel);
     long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);

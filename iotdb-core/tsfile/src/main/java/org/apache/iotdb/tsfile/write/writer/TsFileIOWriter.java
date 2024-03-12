@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -364,7 +364,7 @@ public class TsFileIOWriter implements AutoCloseable {
             ? TSMIterator.getTSMIteratorInDisk(
                 chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
             : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
-    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
+    Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
     String currentDevice = null;
     String prevDevice = null;
@@ -408,9 +408,9 @@ public class TsFileIOWriter implements AutoCloseable {
         }
         if (timeseriesMetadata.getTsDataType() != TSDataType.VECTOR) {
           currentIndexNode.addEntry(
-              new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
+              new MeasurementMetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
         } else {
-          currentIndexNode.addEntry(new MetadataIndexEntry("", out.getPosition()));
+          currentIndexNode.addEntry(new MeasurementMetadataIndexEntry("", out.getPosition()));
         }
       }
 

@@ -49,7 +49,7 @@ public class TsFileMetadata {
     TsFileMetadata fileMetaData = new TsFileMetadata();
 
     // metadataIndex
-    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
+    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer, true);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);

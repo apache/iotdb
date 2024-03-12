@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +45,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
   private String measurement;
-  protected String device;
+  protected IDeviceID device;
   protected String fullPath;
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
@@ -96,7 +97,7 @@ public class Path implements Serializable, Comparable<Path> {
    * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
    * @param needCheck need to validate the correctness of the path
    */
-  public Path(String device, String measurement, boolean needCheck) {
+  public Path(IDeviceID device, String measurement, boolean needCheck) {
     if (device == null || measurement == null) {
       throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
     }
@@ -135,7 +136,7 @@ public class Path implements Serializable, Comparable<Path> {
     return fullPath;
   }
 
-  public String getDevice() {
+  public IDeviceID getDevice() {
     return device;
   }
 
