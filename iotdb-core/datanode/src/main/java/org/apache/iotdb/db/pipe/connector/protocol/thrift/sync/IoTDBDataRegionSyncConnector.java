@@ -268,27 +268,26 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     // 2. Transfer file piece by piece
     transferFilePieces(tsFile, clientAndStatus);
 
+    // 3. Transfer file seal signal, which means the file is transferred completely
+    final TPipeTransferResp resp;
+    try {
+      resp =
+          clientAndStatus
+              .getLeft()
+              .pipeTransfer(
+                  PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+    } catch (Exception e) {
+      clientAndStatus.setRight(false);
+      throw new PipeConnectionException(
+          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
+    }
 
-      // 3. Transfer file seal signal, which means the file is transferred completely
-      final TPipeTransferResp resp;
-      try {
-          resp =
-                  clientAndStatus
-                          .getLeft()
-                          .pipeTransfer(
-                                  PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-      } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-                  String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
-      }
+    receiverStatusHandler.handle(
+        resp.getStatus(),
+        String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+        tsFile.getName());
 
-      receiverStatusHandler.handle(
-              resp.getStatus(),
-              String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
-              tsFile.getName());
-
-      LOGGER.info("Successfully transferred file {}.", tsFile);
+    LOGGER.info("Successfully transferred file {}.", tsFile);
   }
 
   private void transferFilePieces(
