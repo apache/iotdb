@@ -33,7 +33,7 @@ public class UDFParametersFactory {
 
   private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
-  public static final String timestampPrecisionConstant = "timestamp_precision";
+  public static final String timestampPrecisionConstant = "timestampPrecision";
 
   public static UDFParameters buildUdfParameters(
       List<String> childExpressions,
