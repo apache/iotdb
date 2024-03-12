@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.slf4j.Logger;
@@ -47,6 +48,10 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
   public Void call() {
     while (true) {
       try {
+        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());
+        if (!StorageEngine.getInstance().isAllSgReady()) {
+          continue;
+        }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
         for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
           if (i % workerNum != workerId) {
@@ -58,7 +63,6 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
           }
           dataRegion.executeCompaction();
         }
-        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());
       } catch (InterruptedException ignored) {
         logger.info(
             "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted", workerId);

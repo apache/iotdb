@@ -19,65 +19,66 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
-import org.apache.iotdb.db.pipe.agent.plugin.PipePluginDataNodeAgent;
-import org.apache.iotdb.db.pipe.agent.receiver.PipeReceiverAgent;
-import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
-import org.apache.iotdb.db.pipe.agent.task.PipeTaskDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.plugin.PipeDataNodePluginAgent;
+import org.apache.iotdb.db.pipe.agent.receiver.PipeDataNodeReceiverAgent;
+import org.apache.iotdb.db.pipe.agent.runtime.PipeDataNodeRuntimeAgent;
+import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTaskAgent;
+import org.apache.iotdb.db.service.DataNode;
 
-/** PipeAgent is the entry point of the pipe module in DataNode. */
+/** {@link PipeAgent} is the entry point of the pipe module in {@link DataNode}. */
 public class PipeAgent {
 
-  private final PipePluginDataNodeAgent pipePluginDataNodeAgent;
-  private final PipeTaskDataNodeAgent pipeTaskDataNodeAgent;
-  private final PipeRuntimeAgent pipeRuntimeAgent;
-  private final PipeReceiverAgent pipeReceiverAgent;
+  private final PipeDataNodePluginAgent pipeDataNodePluginAgent;
+  private final PipeDataNodeTaskAgent pipeDataNodeTaskAgent;
+  private final PipeDataNodeRuntimeAgent pipeDataNodeRuntimeAgent;
+  private final PipeDataNodeReceiverAgent pipeDataNodeReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
-    pipePluginDataNodeAgent = new PipePluginDataNodeAgent();
-    pipeTaskDataNodeAgent = new PipeTaskDataNodeAgent();
-    pipeRuntimeAgent = new PipeRuntimeAgent();
-    pipeReceiverAgent = new PipeReceiverAgent();
+    pipeDataNodePluginAgent = new PipeDataNodePluginAgent();
+    pipeDataNodeTaskAgent = new PipeDataNodeTaskAgent();
+    pipeDataNodeRuntimeAgent = new PipeDataNodeRuntimeAgent();
+    pipeDataNodeReceiverAgent = new PipeDataNodeReceiverAgent();
   }
 
-  /** The singleton holder of PipeAgent. */
+  /** The singleton holder of {@link PipeAgent}. */
   private static class PipeAgentHolder {
     private static final PipeAgent HANDLE = new PipeAgent();
   }
 
   /**
-   * Get the singleton instance of PipeTaskAgent.
+   * Get the singleton instance of {@link PipeDataNodeTaskAgent}.
    *
-   * @return the singleton instance of PipeTaskAgent
+   * @return the singleton instance of {@link PipeDataNodeTaskAgent}
    */
-  public static PipeTaskDataNodeAgent task() {
-    return PipeAgentHolder.HANDLE.pipeTaskDataNodeAgent;
+  public static PipeDataNodeTaskAgent task() {
+    return PipeAgentHolder.HANDLE.pipeDataNodeTaskAgent;
   }
 
   /**
-   * Get the singleton instance of PipePluginAgent.
+   * Get the singleton instance of {@link PipeDataNodePluginAgent}.
    *
-   * @return the singleton instance of PipePluginAgent
+   * @return the singleton instance of {@link PipeDataNodePluginAgent}
    */
-  public static PipePluginDataNodeAgent plugin() {
-    return PipeAgentHolder.HANDLE.pipePluginDataNodeAgent;
+  public static PipeDataNodePluginAgent plugin() {
+    return PipeAgentHolder.HANDLE.pipeDataNodePluginAgent;
   }
 
   /**
-   * Get the singleton instance of PipeRuntimeAgent.
+   * Get the singleton instance of {@link PipeDataNodeRuntimeAgent}.
    *
-   * @return the singleton instance of PipeRuntimeAgent
+   * @return the singleton instance of {@link PipeDataNodeRuntimeAgent}
    */
-  public static PipeRuntimeAgent runtime() {
-    return PipeAgentHolder.HANDLE.pipeRuntimeAgent;
+  public static PipeDataNodeRuntimeAgent runtime() {
+    return PipeAgentHolder.HANDLE.pipeDataNodeRuntimeAgent;
   }
 
   /**
-   * Get the singleton instance of PipeReceiverAgent.
+   * Get the singleton instance of {@link PipeDataNodeReceiverAgent}.
    *
-   * @return the singleton instance of PipeReceiverAgent
+   * @return the singleton instance of {@link PipeDataNodeReceiverAgent}
    */
-  public static PipeReceiverAgent receiver() {
-    return PipeAgentHolder.HANDLE.pipeReceiverAgent;
+  public static PipeDataNodeReceiverAgent receiver() {
+    return PipeAgentHolder.HANDLE.pipeDataNodeReceiverAgent;
   }
 }

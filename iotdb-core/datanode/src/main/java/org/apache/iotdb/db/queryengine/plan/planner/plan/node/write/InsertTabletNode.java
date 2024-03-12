@@ -170,6 +170,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INSERT_TABLET;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of Insert is not implemented");
   }

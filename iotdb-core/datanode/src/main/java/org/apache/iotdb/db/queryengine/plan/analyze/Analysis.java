@@ -175,8 +175,6 @@ public class Analysis {
   // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
   private boolean deviceViewSpecialProcess;
 
-  private boolean existDeviceCrossRegion;
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -663,14 +661,6 @@ public class Analysis {
 
   public void setDeviceViewSpecialProcess(boolean deviceViewSpecialProcess) {
     this.deviceViewSpecialProcess = deviceViewSpecialProcess;
-  }
-
-  public boolean isExistDeviceCrossRegion() {
-    return existDeviceCrossRegion;
-  }
-
-  public void setExistDeviceCrossRegion() {
-    this.existDeviceCrossRegion = true;
   }
 
   public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {

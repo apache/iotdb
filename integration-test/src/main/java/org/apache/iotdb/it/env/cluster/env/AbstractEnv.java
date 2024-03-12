@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
@@ -28,7 +29,10 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
@@ -252,7 +256,10 @@ public abstract class AbstractEnv implements BaseEnv {
     for (StackTraceElement stackTraceElement : stack) {
       String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
-        return className.substring(className.lastIndexOf(".") + 1);
+        String result = className.substring(className.lastIndexOf(".") + 1);
+        if (!result.startsWith("Abstract")) {
+          return result;
+        }
       }
     }
     return "UNKNOWN-IT";
@@ -349,7 +356,9 @@ public abstract class AbstractEnv implements BaseEnv {
         logger.error("Delete lock file {} failed", lockPath);
       }
     }
-    clientManager.close();
+    if (clientManager != null) {
+      clientManager.close();
+    }
     testMethodName = null;
     clusterConfig = new MppClusterConfig();
   }
@@ -358,6 +367,14 @@ public abstract class AbstractEnv implements BaseEnv {
   public Connection getConnection(String username, String password) throws SQLException {
     return new ClusterTestConnection(
         getWriteConnection(null, username, password), getReadConnections(null, username, password));
+  }
+
+  @Override
+  public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
+        Collections.emptyList());
   }
 
   @Override
@@ -640,6 +657,66 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     throw new IOException(
         "Failed to get connection to this ConfigNode. Last error: " + lastException);
+  }
+
+  @Override
+  public int getFirstLeaderSchemaRegionDataNodeIndex() throws IOException, InterruptedException {
+    Exception lastException = null;
+    ConfigNodeWrapper lastErrorNode = null;
+    for (int retry = 0; retry < 30; retry++) {
+      for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
+        ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
+        lastErrorNode = configNodeWrapper;
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(
+                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
+          TShowRegionResp resp =
+              client.showRegion(
+                  new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.SchemaRegion));
+          // Only the ConfigNodeClient who connects to the ConfigNode-leader
+          // will respond the SUCCESS_STATUS
+
+          String ip;
+          int port;
+
+          if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            for (TRegionInfo tRegionInfo : resp.getRegionInfoList()) {
+              if (tRegionInfo.getRoleType().equals("Leader")) {
+                ip = tRegionInfo.getClientRpcIp();
+                port = tRegionInfo.getClientRpcPort();
+                for (int dataNodeId = 0; dataNodeId < dataNodeWrapperList.size(); ++dataNodeId) {
+                  DataNodeWrapper dataNodeWrapper = dataNodeWrapperList.get(dataNodeId);
+                  if (dataNodeWrapper.getIp().equals(ip) && dataNodeWrapper.getPort() == port) {
+                    return dataNodeId;
+                  }
+                }
+              }
+            }
+            logger.error("No leaders in all schemaRegions.");
+            return -1;
+          } else {
+            throw new Exception(
+                "Bad status: "
+                    + resp.getStatus().getCode()
+                    + " message: "
+                    + resp.getStatus().getMessage());
+          }
+        } catch (Exception e) {
+          lastException = e;
+        }
+
+        // Sleep 1s before next retry
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    if (lastErrorNode != null) {
+      throw new IOException(
+          "Failed to get the index of SchemaRegion-Leader from configNode. Last error configNode: "
+              + lastErrorNode.getIpAndPortString(),
+          lastException);
+    } else {
+      throw new IOException("Empty configNode set");
+    }
   }
 
   @Override

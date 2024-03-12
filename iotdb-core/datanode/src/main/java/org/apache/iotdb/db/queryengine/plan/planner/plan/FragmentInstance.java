@@ -76,6 +76,10 @@ public class FragmentInstance implements IConsensusRequest {
   // indicate which index we are retrying
   private transient int nextRetryIndex = 0;
 
+  // If this query is an EXPLAIN ANALYZE query
+  // We need to cache and calculate the statistics of this FragmentInstance if it is.
+  private boolean isExplainAnalyze = false;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -102,9 +106,11 @@ public class FragmentInstance implements IConsensusRequest {
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
+      boolean isExplainAnalyze,
       boolean isRoot) {
     this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
     this.isRoot = isRoot;
+    this.isExplainAnalyze = isExplainAnalyze;
   }
 
   public FragmentInstance(
@@ -217,6 +223,7 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
+    fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
     return fragmentInstance;
   }
 
@@ -240,6 +247,7 @@ public class FragmentInstance implements IConsensusRequest {
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
+      ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when serializing this FragmentInstance.", e);
@@ -283,5 +291,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public boolean isExplainAnalyze() {
+    return isExplainAnalyze;
   }
 }

@@ -67,6 +67,11 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new NodeManagementMemoryMergeNode(getPlanNodeId(), this.data);
   }

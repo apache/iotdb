@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -223,8 +223,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
-    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
+    // In that case we only judge the resource.getFileStartTime() to avoid losing data
+    return isClosed.get()
+        ? startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime
+        : resource.getFileStartTime() <= endTime;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

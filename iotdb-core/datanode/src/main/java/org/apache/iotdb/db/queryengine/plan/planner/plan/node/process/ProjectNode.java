@@ -48,6 +48,11 @@ public class ProjectNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PROJECT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new ProjectNode(getPlanNodeId(), getOutputColumnNames());
   }

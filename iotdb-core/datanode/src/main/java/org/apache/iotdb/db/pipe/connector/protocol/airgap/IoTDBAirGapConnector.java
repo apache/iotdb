@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.IoTDBConnector;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -93,9 +92,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
-
-  // The air gap connector does not use clientManager thus we put handshake type here
-  private PipeRequestType receiverHandshakeType = PipeRequestType.HANDSHAKE_V2;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -210,23 +206,18 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
       // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
-      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))) {
-        receiverHandshakeType = PipeRequestType.HANDSHAKE_V1;
-        if (!send(
-            socket,
-            PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
-                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-          throw new PipeConnectionException(
-              "Handshake error with target server ip: " + ip + ", port: " + port);
-        }
+      if (!send(socket, PipeTransferHandshakeV2Req.toTransferHandshakeBytes(params))
+          && !send(
+              socket,
+              PipeTransferHandshakeV1Req.toTransferHandshakeBytes(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+        throw new PipeConnectionException(
+            "Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
-        // To avoid previous V2 failure stemming from connection failure
-        // Try transfer mods from now on
-        receiverHandshakeType = PipeRequestType.HANDSHAKE_V2;
+        isSocketAlive.set(i, true);
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
       }
-      isSocketAlive.set(i, true);
-      socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
-      LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
     }
 
     for (int i = 0; i < sockets.size(); i++) {
@@ -360,30 +351,11 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    // 1. Transfer mod file if exists
-    if (pipeTsFileInsertionEvent.isWithMod()
-        && receiverHandshakeType != PipeRequestType.HANDSHAKE_V1) {
-      transferFilePieces(pipeTsFileInsertionEvent.getModFile(), socket);
-    }
-
-    // 2. Transfer file piece by piece
-    transferFilePieces(tsFile, socket);
-
-    // 3. Transfer file seal signal, which means the file is transferred completely
-    if (!send(
-        socket,
-        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
-      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
-    } else {
-      LOGGER.info("Successfully transferred file {}.", tsFile);
-    }
-  }
-
-  private void transferFilePieces(File file, Socket socket) throws PipeException, IOException {
+    // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -393,17 +365,26 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         if (!send(
             socket,
             PipeTransferFilePieceReq.toTPipeTransferBytes(
-                file.getName(),
+                tsFile.getName(),
                 position,
                 readLength == readFileBufferSize
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
           throw new PipeException(
-              String.format("Transfer file %s error. Socket %s.", file, socket));
+              String.format("Transfer file %s error. Socket %s.", tsFile, socket));
         } else {
           position += readLength;
         }
       }
+    }
+
+    // 2. Transfer file seal signal, which means the file is transferred completely
+    if (!send(
+        socket,
+        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
+    } else {
+      LOGGER.info("Successfully transferred file {}.", tsFile);
     }
   }
 
