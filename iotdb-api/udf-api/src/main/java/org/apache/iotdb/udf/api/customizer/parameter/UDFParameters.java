@@ -23,6 +23,7 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,14 +44,24 @@ public class UDFParameters {
   private final List<String> childExpressions;
   private final List<Type> childExpressionDataTypes;
   private final Map<String, String> attributes;
+  private final Map<String, String> systemAttributes;
 
   public UDFParameters(
       List<String> childExpressions,
       List<Type> childExpressionDataTypes,
       Map<String, String> attributes) {
+    this(childExpressions, childExpressionDataTypes, attributes, new HashMap<>());
+  }
+
+  public UDFParameters(
+      List<String> childExpressions,
+      List<Type> childExpressionDataTypes,
+      Map<String, String> attributes,
+      Map<String, String> systemAttributes) {
     this.childExpressions = childExpressions;
     this.childExpressionDataTypes = childExpressionDataTypes;
     this.attributes = attributes;
+    this.systemAttributes = systemAttributes;
   }
 
   public List<String> getChildExpressions() {
@@ -134,5 +145,17 @@ public class UDFParameters {
   public double getDoubleOrDefault(String key, double defaultValue) {
     String value = attributes.get(key);
     return value == null ? defaultValue : Double.parseDouble(value);
+  }
+
+  public void putExtraAttributes(String attributeKey, String attributeValue) {
+    systemAttributes.put(attributeKey, attributeValue);
+  }
+
+  public String getExtraAttributes(String attributeKey) {
+    return systemAttributes.get(attributeKey);
+  }
+
+  public boolean hasExtraAttributes(String attributeKey) {
+    return systemAttributes.containsKey(attributeKey);
   }
 }

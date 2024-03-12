@@ -38,10 +38,12 @@ public class UDFParametersFactory {
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
-    attributes.put(timestampPrecisionConstant, config.getTimestampPrecision());
-    return new UDFParameters(
-        childExpressions,
-        UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-        attributes);
+    UDFParameters udfParameters =
+        new UDFParameters(
+            childExpressions,
+            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+            attributes);
+    udfParameters.putExtraAttributes(timestampPrecisionConstant, config.getTimestampPrecision());
+    return udfParameters;
   }
 }
