@@ -318,6 +318,7 @@ public class ConfigNodeConfig {
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     pipeDir = addHomeDir(pipeDir);
     pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
+    pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
   private String addHomeDir(String dir) {

@@ -1933,6 +1933,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // create new view
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    createLogicalViewStatement.setSourceFullPaths(new ArrayList<>());
     createLogicalViewStatement.setTargetFullPaths(
         Collections.singletonList(renameLogicalViewStatement.getNewName()));
     createLogicalViewStatement.setViewExpressions(Collections.singletonList(viewExpression));
