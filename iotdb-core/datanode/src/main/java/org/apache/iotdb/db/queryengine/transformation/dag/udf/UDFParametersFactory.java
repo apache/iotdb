@@ -31,9 +31,9 @@ import java.util.Map;
 
 public class UDFParametersFactory {
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  public static final String timestampPrecisionConstant = "timestampPrecision";
+  public static final String TIMESTAMP_PRECISION = "timestampPrecision";
 
   public static UDFParameters buildUdfParameters(
       List<String> childExpressions,
@@ -48,7 +48,7 @@ public class UDFParametersFactory {
 
   private static Map<String, String> buildSystemAttributes() {
     Map<String, String> systemAttributes = new HashMap<>();
-    systemAttributes.put(timestampPrecisionConstant, config.getTimestampPrecision());
+    systemAttributes.put(TIMESTAMP_PRECISION, CONFIG.getTimestampPrecision());
     return systemAttributes;
   }
 }
