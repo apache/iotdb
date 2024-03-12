@@ -255,7 +255,7 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
-  public abstract boolean isEventTimeOverlappedWithTimeRange();
+  public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
   public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
     this.committerKey = committerKey;

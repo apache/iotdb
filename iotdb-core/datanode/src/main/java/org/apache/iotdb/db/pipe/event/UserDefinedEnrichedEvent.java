@@ -86,7 +86,7 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
-    return enrichedEvent.isEventTimeOverlappedWithTimeRange();
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    return enrichedEvent.mayEventTimeOverlappedWithTimeRange();
   }
 }

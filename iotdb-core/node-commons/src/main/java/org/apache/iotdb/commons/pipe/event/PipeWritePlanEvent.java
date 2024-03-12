@@ -83,7 +83,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }
 }
