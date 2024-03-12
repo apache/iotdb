@@ -62,7 +62,7 @@ public class LoadCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadCache.class);
 
-  private static final long WAIT_LEADER_INTERVAL = 50;
+  private static final long WAIT_LEADER_INTERVAL = 10;
   private static final long LEADER_ELECTION_WAITING_TIMEOUT =
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),

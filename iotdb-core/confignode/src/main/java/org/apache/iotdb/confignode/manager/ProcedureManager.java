@@ -51,7 +51,6 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -82,6 +81,8 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.Drop
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -136,7 +137,7 @@ public class ProcedureManager {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
-  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
+  private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -187,6 +188,12 @@ public class ProcedureManager {
   @TestOnly
   public TSStatus createManyDatabases() {
     this.executor.submitProcedure(new CreateManyDatabasesProcedure());
+    return StatusUtils.OK;
+  }
+
+  @TestOnly
+  public TSStatus testSubProcedure() {
+    this.executor.submitProcedure(new AddNeverFinishSubProcedureProcedure());
     return StatusUtils.OK;
   }
 

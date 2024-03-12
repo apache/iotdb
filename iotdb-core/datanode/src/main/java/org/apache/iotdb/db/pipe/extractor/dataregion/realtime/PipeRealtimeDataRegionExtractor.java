@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimeP
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -46,6 +46,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +57,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -73,13 +72,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected boolean shouldExtractInsertion;
   protected boolean shouldExtractDeletion;
 
-  protected String pattern;
+  protected PipePattern pipePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
   protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
-  private final AtomicBoolean enableSkippingTimeParseByTimePartition = new AtomicBoolean(false);
   private boolean disableSkippingTimeParse = false;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
@@ -154,18 +152,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
-    pattern =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-            PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (databaseName != null
-          && pattern.length() <= databaseName.length()
-          && databaseName.startsWith(pattern)) {
-        isDbNameCoveredByPattern = true;
+      if (databaseName != null) {
+        isDbNameCoveredByPattern = pipePattern.coversDb(databaseName);
       }
     }
 
@@ -177,19 +171,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
-
-    final Pair<Long, Long> timePartitionIdBound =
-        TimePartitionManager.getInstance()
-            .getTimePartitionIdBound(new DataRegionId(Integer.parseInt(dataRegionId)));
-    if (Objects.nonNull(timePartitionIdBound)) {
-      setDataRegionTimePartitionIdBound(timePartitionIdBound);
-    } else {
-      LOGGER.warn(
-          "Something unexpected happened when PipeRealtimeDataRegionExtractor({}) obtaining time partition id bound on data region {}, set enableTimeParseSkipByTimePartition to false.",
-          taskID,
-          dataRegionId);
-      enableSkippingTimeParseByTimePartition.set(false);
-    }
 
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
@@ -242,7 +223,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (!disableSkippingTimeParse && enableSkippingTimeParseByTimePartition.get()) {
+    if (!disableSkippingTimeParse && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
@@ -259,7 +240,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // 2. Check if the timestamps of the data contained in this event intersect with the time range.
     // If there is no intersection, it indicates that this data will be filtered out by the
     // extractor, and the extract process is skipped.
-    if (!event.shouldParseTime() || event.getEvent().isEventTimeOverlappedWithTimeRange()) {
+    if (!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange()) {
       doExtract(event);
     } else {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
@@ -379,8 +360,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return shouldExtractDeletion;
   }
 
-  public final String getPattern() {
-    return pattern;
+  public final String getPatternString() {
+    return pipePattern != null ? pipePattern.getPattern() : null;
+  }
+
+  public final PipePattern getPipePattern() {
+    return pipePattern;
   }
 
   public final long getRealtimeDataExtractionStartTime() {
@@ -391,20 +376,18 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(@NonNull Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording partition id bound: {}, set enableTimeParseSkipByTimePartition to true.",
+        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
         dataRegionId,
         timePartitionIdBound);
     dataRegionTimePartitionIdBound.set(timePartitionIdBound);
-    enableSkippingTimeParseByTimePartition.set(true);
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
     Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
-    return Objects.nonNull(timePartitionIdBound)
-        && startTimePartitionIdLowerBound <= timePartitionIdBound.left
+    return startTimePartitionIdLowerBound <= timePartitionIdBound.left
         && timePartitionIdBound.right <= endTimePartitionIdUpperBound;
   }
 
@@ -419,8 +402,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   @Override
   public String toString() {
     return "PipeRealtimeDataRegionExtractor{"
-        + "pattern='"
-        + pattern
+        + "pipePattern='"
+        + pipePattern
         + '\''
         + ", dataRegionId='"
         + dataRegionId

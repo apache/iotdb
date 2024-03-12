@@ -22,9 +22,11 @@ package org.apache.iotdb.confignode.it.procedure;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
+import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,6 +35,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,19 +45,37 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.confignode.procedure.impl.CreateManyDatabasesProcedure.MAX_STATE;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure.MAX_STATE;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBProcedureIT {
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBProcedureIT.class);
+
+  private static final TGetDatabaseReq showAllDatabasesReq;
+
+  static {
+    try {
+      showAllDatabasesReq =
+          new TGetDatabaseReq(
+              Arrays.asList(
+                  new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                      .getPathPattern()
+                      .getNodes()),
+              SchemaConstant.ALL_MATCH_SCOPE.serialize());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Before
   public void setUp() {
@@ -98,19 +119,10 @@ public class IoTDBProcedureIT {
 
     SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
-    leaderClient.createManyDatabases();
-
-    // prepare req
-    final TGetDatabaseReq req =
-        new TGetDatabaseReq(
-            Arrays.asList(
-                new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
-                    .getPathPattern()
-                    .getNodes()),
-            SchemaConstant.ALL_MATCH_SCOPE.serialize());
+    leaderClient.callSpecialProcedure(TTestOperation.TEST_PROCEDURE_RECOVER);
 
     // Make sure the procedure has not finished yet
-    TShowDatabaseResp resp = leaderClient.showDatabase(req);
+    TShowDatabaseResp resp = leaderClient.showDatabase(showAllDatabasesReq);
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
     final int oldLeaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
@@ -122,7 +134,7 @@ public class IoTDBProcedureIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
     Callable<Boolean> finalCheck =
         () -> {
-          TShowDatabaseResp resp1 = newLeaderClient.showDatabase(req);
+          TShowDatabaseResp resp1 = newLeaderClient.showDatabase(showAllDatabasesReq);
           if (MAX_STATE != resp1.getDatabaseInfoMap().size()) {
             return false;
           }
@@ -132,6 +144,77 @@ public class IoTDBProcedureIT {
               .forEach(databaseName -> expectedDatabases.remove(databaseName));
           return expectedDatabases.isEmpty();
         };
-    Awaitility.await().atMost(1, TimeUnit.MINUTES).until(finalCheck);
+    Awaitility.await().pollDelay(1, SECONDS).atMost(1, TimeUnit.MINUTES).until(finalCheck);
+  }
+
+  /**
+   * Testing the sub-procedure functionality of the Procedure framework: the parent procedure will
+   * not execute before the sub-procedure finishing.
+   */
+  @Test
+  public void subProcedureTest() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
+
+    SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    leaderClient.callSpecialProcedure(TTestOperation.TEST_SUB_PROCEDURE);
+
+    boolean checkBeforeConfigNodeRestart = false;
+    try {
+      Awaitility.await()
+          .pollDelay(1, SECONDS)
+          .atMost(10, SECONDS)
+          .until(
+              () -> {
+                TShowDatabaseResp resp = leaderClient.showDatabase(showAllDatabasesReq);
+                return resp.getDatabaseInfoMap()
+                    .containsKey(AddNeverFinishSubProcedureProcedure.FAIL_DATABASE_NAME);
+              });
+    } catch (ConditionTimeoutException e) {
+      checkBeforeConfigNodeRestart = true;
+    }
+    if (!checkBeforeConfigNodeRestart) {
+      throw new Exception("checkBeforeConfigNodeRestart fail");
+    }
+
+    // Restart the ConfigNode
+    final int leaderConfigNodeIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stop();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).start();
+    SyncConfigNodeIServiceClient newLeaderClient =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+    // Make sure leader ConfigNode is working
+    Awaitility.await()
+        .pollDelay(1, SECONDS)
+        .atMost(10, SECONDS)
+        .until(
+            () -> {
+              try {
+                newLeaderClient.showDatabase(showAllDatabasesReq);
+              } catch (Exception e) {
+                return false;
+              }
+              return true;
+            });
+
+    boolean checkAfterConfigNodeRestart = false;
+    try {
+      Awaitility.await()
+          .pollDelay(1, SECONDS)
+          .atMost(10, SECONDS)
+          .until(
+              () -> {
+                TShowDatabaseResp resp = newLeaderClient.showDatabase(showAllDatabasesReq);
+                return resp.getDatabaseInfoMap()
+                    .containsKey(AddNeverFinishSubProcedureProcedure.FAIL_DATABASE_NAME);
+              });
+    } catch (ConditionTimeoutException e) {
+      checkAfterConfigNodeRestart = true;
+    }
+    if (!checkAfterConfigNodeRestart) {
+      throw new Exception("checkAfterConfigNodeRestart fail");
+    }
+
+    LOGGER.info("test pass");
   }
 }

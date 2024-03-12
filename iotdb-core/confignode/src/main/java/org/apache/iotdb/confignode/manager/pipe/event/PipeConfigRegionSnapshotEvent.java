@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,7 +40,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public PipeConfigRegionSnapshotEvent(
-      String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
+      String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, PipePattern pattern) {
     super(
         snapshotPath,
         pipeName,
@@ -50,7 +51,11 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeConfigRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
   }
 

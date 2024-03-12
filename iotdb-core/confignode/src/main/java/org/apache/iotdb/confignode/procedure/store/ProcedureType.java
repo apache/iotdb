@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +36,7 @@ public enum ProcedureType {
   DELETE_DATABASE_PROCEDURE((short) 200),
   REGION_MIGRATE_PROCEDURE((short) 201),
   CREATE_REGION_GROUPS((short) 202),
+  @TestOnly
   CREATE_MANY_DATABASES_PROCEDURE((short) 203),
 
   /** Timeseries */
@@ -93,7 +96,12 @@ public enum ProcedureType {
   PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE((short) 1408),
   PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE((short) 1409),
   PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE((short) 1410),
-  ;
+
+  /** Other */
+  @TestOnly
+  NEVER_FINISH_PROCEDURE((short) 66600),
+  @TestOnly
+  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 66601);
 
   private final short typeCode;
 

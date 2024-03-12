@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
@@ -52,12 +52,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  private final String pattern; // used to filter data
+  private final PipePattern pattern; // used to filter data
   private final IExpression timeFilterExpression; // used to filter data
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
@@ -74,14 +75,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private boolean shouldParsePattern = false;
 
-  public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
-      throws IOException {
+  public TsFileInsertionDataContainer(
+      File tsFile, PipePattern pattern, long startTime, long endTime) throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionDataContainer(
       File tsFile,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime,
       PipeTaskMeta pipeTaskMeta,
@@ -145,8 +146,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (pattern == null
-          || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
+      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
           filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
@@ -154,14 +154,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+      else if (pattern.mayOverlapWithDevice(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          // low cost check comes first
-          if (pattern.length() == deviceId.length() + measurement.length() + 1
-              // high cost check comes later
-              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+          if (pattern.matchesMeasurement(deviceId, measurement)) {
             filteredMeasurements.add(measurement);
           } else {
             // Parse pattern iff there are measurements filtered out

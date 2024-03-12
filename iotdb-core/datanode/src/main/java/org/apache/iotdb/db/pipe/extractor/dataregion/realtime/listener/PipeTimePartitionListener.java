@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -44,6 +46,12 @@ public class PipeTimePartitionListener {
     dataRegionId2Extractors
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
         .put(extractor.getTaskID(), extractor);
+    // Assign the previously recorded upper and lower bounds of time partition to the extractor that
+    // has just started listening to the growth of time partition.
+    Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    if (Objects.nonNull(timePartitionIdBound)) {
+      extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound);
+    }
   }
 
   public synchronized void stopListen(
@@ -62,7 +70,7 @@ public class PipeTimePartitionListener {
   //////////////////////////// listen to changes ////////////////////////////
 
   public synchronized void listenToTimePartitionGrow(
-      String dataRegionId, Pair<Long, Long> newTimePartitionIdBound) {
+      String dataRegionId, @NonNull Pair<Long, Long> newTimePartitionIdBound) {
     boolean shouldBroadcastTimePartitionChange = false;
     Pair<Long, Long> oldTimePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
 

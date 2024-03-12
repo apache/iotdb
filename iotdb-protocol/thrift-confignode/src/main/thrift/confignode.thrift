@@ -913,6 +913,13 @@ enum TActivationControl {
   ALL_LICENSE_FILE_DELETED
 }
 
+// ====================================================
+// Test only
+// ====================================================
+enum TTestOperation {
+  TEST_PROCEDURE_RECOVER,
+  TEST_SUB_PROCEDURE,
+}
 
 service IConfigNodeRPCService {
 
@@ -1046,7 +1053,7 @@ service IConfigNodeRPCService {
   TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
 
   /** Test only */
-  common.TSStatus createManyDatabases()
+  common.TSStatus callSpecialProcedure(TTestOperation operation)
 
   // ======================================================
   // SchemaPartition

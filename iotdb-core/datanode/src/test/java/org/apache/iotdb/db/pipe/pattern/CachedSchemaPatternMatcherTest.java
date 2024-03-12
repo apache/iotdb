@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.extractor;
+package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -127,12 +128,12 @@ public class CachedSchemaPatternMatcherTest {
       for (int j = 0; j < deviceNum; j++) {
         PipeRealtimeEvent event =
             new PipeRealtimeEvent(
-                null, null, Collections.singletonMap("root." + i, measurements), "root");
+                null, null, Collections.singletonMap("root." + i, measurements), null);
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(extractor -> extractor.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, "root");
+      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, null);
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(extractor -> extractor.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
@@ -148,7 +149,9 @@ public class CachedSchemaPatternMatcherTest {
 
   public static class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {
 
-    public PipeRealtimeDataRegionFakeExtractor() {}
+    public PipeRealtimeDataRegionFakeExtractor() {
+      pipePattern = new PrefixPipePattern(null);
+    }
 
     @Override
     public Event supply() {
@@ -166,10 +169,13 @@ public class CachedSchemaPatternMatcherTest {
                   for (String s : v) {
                     match[0] =
                         match[0]
-                            || (k + TsFileConstant.PATH_SEPARATOR + s).startsWith(getPattern());
+                            || (k + TsFileConstant.PATH_SEPARATOR + s)
+                                .startsWith(getPatternString());
                   }
                 } else {
-                  match[0] = match[0] || (getPattern().startsWith(k) || k.startsWith(getPattern()));
+                  match[0] =
+                      match[0]
+                          || (getPatternString().startsWith(k) || k.startsWith(getPatternString()));
                 }
               });
       Assert.assertTrue(match[0]);

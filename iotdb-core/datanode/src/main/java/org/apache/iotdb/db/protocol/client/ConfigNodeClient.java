@@ -134,6 +134,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -475,9 +476,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus createManyDatabases() throws TException {
+  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
+        () -> client.callSpecialProcedure(operation), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
