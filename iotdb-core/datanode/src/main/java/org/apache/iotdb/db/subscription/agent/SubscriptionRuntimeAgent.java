@@ -64,8 +64,8 @@ public class SubscriptionRuntimeAgent implements IService {
   public void start() throws StartupException {
     SubscriptionConfig.getInstance().printAllConfigs();
 
-    SubscriptionAgentLauncherLauncher.launchSubscriptionTopicAgent();
-    SubscriptionAgentLauncherLauncher.launchSubscriptionConsumerAgent();
+    SubscriptionAgentLauncher.launchSubscriptionTopicAgent();
+    SubscriptionAgentLauncher.launchSubscriptionConsumerAgent();
 
     isShutdown.set(false);
   }

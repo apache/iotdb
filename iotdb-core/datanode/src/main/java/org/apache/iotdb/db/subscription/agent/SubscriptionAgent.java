@@ -21,14 +21,14 @@ package org.apache.iotdb.db.subscription.agent;
 
 public class SubscriptionAgent {
 
-  private final SubscriptionRpcAgent rpcAgent;
+  private final SubscriptionReceiverAgent receiverAgent;
 
   private final SubscriptionRuntimeAgent runtimeAgent;
 
   //////////////////////////// singleton ////////////////////////////
 
   private SubscriptionAgent() {
-    rpcAgent = new SubscriptionRpcAgent();
+    receiverAgent = new SubscriptionReceiverAgent();
     runtimeAgent = new SubscriptionRuntimeAgent();
   }
 
@@ -36,8 +36,8 @@ public class SubscriptionAgent {
     private static final SubscriptionAgent HANDLE = new SubscriptionAgent();
   }
 
-  public static SubscriptionRpcAgent rpc() {
-    return SubscriptionAgentHolder.HANDLE.rpcAgent;
+  public static SubscriptionReceiverAgent receiver() {
+    return SubscriptionAgentHolder.HANDLE.receiverAgent;
   }
 
   public static SubscriptionRuntimeAgent runtime() {

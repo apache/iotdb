@@ -22,12 +22,11 @@ package org.apache.iotdb.db.subscription.agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class SubscriptionAgentLauncherLauncher {
+class SubscriptionAgentLauncher {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionAgentLauncherLauncher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionAgentLauncher.class);
 
-  private SubscriptionAgentLauncherLauncher() {
+  private SubscriptionAgentLauncher() {
     // Forbidding instantiation
   }
 

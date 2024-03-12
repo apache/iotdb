@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.agent;
+package org.apache.iotdb.db.subscription.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
@@ -37,6 +38,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
@@ -63,18 +65,22 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class SubscriptionRpcAgent {
+public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionRpcAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
+  @Override
+  public PipeSubscribeRequestVersion getVersion() {
+    return PipeSubscribeRequestVersion.VERSION_1;
+  }
+
+  @Override
   public final TPipeSubscribeResp handle(TPipeSubscribeReq req) {
-    // TODO: handle request version
-    final byte reqVersion = req.getVersion();
     final short reqType = req.getType();
     if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
       switch (PipeSubscribeRequestType.valueOf(reqType)) {
@@ -102,7 +108,7 @@ public class SubscriptionRpcAgent {
         RpcUtils.getStatus(
             TSStatusCode.SUBSCRIPTION_TYPE_ERROR,
             String.format("Unknown PipeSubscribeRequestType %s.", reqType));
-    LOGGER.warn("Unknown PipeSubscribeRequestType, response status = {}.", status);
+    LOGGER.warn("Subscription: Unknown PipeSubscribeRequestType, response status = {}.", status);
     return new TPipeSubscribeResp(
         status,
         PipeSubscribeResponseVersion.VERSION_1.getVersion(),
