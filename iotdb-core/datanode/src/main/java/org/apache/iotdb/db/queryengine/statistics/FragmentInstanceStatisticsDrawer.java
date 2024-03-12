@@ -89,8 +89,11 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           0,
           String.format(
-              "FRAGMENT-INSTANCE[Id: %s][IP: %s][DataRegion: %s]",
-              instance.getId().toString(), statistics.getIp(), statistics.getDataRegion()));
+              "FRAGMENT-INSTANCE[Id: %s][IP: %s][DataRegion: %s][State: %s]",
+              instance.getId().toString(),
+              statistics.getIp(),
+              statistics.getDataRegion(),
+              statistics.getState()));
       addLine(
           singleFragmentInstanceArea,
           1,
@@ -362,7 +365,7 @@ public class FragmentInstanceStatisticsDrawer {
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("input: %s rows", operatorStatistic.getInputRows()));
+          String.format("output: %s rows", operatorStatistic.getOutputRows()));
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,

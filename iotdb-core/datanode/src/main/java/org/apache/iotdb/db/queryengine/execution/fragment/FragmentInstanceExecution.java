@@ -149,7 +149,7 @@ public class FragmentInstanceExecution {
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
-
+    statistics.setState(getInstanceState().toString());
     IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
     if (dataRegionForQuery instanceof VirtualDataRegion) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
@@ -224,7 +224,7 @@ public class FragmentInstanceExecution {
     operatorStatistics.setTotalExecutionTimeInNanos(operatorContext.getTotalExecutionTimeInNanos());
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
-    operatorStatistics.setInputRows(operatorContext.getInputRows());
+    operatorStatistics.setOutputRows(operatorContext.getOutputRows());
     operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
   }

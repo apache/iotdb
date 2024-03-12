@@ -471,7 +471,7 @@ struct TOperatorStatistics{
   4: required i64 nextCalledCount
   5: required i64 hasNextCalledCount
   6: required map<string,string> specifiedInfo
-  7: required i64 inputRows
+  7: required i64 outputRows
   8: required i64 memoryUsage
   9: optional i64 count
 }
@@ -536,6 +536,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   13: optional i64 readyQueuedTime
   14: optional i64 blockQueuedTime
   15: optional string ip
+  16: optional string state
 }
 /**
 * END: Used for EXPLAIN ANALYZE
