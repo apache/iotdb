@@ -54,6 +54,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMeta.removeConsumer(consumerClientID);
     if (consumerGroupMeta.isEmpty()) {
       consumerGroupIDToConsumerGroupMeta.remove(consumerGroupID);
+      // TODO: broker TTL
     }
     // TODO: call CN rpc
   }
@@ -68,7 +69,7 @@ public class SubscriptionConsumerAgent {
     }
 
     for (String topicName : topicNames) {
-      if (!SubscriptionAgent.topic().isTopicExist(topicName)) {
+      if (!SubscriptionAgent.topic().isTopicExisted(topicName)) {
         LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       } else {
         if (consumerGroupMeta.subscribe(consumerClientID, topicName)) {
@@ -89,7 +90,7 @@ public class SubscriptionConsumerAgent {
     }
 
     for (String topicName : topicNames) {
-      if (!SubscriptionAgent.topic().isTopicExist(topicName)) {
+      if (!SubscriptionAgent.topic().isTopicExisted(topicName)) {
         LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
       } else {
         consumerGroupMeta.unsubscribe(consumerClientID, topicName);
@@ -107,5 +108,15 @@ public class SubscriptionConsumerAgent {
       return Collections.emptySet();
     }
     return consumerGroupMeta.subscribedTopics(consumerClientID);
+  }
+
+  public boolean isConsumerExisted(ConsumerConfig consumerConfig) {
+    String consumerGroupID = consumerConfig.getConsumerGroupID();
+    String consumerClientID = consumerConfig.getConsumerClientID();
+    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
+    if (Objects.isNull(consumerGroupMeta)) {
+      return false;
+    }
+    return consumerGroupMeta.isConsumerExisted(consumerClientID);
   }
 }

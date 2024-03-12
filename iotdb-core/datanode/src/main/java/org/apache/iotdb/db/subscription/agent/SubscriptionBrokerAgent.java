@@ -7,6 +7,8 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +34,7 @@ public class SubscriptionBrokerAgent {
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
-  public List<ByteBuffer> poll(ConsumerConfig consumerConfig) {
+  public List<Pair<ByteBuffer, EnrichedTablets>> poll(ConsumerConfig consumerConfig) {
     String consumerGroupID = consumerConfig.getConsumerGroupID();
     SubscriptionBroker broker = consumerGroupIDToSubscriptionBroker.get(consumerGroupID);
     if (Objects.isNull(broker)) {

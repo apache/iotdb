@@ -82,4 +82,8 @@ public class ConsumerGroupMeta {
         });
     return topicNames;
   }
+
+  public boolean isConsumerExisted(String consumerClientID) {
+    return consumers.containsKey(consumerClientID);
+  }
 }

@@ -40,7 +40,7 @@ public class SubscriptionTopicAgent {
 
   public void createTopic(TopicConfig topicConfig) {
     String topicName = topicConfig.getTopicName();
-    if (isTopicExist(topicName)) {
+    if (isTopicExisted(topicName)) {
       LOGGER.warn("Subscription: topic [{}] has already existed", topicName);
       return;
     }
@@ -73,7 +73,7 @@ public class SubscriptionTopicAgent {
     topicMeta.addSubscribedConsumerGroupID(consumerGroupID);
   }
 
-  public boolean isTopicExist(String topicName) {
+  public boolean isTopicExisted(String topicName) {
     return topicNameToTopicMeta.containsKey(topicName);
   }
 }

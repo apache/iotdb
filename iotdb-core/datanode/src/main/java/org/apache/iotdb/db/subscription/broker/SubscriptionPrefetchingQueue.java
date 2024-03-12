@@ -70,22 +70,22 @@ public class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
-  public ByteBuffer poll() {
+  public Pair<ByteBuffer, EnrichedTablets> poll() {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
     }
 
     Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
-    ByteBuffer byteBuffer;
     try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
       if (Objects.nonNull(
           enrichedTablets =
               iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
-        if (Objects.isNull(byteBuffer = enrichedTablets.left)) {
+        if (Objects.isNull(enrichedTablets.left)) {
           try {
-            byteBuffer = PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
+            enrichedTablets.left =
+                PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
           } catch (IOException e) {
             LOGGER.warn(
                 "Subscription: something unexpected happened when serializing EnrichedTablets: {}",
@@ -94,7 +94,7 @@ public class SubscriptionPrefetchingQueue {
           }
         }
         prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
-        return byteBuffer;
+        return enrichedTablets;
       }
     }
 

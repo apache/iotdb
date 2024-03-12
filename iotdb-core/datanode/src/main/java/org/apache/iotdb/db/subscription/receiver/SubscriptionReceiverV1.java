@@ -42,6 +42,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVer
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
+import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -53,6 +54,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -73,6 +75,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_MISSING_CUSTOMER_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_MISSING_CUSTOMER,
+              "Missing consumer config, please handshake first."),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
 
   @Override
   public PipeSubscribeRequestVersion getVersion() {
@@ -118,30 +128,38 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TPipeSubscribeResp handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq req) {
     // set consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    final boolean isConsumerExisted;
     if (Objects.isNull(consumerConfig)) {
       consumerConfigThreadLocal.set(req.getConsumerConfig());
-      LOGGER.info(
-          "Subscription: consumer handshake successfully, consumer config: {}",
-          req.getConsumerConfig());
-    } else if (!consumerConfig.equals(req.getConsumerConfig())) {
-      // TODO: corner case
-      LOGGER.warn(
-          "Subscription: inconsistent consumer config, old consumer config: {}, new consumer config: {}",
-          consumerConfig,
-          req.getConsumerConfig());
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(
-              TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, "inconsistent consumer config"));
+      isConsumerExisted = false;
+    } else {
+      if (!consumerConfig.equals(req.getConsumerConfig())) {
+        LOGGER.warn(
+            "Subscription: Detect stale consumer config when handshaking, stale consumer config {} will be cleared, consumer config will set to the incoming consumer config {}.",
+            consumerConfig,
+            req.getConsumerConfig());
+        // clear stale consumer
+        SubscriptionAgent.consumer().dropConsumer(consumerConfig);
+        consumerConfigThreadLocal.set(req.getConsumerConfig());
+        isConsumerExisted = false;
+      } else {
+        LOGGER.info(
+            "Subscription: Detect the same consumer config {} when handshaking, skip the creation of consumer.",
+            consumerConfig);
+        isConsumerExisted = true;
+      }
     }
 
     // create consumer (group)
-    SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
+    if (!isConsumerExisted) {
+      SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
+    }
 
     // TODO: REMOVE ME BEFORE MERGING
     SubscriptionAgent.topic().createTopic(new TopicConfig("demo", "root.**"));
 
-    // get DN configs
-    // TODO: cached and listen changes
+    // fetch DN endPoints by CN
+    // TODO: cache result and listen changes
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TDataNodeConfigurationResp dataNodeConfigurationResp =
@@ -151,8 +169,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               .collect(
                   Collectors.toMap(
                       Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
+
+      LOGGER.info(
+          "Subscription: consumer handshake successfully, consumer config: {}, DN endPoints: {}",
+          req.getConsumerConfig(),
+          endPoints);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, endPoints);
     } catch (ClientManagerException | TException e) {
+      LOGGER.warn("Subscription: something unexpected happened when handshaking", e);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage()));
     }
@@ -162,9 +186,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeHeartbeatReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // TODO: do something
@@ -178,9 +202,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeSubscribeReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // subscribe topics
@@ -198,10 +222,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(
-              TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeUnsubscribeReq: {}",
+          req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // unsubscribe topics
@@ -219,17 +243,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribePollReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // poll
-    List<ByteBuffer> serializedEnrichedTabletsList =
+    List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsList =
         SubscriptionAgent.broker().poll(consumerConfig);
+    List<ByteBuffer> serializedEnrichedTabletsList =
+        enrichedTabletsList.stream().map((pair) -> pair.left).collect(Collectors.toList());
+    List<List<String>> subscriptionCommitIdsList =
+        enrichedTabletsList.stream()
+            .map((pair) -> pair.right.getSubscriptionCommitIds())
+            .collect(Collectors.toList());
 
-    // TODO: log the commit id of polled messages
-    LOGGER.info("Subscription: consumer poll successfully, consumer config: {}", consumerConfig);
+    LOGGER.info(
+        "Subscription: consumer poll successfully, consumer config: {}, commit ids: {}",
+        consumerConfig,
+        subscriptionCommitIdsList);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, serializedEnrichedTabletsList);
   }
@@ -238,9 +270,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeCommitReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // commit
@@ -259,9 +291,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn("Subscription: unknown consumer config");
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, "unknown consumer config"));
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeCloseReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
     // drop consumer (group)
