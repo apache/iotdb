@@ -96,7 +96,8 @@ enum TRegionMigrateFailedType {
   RemovePeerFailed,
   RemoveConsensusGroupFailed,
   DeleteRegionFailed,
-  CreateRegionFailed
+  CreateRegionFailed,
+  Disconnect,
 }
 
 struct TRegionMigrateResultReportReq {

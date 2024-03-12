@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -75,6 +76,7 @@ public class AddRegionPeerProcedure
     }
     RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
     try {
+      outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           handler.createNewRegionPeer(consensusGroupId, destDataNode);
@@ -84,18 +86,41 @@ public class AddRegionPeerProcedure
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          TRegionMaintainTaskStatus result;
+          TRegionMigrateResultReportReq result;
           logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
             throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
           }
-          if (result == TRegionMaintainTaskStatus.SUCCESS) {
-            setNextState(UPDATE_REGION_LOCATION_CACHE);
-            break;
+          switch (result.getTaskStatus()) {
+            case TASK_NOT_EXIST:
+              // coordinator crashed and lost its task table
+            case FAIL:
+              // maybe some DataNode crash
+              LOGGER.warn("result is {}, try to resetPeerList to clean", result.getTaskStatus());
+              List<TDataNodeLocation> correctDataNodeLocations =
+                  env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+                      .filter(
+                          tRegionReplicaSet ->
+                              tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+                      .findAny()
+                      .get()
+                      .getDataNodeLocations();
+              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              return Flow.NO_MORE_STATE;
+            case PROCESSING:
+              // should never happen
+              LOGGER.error("should never happen");
+              throw new UnsupportedOperationException("should never happen");
+            case SUCCESS:
+              setNextState(UPDATE_REGION_LOCATION_CACHE);
+              break outerSwitch;
+            default:
+              String msg = String.format("status %s is unsupported", result.getTaskStatus());
+              LOGGER.error(msg);
+              throw new UnsupportedOperationException(msg);
           }
-          throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
           logBreakpoint(state.name());

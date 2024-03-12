@@ -186,6 +186,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
@@ -1617,6 +1618,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
     status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
+  }
+
+  // TODO: return which DataNode fail
+  @Override
+  public TSStatus resetPeerList(TResetPeerListReq req) throws TException {
+    return RegionMigrateService.getInstance().resetPeerList(req);
   }
 
   @Override

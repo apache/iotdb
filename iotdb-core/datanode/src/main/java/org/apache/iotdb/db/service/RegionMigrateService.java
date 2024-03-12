@@ -43,14 +43,17 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
 
@@ -87,7 +90,10 @@ public class RegionMigrateService implements IService {
     boolean submitSucceed = true;
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
-        LOGGER.warn("{} The AddRegionPeerTask {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+        LOGGER.warn(
+            "{} The AddRegionPeerTask {} has already been submitted and will not be submitted again.",
+            REGION_MIGRATE_PROCESS,
+            req.getTaskId());
       }
       regionMigratePool.submit(
           new AddRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -113,7 +119,10 @@ public class RegionMigrateService implements IService {
     boolean submitSucceed = true;
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
-        LOGGER.warn("{} The RemoveRegionPeer {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+        LOGGER.warn(
+            "{} The RemoveRegionPeer {} has already been submitted and will not be submitted again.",
+            REGION_MIGRATE_PROCESS,
+            req.getTaskId());
       }
       regionMigratePool.submit(
           new RemoveRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -138,7 +147,10 @@ public class RegionMigrateService implements IService {
     boolean submitSucceed = true;
     try {
       if (!addToTaskResultMap(req.getTaskId())) {
-        LOGGER.warn("{} The DeleteOldRegionPeerTask {} has already been submitted and will not be submitted again.", REGION_MIGRATE_PROCESS, req.getTaskId());
+        LOGGER.warn(
+            "{} The DeleteOldRegionPeerTask {} has already been submitted and will not be submitted again.",
+            REGION_MIGRATE_PROCESS,
+            req.getTaskId());
       }
       regionMigratePool.submit(
           new DeleteOldRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -151,6 +163,26 @@ public class RegionMigrateService implements IService {
       submitSucceed = false;
     }
     return submitSucceed;
+  }
+
+  public synchronized TSStatus resetPeerList(TResetPeerListReq req) {
+    List<Peer> correctPeers =
+        req.getCorrectLocations().stream()
+            .map(location -> Peer.valueOf(req.getRegionId(), location))
+            .collect(Collectors.toList());
+    ConsensusGroupId regionId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
+    try {
+      if (regionId instanceof DataRegionId) {
+        DataRegionConsensusImpl.getInstance().resetPeerList(regionId, correctPeers);
+      } else {
+        SchemaRegionConsensusImpl.getInstance().resetPeerList(regionId, correctPeers);
+      }
+    } catch (ConsensusException e) {
+      LOGGER.error("reset peer list fail", e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private boolean addToTaskResultMap(long taskId) {

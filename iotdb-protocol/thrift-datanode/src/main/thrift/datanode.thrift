@@ -54,6 +54,11 @@ struct TMaintainPeerReq {
   3: required i64 taskId
 }
 
+struct TResetPeerListReq {
+  1: required common.TConsensusGroupId regionId
+  2: required list<common.TDataNodeLocation> correctLocations
+}
+
 struct TFragmentInstanceId {
   1: required string queryId
   2: required i32 fragmentId
@@ -557,6 +562,11 @@ service IDataNodeRPCService {
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
   common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req);
+
+  /**
+   * Reset a consensus group's peer list
+   */
+  common.TSStatus resetPeerList(TResetPeerListReq req);
 
   /**
    * Get the result of a region maintainance task

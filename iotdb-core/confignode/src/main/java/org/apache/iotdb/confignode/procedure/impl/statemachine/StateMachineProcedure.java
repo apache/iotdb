@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
@@ -141,20 +142,18 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /**
    * Add a child procedure to execute.
    *
-   * @param subProcedure the child procedure
+   * @param childProcedure the child procedure
    */
-  protected <T extends Procedure<Env>> void addChildProcedure(T... subProcedure) {
-    if (subProcedure == null) {
-      return;
-    }
-    final int len = subProcedure.length;
-    if (len == 0) {
-      return;
+  protected long addChildProcedure(Procedure<Env> childProcedure) {
+    if (childProcedure == null) {
+      return -1;
     }
     if (subProcList == null) {
-      subProcList = new ArrayList<>(len);
+      subProcList = new ArrayList<>();
     }
-    subProcList.addAll(Arrays.asList(subProcedure).subList(0, len));
+    childProcedure.setProcId(ProcedureExecutor.nextProcId());
+    subProcList.add(childProcedure);
+    return childProcedure.getProcId();
   }
 
   @Override

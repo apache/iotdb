@@ -59,7 +59,7 @@ public class ProcedureExecutor<Env> {
   private final ConcurrentHashMap<Long, RootProcedureStack<Env>> rollbackStack =
       new ConcurrentHashMap<>();
 
-  private final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
 
   private ThreadGroup threadGroup;
 
@@ -73,8 +73,7 @@ public class ProcedureExecutor<Env> {
   private int maxPoolSize;
 
   private final ProcedureScheduler scheduler;
-
-  private final AtomicLong lastProcId = new AtomicLong(-1);
+  private static final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -86,7 +85,7 @@ public class ProcedureExecutor<Env> {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
-    this.lastProcId.incrementAndGet();
+    lastProcId.incrementAndGet();
   }
 
   @TestOnly
@@ -301,7 +300,7 @@ public class ProcedureExecutor<Env> {
    *
    * @return next procedure id
    */
-  private long nextProcId() {
+  public static synchronized long nextProcId() {
     long procId = lastProcId.incrementAndGet();
     if (procId < 0) {
       while (!lastProcId.compareAndSet(procId, 0)) {
@@ -929,9 +928,8 @@ public class ProcedureExecutor<Env> {
     Preconditions.checkArgument(lastProcId.get() >= 0);
     Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
     Preconditions.checkArgument(!procedure.hasParent(), "Unexpected parent", procedure);
-    final long currentProcId = nextProcId();
     // Initialize the procedure
-    procedure.setProcId(currentProcId);
+    procedure.setProcId(nextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
     store.update(procedure);

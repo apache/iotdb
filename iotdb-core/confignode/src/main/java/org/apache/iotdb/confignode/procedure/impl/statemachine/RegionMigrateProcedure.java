@@ -96,6 +96,18 @@ public class RegionMigrateProcedure
         case ADD_REGION_PEER:
           addChildProcedure(
               new AddRegionPeerProcedure(consensusGroupId, coordinatorForAddPeer, destDataNode));
+          setNextState(RegionTransitionState.CHECK_ADD_REGION_PEER);
+          break;
+        case CHECK_ADD_REGION_PEER:
+          if (env.getConfigManager().getPartitionManager()
+              .getAllReplicaSets(destDataNode.getDataNodeId()).stream()
+              .noneMatch(
+                  tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))) {
+            LOGGER.warn(
+                "sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue");
+            return Flow.NO_MORE_STATE;
+          }
+          LOGGER.info("sub-procedure AddRegionPeerProcedure success");
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
@@ -107,8 +119,9 @@ public class RegionMigrateProcedure
           addChildProcedure(
               new RemoveRegionPeerProcedure(
                   consensusGroupId, coordinatorForRemovePeer, originalDataNode));
-          setNextState(RegionTransitionState.PROCEDURE_FINISH);
-        case PROCEDURE_FINISH:
+          setNextState(RegionTransitionState.CHECK_REMOVE_REGION_PEER);
+        case CHECK_REMOVE_REGION_PEER:
+          // TODO：检查是否remove成功
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -120,7 +133,7 @@ public class RegionMigrateProcedure
               + "error state: {}, migrateResult: {}",
           REGION_MIGRATE_PROCESS,
           state,
-          migrateResult);
+          migrateResult, e);
       if (isRollbackSupported(state)) {
         setFailure(new ProcedureException("Region migrate failed at state: " + state));
       } else {

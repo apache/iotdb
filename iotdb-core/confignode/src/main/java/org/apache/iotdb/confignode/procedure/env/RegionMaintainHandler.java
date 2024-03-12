@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -49,6 +50,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -56,8 +58,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
@@ -75,6 +79,8 @@ public class RegionMaintainHandler {
 
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
+
+  private static final long DATANODE_MAX_DISCONNECTION_MS = 1000;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 
@@ -343,19 +349,51 @@ public class RegionMaintainHandler {
     return status;
   }
 
-  public TRegionMaintainTaskStatus waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
-    while (true) {
+  public TSStatus resetPeerList(
+      TConsensusGroupId regionId, List<TDataNodeLocation> correctDataNodeLocations) {
+    Optional<TDataNodeLocation> optional = filterDataNodeWithOtherRegionReplica(regionId, null);
+    TDataNodeLocation selectDataNode = optional.get();
+    TSStatus status =
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                selectDataNode.getInternalEndPoint(),
+                new TResetPeerListReq(regionId, correctDataNodeLocations),
+                DataNodeRequestType.RESET_PEER_LIST);
+    return status;
+  }
+
+  // TODO: will use 'procedure yield' to refactor later
+  public TRegionMigrateResultReportReq waitTaskFinish(
+      long taskId, TDataNodeLocation dataNodeLocation) {
+    long lastTimeConnectDataNode = System.currentTimeMillis();
+    while (System.currentTimeMillis() - lastTimeConnectDataNode < DATANODE_MAX_DISCONNECTION_MS) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResultReportReq report = dataNodeClient.getRegionMaintainResult(taskId);
+        lastTimeConnectDataNode = System.currentTimeMillis();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
-          return report.getTaskStatus();
+          return report;
         }
-        Thread.sleep(1000);
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      } catch (Exception ignore) {
+
+      } finally {
+        try {
+          TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException ignore) {
+          Thread.currentThread().interrupt();
+        }
       }
     }
+    LOGGER.warn(
+        "{} task {} cannot contact to DataNode {}",
+        REGION_MIGRATE_PROCESS,
+        taskId,
+        dataNodeLocation);
+    TRegionMigrateResultReportReq report = new TRegionMigrateResultReportReq();
+    report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
+    report.setFailedNodeAndReason(new HashMap<>());
+    report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
+    return report;
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {

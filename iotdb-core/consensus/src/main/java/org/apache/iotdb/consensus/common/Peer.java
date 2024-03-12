@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 
@@ -98,5 +103,21 @@ public class Peer {
   @Override
   public String toString() {
     return "Peer{" + "groupId=" + groupId + ", endpoint=" + endpoint + ", nodeId=" + nodeId + '}';
+  }
+
+  public static Peer valueOf(
+      TConsensusGroupId consensusGroupId, TDataNodeLocation dataNodeLocation) {
+    if (consensusGroupId.getType() == TConsensusGroupType.SchemaRegion) {
+      return new Peer(
+          new SchemaRegionId(consensusGroupId.getId()),
+          dataNodeLocation.getDataNodeId(),
+          dataNodeLocation.getSchemaRegionConsensusEndPoint());
+    } else if (consensusGroupId.getType() == TConsensusGroupType.DataRegion) {
+      return new Peer(
+          new DataRegionId(consensusGroupId.getId()),
+          dataNodeLocation.getDataNodeId(),
+          dataNodeLocation.getDataRegionConsensusEndPoint());
+    }
+    throw new UnsupportedOperationException();
   }
 }
