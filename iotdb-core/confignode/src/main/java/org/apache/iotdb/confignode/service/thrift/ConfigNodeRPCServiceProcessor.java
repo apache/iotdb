@@ -1003,33 +1003,33 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createConsumer(TCreateConsumerReq req) throws TException {
-    return null;
+  public TSStatus createConsumer(TCreateConsumerReq req) {
+    return configManager.createConsumer(req);
   }
 
   @Override
-  public TSStatus closeConsumer(TCloseConsumerReq req) throws TException {
-    return null;
+  public TSStatus closeConsumer(TCloseConsumerReq req) {
+    return configManager.closeConsumer(req);
   }
 
   @Override
-  public TSStatus createSubscription(TSubscribeReq req) throws TException {
-    return null;
+  public TSStatus createSubscription(TSubscribeReq req) {
+    return configManager.createSubscription(req);
   }
 
   @Override
-  public TSStatus dropSubscription(TUnsubscribeReq req) throws TException {
-    return null;
+  public TSStatus dropSubscription(TUnsubscribeReq req) {
+    return configManager.dropSubscription(req);
   }
 
   @Override
-  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) throws TException {
-    return null;
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
+    return configManager.showSubscription(req);
   }
 
   @Override
-  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() throws TException {
-    return null;
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
+    return configManager.getAllSubscriptionInfo();
   }
 
   @Override
