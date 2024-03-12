@@ -225,7 +225,12 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
-  public abstract boolean isEventTimeOverlappedWithTimeRange();
+  /** Whether the {@link EnrichedEvent} need to be committed in order. */
+  public boolean needToCommit() {
+    return true;
+  }
+
+  public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
   public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
     this.committerKey = committerKey;
