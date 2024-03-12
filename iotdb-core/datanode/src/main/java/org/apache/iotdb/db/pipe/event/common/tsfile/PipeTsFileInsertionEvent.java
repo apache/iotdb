@@ -179,8 +179,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
-    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
+    // In that case we only judge the resource.getFileStartTime() to avoid losing data
+    return isClosed.get()
+        ? startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime
+        : resource.getFileStartTime() <= endTime;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

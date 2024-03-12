@@ -120,7 +120,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }
 
