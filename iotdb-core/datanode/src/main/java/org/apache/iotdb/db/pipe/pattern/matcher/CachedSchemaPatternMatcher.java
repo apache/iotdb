@@ -83,6 +83,16 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
+  public int getRegisterCount() {
+    lock.readLock().lock();
+    try {
+      return extractors.size();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  @Override
   public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event) {
     final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
 
@@ -119,7 +129,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
         // 2. filter matched candidate extractors by measurements
         if (measurements.length == 0) {
-          // We can't get all measurements efficiently here,
+          // `measurements` is empty (only in case of tsfile event). match all extractors.
+          //
+          // case 1: the pattern can match all measurements of the device.
+          // in this case, the extractor can be matched without checking the measurements.
+          //
+          // case 2: the pattern may match some measurements of the device.
+          // in this case, we can't get all measurements efficiently here,
           // so we just ASSUME the extractor matches and do more checks later.
           matchedExtractors.addAll(extractorsFilteredByDevice);
         } else {
@@ -129,6 +145,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
               extractor -> {
                 final PipePattern pattern = extractor.getPipePattern();
                 if (Objects.isNull(pattern) || pattern.coversDevice(device)) {
+                  // The pattern can match all measurements of the device.
                   matchedExtractors.add(extractor);
                 } else {
                   for (final String measurement : measurements) {
@@ -157,16 +174,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
 
     return matchedExtractors;
-  }
-
-  @Override
-  public int getRegisterCount() {
-    lock.readLock().lock();
-    try {
-      return extractors.size();
-    } finally {
-      lock.readLock().unlock();
-    }
   }
 
   protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {

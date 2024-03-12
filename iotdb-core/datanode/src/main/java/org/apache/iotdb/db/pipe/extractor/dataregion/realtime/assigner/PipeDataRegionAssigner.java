@@ -98,7 +98,7 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void stopAssignTo(PipeRealtimeDataRegionExtractor extractor) {
-    matcher.register(extractor);
+    matcher.deregister(extractor);
   }
 
   public boolean notMoreExtractorNeededToBeAssigned() {

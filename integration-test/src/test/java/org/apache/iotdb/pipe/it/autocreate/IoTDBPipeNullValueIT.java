@@ -221,7 +221,6 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
         extractorAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
         extractorAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
         extractorAttributes.put("extractor.pattern", "root.sg.d1");
-        extractorAttributes.put("extractor.pattern.format", "prefix");
       }
 
       TSStatus status =

@@ -125,7 +125,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("extractor", "iotdb-extractor");
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
       extractorAttributes.put("extractor.history.enable", "true");
       extractorAttributes.put("extractor.history.start-time", "2010-01-01T08:00:00+08:00");
       extractorAttributes.put("extractor.history.end-time", "2010-01-02T08:00:00+08:00");
@@ -185,7 +184,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -270,7 +268,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d2");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -314,7 +311,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -368,7 +364,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d2");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

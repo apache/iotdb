@@ -411,7 +411,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", null);
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -483,7 +482,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db1");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -582,7 +580,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       extractorAttributes.put("extractor.pattern", "root.db.d2");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
       extractorAttributes.put("extractor.history.enable", "false");
       extractorAttributes.put("extractor.realtime.enable", "true");
       TSStatus status =
@@ -667,7 +664,6 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.pattern.format", "prefix");
       extractorAttributes.put("extractor.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
       extractorAttributes.put("extractor.history.start-time", "2000");
