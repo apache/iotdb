@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
@@ -366,8 +365,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  public PipeRequestType getReceiverHandshakeType() {
-    return clientManager.getReceiverHandshakeType();
+  public boolean supportModsIfIsDataNodeReceiver() {
+    return clientManager.supportModsIfIsDataNodeReceiver();
   }
 
   //////////////////////////// Operations for close ////////////////////////////

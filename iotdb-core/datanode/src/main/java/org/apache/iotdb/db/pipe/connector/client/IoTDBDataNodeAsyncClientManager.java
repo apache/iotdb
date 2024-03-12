@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
@@ -198,7 +197,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           targetNodeUrl.getIp(),
           targetNodeUrl.getPort());
 
-      receiverHandshakeType = PipeRequestType.HANDSHAKE_V1;
+      supportModsIfIsDataNodeReceiver = false;
       isHandshakeFinished.set(false);
       resp.set(null);
       exception.set(null);

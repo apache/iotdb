@@ -169,11 +169,29 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    // 1. Transfer file piece by piece
+    // 1. Transfer mod file if exists
+    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
+      transferFilePieces(pipeTsFileInsertionEvent.getModFile(), socket);
+    }
+
+    // 2. Transfer file piece by piece
+    transferFilePieces(tsFile, socket);
+
+    // 3. Transfer file seal signal, which means the file is transferred completely
+    if (!send(
+        socket,
+        PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
+      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
+    } else {
+      LOGGER.info("Successfully transferred file {}.", tsFile);
+    }
+  }
+
+  private void transferFilePieces(File file, Socket socket) throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
@@ -183,13 +201,13 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         if (!send(
             socket,
             PipeTransferTsFilePieceReq.toTPipeTransferBytes(
-                tsFile.getName(),
+                file.getName(),
                 position,
                 readLength == readFileBufferSize
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
           throw new PipeException(
-              String.format("Transfer tsfile %s error. Socket %s.", tsFile, socket));
+              String.format("Transfer tsfile %s error. Socket %s.", file, socket));
         } else {
           position += readLength;
         }
@@ -198,11 +216,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
     // 2. Transfer file seal signal, which means the file is transferred completely
     if (!send(
-        socket,
-        PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
-      throw new PipeException(String.format("Seal tsfile %s error. Socket %s.", tsFile, socket));
+        socket, PipeTransferTsFileSealReq.toTPipeTransferBytes(file.getName(), file.length()))) {
+      throw new PipeException(String.format("Seal tsfile %s error. Socket %s.", file, socket));
     } else {
-      LOGGER.info("Successfully transferred tsfile {}.", tsFile);
+      LOGGER.info("Successfully transferred tsfile {}.", file);
     }
   }
 }

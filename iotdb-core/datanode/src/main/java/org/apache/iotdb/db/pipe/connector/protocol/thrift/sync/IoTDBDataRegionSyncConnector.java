@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -260,8 +259,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer mod file if exists and receiver's version >= 2
-    if (pipeTsFileInsertionEvent.isWithMod()
-        && clientManager.getReceiverHandshakeType() != PipeRequestType.HANDSHAKE_V1) {
+    if (pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver()) {
       transferFilePieces(pipeTsFileInsertionEvent.getModFile(), clientAndStatus);
     }
 
@@ -290,8 +288,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     LOGGER.info("Successfully transferred file {}.", tsFile);
   }
 
-  private void transferFilePieces(
-      File file, Pair<IoTDBThriftSyncConnectorClient, Boolean> clientAndStatus)
+  private void transferFilePieces(File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -339,7 +336,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         receiverStatusHandler.handle(
             resp.getStatus(),
             String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
-            tsFile.getName());
+            file.getName());
       }
     }
   }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
 
 import java.util.List;
 
@@ -31,14 +30,16 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
-  protected PipeRequestType receiverHandshakeType = PipeRequestType.HANDSHAKE_V2;
+  // This flag indicates whether the receiver supports mods transferring if
+  // it is a DataNode receiver. The flag is useless for configNode receiver.
+  protected boolean supportModsIfIsDataNodeReceiver = true;
 
   protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
   }
 
-  public PipeRequestType getReceiverHandshakeType() {
-    return receiverHandshakeType;
+  public boolean supportModsIfIsDataNodeReceiver() {
+    return supportModsIfIsDataNodeReceiver;
   }
 }

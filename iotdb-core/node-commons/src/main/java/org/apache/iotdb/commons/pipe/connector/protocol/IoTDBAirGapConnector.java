@@ -61,6 +61,9 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
+  // The air gap connector does not use clientManager thus we put handshake type here
+  protected boolean supportModsIfIsDataNodeReceiver = true;
+
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
@@ -136,15 +139,18 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
       // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
       // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
-      if (!send(socket, generateHandShakeV2Payload())
-          && !send(socket, generateHandShakeV1Payload())) {
-        throw new PipeConnectionException(
-            "Handshake error with target server ip: " + ip + ", port: " + port);
+      if (!send(socket, generateHandShakeV2Payload())) {
+        supportModsIfIsDataNodeReceiver = false;
+        if (!send(socket, generateHandShakeV1Payload())) {
+          throw new PipeConnectionException(
+              "Handshake error with target server ip: " + ip + ", port: " + port);
+        }
       } else {
-        isSocketAlive.set(i, true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
-        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
+        supportModsIfIsDataNodeReceiver = true;
       }
+      isSocketAlive.set(i, true);
+      socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+      LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
     }
 
     for (int i = 0; i < sockets.size(); i++) {
