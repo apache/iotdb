@@ -1298,36 +1298,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * Get target MetadataIndexEntry and its end offset
    *
    * @param metadataIndex given MetadataIndexNode
-   * @param name target device / measurement name
-   * @param isDeviceLevel whether target MetadataIndexNode is device level
+   * @param deviceID target device
    * @param exactSearch whether is in exact search mode, return null when there is no entry with
    *     name; or else return the nearest MetadataIndexEntry before it (for deeper search)
    * @return target MetadataIndexEntry, endOffset pair
    */
-  protected Pair<IMetadataIndexEntry, Long> getMetadataAndEndOffset(
-      MetadataIndexNode metadataIndex, String name, boolean isDeviceLevel, boolean exactSearch)
-      throws IOException {
-    try {
-      // When searching for a device node, return when it is not INTERNAL_DEVICE
-      // When searching for a measurement node, return when it is not INTERNAL_MEASUREMENT
-      if ((isDeviceLevel
-              && !metadataIndex.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE))
-          || (!isDeviceLevel
-              && !metadataIndex.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT))) {
-        return metadataIndex.getChildIndexEntry(name, exactSearch);
-      } else {
-        Pair<IMetadataIndexEntry, Long> childIndexEntry =
-            metadataIndex.getChildIndexEntry(name, false);
-        ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
-        return getMetadataAndEndOffset(
-            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
-      }
-    } catch (Exception e) {
-      logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
-      throw e;
-    }
-  }
-
   protected Pair<IMetadataIndexEntry, Long> getMetadataAndEndOffsetOfDeviceNode(
       MetadataIndexNode metadataIndex, IDeviceID deviceID, boolean exactSearch) throws IOException {
     if (MetadataIndexNodeType.INTERNAL_MEASUREMENT.equals(metadataIndex.getNodeType())
@@ -1350,6 +1325,15 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  /**
+   * Get target MetadataIndexEntry and its end offset
+   *
+   * @param metadataIndex given MetadataIndexNode
+   * @param measurement target measurement
+   * @param exactSearch whether is in exact search mode, return null when there is no entry with
+   *     name; or else return the nearest MetadataIndexEntry before it (for deeper search)
+   * @return target MetadataIndexEntry, endOffset pair
+   */
   protected Pair<IMetadataIndexEntry, Long> getMetadataAndEndOffsetOfMeasurementNode(
       MetadataIndexNode metadataIndex, String measurement, boolean exactSearch) throws IOException {
     if (MetadataIndexNodeType.INTERNAL_DEVICE.equals(metadataIndex.getNodeType())
