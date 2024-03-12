@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,12 +39,16 @@ public class UDFParametersFactory {
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
-    UDFParameters udfParameters =
-        new UDFParameters(
-            childExpressions,
-            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-            attributes);
-    udfParameters.putExtraAttributes(timestampPrecisionConstant, config.getTimestampPrecision());
-    return udfParameters;
+    return new UDFParameters(
+        childExpressions,
+        UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+        attributes,
+        buildSystemAttributes());
+  }
+
+  private static Map<String, String> buildSystemAttributes() {
+    Map<String, String> systemAttributes = new HashMap<>();
+    systemAttributes.put(timestampPrecisionConstant, config.getTimestampPrecision());
+    return systemAttributes;
   }
 }
