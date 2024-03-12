@@ -62,7 +62,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
           new FragmentInstance(
               new PlanFragment(fragment.getId(), split),
               fragment.getId().genFragmentInstanceId(),
-              new TreeModelTimePredicate(globalTimePredicate),
+              globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());

@@ -173,7 +173,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
-    this.globalTimeFilter = globalTimePredicate.convertPredicateToTimeFilter();
+    this.globalTimeFilter =
+        globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
   }

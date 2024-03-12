@@ -142,7 +142,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
-            new TreeModelTimePredicate(globalTimePredicate),
+            globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession(),
