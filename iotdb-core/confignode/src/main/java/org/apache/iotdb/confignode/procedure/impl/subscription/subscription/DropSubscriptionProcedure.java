@@ -159,18 +159,18 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
     int topicCount = topicProcedures.size();
-    for (int i = topicCount; i >= 0; --i) {
+    for (int i = topicCount - 1; i >= 0; --i) {
       pipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
       topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
     }
 
     consumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
-    for (int i = topicCount; i >= 0; --i) {
+    for (int i = topicCount - 1; i >= 0; --i) {
       pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }
 
-    for (int i = topicCount; i >= 0; --i) {
+    for (int i = topicCount - 1; i >= 0; --i) {
       pipeProcedures.get(i).executeFromValidateTask(env);
     }
   }
@@ -180,7 +180,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
     int topicCount = topicProcedures.size();
-    for (int i = topicCount; i >= 0; --i) {
+    for (int i = topicCount - 1; i >= 0; --i) {
       try {
         pipeProcedures.get(i).rollbackFromOperateOnDataNodes(env);
       } catch (IOException e) {
