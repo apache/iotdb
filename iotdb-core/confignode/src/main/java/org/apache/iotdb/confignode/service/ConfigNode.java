@@ -93,7 +93,7 @@ public class ConfigNode implements ConfigNodeMBean {
       String.format(
           "%s:%s=%s",
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
-          ConfigNodeConstant.JMX_TYPE,
+          IoTDBConstant.JMX_TYPE,
           ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
@@ -238,7 +238,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   void processPid() {
-    String pidFile = System.getProperty(ConfigNodeConstant.IOTDB_PIDFILE);
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
     if (pidFile != null) {
       new File(pidFile).deleteOnExit();
     }
