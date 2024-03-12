@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
-import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingFilterProcessor;
+import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
 
 class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
@@ -41,6 +41,6 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
         TumblingTimeSamplingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.SDT_FILTER_PROCESSOR.getPipePluginName(),
-        SwingingDoorTrendingFilterProcessor::new);
+        SwingingDoorTrendingSamplingProcessor::new);
   }
 }

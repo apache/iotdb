@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SwingingDoorTrendingFilterProcessor extends DownSamplingAbstractProcessor {
+public class SwingingDoorTrendingSamplingProcessor extends DownSamplingAbstractProcessor {
   private double compressionDeviation;
   private long compressionMinTimeInterval;
   private long compressionMaxTimeInterval;
@@ -44,16 +44,16 @@ public class SwingingDoorTrendingFilterProcessor extends DownSamplingAbstractPro
     super.customize(parameters, configuration);
     compressionDeviation =
         parameters.getDoubleOrDefault(
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_COMPRESSION_DEVIATION_KEY,
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_COMPRESSION_DEVIATION_DEFAULT_VALUE);
+            PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
+            PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_DEFAULT_VALUE);
     compressionMinTimeInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_MIN_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_MIN_TIME_INTERVAL_DEFAULT_VALUE);
+            PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
+            PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE);
     compressionMaxTimeInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_MAX_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_SDT_FILTER_MAX_TIME_INTERVAL_DEFAULT_VALUE);
+            PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
+            PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE);
   }
 
   @Override
@@ -87,7 +87,9 @@ public class SwingingDoorTrendingFilterProcessor extends DownSamplingAbstractPro
         }
       } else {
         hasNonNullMeasurements = true;
-        pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, getFilter(row, i));
+        pathLastObjectCache.setPartialPathLastObject(
+            timeSeriesSuffix,
+            new SwingingDoorTrendingFilter<>(this, row.getTime(), getValue(row, i)));
       }
     }
 
@@ -112,20 +114,20 @@ public class SwingingDoorTrendingFilterProcessor extends DownSamplingAbstractPro
     return compressionMaxTimeInterval;
   }
 
-  private SwingingDoorTrendingFilter<Object> getFilter(Row row, int index) {
+  private Object getValue(Row row, int index) {
     switch (row.getDataType(index)) {
       case INT32:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getInt(index));
+        return row.getInt(index);
       case INT64:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getLong(index));
+        return row.getLong(index);
       case FLOAT:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getFloat(index));
+        return row.getFloat(index);
       case DOUBLE:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getDouble(index));
+        return row.getDouble(index);
       case TEXT:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getString(index));
+        return row.getString(index);
       case BOOLEAN:
-        return new SwingingDoorTrendingFilter<>(this, row.getTime(), row.getBoolean(index));
+        return row.getBoolean(index);
     }
     return null;
   }

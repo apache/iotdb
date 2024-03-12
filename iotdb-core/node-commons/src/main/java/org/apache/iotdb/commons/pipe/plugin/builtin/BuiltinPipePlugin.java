@@ -32,8 +32,8 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback.WriteBac
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingFilterProcessor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,8 +51,8 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
-  DOWN_SAMPLING_PROCESSOR("tumbling-time-processor", TumblingTimeProcessor.class),
-  SDT_FILTER_PROCESSOR("sdt-filter-processor", SwingingDoorTrendingFilterProcessor.class),
+  DOWN_SAMPLING_PROCESSOR("tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
+  SDT_FILTER_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
