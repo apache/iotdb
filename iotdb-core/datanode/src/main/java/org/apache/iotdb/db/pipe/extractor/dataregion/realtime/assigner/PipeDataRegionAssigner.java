@@ -24,9 +24,9 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
+import org.apache.iotdb.db.pipe.pattern.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.pattern.matcher.PipeDataRegionMatcher;
 
 import java.io.Closeable;
 
@@ -77,7 +77,7 @@ public class PipeDataRegionAssigner implements Closeable {
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeName(),
                       extractor.getPipeTaskMeta(),
-                      extractor.getPattern(),
+                      extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();

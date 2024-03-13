@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -77,7 +78,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
@@ -204,7 +205,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
         isWithMod,
@@ -265,7 +270,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         waitForTsFileClose();
         dataContainer =
             new TsFileInsertionDataContainer(
-                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
+                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer;
     } catch (InterruptedException e) {

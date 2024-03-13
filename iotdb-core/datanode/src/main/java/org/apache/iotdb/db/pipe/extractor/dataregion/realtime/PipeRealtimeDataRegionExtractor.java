@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -63,7 +64,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -78,7 +78,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected boolean shouldExtractInsertion;
   protected boolean shouldExtractDeletion;
 
-  protected String pattern;
+  protected PipePattern pipePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
@@ -163,18 +163,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
-    pattern =
-        parameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-            PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
-      if (databaseName != null
-          && pattern.length() <= databaseName.length()
-          && databaseName.startsWith(pattern)) {
-        isDbNameCoveredByPattern = true;
+      if (databaseName != null) {
+        isDbNameCoveredByPattern = pipePattern.coversDb(databaseName);
       }
     }
 
@@ -380,8 +376,12 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return shouldExtractDeletion;
   }
 
-  public final String getPattern() {
-    return pattern;
+  public final String getPatternString() {
+    return pipePattern != null ? pipePattern.getPattern() : null;
+  }
+
+  public final PipePattern getPipePattern() {
+    return pipePattern;
   }
 
   public final long getRealtimeDataExtractionStartTime() {
@@ -422,8 +422,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   @Override
   public String toString() {
     return "PipeRealtimeDataRegionExtractor{"
-        + "pattern='"
-        + pattern
+        + "pipePattern='"
+        + pipePattern
         + '\''
         + ", dataRegionId='"
         + dataRegionId

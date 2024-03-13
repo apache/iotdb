@@ -235,8 +235,8 @@ public class CreateLogicalViewStatement extends Statement {
   /**
    * Check errors in targetPaths.
    *
-   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
-   *     return the string of illegal path.
+   * @return Pair {@literal <}Boolean, String{@literal >}. True: checks passed; False: checks
+   *     failed. If check failed, return the string of illegal path.
    */
   public Pair<Boolean, String> checkTargetPaths() {
     for (PartialPath thisPath : this.getTargetPathList()) {
@@ -251,8 +251,8 @@ public class CreateLogicalViewStatement extends Statement {
    * Check errors in sourcePaths. Only usable when not using read statement. If this statement is
    * generated with a read statement, check always pass; if not, check each full paths.
    *
-   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
-   *     return the string of illegal path.
+   * @return Pair {@literal <}Boolean, String{@literal >}. True: checks passed; False: checks
+   *     failed. If check failed, return the string of illegal path.
    */
   public Pair<Boolean, String> checkSourcePathsIfNotUsingQueryStatement() {
     if (this.sourcePaths.viewPathType == ViewPathType.PATHS_GROUP
@@ -267,8 +267,8 @@ public class CreateLogicalViewStatement extends Statement {
   }
 
   /**
-   * @return return true if checks passed; else return false. if check failed, return the string of
-   *     illegal path.
+   * @return return {@link true} if checks passed; else return {@link false}. If check failed,
+   *     return the string of illegal path.
    */
   public Pair<Boolean, String> checkAllPaths() {
     Pair<Boolean, String> result = this.checkTargetPaths();

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +45,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       String snapshotPath,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       PipeSnapshotResourceManager resourceManager) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.snapshotPath = snapshotPath;
