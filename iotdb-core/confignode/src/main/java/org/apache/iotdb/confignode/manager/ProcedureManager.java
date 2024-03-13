@@ -91,7 +91,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -180,7 +179,7 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteDatabases(
-      ArrayList<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
+      List<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
     List<Long> procedureIds = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteDatabaseProcedure deleteDatabaseProcedure =
@@ -200,10 +199,8 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
-    String queryId = req.getQueryId();
-    PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+  public TSStatus deleteTimeSeries(
+      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -233,10 +230,7 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new DeleteTimeSeriesProcedure(
-                    queryId,
-                    patternTree,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+                new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
