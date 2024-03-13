@@ -245,7 +245,7 @@ class ClusterSchemaFetchExecutor {
       t = throwable;
       throw throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, t);
+      coordinator.cleanupQueryExecution(queryId, null, t);
     }
   }
 

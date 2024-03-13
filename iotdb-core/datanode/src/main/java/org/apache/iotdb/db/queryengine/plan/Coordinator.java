@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -225,7 +226,8 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
-  public void cleanupQueryExecution(Long queryId, Throwable t) {
+  public void cleanupQueryExecution(
+      Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
@@ -236,9 +238,9 @@ public class Coordinator {
           long costTime = queryExecution.getTotalExecutionTime();
           if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
-                "Cost: {} ms, sql is {}",
+                "Cost: {} ms, {}",
                 costTime / 1_000_000,
-                queryExecution.getExecuteSQL().orElse("UNKNOWN"));
+                getContentOfRequest(nativeApiRequest, queryExecution));
           }
         }
       }
@@ -246,7 +248,7 @@ public class Coordinator {
   }
 
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, null);
+    cleanupQueryExecution(queryId, null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
