@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -74,17 +74,17 @@ public class RemoveRegionPeerProcedure
       return Flow.NO_MORE_STATE;
     }
     TSStatus tsStatus;
-    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
       switch (state) {
         case REMOVE_REGION_PEER:
           tsStatus =
               handler.removeRegionPeer(
-                  targetDataNode, consensusGroupId, coordinator, this.getProcId());
+                  this.getProcId(), targetDataNode, consensusGroupId, coordinator);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
-          TRegionMigrateResultReportReq removeRegionPeerResult =
+          TRegionMigrateResult removeRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), coordinator);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
@@ -93,11 +93,11 @@ public class RemoveRegionPeerProcedure
           break;
         case DELETE_OLD_REGION_PEER:
           tsStatus =
-              handler.deleteOldRegionPeer(targetDataNode, consensusGroupId, this.getProcId());
+              handler.deleteOldRegionPeer(this.getProcId(), targetDataNode, consensusGroupId);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
           }
-          TRegionMigrateResultReportReq deleteOldRegionPeerResult =
+          TRegionMigrateResult deleteOldRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
           if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");

@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -1687,8 +1687,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TRegionMigrateResultReportReq getRegionMaintainResult(long taskId) throws TException {
-    return RegionMigrateService.getRegionMaintainResult(taskId);
+  public TRegionMigrateResult getRegionMaintainResult(long taskId) throws TException {
+    return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
   }
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {

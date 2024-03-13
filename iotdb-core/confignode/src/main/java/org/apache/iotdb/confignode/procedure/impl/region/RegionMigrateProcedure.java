@@ -52,9 +52,7 @@ public class RegionMigrateProcedure
   private TConsensusGroupId consensusGroupId;
 
   private TDataNodeLocation originalDataNode;
-
   private TDataNodeLocation destDataNode;
-
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
 
@@ -83,7 +81,7 @@ public class RegionMigrateProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:

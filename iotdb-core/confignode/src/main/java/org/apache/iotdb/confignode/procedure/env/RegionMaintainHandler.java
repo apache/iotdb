@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
@@ -80,7 +80,6 @@ public class RegionMaintainHandler {
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
-  // TODO: 需要明确DataNode失联多久认为执行失败
   private static final long DATANODE_MAX_DISCONNECTION_MS = 10000;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
@@ -288,10 +287,10 @@ public class RegionMaintainHandler {
    * @return TSStatus
    */
   public TSStatus removeRegionPeer(
+      long procedureId,
       TDataNodeLocation originalDataNode,
       TConsensusGroupId regionId,
-      TDataNodeLocation coordinator,
-      long procedureId) {
+      TDataNodeLocation coordinator) {
     TSStatus status;
 
     // Send removeRegionPeer request to the rpcClientDataNode
@@ -322,7 +321,7 @@ public class RegionMaintainHandler {
    * @return TSStatus
    */
   public TSStatus deleteOldRegionPeer(
-      TDataNodeLocation originalDataNode, TConsensusGroupId regionId, long procedureId) {
+      long procedureId, TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
     TSStatus status;
     TMaintainPeerReq maintainPeerReq =
@@ -364,13 +363,12 @@ public class RegionMaintainHandler {
   }
 
   // TODO: will use 'procedure yield' to refactor later
-  public TRegionMigrateResultReportReq waitTaskFinish(
-      long taskId, TDataNodeLocation dataNodeLocation) {
+  public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     long lastTimeConnectDataNode = System.currentTimeMillis();
     while (System.currentTimeMillis() - lastTimeConnectDataNode < DATANODE_MAX_DISCONNECTION_MS) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
-        TRegionMigrateResultReportReq report = dataNodeClient.getRegionMaintainResult(taskId);
+        TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
         lastTimeConnectDataNode = System.currentTimeMillis();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
@@ -390,7 +388,7 @@ public class RegionMaintainHandler {
         REGION_MIGRATE_PROCESS,
         taskId,
         dataNodeLocation);
-    TRegionMigrateResultReportReq report = new TRegionMigrateResultReportReq();
+    TRegionMigrateResult report = new TRegionMigrateResult();
     report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
     report.setFailedNodeAndReason(new HashMap<>());
     report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);

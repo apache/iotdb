@@ -100,7 +100,7 @@ enum TRegionMigrateFailedType {
   Disconnect,
 }
 
-struct TRegionMigrateResultReportReq {
+struct TRegionMigrateResult {
   1: optional TConsensusGroupId regionId
   2: optional TSStatus migrateResult
   3: optional map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason

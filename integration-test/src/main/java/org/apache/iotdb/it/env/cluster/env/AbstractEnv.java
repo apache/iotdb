@@ -31,10 +31,13 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
@@ -1015,10 +1018,10 @@ public abstract class AbstractEnv implements BaseEnv {
     try (SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
       TShowDataNodesResp resp = leaderClient.showDataNodes();
-      for (TDataNodeInfo info : resp.getDataNodesInfoList()) {
-        if (info.dataNodeId == nodeId) {
+      for (TDataNodeInfo dataNodeInfo : resp.getDataNodesInfoList()) {
+        if (dataNodeInfo.getDataNodeId() == nodeId) {
           return dataNodeWrapperList.stream()
-              .filter(dataNodeWrapper -> dataNodeWrapper.getPort() == info.rpcPort)
+              .filter(dataNodeWrapper -> dataNodeWrapper.getPort() == dataNodeInfo.getRpcPort())
               .findAny();
         }
       }

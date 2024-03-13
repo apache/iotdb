@@ -59,7 +59,7 @@ public class ProcedureExecutor<Env> {
   private final ConcurrentHashMap<Long, RootProcedureStack<Env>> rollbackStack =
       new ConcurrentHashMap<>();
 
-  private static final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
 
   private ThreadGroup threadGroup;
 
@@ -73,7 +73,7 @@ public class ProcedureExecutor<Env> {
   private int maxPoolSize;
 
   private final ProcedureScheduler scheduler;
-  private static final AtomicLong lastProcId = new AtomicLong(-1);
+  private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -85,7 +85,7 @@ public class ProcedureExecutor<Env> {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
-    lastProcId.incrementAndGet();
+    this.lastProcId.incrementAndGet();
   }
 
   @TestOnly
@@ -307,7 +307,7 @@ public class ProcedureExecutor<Env> {
    *
    * @return next procedure id
    */
-  public static synchronized long nextProcId() {
+  public synchronized long nextProcId() {
     long procId = lastProcId.incrementAndGet();
     if (procId < 0) {
       while (!lastProcId.compareAndSet(procId, 0)) {
