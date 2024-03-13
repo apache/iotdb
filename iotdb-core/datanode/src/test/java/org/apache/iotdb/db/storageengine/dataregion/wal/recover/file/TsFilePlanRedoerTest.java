@@ -36,6 +36,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -72,9 +74,9 @@ import static org.junit.Assert.assertTrue;
 
 public class TsFilePlanRedoerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
-  private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
-  private static final String DEVICE3_NAME = SG_NAME.concat(".d3");
+  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE3_NAME = new PlainDeviceID(SG_NAME.concat(".d3"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
