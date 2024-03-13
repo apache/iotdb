@@ -148,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -184,14 +185,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -1395,7 +1398,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Select Clause
   private SelectComponent parseSelectClause(
       IoTDBSqlParser.SelectClauseContext ctx, QueryStatement queryStatement) {
-    SelectComponent selectComponent = new SelectComponent(zoneId);
+    SelectComponent selectComponent = new SelectComponent();
 
     // parse LAST
     if (ctx.LAST() != null) {
@@ -2554,7 +2557,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
     QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
-    return new ExplainStatement(queryStatement);
+    if (ctx.ANALYZE() == null) {
+      return new ExplainStatement(queryStatement);
+    }
+    ExplainAnalyzeStatement explainAnalyzeStatement = new ExplainAnalyzeStatement(queryStatement);
+    if (ctx.VERBOSE() != null) {
+      explainAnalyzeStatement.setVerbose(true);
+    }
+    return explainAnalyzeStatement;
   }
 
   @Override
@@ -3178,15 +3188,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return clearCacheStatement;
   }
 
-  // Repair Data
+  // Start Repair Data
+
   @Override
-  public Statement visitRepairData(IoTDBSqlParser.RepairDataContext ctx) {
-    RepairDataStatement repairDataStatement = new RepairDataStatement(StatementType.REPAIR_DATA);
+  public Statement visitStartRepairData(IoTDBSqlParser.StartRepairDataContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("REPAIR DATA ON CLUSTER is not supported in standalone mode");
+      throw new SemanticException(
+          "START REPAIR DATA ON CLUSTER is not supported in standalone mode");
     }
-    repairDataStatement.setOnCluster(ctx.LOCAL() == null);
-    return repairDataStatement;
+    startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
+    return startRepairDataStatement;
+  }
+
+  // Stop Repair Data
+
+  @Override
+  public Statement visitStopRepairData(IoTDBSqlParser.StopRepairDataContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException(
+          "STOP REPAIR DATA ON CLUSTER is not supported in standalone mode");
+    }
+    stopRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
+    return stopRepairDataStatement;
   }
 
   // Load Configuration
@@ -3266,7 +3293,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    showQueriesStatement.setZoneId(zoneId);
     return showQueriesStatement;
   }
 
@@ -4112,5 +4138,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showSpaceQuotaStatement.setDatabases(null);
     }
     return showSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitShowCurrentTimestamp(IoTDBSqlParser.ShowCurrentTimestampContext ctx) {
+    return new ShowCurrentTimestampStatement();
   }
 }

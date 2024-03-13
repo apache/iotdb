@@ -33,30 +33,29 @@ import java.util.Map;
 
 public class PipeHandleLeaderChangePlan extends ConfigPhysicalPlan {
 
-  private Map<TConsensusGroupId, Integer> consensusGroupId2NewDataRegionLeaderIdMap =
-      new HashMap<>();
+  private Map<TConsensusGroupId, Integer> consensusGroupId2NewRegionLeaderIdMap = new HashMap<>();
 
   public PipeHandleLeaderChangePlan() {
     super(ConfigPhysicalPlanType.PipeHandleLeaderChange);
   }
 
   public PipeHandleLeaderChangePlan(
-      Map<TConsensusGroupId, Integer> consensusGroupId2NewDataRegionLeaderIdMap) {
+      Map<TConsensusGroupId, Integer> consensusGroupId2NewRegionLeaderIdMap) {
     super(ConfigPhysicalPlanType.PipeHandleLeaderChange);
-    this.consensusGroupId2NewDataRegionLeaderIdMap = consensusGroupId2NewDataRegionLeaderIdMap;
+    this.consensusGroupId2NewRegionLeaderIdMap = consensusGroupId2NewRegionLeaderIdMap;
   }
 
-  public Map<TConsensusGroupId, Integer> getConsensusGroupId2NewDataRegionLeaderIdMap() {
-    return consensusGroupId2NewDataRegionLeaderIdMap;
+  public Map<TConsensusGroupId, Integer> getConsensusGroupId2NewLeaderIdMap() {
+    return consensusGroupId2NewRegionLeaderIdMap;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(consensusGroupId2NewDataRegionLeaderIdMap.size());
+    stream.writeInt(consensusGroupId2NewRegionLeaderIdMap.size());
     for (Map.Entry<TConsensusGroupId, Integer> entry :
-        consensusGroupId2NewDataRegionLeaderIdMap.entrySet()) {
+        consensusGroupId2NewRegionLeaderIdMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -66,7 +65,7 @@ public class PipeHandleLeaderChangePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = buffer.getInt();
     for (int i = 0; i < size; ++i) {
-      consensusGroupId2NewDataRegionLeaderIdMap.put(
+      consensusGroupId2NewRegionLeaderIdMap.put(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(buffer)),
           ReadWriteIOUtils.readInt(buffer));
     }

@@ -49,6 +49,11 @@ public class OffsetNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.OFFSET;
+  }
+
+  @Override
   public PlanNode clone() {
     return new OffsetNode(getPlanNodeId(), offset);
   }

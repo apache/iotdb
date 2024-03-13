@@ -150,7 +150,8 @@ public class PipeMemoryManager {
   }
 
   /**
-   * Allocate a memory block for pipe only if memory already used is less than specified threshold.
+   * Allocate a {@link PipeMemoryBlock} for pipe only if memory already used is less than the
+   * specified threshold.
    *
    * @param sizeInBytes size of memory needed to allocate
    * @param usedThreshold proportion of memory used, ranged from 0.0 to 1.0

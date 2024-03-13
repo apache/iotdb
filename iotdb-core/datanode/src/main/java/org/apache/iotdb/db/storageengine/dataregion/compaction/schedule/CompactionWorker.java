@@ -21,13 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.slf4j.Logger;
@@ -68,65 +64,29 @@ public class CompactionWorker implements Runnable {
   }
 
   public boolean processOneCompactionTask(AbstractCompactionTask task) {
-    long estimatedMemoryCost = 0L;
-    boolean memoryAcquired = false;
-    boolean fileHandleAcquired = false;
+    if (task == null) {
+      return true;
+    }
     boolean taskSuccess = false;
+    CompactionTaskType taskType = task.getCompactionTaskType();
     try {
-      if (task == null || !task.isCompactionAllowed()) {
-        LOGGER.info(
-            "Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
-        return false;
-      }
-      if (!task.isDiskSpaceCheckPassed()) {
-        LOGGER.debug(
-            "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-        return false;
-      }
-      task.transitSourceFilesToMerging();
-      estimatedMemoryCost = task.getEstimatedMemoryCost();
-      if (estimatedMemoryCost < 0) {
-        return false;
-      }
-      CompactionTaskType taskType = task.getCompactionTaskType();
-      memoryAcquired =
-          SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
-      CompactionMetrics.getInstance().updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+      CompactionMetrics.getInstance()
+          .updateCompactionMemoryMetrics(taskType, task.getEstimatedMemoryCost());
       CompactionMetrics.getInstance()
           .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
-      fileHandleAcquired =
-          SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
       CompactionTaskSummary summary = task.getSummary();
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);
-      task.start();
-      taskSuccess = true;
-      return true;
-    } catch (FileCannotTransitToCompactingException
-        | CompactionMemoryNotEnoughException
-        | CompactionFileCountExceededException e) {
-      LOGGER.info("CompactionTask {} cannot be executed. Reason: {}", task, e.getMessage());
-    } catch (InterruptedException e) {
-      LOGGER.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
-      Thread.currentThread().interrupt();
+      taskSuccess = task.start();
+    } catch (Exception e) {
+      LOGGER.warn("Exception occurred when executing compaction task. {}", task, e);
     } finally {
-      if (task != null) {
-        task.resetCompactionCandidateStatusForAllSourceFiles();
-        task.handleTaskCleanup();
-      }
-      if (memoryAcquired) {
-        SystemInfo.getInstance()
-            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
-      }
-      if (fileHandleAcquired) {
-        SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
-      }
       if (taskSuccess) {
         task.getAllSourceTsFiles()
             .forEach(AbstractCompactionEstimator::removeFileInfoFromGlobalFileInfoCache);
       }
     }
-    return false;
+    return taskSuccess;
   }
 
   static class CompactionTaskFuture implements Future<CompactionTaskSummary> {

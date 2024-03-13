@@ -192,4 +192,8 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowLogicalViewHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showLogicalViewColumnHeaders, true);
   }
+
+  public static DatasetHeader getShowCurrentTimestampHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCurrentTimestampColumnHeaders, true);
+  }
 }

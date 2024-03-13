@@ -33,7 +33,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -56,7 +58,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -4037,8 +4038,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
   public void testReleaseFileNumAndMemoryAfterCrossTask()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     int oldMaxCrossCompactionCandidateFileNum =
-        SystemInfo.getInstance().getTotalFileLimitForCrossTask();
-    SystemInfo.getInstance().setTotalFileLimitForCrossTask(15);
+        SystemInfo.getInstance().getTotalFileLimitForCompaction();
+    SystemInfo.getInstance().setTotalFileLimitForCompactionTask(15);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     try {
@@ -4057,15 +4058,18 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               0);
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
 
-      FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-          Mockito.mock(FixedPriorityBlockingQueue.class);
-      Mockito.when(mockQueue.take()).thenReturn(task).thenThrow(new InterruptedException());
-      CompactionWorker worker = new CompactionWorker(0, mockQueue);
-      worker.run();
+      FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+          new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+      queue.put(task);
+      CompactionWorker worker = new CompactionWorker(0, queue);
+      AbstractCompactionTask takeTask = queue.take();
+      Assert.assertNotNull(takeTask);
+      worker.processOneCompactionTask(takeTask);
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     } finally {
-      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxCrossCompactionCandidateFileNum);
+      SystemInfo.getInstance()
+          .setTotalFileLimitForCompactionTask(oldMaxCrossCompactionCandidateFileNum);
     }
   }
 
