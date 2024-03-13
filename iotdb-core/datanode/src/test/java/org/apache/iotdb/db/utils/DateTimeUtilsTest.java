@@ -50,6 +50,7 @@ public class DateTimeUtilsTest {
     }
     testConvertDatetimeStrToLongWithoutMS(zoneOffset, zoneId, timestamp - 689 + delta);
     testConvertDatetimeStrToLongWithMS(zoneOffset, zoneId, timestamp + delta);
+    testConvertDatetimeStrToLongWithMS2(zoneOffset, zoneId, timestamp - 9 + delta);
   }
 
   @Test
@@ -59,6 +60,7 @@ public class DateTimeUtilsTest {
     delta = 8 * 3600000;
     testConvertDatetimeStrToLongWithoutMS(zoneOffset, zoneId, timestamp - 689 + delta);
     testConvertDatetimeStrToLongWithMS(zoneOffset, zoneId, timestamp + delta);
+    testConvertDatetimeStrToLongWithMS2(zoneOffset, zoneId, timestamp - 9 + delta);
   }
 
   @Test
@@ -222,6 +224,45 @@ public class DateTimeUtilsTest {
     }
   }
 
+  public void testConvertDatetimeStrToLongWithMS2(ZoneOffset zoneOffset, ZoneId zoneId, long res) {
+    String[] timeFormatWithoutMs =
+        new String[] {
+          "2019-01-02 15:13:27.680",
+          "2019/01/02 15:13:27.680",
+          "2019.01.02 15:13:27.680",
+          "2019-01-02T15:13:27.680",
+          "2019-01-02T15:13:27.680",
+          "2019/01/02T15:13:27.680",
+          "2019.01.02T15:13:27.680",
+          "2019-01-02 15:13:27.680" + zoneOffset,
+          "2019/01/02 15:13:27.680" + zoneOffset,
+          "2019.01.02 15:13:27.680" + zoneOffset,
+          "2019-01-02T15:13:27.680" + zoneOffset,
+          "2019/01/02T15:13:27.680" + zoneOffset,
+          "2019.01.02T15:13:27.680" + zoneOffset,
+          "2019-01-02 15:13:27.68",
+          "2019/01/02 15:13:27.68",
+          "2019.01.02 15:13:27.68",
+          "2019-01-02T15:13:27.68",
+          "2019-01-02T15:13:27.68",
+          "2019/01/02T15:13:27.68",
+          "2019.01.02T15:13:27.68",
+          "2019-01-02 15:13:27.68" + zoneOffset,
+          "2019/01/02 15:13:27.68" + zoneOffset,
+          "2019.01.02 15:13:27.68" + zoneOffset,
+          "2019-01-02T15:13:27.68" + zoneOffset,
+          "2019/01/02T15:13:27.68" + zoneOffset,
+          "2019.01.02T15:13:27.68" + zoneOffset,
+        };
+    for (String str : timeFormatWithoutMs) {
+      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+    }
+
+    for (String str : timeFormatWithoutMs) {
+      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneId));
+    }
+  }
+
   public void testConvertDateStrToLong(ZoneOffset zoneOffset, ZoneId zoneId, long res) {
     String[] timeFormatWithoutMs =
         new String[] {
@@ -261,5 +302,8 @@ public class DateTimeUtilsTest {
     timeDuration = DateTimeUtils.constructTimeDuration("1y1mo");
     Assert.assertEquals(13, timeDuration.monthDuration);
     Assert.assertEquals(0, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("10000000000ms");
+    Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
   }
 }

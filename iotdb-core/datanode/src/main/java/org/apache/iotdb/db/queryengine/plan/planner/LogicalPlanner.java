@@ -22,9 +22,11 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.optimization.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
@@ -33,11 +35,10 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGI
 public class LogicalPlanner {
 
   private final MPPQueryContext context;
-  private final List<PlanOptimizer> optimizers;
+  private final List<PlanOptimizer> optimizers = Collections.singletonList(new PredicatePushDown());
 
-  public LogicalPlanner(MPPQueryContext context, List<PlanOptimizer> optimizers) {
+  public LogicalPlanner(MPPQueryContext context) {
     this.context = context;
-    this.optimizers = optimizers;
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
@@ -46,12 +47,15 @@ public class LogicalPlanner {
 
     // optimize the query logical plan
     if (analysis.getStatement().isQuery()) {
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);
 
+      long planFinishTime = System.nanoTime();
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - planFinishTime);
+      context.setLogicalPlanCost(planFinishTime - startTime);
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
       }
+      context.setLogicalOptimizationCost(System.nanoTime() - planFinishTime);
     }
 
     return new LogicalQueryPlan(context, rootNode);

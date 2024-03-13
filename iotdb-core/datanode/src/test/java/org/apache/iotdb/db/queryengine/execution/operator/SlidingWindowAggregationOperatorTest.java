@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -100,6 +101,11 @@ public class SlidingWindowAggregationOperatorTest {
           TAggregationType.FIRST_VALUE,
           TAggregationType.MAX_VALUE,
           TAggregationType.MIN_VALUE);
+
+  private final List<String> rootAggregationNames =
+      rootAggregationTypes.stream()
+          .map(SchemaUtils::getBuiltinAggregationName)
+          .collect(Collectors.toList());
 
   private final List<List<List<InputLocation>>> inputLocations =
       Arrays.asList(
@@ -232,7 +238,7 @@ public class SlidingWindowAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             leafAggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -261,6 +267,7 @@ public class SlidingWindowAggregationOperatorTest {
     for (int i = 0; i < rootAggregationTypes.size(); i++) {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
+              rootAggregationNames.get(i),
               rootAggregationTypes.get(i),
               Collections.singletonList(TSDataType.INT32),
               Collections.emptyList(),

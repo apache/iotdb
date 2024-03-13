@@ -109,7 +109,7 @@ public class StatementGeneratorTest {
     TSRawDataQueryReq req =
         new TSRawDataQueryReq(
             101L, Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"), 100L, 200L, 102L);
-    Statement statement = StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
+    Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
         Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),
@@ -127,7 +127,7 @@ public class StatementGeneratorTest {
   public void testLastDataQuery() throws IllegalPathException {
     TSLastDataQueryReq req =
         new TSLastDataQueryReq(101L, Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"), 200L, 102L);
-    Statement statement = StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
+    Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
         Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),
@@ -146,7 +146,7 @@ public class StatementGeneratorTest {
             102L,
             Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"),
             Arrays.asList(TAggregationType.AVG, TAggregationType.COUNT));
-    Statement statement = StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
+    Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
         Arrays.asList(new PartialPath("root.sg.d1.s2"), new PartialPath("root.sg.d1.s1")),

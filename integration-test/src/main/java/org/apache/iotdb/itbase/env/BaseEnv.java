@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -51,10 +52,6 @@ public interface BaseEnv {
    * @param dataNodesNum the number of DataNodes.
    */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum);
-
-  default void addClusterDataNodes(int dataNodesNum) throws IOException, InterruptedException {
-    throw new UnsupportedOperationException();
-  }
 
   /**
    * Init a cluster with the specified number of ConfigNodes and DataNodes.
@@ -100,11 +97,11 @@ public interface BaseEnv {
   List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
-    return getConnection("root", "root");
+    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   default Connection getConnection(Constant.Version version) throws SQLException {
-    return getConnection(version, "root", "root");
+    return getConnection(version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   Connection getConnection(Constant.Version version, String username, String password)
@@ -112,9 +109,20 @@ public interface BaseEnv {
 
   Connection getConnection(String username, String password) throws SQLException;
 
+  default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
+      throws SQLException {
+    return getWriteOnlyConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  // This is useful when you shut down a dataNode.
+  Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException;
+
   default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
-    return getConnectionWithSpecifiedDataNode(dataNode, "root", "root");
+    return getConnectionWithSpecifiedDataNode(
+        dataNode, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   Connection getConnectionWithSpecifiedDataNode(
@@ -131,10 +139,6 @@ public interface BaseEnv {
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;
 
-  default IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
-    throw new UnsupportedOperationException();
-  }
-
   ISessionPool getSessionPool(int maxSize);
 
   ISession getSessionConnection() throws IoTDBConnectionException;
@@ -144,17 +148,34 @@ public interface BaseEnv {
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**
+   * Get the index of the first dataNode with a SchemaRegion leader.
+   *
+   * @return The index of DataNode with SchemaRegion-leader in dataNodeWrapperList
+   */
+  int getFirstLeaderSchemaRegionDataNodeIndex() throws IOException, InterruptedException;
+
+  /**
    * Get the index of the ConfigNode leader.
    *
    * @return The index of ConfigNode-Leader in configNodeWrapperList
    */
   int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
 
+  default IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    throw new UnsupportedOperationException();
+  }
+
   /** Start an existed ConfigNode. */
   void startConfigNode(int index);
 
+  /** Start all existed ConfigNodes. */
+  void startAllConfigNodes();
+
   /** Shutdown an existed ConfigNode. */
   void shutdownConfigNode(int index);
+
+  /** Shutdown all existed ConfigNodes. */
+  void shutdownAllConfigNodes();
 
   /**
    * Ensure all the nodes being in the corresponding status.
@@ -211,8 +232,14 @@ public interface BaseEnv {
   /** Start an existed DataNode. */
   void startDataNode(int index);
 
+  /** Start all existed DataNodes. */
+  void startAllDataNodes();
+
   /** Shutdown an existed DataNode. */
   void shutdownDataNode(int index);
+
+  /** Shutdown all existed DataNodes. */
+  void shutdownAllDataNodes();
 
   int getMqttPort();
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
@@ -74,6 +75,14 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public abstract void addChild(PlanNode child);
 
+  /**
+   * If this plan node has to be serialized or deserialized, override this method. If this method is
+   * overridden, the serialization and deserialization methods must be implemented.
+   */
+  public PlanNodeType getType() {
+    throw new UnsupportedOperationException("This planNode does not support getType().");
+  }
+
   @Override
   public abstract PlanNode clone();
 
@@ -87,7 +96,7 @@ public abstract class PlanNode implements IConsensusRequest {
    */
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
     throw new UnsupportedOperationException(
-        String.format("Can't create subNode for %s", this.getClass().toString()));
+        String.format("Can't create subNode for %s", this.getClass()));
   }
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {

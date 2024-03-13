@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -49,6 +48,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -80,15 +81,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
+    // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
+    // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
+    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
     pipeManager
         .getPipePluginCoordinator()
         .getPipePluginInfo()
         .checkPipePluginExistence(
-            new HashMap<>(),
+            new HashMap<>(), // no need to check pipe source plugin
             alterPipeRequest.getProcessorAttributes(),
             alterPipeRequest.getConnectorAttributes());
-    pipeTaskInfo.get().checkBeforeAlterPipe(alterPipeRequest);
 
     return false;
   }
@@ -104,7 +108,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     currentPipeStaticMeta = currentPipeMeta.getStaticMeta();
     currentPipeRuntimeMeta = currentPipeMeta.getRuntimeMeta();
 
-    final Map<TConsensusGroupId, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
+    final Map<Integer, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
         currentPipeRuntimeMeta.getConsensusGroupId2TaskMetaMap();
 
     // deep copy reused attributes
@@ -112,12 +116,15 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            new HashMap<>(currentPipeStaticMeta.getExtractorParameters().getAttribute()),
+            new HashMap<>(
+                currentPipeStaticMeta
+                    .getExtractorParameters()
+                    .getAttribute()), // reuse pipe source plugin
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
-    final Map<TConsensusGroupId, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
-        new HashMap<>();
+    final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
+        new ConcurrentHashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -129,13 +136,13 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
                 final PipeTaskMeta currentPipeTaskMeta =
-                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId);
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
                 if (databaseName != null
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && currentPipeTaskMeta.getLeaderDataNodeId() == regionLeaderNodeId) {
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
-                      regionGroupId,
+                      regionGroupId.getId(),
                       new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
                 }
               }
@@ -254,6 +261,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
+    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllProcessorAttributes, stream);
+    ReadWriteIOUtils.write(alterPipeRequest.isReplaceAllConnectorAttributes, stream);
     if (currentPipeStaticMeta != null) {
       ReadWriteIOUtils.write(true, stream);
       currentPipeStaticMeta.serialize(stream);
@@ -300,6 +309,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           .getConnectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
+    alterPipeRequest.isReplaceAllProcessorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
+    alterPipeRequest.isReplaceAllConnectorAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       currentPipeStaticMeta = PipeStaticMeta.deserialize(byteBuffer);
     }

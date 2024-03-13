@@ -407,7 +407,7 @@ public class OperatorMemoryTest {
   @Test
   public void limitOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
-    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024L);
+    Mockito.when(child.calculateMaxPeekMemoryWithCounter()).thenReturn(2 * 1024L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
@@ -422,7 +422,7 @@ public class OperatorMemoryTest {
   @Test
   public void offsetOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
-    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024L);
+    Mockito.when(child.calculateMaxPeekMemoryWithCounter()).thenReturn(2 * 1024L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
@@ -506,7 +506,7 @@ public class OperatorMemoryTest {
   @Test
   public void sortOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
-    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxPeekMemoryWithCounter()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
@@ -1199,7 +1199,7 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
@@ -1254,7 +1254,7 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
@@ -1327,7 +1327,7 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
@@ -1407,7 +1407,7 @@ public class OperatorMemoryTest {
         o ->
             aggregators.add(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(
+                    AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
                         Collections.emptyList(),
@@ -1449,7 +1449,7 @@ public class OperatorMemoryTest {
   @Test
   public void intoOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
-    Mockito.when(child.calculateMaxPeekMemory())
+    Mockito.when(child.calculateMaxPeekMemoryWithCounter())
         .thenReturn((long) DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     Mockito.when(child.calculateMaxReturnSize())
         .thenReturn((long) DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);

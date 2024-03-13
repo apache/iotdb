@@ -67,16 +67,26 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
+import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanContext;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.CacheHitRatioMonitor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -88,6 +98,7 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,7 +220,7 @@ public class DataNode implements DataNodeMBean {
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
-      logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
+      logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
     } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
@@ -370,6 +381,9 @@ public class DataNode implements DataNodeMBean {
 
     /* Store ttl information */
     StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
+
+    /* Store cluster ID */
+    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
   }
 
   /**
@@ -553,6 +567,7 @@ public class DataNode implements DataNodeMBean {
 
     logger.info("Recover the schema...");
     initSchemaEngine();
+    classLoader();
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
@@ -562,6 +577,9 @@ public class DataNode implements DataNodeMBean {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
+
+    // Must init before StorageEngine
+    registerManager.register(CompactionScheduleTaskManager.getInstance());
 
     // In mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());
@@ -912,6 +930,27 @@ public class DataNode implements DataNodeMBean {
     SchemaEngine.getInstance().init();
     long endTime = System.currentTimeMillis();
     logger.info("Recover schema successfully, which takes {} ms.", (endTime - startTime));
+  }
+
+  private void classLoader() {
+    try {
+      // StatementGenerator
+      Class.forName(StatementGenerator.class.getName());
+      Class.forName(ASTVisitor.class.getName());
+      Class.forName(SqlLexer.class.getName());
+      Class.forName(CommonTokenStream.class.getName());
+      Class.forName(IoTDBSqlParser.class.getName());
+      // SourceRewriter
+      Class.forName(SourceRewriter.class.getName());
+      Class.forName(DistributionPlanContext.class.getName());
+      // LogicalPlaner
+      Class.forName(LogicalPlanVisitor.class.getName());
+      Class.forName(LogicalQueryPlan.class.getName());
+      // TsFileProcessor
+      Class.forName(TsFileProcessor.class.getName());
+    } catch (ClassNotFoundException e) {
+      logger.error("load class error: ", e);
+    }
   }
 
   public void stop() {

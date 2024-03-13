@@ -22,7 +22,7 @@ package org.apache.iotdb.consensus.exception;
 /** RaftServer is unable to serve linearizable read requests. */
 public class RatisReadUnavailableException extends ConsensusException {
 
-  public static final String RATIS_READ_UNAVAILABLE =
+  private static final String RATIS_READ_UNAVAILABLE =
       "Raft Server cannot serve read requests now (leader is unknown or under recovery). "
           + "Please try read later: ";
 

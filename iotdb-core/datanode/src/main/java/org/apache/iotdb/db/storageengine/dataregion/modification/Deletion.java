@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -115,7 +116,10 @@ public class Deletion extends Modification implements Cloneable {
     long startTime = stream.readLong();
     long endTime = stream.readLong();
     return new Deletion(
-        new PartialPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
+        DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream)),
+        0,
+        startTime,
+        endTime);
   }
 
   public long getSerializedSize() {

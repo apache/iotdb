@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.resource.wal;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import org.slf4j.Logger;
@@ -30,6 +32,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -61,6 +64,14 @@ public abstract class PipeWALResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
         memtableIdToPipeWALResourceMap.entrySet().iterator();
+    final Optional<Logger> logger =
+        PipeResourceManager.log()
+            .schedule(
+                PipeWALResourceManager.class,
+                PipeConfig.getInstance().getPipeWalPinMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeWalPinMaxLogIntervalRounds(),
+                memtableIdToPipeWALResourceMap.size());
+
     try {
       while (iterator.hasNext()) {
         final Map.Entry<Long, PipeWALResource> entry = iterator.next();
@@ -71,11 +82,13 @@ public abstract class PipeWALResourceManager {
         try {
           if (entry.getValue().invalidateIfPossible()) {
             iterator.remove();
-          } else if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                "WAL (memtableId {}) is still referenced {} times",
-                entry.getKey(),
-                entry.getValue().getReferenceCount());
+          } else {
+            logger.ifPresent(
+                l ->
+                    l.info(
+                        "WAL (memtableId {}) is still referenced {} times",
+                        entry.getKey(),
+                        entry.getValue().getReferenceCount()));
           }
         } finally {
           lock.unlock();

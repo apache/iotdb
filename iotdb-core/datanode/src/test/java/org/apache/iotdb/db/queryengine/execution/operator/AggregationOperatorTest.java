@@ -108,6 +108,7 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -124,9 +125,8 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
 
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -148,6 +148,7 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -157,6 +158,7 @@ public class AggregationOperatorTest {
           new InputLocation[] {new InputLocation(1, 2 * i), new InputLocation(1, 2 * i + 1)});
       inputLocations.add(inputLocationForOneAggregator);
     }
+
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
@@ -166,8 +168,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -192,6 +193,7 @@ public class AggregationOperatorTest {
         };
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -199,6 +201,7 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.MAX_TIME);
     aggregationTypes.add(TAggregationType.MAX_VALUE);
     aggregationTypes.add(TAggregationType.MIN_VALUE);
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -206,6 +209,7 @@ public class AggregationOperatorTest {
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(1, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
+
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
@@ -215,8 +219,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -247,8 +250,10 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
+
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
+
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -267,8 +272,7 @@ public class AggregationOperatorTest {
       if (!aggregationOperator.hasNext()) {
         break;
       }
-      TsBlock resultTsBlock = null;
-      resultTsBlock = aggregationOperator.next();
+      TsBlock resultTsBlock = aggregationOperator.next();
       if (resultTsBlock == null) {
         continue;
       }
@@ -313,15 +317,12 @@ public class AggregationOperatorTest {
     driverContext.addOperatorContext(3, planNodeId3, AggregationOperator.class.getSimpleName());
     driverContext
         .getOperatorContexts()
-        .forEach(
-            operatorContext -> {
-              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
-            });
+        .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
     MeasurementPath measurementPath1 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
     List<Aggregator> aggregators = new ArrayList<>();
-    AccumulatorFactory.createAccumulators(
+    AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),
@@ -382,7 +383,7 @@ public class AggregationOperatorTest {
 
     List<Aggregator> finalAggregators = new ArrayList<>();
     List<Accumulator> accumulators =
-        AccumulatorFactory.createAccumulators(
+        AccumulatorFactory.createBuiltinAccumulators(
             aggregationTypes,
             TSDataType.INT32,
             Collections.emptyList(),

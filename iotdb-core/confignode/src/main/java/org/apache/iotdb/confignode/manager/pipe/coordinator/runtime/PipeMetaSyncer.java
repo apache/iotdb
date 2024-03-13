@@ -70,16 +70,6 @@ public class PipeMetaSyncer {
   }
 
   public synchronized void start() {
-    while (configManager.getConsensusManager() == null) {
-      try {
-        LOGGER.info("Consensus layer is not ready, sleep 1s...");
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for consensus layer ready.");
-      }
-    }
-
     if (metaSyncFuture == null) {
       metaSyncFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(

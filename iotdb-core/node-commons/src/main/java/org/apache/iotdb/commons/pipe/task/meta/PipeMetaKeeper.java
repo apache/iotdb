@@ -89,6 +89,10 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.values();
   }
 
+  public int getPipeMetaCount() {
+    return pipeNameToPipeMetaMap.size();
+  }
+
   public PipeMeta getPipeMetaByPipeName(String pipeName) {
     return pipeNameToPipeMetaMap.get(pipeName);
   }

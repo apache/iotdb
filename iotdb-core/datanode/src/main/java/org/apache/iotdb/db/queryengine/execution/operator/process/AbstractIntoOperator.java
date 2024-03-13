@@ -324,7 +324,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize + maxRetainedSize + child.calculateMaxPeekMemory();
+    return maxReturnSize + maxRetainedSize + child.calculateMaxPeekMemoryWithCounter();
   }
 
   @Override

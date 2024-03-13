@@ -89,6 +89,11 @@ public class SchemaFetchScanNode extends SourceNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SCHEMA_FETCH_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SchemaFetchScanNode(
         getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, withTemplate);

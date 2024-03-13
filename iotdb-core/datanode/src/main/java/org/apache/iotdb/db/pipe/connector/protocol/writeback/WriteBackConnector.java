@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -93,25 +92,6 @@ public class WriteBackConnector implements PipeConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(
-            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-                .parseEventWithPatternOrTime());
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(
-            ((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPatternOrTime());
-      }
-      return;
-    } else {
-      // ignore raw tablet event with zero rows
-      if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        if (((PipeRawTabletInsertionEvent) tabletInsertionEvent).hasNoNeedParsingAndIsEmpty()) {
-          return;
-        }
-      }
-    }
-
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else {
@@ -138,9 +118,7 @@ public class WriteBackConnector implements PipeConnector {
               .thrift()
               .receive(
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()),
-                  ClusterPartitionFetcher.getInstance(),
-                  ClusterSchemaFetcher.getInstance())
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
               .getStatus();
     } else {
       InsertBaseStatement statement =
@@ -176,10 +154,10 @@ public class WriteBackConnector implements PipeConnector {
 
   private TSStatus executeStatement(InsertBaseStatement statement) {
     return Coordinator.getInstance()
-        .execute(
+        .executeForTreeModel(
             new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
+            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),

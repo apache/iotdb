@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
+import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -85,6 +86,16 @@ public class ExpressionTypeAnalyzer {
       Map<NodeRef<Expression>, TSDataType> types, Expression expression) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
     analyzer.analyze(expression, null);
+
+    types.putAll(analyzer.getExpressionTypes());
+  }
+
+  public static void analyzeExpressionUsingTemplatedInfo(
+      Map<NodeRef<Expression>, TSDataType> types,
+      Expression expression,
+      TemplatedInfo templatedInfo) {
+    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+    analyzer.analyze(expression, templatedInfo.getSchemaMap());
 
     types.putAll(analyzer.getExpressionTypes());
   }
@@ -283,20 +294,21 @@ public class ExpressionTypeAnalyzer {
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         return setExpressionType(
             functionExpression,
-            TypeInferenceUtils.getAggrDataType(
+            TypeInferenceUtils.getBuiltinAggregationDataType(
                 functionExpression.getFunctionName(),
                 getInputExpressionTypeForAggregation(
                     inputExpressions, functionExpression.getFunctionName())));
       }
-      if (functionExpression.isBuiltInScalarFunction()) {
+      if (functionExpression.isBuiltInScalarFunctionExpression()) {
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
                 functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
-      } else {
+      }
+      if (functionExpression.isExternalAggregationFunctionExpression()) {
         return setExpressionType(
             functionExpression,
-            new UDTFInformationInferrer(functionExpression.getFunctionName())
+            new UDAFInformationInferrer(functionExpression.getFunctionName())
                 .inferOutputType(
                     inputExpressions.stream()
                         .map(Expression::getExpressionString)
@@ -306,6 +318,18 @@ public class ExpressionTypeAnalyzer {
                         .collect(Collectors.toList()),
                     functionExpression.getFunctionAttributes()));
       }
+
+      return setExpressionType(
+          functionExpression,
+          new UDTFInformationInferrer(functionExpression.getFunctionName())
+              .inferOutputType(
+                  inputExpressions.stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  inputExpressions.stream()
+                      .map(f -> expressionTypes.get(NodeRef.of(f)))
+                      .collect(Collectors.toList()),
+                  functionExpression.getFunctionAttributes()));
     }
 
     @Override
@@ -429,6 +453,7 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
       case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:
         throw new IllegalArgumentException(

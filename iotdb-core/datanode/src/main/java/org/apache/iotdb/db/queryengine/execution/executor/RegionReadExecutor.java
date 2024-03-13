@@ -32,6 +32,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.protocol.exceptions.ReadException;
+import org.apache.ratis.protocol.exceptions.ReadIndexException;
+import org.apache.ratis.protocol.exceptions.ServerNotReadyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,14 +73,14 @@ public class RegionReadExecutor {
   public RegionExecutionResult execute(
       ConsensusGroupId groupId, FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
-    DataSet readResponse;
+    RegionExecutionResult resp = new RegionExecutionResult();
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
+      DataSet readResponse;
       if (groupId instanceof DataRegionId) {
         readResponse = dataRegionConsensus.read(groupId, fragmentInstance);
       } else {
         readResponse = schemaRegionConsensus.read(groupId, fragmentInstance);
       }
-      RegionExecutionResult resp = new RegionExecutionResult();
       if (readResponse == null) {
         LOGGER.error(RESPONSE_NULL_ERROR_MSG);
         resp.setAccepted(false);
@@ -87,11 +91,16 @@ public class RegionReadExecutor {
         resp.setMessage(info.getMessage());
       }
       return resp;
-    } catch (Throwable t) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);
-      RegionExecutionResult resp = new RegionExecutionResult();
-      resp.setAccepted(false);
-      resp.setMessage(String.format(ERROR_MSG_FORMAT, t.getMessage()));
+    } catch (Throwable e) {
+      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
+      Throwable t = e.getCause();
+      if (t instanceof ReadException
+          || t instanceof ReadIndexException
+          || t instanceof NotLeaderException
+          || t instanceof ServerNotReadyException) {
+        resp.setNeedRetry(true);
+      }
       return resp;
     }
   }

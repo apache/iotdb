@@ -39,6 +39,8 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   private String pipeName;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
+  private boolean isReplaceAllProcessorAttributes;
+  private boolean isReplaceAllConnectorAttributes;
 
   public AlterPipeStatement(StatementType alterPipeStatement) {
     this.statementType = alterPipeStatement;
@@ -56,6 +58,14 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return connectorAttributes;
   }
 
+  public boolean isReplaceAllProcessorAttributes() {
+    return isReplaceAllProcessorAttributes;
+  }
+
+  public boolean isReplaceAllConnectorAttributes() {
+    return isReplaceAllConnectorAttributes;
+  }
+
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
   }
@@ -66,6 +76,14 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
 
   public void setConnectorAttributes(Map<String, String> connectorAttributes) {
     this.connectorAttributes = connectorAttributes;
+  }
+
+  public void setReplaceAllProcessorAttributes(boolean replaceAllProcessorAttributes) {
+    isReplaceAllProcessorAttributes = replaceAllProcessorAttributes;
+  }
+
+  public void setReplaceAllConnectorAttributes(boolean replaceAllConnectorAttributes) {
+    isReplaceAllConnectorAttributes = replaceAllConnectorAttributes;
   }
 
   @Override

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -68,7 +68,7 @@ import static org.junit.Assert.assertTrue;
 public class AggregationDistributionTest {
 
   @Test
-  public void testAggregation1Series2Regions() throws IllegalPathException {
+  public void testAggregation1Series2Regions() {
     QueryId queryId = new QueryId("test_1_series_2_regions");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -95,7 +95,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testAggregation1Series2RegionsWithSlidingWindow() throws IllegalPathException {
+  public void testAggregation1Series2RegionsWithSlidingWindow() {
     QueryId queryId = new QueryId("test_1_series_2_regions_sliding_window");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -130,7 +130,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
+  public void testTimeJoinAggregationSinglePerRegion() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -166,9 +166,7 @@ public class AggregationDistributionTest {
       SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) root;
       List<AggregationDescriptor> descriptorList = handle.getAggregationDescriptorList();
       descriptorList.forEach(
-          d -> {
-            assertEquals(expected.get(handle.getPartitionPath().getFullPath()), d.getStep());
-          });
+          d -> assertEquals(expected.get(handle.getPartitionPath().getFullPath()), d.getStep()));
     }
     root.getChildren().forEach(child -> verifyAggregationStep(expected, child));
   }
@@ -190,7 +188,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationWithSlidingWindow() throws IllegalPathException {
+  public void testTimeJoinAggregationWithSlidingWindow() {
     QueryId queryId = new QueryId("test_query_time_join_agg_with_sliding");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -229,7 +227,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationMultiPerRegion() throws IllegalPathException {
+  public void testTimeJoinAggregationMultiPerRegion() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -254,7 +252,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testTimeJoinAggregationMultiPerRegion2() throws IllegalPathException {
+  public void testTimeJoinAggregationMultiPerRegion2() {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -775,7 +773,7 @@ public class AggregationDistributionTest {
   }
 
   @Test
-  public void testAlignByDevice1Device2Region() throws IllegalPathException {
+  public void testAlignByDevice1Device2Region() {
     QueryId queryId = new QueryId("test_align_by_device_1_device_2_region");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -790,10 +788,10 @@ public class AggregationDistributionTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
+    assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -814,13 +812,13 @@ public class AggregationDistributionTest {
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f3Root =
         plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
-    assertTrue(f3Root instanceof HorizontallyConcatNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof SeriesSourceNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
+    assertTrue(f3Root instanceof DeviceViewNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(f1Root.getChildren().get(1) instanceof ExchangeNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
+    assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -839,8 +837,8 @@ public class AggregationDistributionTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
     assertEquals(2, f1Root.getChildren().size());
   }
 

@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBThriftSyncConnectorClient;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -104,9 +104,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   private String syncConnectorVersion;
 
   private String pipeName;
-  private Long creationTime;
-
-  private IoTDBThriftSyncConnectorClient client;
+  private IoTDBSyncClient client;
 
   private SessionPool sessionPool;
 
@@ -205,7 +203,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE);
 
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
-    creationTime = configuration.getRuntimeEnvironment().getCreationTime();
 
     useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
     trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
@@ -218,7 +215,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
     try {
       client =
-          new IoTDBThriftSyncConnectorClient(
+          new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
@@ -230,7 +227,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
               trustStorePwd);
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
-              pipeName, creationTime, syncConnectorVersion, IoTDBConstant.PATH_ROOT);
+              pipeName, System.currentTimeMillis(), syncConnectorVersion, IoTDBConstant.PATH_ROOT);
       final TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String errorMsg =

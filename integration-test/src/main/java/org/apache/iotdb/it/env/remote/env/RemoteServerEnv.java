@@ -93,7 +93,9 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
-    clientManager.close();
+    if (clientManager != null) {
+      clientManager.close();
+    }
     clusterConfig = new RemoteClusterConfig();
   }
 
@@ -116,7 +118,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
-    Connection connection = null;
+    Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
@@ -130,6 +132,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return getConnection(username, password);
@@ -138,7 +146,7 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
-    Connection connection = null;
+    Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
@@ -235,6 +243,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public int getFirstLeaderSchemaRegionDataNodeIndex() {
+    return -1;
+  }
+
+  @Override
   public int getLeaderConfigNodeIndex() {
     return -1;
   }
@@ -245,7 +258,17 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void startAllConfigNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void shutdownConfigNode(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownAllConfigNodes() {
     throw new UnsupportedOperationException();
   }
 
@@ -300,7 +323,17 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void startAllDataNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void shutdownDataNode(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownAllDataNodes() {
     throw new UnsupportedOperationException();
   }
 

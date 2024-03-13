@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
+import org.apache.iotdb.db.pipe.resource.log.PipeLogManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.resource.snapshot.PipeDataNodeSnapshotResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.hardlink.PipeWALHardlinkResourceManager;
@@ -32,7 +35,9 @@ public class PipeResourceManager {
 
   private final PipeTsFileResourceManager pipeTsFileResourceManager;
   private final AtomicReference<PipeWALResourceManager> pipeWALResourceManager;
+  private final PipeSnapshotResourceManager pipeSnapshotResourceManager;
   private final PipeMemoryManager pipeMemoryManager;
+  private final PipeLogManager pipeLogManager;
 
   public static PipeTsFileResourceManager tsfile() {
     return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
@@ -52,8 +57,16 @@ public class PipeResourceManager {
     return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get();
   }
 
+  public static PipeSnapshotResourceManager snapshot() {
+    return PipeResourceManagerHolder.INSTANCE.pipeSnapshotResourceManager;
+  }
+
   public static PipeMemoryManager memory() {
     return PipeResourceManagerHolder.INSTANCE.pipeMemoryManager;
+  }
+
+  public static PipeLogManager log() {
+    return PipeResourceManagerHolder.INSTANCE.pipeLogManager;
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////
@@ -61,7 +74,9 @@ public class PipeResourceManager {
   private PipeResourceManager() {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
     pipeWALResourceManager = new AtomicReference<>();
+    pipeSnapshotResourceManager = new PipeDataNodeSnapshotResourceManager();
     pipeMemoryManager = new PipeMemoryManager();
+    pipeLogManager = new PipeLogManager();
   }
 
   private static class PipeResourceManagerHolder {

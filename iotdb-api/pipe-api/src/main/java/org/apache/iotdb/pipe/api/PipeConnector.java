@@ -28,13 +28,14 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 /**
- * PipeConnector (Deprecated since v1.3.0, renamed to PipeSink)
+ * {@link PipeConnector} (Deprecated since v1.3.0, renamed to {@link PipeSink})
  *
- * <p>PipeConnector is responsible for sending events to sinks.
+ * <p>{@link PipeConnector} is responsible for sending {@link Event}s to sinks.
  *
- * <p>Various network protocols can be supported by implementing different PipeConnector classes.
+ * <p>Various network protocols can be supported by implementing different {@link PipeConnector}
+ * classes.
  *
- * <p>The lifecycle of a PipeConnector is as follows:
+ * <p>The lifecycle of a {@link PipeConnector} is as follows:
  *
  * <ul>
  *   <li>When a collaboration task is created, the KV pairs of `WITH CONNECTOR` clause in SQL are
@@ -42,14 +43,16 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  *       will be called to validate the parameters.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)} will be called
- *       to config the runtime behavior of the PipeConnector and the method {@link
+ *       to config the runtime behavior of the {@link PipeConnector} and the method {@link
  *       PipeConnector#handshake()} will be called to create a connection with sink.
  *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>PipeExtractor captures the events and wraps them into three types of Event instances.
- *         <li>PipeProcessor processes the event and then passes them to the PipeConnector.
- *         <li>PipeConnector serializes the events into binaries and send them to sinks. The
- *             following 3 methods will be called: {@link
+ *         <li>{@link PipeExtractor} captures the {@link Event}s and wraps them into three types of
+ *             {@link Event} instances.
+ *         <li>{@link PipeProcessor} processes the {@link Event} and then passes them to the {@link
+ *             PipeConnector}.
+ *         <li>{@link PipeConnector} serializes the {@link Event}s into binaries and send them to
+ *             sinks. The following 3 methods will be called: {@link
  *             PipeConnector#transfer(TabletInsertionEvent)}, {@link
  *             PipeConnector#transfer(TsFileInsertionEvent)} and {@link
  *             PipeConnector#transfer(Event)}.
@@ -76,20 +79,20 @@ public interface PipeConnector extends PipePlugin {
   void validate(PipeParameterValidator validator) throws Exception;
 
   /**
-   * This method is mainly used to customize PipeConnector. In this method, the user can do the
-   * following things:
+   * This method is mainly used to customize {@link PipeConnector}. In this method, the user can do
+   * the following things:
    *
    * <ul>
-   *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in PipeConnectorRuntimeConfiguration.
+   *   <li>Use {@link PipeParameters} to parse key-value pair attributes entered by the user.
+   *   <li>Set the running configurations in {@link PipeConnectorRuntimeConfiguration}.
    * </ul>
    *
    * <p>This method is called after the method {@link
    * PipeConnector#validate(PipeParameterValidator)} is called and before the method {@link
    * PipeConnector#handshake()} is called.
    *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configuration used to set the required properties of the running PipeConnector
+   * @param parameters used to parse the input {@link PipeParameters} entered by the user
+   * @param configuration used to set the required properties of the running {@link PipeConnector}
    * @throws Exception the user can throw errors if necessary
    */
   void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -113,18 +116,18 @@ public interface PipeConnector extends PipePlugin {
   void heartbeat() throws Exception;
 
   /**
-   * This method is used to transfer the TabletInsertionEvent.
+   * This method is used to transfer the {@link TabletInsertionEvent}.
    *
-   * @param tabletInsertionEvent TabletInsertionEvent to be transferred
+   * @param tabletInsertionEvent {@link TabletInsertionEvent} to be transferred
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
   void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception;
 
   /**
-   * This method is used to transfer the TsFileInsertionEvent.
+   * This method is used to transfer the {@link TsFileInsertionEvent}.
    *
-   * @param tsFileInsertionEvent TsFileInsertionEvent to be transferred
+   * @param tsFileInsertionEvent {@link TsFileInsertionEvent} to be transferred
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
@@ -140,9 +143,9 @@ public interface PipeConnector extends PipePlugin {
   }
 
   /**
-   * This method is used to transfer the generic events, including HeartbeatEvent.
+   * This method is used to transfer generic {@link Event}s.
    *
-   * @param event Event to be transferred
+   * @param event {@link Event} to be transferred
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */

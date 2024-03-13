@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 public class ConfigProcedureStore implements IProcedureStore {
 
@@ -76,11 +78,8 @@ public class ConfigProcedureStore implements IProcedureStore {
 
   @Override
   public void update(Procedure procedure) {
-    UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
-    if (procedureType != null) {
-      updateProcedurePlan.setProcedure(procedure);
-    }
+    Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
+    final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
       getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
@@ -138,6 +137,7 @@ public class ConfigProcedureStore implements IProcedureStore {
 
   private void checkProcWalDir(String procedureWalDir) throws IOException {
     File dir = new File(procedureWalDir);
+    checkOldProcWalDir(dir);
     if (!dir.exists()) {
       if (dir.mkdirs()) {
         LOG.info("Make procedure wal dir: {}", dir);
@@ -147,6 +147,13 @@ public class ConfigProcedureStore implements IProcedureStore {
                 "Start ConfigNode failed, because couldn't make system dirs: %s.",
                 dir.getAbsolutePath()));
       }
+    }
+  }
+
+  private void checkOldProcWalDir(File newDir) {
+    File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldProcedureWalFolder());
+    if (oldDir.exists()) {
+      FileUtils.moveFileSafe(oldDir, newDir);
     }
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -118,6 +119,11 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_DATA;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
   }
@@ -159,7 +165,9 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
     List<PartialPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       try {
-        pathList.add(new PartialPath(ReadWriteIOUtils.readString(stream)));
+        pathList.add(
+            DataNodeDevicePathCache.getInstance()
+                .getPartialPath(ReadWriteIOUtils.readString(stream)));
       } catch (IllegalPathException e) {
         throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
       }

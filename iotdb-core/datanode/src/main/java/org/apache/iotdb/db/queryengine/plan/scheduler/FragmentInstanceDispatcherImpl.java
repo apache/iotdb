@@ -134,7 +134,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } finally {
         // friendly for gc, clear the plan node tree, for some queries select all devices, it will
         // release lots of memory
-        instance.getFragment().clearUselessField();
+        if (!queryContext.isExplainAnalyze()) {
+          // EXPLAIN ANALYZE will use these instances, so we can't clear them
+          instance.getFragment().clearUselessField();
+        } else {
+          // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+          instance.getFragment().clearTypeProvider();
+        }
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
       }
@@ -301,8 +307,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
             logger.warn(sendFragmentInstanceResp.message);
-            if (sendFragmentInstanceResp.message.contains(
-                RatisReadUnavailableException.RATIS_READ_UNAVAILABLE)) {
+            if (sendFragmentInstanceResp.isSetNeedRetry()
+                && sendFragmentInstanceResp.isNeedRetry()) {
               throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
             } else {
               throw new FragmentInstanceDispatchException(
