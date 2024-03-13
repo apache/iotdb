@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
-import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingAbstractProcessor;
+import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class SwingingDoorTrendingSamplingProcessor extends DownSamplingAbstractProcessor {
+public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
   private double compressionDeviation;
   private long compressionMinTimeInterval;
   private long compressionMaxTimeInterval;

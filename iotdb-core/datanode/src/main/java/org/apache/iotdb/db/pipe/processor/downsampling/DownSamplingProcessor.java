@@ -42,25 +42,18 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY;
 
-public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
-  protected String dataBaseNameWithPathSeparator;
+public abstract class DownSamplingProcessor implements PipeProcessor {
 
   protected boolean shouldSplitFile;
   protected long memoryLimitInBytes;
+
+  protected String dataBaseNameWithPathSeparator;
 
   protected PartialPathLastObjectCache pathLastObjectCache;
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    final String dataBaseName =
-        StorageEngine.getInstance()
-            .getDataRegion(
-                new DataRegionId(
-                    ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
-                        .getRegionId()))
-            .getDatabaseName();
-
     memoryLimitInBytes =
         parameters.getLongOrDefault(
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
@@ -70,7 +63,15 @@ public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
             PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
             PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE);
 
-    dataBaseNameWithPathSeparator = dataBaseName + TsFileConstant.PATH_SEPARATOR;
+    dataBaseNameWithPathSeparator =
+        StorageEngine.getInstance()
+                .getDataRegion(
+                    new DataRegionId(
+                        ((PipeTaskProcessorRuntimeEnvironment)
+                                configuration.getRuntimeEnvironment())
+                            .getRegionId()))
+                .getDatabaseName()
+            + TsFileConstant.PATH_SEPARATOR;
 
     pathLastObjectCache = new PartialPathLastObjectCache(memoryLimitInBytes);
   }
@@ -113,6 +114,18 @@ public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
     }
   }
 
+  protected abstract void processRow(
+      Row row,
+      RowCollector rowCollector,
+      String deviceSuffix,
+      AtomicReference<Exception> exception);
+
+  /**
+   * If data comes in {@link TsFileInsertionEvent}, we will not split it into {@link
+   * TabletInsertionEvent} by default, because the data in {@link TsFileInsertionEvent} is already
+   * compressed, down-sampling may not reduce the size of data but will surely increase the CPU
+   * usage.
+   */
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
@@ -134,12 +147,6 @@ public abstract class DownSamplingAbstractProcessor implements PipeProcessor {
   public void process(Event event, EventCollector eventCollector) throws Exception {
     eventCollector.collect(event);
   }
-
-  protected abstract void processRow(
-      Row row,
-      RowCollector rowCollector,
-      String deviceSuffix,
-      AtomicReference<Exception> exception);
 
   @Override
   public void close() throws Exception {
