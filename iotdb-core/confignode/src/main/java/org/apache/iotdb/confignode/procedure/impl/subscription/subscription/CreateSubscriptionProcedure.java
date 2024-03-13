@@ -64,13 +64,52 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
+
+    int topicCount = topicProcedures.size();
+    for (int i = 0; i < topicCount; ++i) {
+      pipeProcedures.get(i).executeFromValidateTask(env);
+    }
+
+    for (int i = 0; i < topicCount; ++i) {
+      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+    }
+
+    consumerGroupProcedure.executeFromOperateOnConfigNodes(env);
+
+    for (int i = 0; i < topicCount; ++i) {
+      topicProcedures.get(i).executeFromOperateOnConfigNodes(env);
+      pipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
+    }
+  }
+
+  @Override
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
+
+    consumerGroupProcedure.executeFromOperateOnDataNodes(env);
+
+    int topicCount = topicProcedures.size();
+    for (int i = 0; i < topicCount; ++i) {
+      topicProcedures.get(i).executeFromOperateOnDataNodes(env);
+      try {
+        pipeProcedures.get(i).executeFromOperateOnDataNodes(env);
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to create or start pipe task for subscription on datanode, because {}",
+            e.getMessage());
+        throw new PipeException(e.getMessage());
+      }
+    }
+  }
+
+  @Override
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromLock, try to acquire subscription lock");
 
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    subscriptionCoordinator.tryLock();
 
     // check if the consumer and all topics exists
     try {
@@ -117,58 +156,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
-
-    int topicCount = topicProcedures.size();
-    for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromValidateTask(env);
-    }
-
-    for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
-    }
-
-    consumerGroupProcedure.executeFromOperateOnConfigNodes(env);
-
-    for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnConfigNodes(env);
-      pipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
-    }
-  }
-
-  @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
-
-    consumerGroupProcedure.executeFromOperateOnDataNodes(env);
-
-    int topicCount = topicProcedures.size();
-    for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnDataNodes(env);
-      try {
-        pipeProcedures.get(i).executeFromOperateOnDataNodes(env);
-      } catch (IOException e) {
-        LOGGER.warn(
-            "Failed to create or start pipe task for subscription on datanode, because {}",
-            e.getMessage());
-        throw new PipeException(e.getMessage());
-      }
-    }
-  }
-
-  @Override
-  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromUnlock");
-  }
-
-  @Override
-  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromLock");
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
-  }
-
-  @Override
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
@@ -207,5 +194,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
     }
 
     consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+  }
+
+  @Override
+  protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreateSubscriptionProcedure: rollbackFromValidate");
   }
 }

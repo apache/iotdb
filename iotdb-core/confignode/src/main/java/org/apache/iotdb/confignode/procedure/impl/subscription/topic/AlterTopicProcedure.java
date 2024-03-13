@@ -60,13 +60,11 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("AlterTopicProcedure: executeFromLock, try to acquire subcription lock");
+  public void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
+    LOGGER.info("AlterTopicProcedure: executeFromValidate");
 
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    subscriptionCoordinator.tryLock();
 
     validateOldAndNewTopicMeta(subscriptionCoordinator);
   }
@@ -77,7 +75,6 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     } catch (PipeException e) {
       LOGGER.error("AlterTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
     }
 
@@ -126,13 +123,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  public void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("AlterTopicProcedure: executeFromUnlock({})", updatedTopicMeta.getTopicName());
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
-  }
-
-  @Override
-  public void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("AlterTopicProcedure: rollbackFromLock({})", updatedTopicMeta.getTopicName());
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }

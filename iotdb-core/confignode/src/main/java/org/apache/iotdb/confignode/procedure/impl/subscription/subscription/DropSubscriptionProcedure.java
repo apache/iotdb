@@ -62,13 +62,11 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   }
 
   @Override
-  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromLock, try to acquire subscription lock");
 
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    subscriptionCoordinator.tryLock();
 
     // check if the consumer and all topics exists
     try {
@@ -148,12 +146,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   }
 
   @Override
-  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropSubscriptionProcedure: executeFromUnlock");
-  }
-
-  @Override
-  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromLock");
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }

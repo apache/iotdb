@@ -61,13 +61,11 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("CreateTopicProcedure: executeFromLock, try to acquire subscription lock");
 
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    subscriptionCoordinator.tryLock();
 
     // 1. check if the topic exists
     try {
@@ -79,7 +77,6 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
           createTopicReq.getTopicName(),
           createTopicReq.getTopicName());
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
     }
 
@@ -130,13 +127,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateTopicProcedure: executeFromUnlock({})", topicMeta.getTopicName());
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
-  }
-
-  @Override
-  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("CreateTopicProcedure: rollbackFromLock({})", topicMeta.getTopicName());
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }

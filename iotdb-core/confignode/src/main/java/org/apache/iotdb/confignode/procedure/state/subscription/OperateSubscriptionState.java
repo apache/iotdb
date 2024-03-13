@@ -20,8 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state.subscription;
 
 public enum OperateSubscriptionState {
-  LOCK,
+  VALIDATE,
   OPERATE_ON_CONFIG_NODES,
   OPERATE_ON_DATA_NODES,
-  UNLOCK
 }

@@ -59,7 +59,6 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
           createConsumerReq.getConsumerId(),
           createConsumerReq.getConsumerGroupId());
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
     }
 

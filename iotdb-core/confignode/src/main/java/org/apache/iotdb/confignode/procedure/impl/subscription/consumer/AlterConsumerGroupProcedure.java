@@ -69,7 +69,6 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
           "Consumer group {} does not exist, end the AlterConsumerGroupProcedure",
           updatedConsumerGroupMeta.getConsumerGroupId());
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
     }
 
@@ -80,7 +79,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  public void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterConsumerGroupProcedure: executeFromLock, try to acquire subscription lock");
 
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().tryLock();
@@ -134,13 +133,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  public void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("AlterConsumerGroupProcedure: executeFromUnlock");
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
-  }
-
-  @Override
-  public void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("AlterConsumerGroupProcedure: rollbackFromLock");
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
-import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -55,26 +54,17 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropTopicProcedure: executeFromLock({})", topicName);
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    subscriptionCoordinator.tryLock();
 
     try {
       subscriptionCoordinator.getSubscriptionInfo().validateBeforeDroppingTopic(topicName);
     } catch (PipeException e) {
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
-    }
-
-    try {
-      env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(topicName));
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
   }
 
@@ -99,14 +89,7 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropTopicProcedure: executeFromUnlock({})", topicName);
-
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
-  }
-
-  @Override
-  protected void rollbackFromLock(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropTopicProcedure: rollbackFromLock({})", topicName);
     env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }

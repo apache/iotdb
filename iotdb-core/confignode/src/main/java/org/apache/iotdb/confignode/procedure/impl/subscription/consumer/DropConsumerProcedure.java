@@ -55,7 +55,6 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
           dropConsumerReq.getConsumerId(),
           dropConsumerReq.getConsumerGroupId());
       setFailure(new ProcedureException(e.getMessage()));
-      subscriptionCoordinator.unlock();
       throw e;
     }
 

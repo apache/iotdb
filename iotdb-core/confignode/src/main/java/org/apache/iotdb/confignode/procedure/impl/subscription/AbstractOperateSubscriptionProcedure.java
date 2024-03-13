@@ -131,7 +131,7 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract PipeTaskOperation getOperation();
 
-  protected abstract void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException;
 
   protected abstract void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws PipeException;
@@ -139,16 +139,14 @@ public abstract class AbstractOperateSubscriptionProcedure
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException;
 
-  protected abstract void executeFromUnlock(ConfigNodeProcedureEnv env) throws PipeException;
-
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
 
     try {
       switch (state) {
-        case LOCK:
-          executeFromLock(env);
+        case VALIDATE:
+          executeFromValidate(env);
           setNextState(OperateSubscriptionState.OPERATE_ON_CONFIG_NODES);
           break;
         case OPERATE_ON_CONFIG_NODES:
@@ -157,10 +155,6 @@ public abstract class AbstractOperateSubscriptionProcedure
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
-          setNextState(OperateSubscriptionState.UNLOCK);
-          break;
-        case UNLOCK:
-          executeFromUnlock(env);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
@@ -211,9 +205,9 @@ public abstract class AbstractOperateSubscriptionProcedure
     }
 
     switch (state) {
-      case LOCK:
+      case VALIDATE:
         try {
-          rollbackFromLock(env);
+          rollbackFromValidate(env);
         } catch (Exception e) {
           LOGGER.warn(
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
@@ -244,10 +238,13 @@ public abstract class AbstractOperateSubscriptionProcedure
               e.getMessage());
         }
         break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unknown state during rollback operateSubscriptionProcedure, %s", state));
     }
   }
 
-  protected abstract void rollbackFromLock(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromValidate(ConfigNodeProcedureEnv env);
 
   protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
 
@@ -265,6 +262,6 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   @Override
   protected OperateSubscriptionState getInitialState() {
-    return OperateSubscriptionState.LOCK;
+    return OperateSubscriptionState.VALIDATE;
   }
 }
