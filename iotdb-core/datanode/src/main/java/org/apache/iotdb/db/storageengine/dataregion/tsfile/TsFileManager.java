@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,14 +58,15 @@ public class TsFileManager {
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
-    return getTsFileList(sequence, null);
+    return getTsFileList(sequence, null, null);
   }
 
   /**
    * @param sequence true for sequence, false for unsequence
    * @param timePartitions null for all time partitions, empty for zero time partitions
    */
-  public List<TsFileResource> getTsFileList(boolean sequence, List<Long> timePartitions) {
+  public List<TsFileResource> getTsFileList(
+      boolean sequence, List<Long> timePartitions, Filter timeFilter) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
@@ -73,7 +75,9 @@ public class TsFileManager {
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       if (timePartitions == null) {
         for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-          allResources.addAll(entry.getValue().getArrayList());
+          if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+            allResources.addAll(entry.getValue().getArrayList());
+          }
         }
       } else {
         for (Long timePartitionId : timePartitions) {
