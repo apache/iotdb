@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -50,6 +51,11 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
   protected String dataBaseNameWithPathSeparator;
 
   protected PartialPathLastObjectCache<?> pathLastObjectCache;
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    // do nothing
+  }
 
   @Override
   public void customize(

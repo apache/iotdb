@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -55,9 +54,6 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
             PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
             PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE);
   }
-
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
   protected void processRow(

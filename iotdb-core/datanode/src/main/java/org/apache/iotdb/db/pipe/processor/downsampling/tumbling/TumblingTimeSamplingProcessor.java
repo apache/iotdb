@@ -25,7 +25,6 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -43,12 +42,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
-  private long intervalInCurrentPrecision;
 
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    // do nothing
-  }
+  private PartialPathLastObjectCache<Long> pathLastObjectCache;
+
+  private long intervalInCurrentPrecision;
 
   @Override
   public void customize(
@@ -76,12 +73,14 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
   @Override
   protected PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes) {
-    return new PartialPathLastObjectCache<Long>(memoryLimitInBytes) {
-      @Override
-      protected long calculateMemoryUsage(Long object) {
-        return Long.BYTES;
-      }
-    };
+    pathLastObjectCache =
+        new PartialPathLastObjectCache<Long>(memoryLimitInBytes) {
+          @Override
+          protected long calculateMemoryUsage(Long object) {
+            return Long.BYTES;
+          }
+        };
+    return pathLastObjectCache;
   }
 
   @Override
@@ -99,8 +98,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
       final String timeSeriesSuffix =
           deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
-      final Long lastSampleTime =
-          (Long) pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
+      final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime != null) {
         if (Math.abs(row.getTime() - lastSampleTime) >= intervalInCurrentPrecision) {

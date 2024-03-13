@@ -91,7 +91,7 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public Object getPartialPathLastObject(String partialPath) {
+  public T getPartialPathLastObject(String partialPath) {
     return partialPath2ObjectCache.getIfPresent(partialPath);
   }
 
