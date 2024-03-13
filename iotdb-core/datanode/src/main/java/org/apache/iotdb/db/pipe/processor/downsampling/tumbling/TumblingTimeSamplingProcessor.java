@@ -56,19 +56,18 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
         parameters.getLongOrDefault(
             PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
             PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE);
+    intervalInCurrentPrecision =
+        TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
 
     LOGGER.info(
-        "DownSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
+        "TumblingTimeSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
         dataBaseNameWithPathSeparator,
         PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
-        intervalSeconds,
+        intervalInCurrentPrecision,
         PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
         memoryLimitInBytes,
         PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,
         shouldSplitFile);
-
-    intervalInCurrentPrecision =
-        TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
   }
 
   @Override
@@ -89,8 +88,6 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       RowCollector rowCollector,
       String deviceSuffix,
       AtomicReference<Exception> exception) {
-    boolean hasNonNullMeasurements = false;
-
     for (int index = 0, size = row.size(); index < size; ++index) {
       if (row.isNull(index)) {
         continue;
@@ -98,24 +95,26 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
       final String timeSeriesSuffix =
           deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
+      final long currentRowTime = row.getTime();
       final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
-      if (lastSampleTime != null) {
-        if (Math.abs(row.getTime() - lastSampleTime) >= intervalInCurrentPrecision) {
-          hasNonNullMeasurements = true;
-          pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
-        }
-      } else {
-        hasNonNullMeasurements = true;
-        pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, row.getTime());
-      }
-    }
+      if (lastSampleTime == null
+          || Math.abs(currentRowTime - lastSampleTime) >= intervalInCurrentPrecision) {
+        try {
+          rowCollector.collectRow(row);
 
-    if (hasNonNullMeasurements) {
-      try {
-        rowCollector.collectRow(row);
-      } catch (Exception e) {
-        exception.set(e);
+          pathLastObjectCache.setPartialPathLastObject(timeSeriesSuffix, currentRowTime);
+          for (int j = index + 1; j < size; ++j) {
+            if (!row.isNull(j)) {
+              pathLastObjectCache.setPartialPathLastObject(
+                  deviceSuffix + TsFileConstant.PATH_SEPARATOR + row.getColumnName(j),
+                  currentRowTime);
+            }
+          }
+          return;
+        } catch (Exception e) {
+          exception.set(e);
+        }
       }
     }
   }
