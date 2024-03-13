@@ -281,7 +281,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(PipeTransferPlanNodeReq req) {
-    // TODO: parse exception and status for alter logical view node
+    // We may be able to skip the alter logical view's exception parsing because
+    // the "AlterLogicalViewNode" is itself idempotent
     return req.getPlanNode() instanceof AlterLogicalViewNode
         ? new TPipeTransferResp(
             ClusterConfigTaskExecutor.getInstance()
@@ -321,7 +322,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     final ExecutionResult result =
         Coordinator.getInstance()
-            .execute(
+            .executeForTreeModel(
                 statement,
                 SessionManager.getInstance().requestQueryId(),
                 new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),

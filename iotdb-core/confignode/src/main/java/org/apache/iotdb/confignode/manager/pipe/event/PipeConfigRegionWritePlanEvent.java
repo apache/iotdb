@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -46,7 +47,7 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
       ConfigPhysicalPlan configPhysicalPlan,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.configPhysicalPlan = configPhysicalPlan;
@@ -58,7 +59,11 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeConfigRegionWritePlanEvent(
         configPhysicalPlan, pipeName, pipeTaskMeta, pattern, false);
   }

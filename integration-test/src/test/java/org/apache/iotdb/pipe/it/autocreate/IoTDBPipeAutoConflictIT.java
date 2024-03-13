@@ -95,6 +95,9 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
         return;
       }
     }
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
+    }
 
     for (int i = 200; i < 300; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -138,7 +141,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
         return;
       }
     }
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
       return;
     }
 

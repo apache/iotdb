@@ -180,7 +180,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
             InsertRowStatement s = StatementGenerator.createStatement(request);
             final long queryId = SESSION_MANAGER.requestQueryId();
             ExecutionResult result =
-                COORDINATOR.execute(s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
+                COORDINATOR.executeForTreeModel(
+                    s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
             if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.error("Failed to update the value of metric with status {}", result.status);
             }

@@ -38,7 +38,7 @@ import java.util.Objects;
 
 /** PlanFragment contains a sub-query of distributed query. */
 public class PlanFragment {
-  // TODO once you add field for this class you need to change the serialize and deserialize methods
+  // once you add field for this class you need to change the serialize and deserialize methods
   private final PlanFragmentId id;
   private PlanNode planNodeTree;
 
