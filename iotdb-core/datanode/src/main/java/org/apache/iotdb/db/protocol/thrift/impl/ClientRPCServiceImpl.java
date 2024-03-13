@@ -201,6 +201,7 @@ import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -354,7 +355,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(statementType, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -442,7 +443,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -532,7 +533,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -619,7 +620,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -953,7 +954,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, t);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -1053,6 +1054,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     boolean finished = false;
     String statementType = null;
     Throwable t = null;
+    IQueryExecution queryExecution = null;
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
@@ -1060,7 +1062,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
+      queryExecution = COORDINATOR.getQueryExecution(req.queryId);
 
       if (queryExecution == null) {
         resp.setHasResultSet(false);
@@ -1084,7 +1086,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       finished = true;
       t = e;
-      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
+      return RpcUtils.getTSFetchResultsResp(
+          onQueryException(e, getContentOfRequest(req, queryExecution)));
     } catch (Error error) {
       finished = true;
       t = error;
@@ -1103,7 +1106,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, t);
+        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1573,6 +1576,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     String statementType = null;
     Throwable t = null;
+    IQueryExecution queryExecution = null;
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
@@ -1581,7 +1585,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(req.queryId);
+      queryExecution = COORDINATOR.getQueryExecution(req.queryId);
       if (queryExecution == null) {
         resp.setHasResultSet(false);
         resp.setMoreData(true);
@@ -1604,7 +1608,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       finished = true;
       t = e;
-      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
+      return RpcUtils.getTSFetchResultsResp(
+          onQueryException(e, getContentOfRequest(req, queryExecution)));
     } catch (Error error) {
       t = error;
       throw error;
@@ -1622,7 +1627,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, t);
+        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
