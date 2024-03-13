@@ -2221,12 +2221,15 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
+    if("Apache IoTDB".equals(catalog)) {
+      catalog = null;
+    }
     String sql = "SHOW TIMESERIES";
     if (StringUtils.isNotEmpty(catalog)) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
       }
-      sql = sql + " " + catalog;
+       sql = sql + " " + catalog;
     } else if (StringUtils.isNotEmpty(schemaPattern)) {
       if (schemaPattern.contains("%")) {
         schemaPattern = schemaPattern.replace("%", "*");
