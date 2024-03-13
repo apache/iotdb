@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.PipeStatementTSStatusVisitor;
@@ -127,17 +129,28 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TS_FILE_PIECE:
             return handleTransferFilePiece(
                 PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest);
+                req instanceof AirGapPseudoTPipeTransferRequest,
+                true);
           case TRANSFER_TS_FILE_SEAL:
-            return handleTransferFileSeal(PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
+            return handleTransferSingleFileSeal(
+                PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
+          case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+            return handleTransferFilePiece(
+                PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
+                req instanceof AirGapPseudoTPipeTransferRequest,
+                false);
+          case TRANSFER_TS_FILE_SEAL_WITH_MOD:
+            return handleTransferMultiFilesSeal(
+                PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
           case TRANSFER_SCHEMA_PLAN:
             return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
             return handleTransferFilePiece(
                 PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest);
+                req instanceof AirGapPseudoTPipeTransferRequest,
+                false);
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
-            return handleTransferFileSeal(
+            return handleTransferMultiFilesSeal(
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
           case HANDSHAKE_CONFIGNODE_V1:
           case HANDSHAKE_CONFIGNODE_V2:
@@ -258,11 +271,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadFile(PipeTransferFileSealReq req, String fileAbsolutePath)
+  protected TSStatus loadSingleFile(PipeTransferSingleFileSealReq req, String fileAbsolutePath)
       throws FileNotFoundException {
-    return req instanceof PipeTransferTsFileSealReq
-        ? loadTsFile(fileAbsolutePath)
-        : loadSchemaSnapShot(fileAbsolutePath);
+    return loadTsFile(fileAbsolutePath);
+  }
+
+  @Override
+  protected TSStatus loadMultiFiles(
+      PipeTransferMultiFilesSealReq req, List<String> fileAbsolutePaths) throws IOException {
+    return req instanceof PipeTransferTsFileSealWithModReq
+        // TsFile's absolute path will be the second element
+        ? loadTsFile(fileAbsolutePaths.get(1))
+        : loadSchemaSnapShot(fileAbsolutePaths);
   }
 
   private TSStatus loadTsFile(String fileAbsolutePath) throws FileNotFoundException {
@@ -275,7 +295,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return executeStatementAndClassifyExceptions(statement);
   }
 
-  private TSStatus loadSchemaSnapShot(String fileAbsolutePath) {
+  private TSStatus loadSchemaSnapShot(List<String> fileAbsolutePaths) {
     // TODO
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

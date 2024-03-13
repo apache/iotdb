@@ -22,7 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -62,6 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
@@ -94,9 +96,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
             return handleTransferFilePiece(
                 PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest);
+                req instanceof AirGapPseudoTPipeTransferRequest,
+                true);
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            return handleTransferFileSeal(
+            return handleTransferSingleFileSeal(
                 PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
           default:
             break;
@@ -238,8 +241,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadFile(PipeTransferFileSealReq req, String fileAbsolutePath) {
+  protected TSStatus loadSingleFile(PipeTransferSingleFileSealReq req, String fileAbsolutePath) {
     // TODO
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  protected TSStatus loadMultiFiles(
+      PipeTransferMultiFilesSealReq req, List<String> fileAbsolutePaths) {
+    throw new UnsupportedOperationException(
+        "IoTDBConfigNodeReceiver does not support load multi files.");
   }
 }

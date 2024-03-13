@@ -43,6 +43,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
@@ -139,7 +141,9 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      snapshot.getName(), snapshot.length()));
+                      Collections.singletonList(snapshot.getName()),
+                      Collections.singletonList(snapshot.length()),
+                      new HashMap<>()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

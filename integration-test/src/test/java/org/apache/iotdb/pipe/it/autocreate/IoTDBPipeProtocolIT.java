@@ -416,7 +416,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TestUtils.assertDataOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",

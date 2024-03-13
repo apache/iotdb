@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
-public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
+public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSealReq {
 
   private PipeTransferSchemaSnapshotSealReq() {
     // Empty constructor
@@ -39,9 +41,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      String fileName, long fileLength) throws IOException {
+      List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
+      throws IOException {
     return (PipeTransferSchemaSnapshotSealReq)
-        new PipeTransferSchemaSnapshotSealReq().convertToTPipeTransferReq(fileName, fileLength);
+        new PipeTransferSchemaSnapshotSealReq()
+            .convertToTPipeTransferReq(fileNames, fileLengths, parameters);
   }
 
   public static PipeTransferSchemaSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -51,9 +55,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
+  public static byte[] toTPipeTransferBytes(
+      List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
+      throws IOException {
     return new PipeTransferSchemaSnapshotSealReq()
-        .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
+        .convertToTPipeTransferSnapshotSealBytes(fileNames, fileLengths, parameters);
   }
 
   /////////////////////////////// Object ///////////////////////////////

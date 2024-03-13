@@ -25,14 +25,16 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransfe
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +43,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -66,7 +70,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return IoTDBConnectorRequestVersion.VERSION_1;
   }
 
-  protected TPipeTransferResp handleTransferHandshakeV1(PipeTransferHandshakeV1Req req) {
+  protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
     if (!CommonDescriptor.getInstance()
         .getConfig()
         .getTimestampPrecision()
@@ -143,7 +147,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
 
-  protected TPipeTransferResp handleTransferHandshakeV2(PipeTransferHandshakeV2Req req)
+  protected TPipeTransferResp handleTransferHandshakeV2(final PipeTransferHandshakeV2Req req)
       throws IOException {
     // Reject to handshake if the receiver can not take clusterId from config node.
     final String clusterIdFromConfigNode = getClusterId();
@@ -206,16 +210,23 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected abstract String getClusterId();
 
   protected final TPipeTransferResp handleTransferFilePiece(
-      PipeTransferFilePieceReq req, boolean isRequestThroughAirGap) throws IOException {
+      final PipeTransferFilePieceReq req,
+      final boolean isRequestThroughAirGap,
+      final boolean isSingleFile)
+      throws IOException {
     try {
-      updateWritingFileIfNeeded(req.getFileName());
+      updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
-        if (isRequestThroughAirGap) {
-          // If the request is through air gap, the sender will resend the file piece from the
-          // beginning of the file.
-          // So the receiver should reset the offset of the writing file to the beginning of the
-          // file.
+        if (isRequestThroughAirGap
+            || !writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+          // 1. If the request is through air gap, the sender will resend the file piece from the
+          // beginning of the file. So the receiver should reset the offset of the writing file to
+          // the beginning of the file.
+          // 2. If the file is a tsFile, then the content will not be changed for a specific
+          // filename. However, for other files (mod, snapshot, etc.) the content varies for the
+          // same name in different times, then we must rewrite the file to apply the newest
+          // version.
           writingFileWriter.setLength(0);
         }
 
@@ -248,7 +259,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  protected final void updateWritingFileIfNeeded(String fileName) throws IOException {
+  protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
+      throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
       return;
     }
@@ -260,9 +272,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         writingFile == null ? "null" : writingFile.getPath());
 
     closeCurrentWritingFileWriter();
-    if (writingFile != null
-        && !writingFile.getName().equals(fileName + ModificationFile.FILE_SUFFIX)) {
-      deleteCurrentWritingModAndTsFile();
+    // If there are multiple files we can not delete the current file
+    // instead they will be deleted after seal request
+    if (writingFile != null && isSingleFile) {
+      deleteCurrentWritingFile();
     }
 
     // make sure receiver file dir exists
@@ -305,18 +318,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  private void deleteCurrentWritingModAndTsFile() {
+  private void deleteCurrentWritingFile() {
     if (writingFile != null) {
       deleteFile(writingFile);
-      String absolutePath = writingFile.getAbsolutePath();
-      if (absolutePath.endsWith(ModificationFile.FILE_SUFFIX)) {
-        deleteFile(
-            new File(
-                absolutePath.substring(
-                    0, absolutePath.length() - ModificationFile.FILE_SUFFIX.length())));
-      } else {
-        deleteFile(new File(absolutePath + ModificationFile.FILE_SUFFIX));
-      }
     } else {
       LOGGER.info("Current writing file is null. No need to delete.");
     }
@@ -338,7 +342,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
+  private boolean isWritingFileOffsetCorrect(final long offset) throws IOException {
     final boolean offsetCorrect = writingFileWriter.length() == offset;
     if (!offsetCorrect) {
       LOGGER.warn(
@@ -350,40 +354,22 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return offsetCorrect;
   }
 
-  protected final TPipeTransferResp handleTransferFileSeal(PipeTransferFileSealReq req) {
+  protected final TPipeTransferResp handleTransferSingleFileSeal(
+      final PipeTransferSingleFileSealReq req) {
     try {
       if (!isWritingFileAvailable()) {
         final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
                 String.format(
-                    "Failed to seal file, because writing file %s is not available.",
-                    req.getFileName()));
+                    "Failed to seal file, because writing file %s is not available.", writingFile));
         LOGGER.warn(status.getMessage());
         return new TPipeTransferResp(status);
       }
 
-      if (!isFileExistedAndNameCorrect(req.getFileName())) {
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Failed to seal file %s, but writing file is %s.",
-                    req.getFileName(), writingFile));
-        LOGGER.warn(status.getMessage());
-        return new TPipeTransferResp(status);
-      }
-
-      if (!isWritingFileOffsetCorrect(req.getFileLength())) {
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Failed to seal file %s, because the length of file is not correct. "
-                        + "The original file has length %s, but receiver file has length %s.",
-                    req.getFileName(), req.getFileLength(), writingFileWriter.length()));
-        LOGGER.warn(status.getMessage());
-        return new TPipeTransferResp(status);
+      final TPipeTransferResp resp = checkFinalFileSeal(req.getFileName(), req.getFileLength());
+      if (Objects.nonNull(resp)) {
+        return resp;
       }
 
       final String fileAbsolutePath = writingFile.getAbsolutePath();
@@ -403,7 +389,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
-      final TSStatus status = loadFile(req, fileAbsolutePath);
+      final TSStatus status = loadSingleFile(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
             "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
@@ -430,8 +416,137 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
       // sender.
       closeCurrentWritingFileWriter();
-      deleteCurrentWritingModAndTsFile();
+      deleteCurrentWritingFile();
     }
+  }
+
+  protected final TPipeTransferResp handleTransferMultiFilesSeal(
+      final PipeTransferMultiFilesSealReq req) {
+    List<File> files =
+        req.getFileNames().stream()
+            .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
+            .collect(Collectors.toList());
+    try {
+      if (!isWritingFileAvailable()) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, because writing file %s is not available.",
+                    req.getFileNames(), writingFile));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      for (int i = 0; i < req.getFileNames().size(); ++i) {
+        final TPipeTransferResp resp =
+            i == req.getFileNames().size() - 1
+                ? checkFinalFileSeal(req.getFileNames().get(i), req.getFileLengths().get(i))
+                : checkNonFinalFileSeal(
+                    files.get(i), req.getFileNames().get(i), req.getFileLengths().get(i));
+        if (Objects.nonNull(resp)) {
+          return resp;
+        }
+      }
+
+      // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // the process of loading tsfile when parsing tsfile.
+      //
+      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // name as the current tsfile, it will bypass the judgment logic of
+      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
+      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
+      // Close exception.
+      writingFileWriter.getFD().sync();
+      writingFileWriter.close();
+      writingFileWriter = null;
+
+      // writingFile will be deleted after load if no exception occurs
+      writingFile = null;
+
+      List<String> fileAbsolutePaths =
+          files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
+
+      final TSStatus status = loadMultiFiles(req, fileAbsolutePaths);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Seal file {} successfully. Receiver id is {}.", fileAbsolutePaths, receiverId.get());
+      } else {
+        LOGGER.warn(
+            "Failed to seal file {}, because {}. Receiver id is {}.",
+            fileAbsolutePaths,
+            status.getMessage(),
+            receiverId.get());
+      }
+      return new TPipeTransferResp(status);
+    } catch (IOException e) {
+      LOGGER.warn(
+          String.format(
+              "Failed to seal file %s from req %s. Receiver id is %d.",
+              writingFile, req, receiverId.get()),
+          e);
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } finally {
+      // If the writing file is not sealed successfully, the writing file will be deleted.
+      // All pieces of the writing file and its mod(if exists) should be retransmitted by the
+      // sender.
+      closeCurrentWritingFileWriter();
+      files.forEach(this::deleteFile);
+    }
+  }
+
+  private TPipeTransferResp checkNonFinalFileSeal(
+      final File file, final String fileName, final long fileLength) throws IOException {
+    if (!file.exists()) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("Failed to seal file %s, the file does not exist.", fileName));
+      LOGGER.warn(status.getMessage());
+      return new TPipeTransferResp(status);
+    }
+
+    if (fileLength != file.length()) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format(
+                  "Failed to seal file %s, because the length of file is not correct. "
+                      + "The original file has length %s, but receiver file has length %s.",
+                  fileName, fileLength, writingFileWriter.length()));
+      LOGGER.warn(status.getMessage());
+      return new TPipeTransferResp(status);
+    }
+    return null;
+  }
+
+  private TPipeTransferResp checkFinalFileSeal(final String fileName, final long fileLength)
+      throws IOException {
+    if (!isFileExistedAndNameCorrect(fileName)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format(
+                  "Failed to seal file %s, but writing file is %s.", fileName, writingFile));
+      LOGGER.warn(status.getMessage());
+      return new TPipeTransferResp(status);
+    }
+
+    if (!isWritingFileOffsetCorrect(fileLength)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format(
+                  "Failed to seal file %s, because the length of file is not correct. "
+                      + "The original file has length %s, but receiver file has length %s.",
+                  fileName, fileLength, writingFileWriter.length()));
+      LOGGER.warn(status.getMessage());
+      return new TPipeTransferResp(status);
+    }
+    return null;
   }
 
   private boolean isWritingFileAvailable() {
@@ -448,8 +563,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return isWritingFileAvailable;
   }
 
-  protected abstract TSStatus loadFile(
-      final PipeTransferFileSealReq req, final String fileAbsolutePath) throws IOException;
+  protected abstract TSStatus loadSingleFile(
+      final PipeTransferSingleFileSealReq req, final String fileAbsolutePath) throws IOException;
+
+  protected abstract TSStatus loadMultiFiles(
+      final PipeTransferMultiFilesSealReq req, final List<String> fileAbsolutePaths)
+      throws IOException;
 
   @Override
   public synchronized void handleExit() {

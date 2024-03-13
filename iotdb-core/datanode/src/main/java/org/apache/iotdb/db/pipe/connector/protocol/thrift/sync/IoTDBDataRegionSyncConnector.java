@@ -28,7 +28,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -257,27 +259,43 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+    final TPipeTransferResp resp;
+    final File modFile = pipeTsFileInsertionEvent.getModFile();
 
     // 1. Transfer mod file if exists and receiver's version >= 2
     if (pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(pipeTsFileInsertionEvent.getModFile(), clientAndStatus);
-    }
-
-    // 2. Transfer file piece by piece
-    transferFilePieces(tsFile, clientAndStatus);
-
-    // 3. Transfer file seal signal, which means the file is transferred completely
-    final TPipeTransferResp resp;
-    try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-    } catch (Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
+      transferFilePieces(modFile, clientAndStatus, true);
+      transferFilePieces(tsFile, clientAndStatus, true);
+      // 2. Transfer file seal signal with mod, which means the file is transferred completely
+      try {
+        resp =
+            clientAndStatus
+                .getLeft()
+                .pipeTransfer(
+                    PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                        modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
+      } catch (Exception e) {
+        clientAndStatus.setRight(false);
+        throw new PipeConnectionException(
+            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
+            e);
+      }
+    } else {
+      transferFilePieces(tsFile, clientAndStatus, false);
+      // 2. Transfer file seal signal without mod, which means the file is transferred completely
+      try {
+        resp =
+            clientAndStatus
+                .getLeft()
+                .pipeTransfer(
+                    PipeTransferTsFileSealReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length()));
+      } catch (Exception e) {
+        clientAndStatus.setRight(false);
+        throw new PipeConnectionException(
+            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
+            e);
+      }
     }
 
     receiverStatusHandler.handle(
@@ -288,7 +306,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     LOGGER.info("Successfully transferred file {}.", tsFile);
   }
 
-  private void transferFilePieces(File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus)
+  private void transferFilePieces(
+      File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus, boolean withMod)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -300,6 +319,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           break;
         }
 
+        final byte[] payLoad =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
         final PipeTransferFilePieceResp resp;
         try {
           resp =
@@ -307,12 +330,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   clientAndStatus
                       .getLeft()
                       .pipeTransfer(
-                          PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                              file.getName(),
-                              position,
-                              readLength == readFileBufferSize
-                                  ? readBuffer
-                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
+                          withMod
+                              ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                                  file.getName(), position, payLoad)
+                              : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                                  file.getName(), position, payLoad)));
         } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(

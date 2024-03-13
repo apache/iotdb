@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,6 +57,8 @@ public class PipeTransferTsFileInsertionEventHandler
   private final File modFile;
   private File currentFile;
 
+  private final boolean transferMod;
+
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
@@ -73,8 +77,8 @@ public class PipeTransferTsFileInsertionEventHandler
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
-    currentFile =
-        Objects.nonNull(modFile) && connector.supportModsIfIsDataNodeReceiver() ? modFile : tsFile;
+    transferMod = Objects.nonNull(modFile) && connector.supportModsIfIsDataNodeReceiver();
+    currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
@@ -105,18 +109,25 @@ public class PipeTransferTsFileInsertionEventHandler
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
         client.pipeTransfer(
-            PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
+            this);
       }
       return;
     }
 
+    final byte[] payload =
+        readLength == readFileBufferSize
+            ? readBuffer
+            : Arrays.copyOfRange(readBuffer, 0, readLength);
     client.pipeTransfer(
-        PipeTransferTsFilePieceReq.toTPipeTransferReq(
-            currentFile.getName(),
-            position,
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength)),
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload),
         this);
     position += readLength;
   }
