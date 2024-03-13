@@ -2221,7 +2221,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    if(this.connection.getCatalog().equals(catalog)) {
+    if (this.connection.getCatalog().equals(catalog)) {
       catalog = null;
     }
 
@@ -2230,7 +2230,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
       }
-       sql = sql + " " + catalog;
+      sql = sql + " " + catalog;
     } else if (StringUtils.isNotEmpty(schemaPattern)) {
       if (schemaPattern.contains("%")) {
         schemaPattern = schemaPattern.replace("%", "*");
