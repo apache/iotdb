@@ -46,6 +46,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -270,9 +271,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
@@ -292,8 +293,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
@@ -482,9 +483,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
@@ -504,8 +505,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
@@ -691,8 +692,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertFalse(
           targetResources
@@ -712,7 +713,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertFalse(
           targetResources
@@ -892,8 +893,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 2; i++) {
       Assert.assertFalse(
           targetResources
@@ -1075,9 +1076,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
@@ -1097,8 +1098,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 3; i++) {
       Assert.assertTrue(
           targetResources
@@ -1119,7 +1120,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       check(targetResources.get(i), deviceIdList);
     }
     deviceIdList.clear();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 3; i < 4; i++) {
       Assert.assertFalse(
           targetResources
@@ -1229,9 +1230,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(4, targetResources.size());
-      List<String> deviceIdList = new ArrayList<>();
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+      List<IDeviceID> deviceIdList = new ArrayList<>();
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
       for (int i = 0; i < 2; i++) {
         Assert.assertTrue(
             targetResources
@@ -1251,8 +1252,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                 .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
       for (int i = 2; i < 3; i++) {
         Assert.assertTrue(
             targetResources
@@ -1272,10 +1273,10 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                 .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5");
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5"));
       for (int i = 3; i < 4; i++) {
         Assert.assertTrue(
             targetResources
@@ -1334,9 +1335,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(2, targetResources.size());
-      List<String> deviceIdList = new ArrayList<>();
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+      List<IDeviceID> deviceIdList = new ArrayList<>();
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
       for (int i = 0; i < 1; i++) {
         Assert.assertTrue(
             targetResources
@@ -1356,8 +1357,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                 .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-      deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
       for (int i = 1; i < 2; i++) {
         Assert.assertTrue(
             targetResources
@@ -1821,9 +1822,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
@@ -1843,8 +1844,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
@@ -2193,11 +2194,11 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 2; i++) {
       if (i == 0) {
         Assert.assertFalse(
@@ -2335,12 +2336,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
     for (int i = 0; i < 3; i++) {
       if (i == 0) {
         Assert.assertTrue(
@@ -2506,12 +2507,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
     for (int i = 0; i < 3; i++) {
       Assert.assertTrue(
           targetResources
@@ -2636,11 +2637,11 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 3; i++) {
       if (i < 2) {
         Assert.assertTrue(
@@ -2791,11 +2792,11 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 3; i++) {
       if (i < 2) {
         Assert.assertTrue(
@@ -2971,24 +2972,31 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
-    List<String> deviceIdList = new ArrayList<>();
+    List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (TsFileGeneratorUtils.getAlignDeviceOffset()));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset())));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     for (int i = 0; i < 3; i++) {
       if (i == 0) {
         Assert.assertFalse(
@@ -3226,29 +3234,37 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
+    List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + TsFileGeneratorUtils.getAlignDeviceOffset());
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4)));
     for (int i = 0; i < 3; i++) {
       if (i == 0) {
         Assert.assertTrue(
@@ -3511,29 +3527,37 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
+    List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + TsFileGeneratorUtils.getAlignDeviceOffset());
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4)));
     for (int i = 0; i < 3; i++) {
       Assert.assertTrue(
           targetResources
@@ -3708,24 +3732,31 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    List<String> deviceIdList = new ArrayList<>();
+    List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + TsFileGeneratorUtils.getAlignDeviceOffset());
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        COMPACTION_TEST_SG
-            + PATH_SEPARATOR
-            + "d"
-            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3));
+        new PlainDeviceID(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "d"
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     for (int i = 0; i < 3; i++) {
       if (i < 2) {
         Assert.assertTrue(
@@ -4208,9 +4239,9 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
-    List<String> deviceIdList = new ArrayList<>();
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    List<IDeviceID> deviceIdList = new ArrayList<>();
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
@@ -4230,8 +4261,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
-    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources

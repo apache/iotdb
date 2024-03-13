@@ -196,7 +196,7 @@ public class CompactionCheckerUtils {
         // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
         // (the
         // marker) ahead and judge accordingly.
-        String device = "";
+        IDeviceID device = new PlainDeviceID("");
         String measurementID = "";
         List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
         reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -390,7 +390,7 @@ public class CompactionCheckerUtils {
     Map<String, List<List<Long>>> mergedChunkPagePointsNum = new HashMap<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      String entity = "";
+      IDeviceID entity = new PlainDeviceID("");
       String measurement = "";
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup

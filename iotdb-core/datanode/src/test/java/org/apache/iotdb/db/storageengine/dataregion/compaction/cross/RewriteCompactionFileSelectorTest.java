@@ -209,14 +209,14 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     // update the second file's status to open
     TsFileResource secondTsFileResource = seqResources.get(1);
     secondTsFileResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
-    Set<String> devices = secondTsFileResource.getDevices();
+    Set<IDeviceID> devices = secondTsFileResource.getDevices();
     // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
     timeIndexField.setAccessible(true);
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
     ITimeIndex newTimeIndex =
         IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
-    for (String device : devices) {
+    for (IDeviceID device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
     secondTsFileResource.setTimeIndex(newTimeIndex);
@@ -803,7 +803,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertTrue(secondFile.getParentFile().mkdirs());
     }
     fileWriter = new TsFileWriter(secondFile);
-    for (String deviceId : deviceIds) {
+    for (IDeviceID deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
@@ -849,7 +849,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertTrue(thirdFile.getParentFile().mkdirs());
     }
     fileWriter = new TsFileWriter(thirdFile);
-    for (String deviceId : deviceIds) {
+    for (IDeviceID deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
@@ -895,7 +895,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       Assert.assertTrue(fourthFile.getParentFile().mkdirs());
     }
     fileWriter = new TsFileWriter(fourthFile);
-    for (String deviceId : deviceIds) {
+    for (IDeviceID deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
