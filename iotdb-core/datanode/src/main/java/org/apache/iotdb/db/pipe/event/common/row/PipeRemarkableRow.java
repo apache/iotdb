@@ -20,20 +20,36 @@
 package org.apache.iotdb.db.pipe.event.common.row;
 
 public class PipeRemarkableRow extends PipeRow {
+
+  private final boolean[] isNullMarked;
+
   public PipeRemarkableRow(PipeRow pipeRow) {
     super(
-        pipeRow.getRowIndex(),
-        pipeRow.getDeviceId(),
-        pipeRow.isAligned(),
-        pipeRow.getMeasurementSchemaList(),
-        pipeRow.getTimestampColumn(),
-        pipeRow.getValueColumnTypes(),
-        pipeRow.getValueColumns(),
-        pipeRow.getBitMaps(),
-        pipeRow.getColumnNameStringList());
+        pipeRow.rowIndex,
+        pipeRow.deviceId,
+        pipeRow.isAligned,
+        pipeRow.measurementSchemaList,
+        pipeRow.timestampColumn,
+        pipeRow.valueColumnTypes,
+        pipeRow.valueColumns,
+        pipeRow.bitMaps,
+        pipeRow.columnNameStringList);
+
+    // Copy the isNullMarked array from the original row
+    // to avoid modifying the original row.
+    final int columnCount = pipeRow.measurementSchemaList.length;
+    isNullMarked = new boolean[columnCount];
+    for (int i = 0; i < columnCount; i++) {
+      isNullMarked[i] = super.isNull(i);
+    }
   }
 
-  public void remark(int index) {
-    bitMaps[index].mark(getRowIndex());
+  @Override
+  public boolean isNull(int index) {
+    return isNullMarked[index];
+  }
+
+  public void markNull(int index) {
+    isNullMarked[index] = true;
   }
 }

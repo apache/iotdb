@@ -83,7 +83,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
         if (filter.shouldStore(row.getTime(), row.getObject(i))) {
           hasNonNullMeasurements = true;
         } else {
-          remarkableRow.remark(i);
+          remarkableRow.markNull(i);
         }
       } else {
         hasNonNullMeasurements = true;

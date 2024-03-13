@@ -33,18 +33,18 @@ import java.util.List;
 
 public class PipeRow implements Row {
 
-  private final int rowIndex;
+  protected final int rowIndex;
 
-  private final String deviceId;
-  private final boolean isAligned;
-  private final MeasurementSchema[] measurementSchemaList;
+  protected final String deviceId;
+  protected final boolean isAligned;
+  protected final MeasurementSchema[] measurementSchemaList;
 
-  private final long[] timestampColumn;
-  private final TSDataType[] valueColumnTypes;
-  private final Object[] valueColumns;
+  protected final long[] timestampColumn;
+  protected final TSDataType[] valueColumnTypes;
+  protected final Object[] valueColumns;
   protected final BitMap[] bitMaps;
 
-  private final String[] columnNameStringList;
+  protected final String[] columnNameStringList;
 
   public PipeRow(
       int rowIndex,
@@ -180,29 +180,5 @@ public class PipeRow implements Row {
 
   public MeasurementSchema[] getMeasurementSchemaList() {
     return measurementSchemaList;
-  }
-
-  protected int getRowIndex() {
-    return rowIndex;
-  }
-
-  protected long[] getTimestampColumn() {
-    return timestampColumn;
-  }
-
-  protected TSDataType[] getValueColumnTypes() {
-    return valueColumnTypes;
-  }
-
-  protected Object[] getValueColumns() {
-    return valueColumns;
-  }
-
-  protected BitMap[] getBitMaps() {
-    return bitMaps;
-  }
-
-  protected String[] getColumnNameStringList() {
-    return columnNameStringList;
   }
 }
