@@ -50,6 +50,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   private List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
   private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
 
+  public CreateSubscriptionProcedure() {
+    super();
+  }
+
   public CreateSubscriptionProcedure(TSubscribeReq subscribeReq) {
     this.subscribeReq = subscribeReq;
   }

@@ -31,6 +31,10 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   private TCreateConsumerReq createConsumerReq;
 
+  public CreateConsumerProcedure() {
+    super();
+  }
+
   public CreateConsumerProcedure(TCreateConsumerReq createConsumerReq) throws PipeException {
     super();
     this.createConsumerReq = createConsumerReq;

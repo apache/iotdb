@@ -29,6 +29,10 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   private TCloseConsumerReq dropConsumerReq;
 
+  public DropConsumerProcedure() {
+    super();
+  }
+
   public DropConsumerProcedure(TCloseConsumerReq dropConsumerReq) throws PipeException {
     super();
     this.dropConsumerReq = dropConsumerReq;

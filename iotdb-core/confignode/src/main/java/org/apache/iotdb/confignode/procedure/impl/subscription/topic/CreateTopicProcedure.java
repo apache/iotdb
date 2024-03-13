@@ -46,6 +46,10 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   private TCreateTopicReq createTopicReq;
   private TopicMeta topicMeta;
 
+  public CreateTopicProcedure() {
+    super();
+  }
+
   public CreateTopicProcedure(TCreateTopicReq createTopicReq) throws PipeException {
     super();
     this.createTopicReq = createTopicReq;

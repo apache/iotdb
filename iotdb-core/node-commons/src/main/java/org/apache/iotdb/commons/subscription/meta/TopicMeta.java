@@ -49,6 +49,7 @@ public class TopicMeta {
   public TopicMeta(String topicName, long createTime, Map<String, String> topicAttributes) {
     this.topicName = topicName;
     this.createTime = createTime;
+    this.subscribedConsumerGroupIDs = new HashSet<>();
     this.config = new TopicConfig(topicAttributes);
   }
 

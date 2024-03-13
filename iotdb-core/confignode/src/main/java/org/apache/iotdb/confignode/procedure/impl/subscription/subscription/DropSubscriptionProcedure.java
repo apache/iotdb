@@ -48,6 +48,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   private List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
   private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
 
+  public DropSubscriptionProcedure() {
+    super();
+  }
+
   public DropSubscriptionProcedure(TUnsubscribeReq unsubscribeReq) {
     this.unsubscribeReq = unsubscribeReq;
   }

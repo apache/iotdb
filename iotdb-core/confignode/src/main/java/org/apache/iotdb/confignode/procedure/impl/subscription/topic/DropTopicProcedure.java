@@ -40,6 +40,10 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   private String topicName;
 
+  public DropTopicProcedure() {
+    super();
+  }
+
   public DropTopicProcedure(String topicName) {
     super();
     this.topicName = topicName;

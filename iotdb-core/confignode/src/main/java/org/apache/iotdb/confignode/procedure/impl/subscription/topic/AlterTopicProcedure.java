@@ -45,6 +45,10 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   private TopicMeta existedTopicMeta;
 
+  public AlterTopicProcedure() {
+    super();
+  }
+
   public AlterTopicProcedure(TopicMeta updatedTopicMeta) {
     super();
     this.updatedTopicMeta = updatedTopicMeta;

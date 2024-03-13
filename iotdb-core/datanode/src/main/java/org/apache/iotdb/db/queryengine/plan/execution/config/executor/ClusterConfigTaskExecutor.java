@@ -208,7 +208,6 @@ import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
-import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1850,16 +1849,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    // Validate before creation
-    try {
-      SubscriptionAgent.topic().validate(createTopicStatement.getTopicAttributes());
-    } catch (Exception e) {
-      LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
-      future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
-      return future;
-    }
 
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
