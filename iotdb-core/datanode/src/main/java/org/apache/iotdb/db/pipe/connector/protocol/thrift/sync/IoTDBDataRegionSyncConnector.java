@@ -20,15 +20,11 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -44,7 +40,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -53,8 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
@@ -258,11 +251,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    final File modFile = pipeTsFileInsertionEvent.getModFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
-    final File modFile = pipeTsFileInsertionEvent.getModFile();
 
-    // 1. Transfer mod file if exists and receiver's version >= 2
+    // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver()) {
       transferFilePieces(modFile, clientAndStatus, true);
       transferFilePieces(tsFile, clientAndStatus, true);
@@ -304,63 +297,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         tsFile.getName());
 
     LOGGER.info("Successfully transferred file {}.", tsFile);
-  }
-
-  private void transferFilePieces(
-      File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus, boolean withMod)
-      throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final byte[] payLoad =
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength);
-        final PipeTransferFilePieceResp resp;
-        try {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          withMod
-                              ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                                  file.getName(), position, payLoad)
-                              : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                                  file.getName(), position, payLoad)));
-        } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
-              e);
-        }
-
-        position += readLength;
-
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
-          continue;
-        }
-
-        receiverStatusHandler.handle(
-            resp.getStatus(),
-            String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
-            file.getName());
-      }
-    }
   }
 
   @Override

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
@@ -136,7 +137,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
           case TRANSFER_TS_FILE_PIECE_WITH_MOD:
             return handleTransferFilePiece(
-                PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
+                PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
                 req instanceof AirGapPseudoTPipeTransferRequest,
                 false);
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:

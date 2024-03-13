@@ -422,7 +422,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   protected final TPipeTransferResp handleTransferMultiFilesSeal(
       final PipeTransferMultiFilesSealReq req) {
-    List<File> files =
+    final List<File> files =
         req.getFileNames().stream()
             .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
             .collect(Collectors.toList());
@@ -464,7 +464,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
-      List<String> fileAbsolutePaths =
+      final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
       final TSStatus status = loadMultiFiles(req, fileAbsolutePaths);

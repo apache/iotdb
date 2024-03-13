@@ -24,8 +24,11 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSealReq {
 
@@ -41,11 +44,20 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
+      String mLogName, long mLogLength, String tLogName, long tLogLength, String databaseName)
       throws IOException {
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("database", databaseName);
     return (PipeTransferSchemaSnapshotSealReq)
         new PipeTransferSchemaSnapshotSealReq()
-            .convertToTPipeTransferReq(fileNames, fileLengths, parameters);
+            .convertToTPipeTransferReq(
+                Objects.nonNull(tLogName)
+                    ? Arrays.asList(mLogName, tLogName)
+                    : Collections.singletonList(mLogName),
+                Objects.nonNull(tLogName)
+                    ? Arrays.asList(mLogLength, tLogLength)
+                    : Collections.singletonList(mLogLength),
+                parameters);
   }
 
   public static PipeTransferSchemaSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -56,10 +68,13 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
+      String mLogName, long mLogLength, String tLogName, long tLogLength, String databaseName)
       throws IOException {
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("database", databaseName);
     return new PipeTransferSchemaSnapshotSealReq()
-        .convertToTPipeTransferSnapshotSealBytes(fileNames, fileLengths, parameters);
+        .convertToTPipeTransferSnapshotSealBytes(
+            Arrays.asList(mLogName, tLogName), Arrays.asList(mLogLength, tLogLength), parameters);
   }
 
   /////////////////////////////// Object ///////////////////////////////

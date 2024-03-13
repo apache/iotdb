@@ -23,68 +23,19 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotEvent.class);
-
-  protected String snapshotPath;
   protected final PipeSnapshotResourceManager resourceManager;
 
   protected ProgressIndex progressIndex;
 
   protected PipeSnapshotEvent(
-      String snapshotPath,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       PipePattern pattern,
       PipeSnapshotResourceManager resourceManager) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.snapshotPath = snapshotPath;
     this.resourceManager = resourceManager;
-  }
-
-  // TODO: pin snapshot
-  public File getSnapshot() {
-    return new File(snapshotPath);
-  }
-
-  @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    try {
-      snapshotPath = resourceManager.increaseSnapshotReference(snapshotPath);
-      return true;
-    } catch (IOException e) {
-      LOGGER.warn(
-          String.format(
-              "Increase reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
-    try {
-      resourceManager.decreaseSnapshotReference(snapshotPath);
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Decrease reference count for snapshot %s error. Holder Message: %s",
-              snapshotPath, holderMessage),
-          e);
-      return false;
-    }
   }
 
   @Override
@@ -105,10 +56,5 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
-  }
-
-  @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
-    snapshotPath = ReadWriteIOUtils.readString(buffer);
   }
 }

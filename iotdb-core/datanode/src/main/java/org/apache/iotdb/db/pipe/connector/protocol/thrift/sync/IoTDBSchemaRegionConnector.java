@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -32,7 +29,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -41,10 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Objects;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
@@ -76,89 +69,42 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = snapshotEvent.getSnapshot();
+    final File mlogFile = snapshotEvent.getMLogFile();
+    final File tLogFile = snapshotEvent.getTLogFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
-
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(snapshot, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final PipeTransferFilePieceResp resp;
-        try {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(
-                              snapshot.getName(),
-                              position,
-                              readLength == readFileBufferSize
-                                  ? readBuffer
-                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer schema region snapshot %s, because %s.",
-                  snapshot, e.getMessage()),
-              e);
-        }
-
-        position += readLength;
-
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect schema region file position to {}.", position);
-          continue;
-        }
-
-        receiverStatusHandler.handle(
-            resp.getStatus(),
-            String.format(
-                "Transfer schema region snapshot %s error, result status %s.",
-                snapshot, resp.getStatus()),
-            snapshot.toString());
-      }
-    }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp;
+
+    // 1. Transfer mLogFile, and tLog file if exists
+    transferFilePieces(mlogFile, clientAndStatus, true);
+    if (Objects.nonNull(tLogFile)) {
+      transferFilePieces(tLogFile, clientAndStatus, true);
+    }
+    // 2. Transfer file seal signal, which means the snapshot is transferred completely
     try {
       resp =
           clientAndStatus
               .getLeft()
               .pipeTransfer(
                   PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      Collections.singletonList(snapshot.getName()),
-                      Collections.singletonList(snapshot.length()),
-                      new HashMap<>()));
+                      mlogFile.getName(),
+                      mlogFile.length(),
+                      Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
+                      Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
+                      snapshotEvent.getDatabaseName()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal schema region snapshot file %s, because %s.",
-              snapshot, e.getMessage()),
+              "Network error when seal snapshot event %s, because %s.",
+              snapshotEvent, e.getMessage()),
           e);
     }
 
     receiverStatusHandler.handle(
         resp.getStatus(),
-        String.format(
-            "Seal schema region snapshot snapshot %s file error, result status %s.",
-            snapshot, resp.getStatus()),
-        snapshot.toString());
-    LOGGER.info("Successfully transferred schema region snapshot {}.", snapshot);
+        String.format("Seal file %s error, result status %s.", snapshotEvent, resp.getStatus()),
+        snapshotEvent.toString());
+
+    LOGGER.info("Successfully transferred file {} and {}.", mlogFile, tLogFile);
   }
 }
