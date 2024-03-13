@@ -85,7 +85,7 @@ public class OffsetOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory();
+    return child.calculateMaxPeekMemoryWithCounter();
   }
 
   @Override

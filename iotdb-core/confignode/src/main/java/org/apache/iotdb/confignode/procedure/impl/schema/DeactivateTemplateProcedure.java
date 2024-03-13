@@ -31,19 +31,23 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -77,13 +81,16 @@ public class DeactivateTemplateProcedure
   private ByteBuffer timeSeriesPatternTreeBytes; // transient
   private Map<String, List<Integer>> dataNodeRequest; // transient
 
-  public DeactivateTemplateProcedure() {
-    super();
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
+
+  public DeactivateTemplateProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DeactivateTemplateProcedure(
-      String queryId, Map<PartialPath, List<Template>> templateSetInfo) {
-    super();
+      String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     setTemplateSetInfo(templateSetInfo);
   }
@@ -118,6 +125,7 @@ public class DeactivateTemplateProcedure
         case DEACTIVATE_TEMPLATE:
           LOGGER.info("Deactivate template of {}", requestMessage);
           deactivateTemplate(env);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -241,8 +249,29 @@ public class DeactivateTemplateProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             DataNodeRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)));
+                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
+  }
+
+  private void collectPayload4Pipe(ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(new PipeDeactivateTemplatePlan(templateSetInfo))
+                      : new PipeDeactivateTemplatePlan(templateSetInfo));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
+    }
   }
 
   @Override
@@ -345,7 +374,10 @@ public class DeactivateTemplateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode()
+            : ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(templateSetInfo.size(), stream);
@@ -383,13 +415,18 @@ public class DeactivateTemplateProcedure
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DeactivateTemplateProcedure that = (DeactivateTemplateProcedure) o;
-    return Objects.equals(queryId, that.queryId)
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(queryId, that.queryId)
         && Objects.equals(templateSetInfo, that.templateSetInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, templateSetInfo);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, templateSetInfo);
   }
 
   private class DeactivateTemplateRegionTaskExecutor<Q>

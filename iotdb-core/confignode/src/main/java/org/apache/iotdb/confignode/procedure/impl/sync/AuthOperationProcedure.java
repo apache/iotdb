@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -72,12 +73,13 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
 
   private List<TDataNodeConfiguration> datanodes;
 
-  public AuthOperationProcedure() {
-    super();
+  public AuthOperationProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public AuthOperationProcedure(AuthorPlan plan, List<TDataNodeConfiguration> alldns) {
-    super();
+  public AuthOperationProcedure(
+      AuthorPlan plan, List<TDataNodeConfiguration> alldns, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.user = plan.getUserName();
     this.role = plan.getRoleName();
     this.plan = plan;
@@ -140,7 +142,10 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   private void writePlan(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res = env.getConfigManager().getConsensusManager().write(this.plan);
+      res =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(isGeneratedByPipe ? new PipeEnrichedPlan(plan) : plan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -184,7 +189,10 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE.getTypeCode()
+            : ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(datanodes.size(), stream);
     for (TDataNodeConfiguration item : datanodes) {
@@ -225,11 +233,12 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     return timeoutMS == that.timeoutMS
         && Objects.equals(plan, that.plan)
         && Objects.equals(dataNodesToInvalid, that.dataNodesToInvalid)
-        && Objects.equals(datanodes, that.datanodes);
+        && Objects.equals(datanodes, that.datanodes)
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes);
+    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes, isGeneratedByPipe);
   }
 }

@@ -146,17 +146,23 @@ public class StatisticsService implements IClusterStatusSubscriber {
       // Map<RegionGroupId, Pair<old priority, new priority>>
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
           differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
-
-      if (containsChangeEvent(differentRegionLeaderMap)
-          || containsChangeEvent(differentRegionPriorityMap)) {
-        eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
-      }
+      broadcastRouteChangeEventIfNecessary(differentRegionLeaderMap, differentRegionPriorityMap);
     }
 
     if (isNeedBroadcast) {
       eventBus.post(
           new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));
       broadcastLatestRegionRouteMap();
+    }
+  }
+
+  public void broadcastRouteChangeEventIfNecessary(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap,
+      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+          differentRegionPriorityMap) {
+    if (containsChangeEvent(differentRegionLeaderMap)
+        || containsChangeEvent(differentRegionPriorityMap)) {
+      eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
     }
   }
 

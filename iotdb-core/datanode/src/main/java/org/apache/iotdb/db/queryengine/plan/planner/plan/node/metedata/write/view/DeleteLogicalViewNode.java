@@ -52,6 +52,11 @@ public class DeleteLogicalViewNode extends PlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_LOGICAL_VIEW;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeleteLogicalViewNode(getPlanNodeId(), patternTree);
   }

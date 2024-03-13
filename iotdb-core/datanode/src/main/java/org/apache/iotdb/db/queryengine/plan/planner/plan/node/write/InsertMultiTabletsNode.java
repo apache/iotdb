@@ -176,6 +176,11 @@ public class InsertMultiTabletsNode extends InsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INSERT_MULTI_TABLET;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of Insert is not implemented");
   }

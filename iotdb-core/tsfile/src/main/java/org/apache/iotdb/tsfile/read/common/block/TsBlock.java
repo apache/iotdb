@@ -25,9 +25,8 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -43,7 +42,8 @@ import static java.util.Objects.requireNonNull;
  */
 public class TsBlock {
 
-  public static final int INSTANCE_SIZE = ClassLayout.parseClass(TsBlock.class).instanceSize();
+  public static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(TsBlock.class);
 
   private static final Column[] EMPTY_COLUMNS = new Column[0];
 

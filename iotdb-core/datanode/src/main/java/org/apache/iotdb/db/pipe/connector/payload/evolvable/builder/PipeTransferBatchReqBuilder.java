@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -107,10 +107,10 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   /**
-   * Try offer event into cache if the given event is not duplicated.
+   * Try offer {@link Event} into cache if the given {@link Event} is not duplicated.
    *
-   * @param event the given event
-   * @return true if the batch can be transferred
+   * @param event the given {@link Event}
+   * @return {@link true} if the batch can be transferred
    */
   public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
@@ -163,6 +163,10 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   public boolean isEmpty() {
     return binaryBuffers.isEmpty() && insertNodeBuffers.isEmpty() && tabletBuffers.isEmpty();
+  }
+
+  public List<Event> deepCopyEvents() {
+    return new ArrayList<>(events);
   }
 
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event)

@@ -52,6 +52,11 @@ public class ExchangeNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.EXCHANGE;
+  }
+
+  @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;
   }

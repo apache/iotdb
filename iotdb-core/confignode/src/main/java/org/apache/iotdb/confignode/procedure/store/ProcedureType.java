@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,10 +32,11 @@ public enum ProcedureType {
   /** DataNode */
   REMOVE_DATA_NODE_PROCEDURE((short) 100),
 
-  /** StorageGroup and Region */
-  DELETE_STORAGE_GROUP_PROCEDURE((short) 200),
+  /** Database and Region */
+  DELETE_DATABASE_PROCEDURE((short) 200),
   REGION_MIGRATE_PROCEDURE((short) 201),
   CREATE_REGION_GROUPS((short) 202),
+  @TestOnly
   CREATE_MANY_DATABASES_PROCEDURE((short) 203),
   ADD_REGION_PEER_PROCEDURE((short) 204),
   REMOVE_REGION_PEER_PROCEDURE((short) 205),
@@ -82,7 +85,25 @@ public enum ProcedureType {
   ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001),
 
   /** Auth privilege */
-  AUTH_OPERATE_PROCEDURE((short) 1300);
+  AUTH_OPERATE_PROCEDURE((short) 1300),
+
+  /** Pipe Enriched */
+  PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE((short) 1401),
+  PIPE_ENRICHED_DELETE_TIMESERIES_PROCEDURE((short) 1402),
+  PIPE_ENRICHED_DEACTIVATE_TEMPLATE_PROCEDURE((short) 1403),
+  PIPE_ENRICHED_UNSET_TEMPLATE_PROCEDURE((short) 1404),
+  PIPE_ENRICHED_SET_TEMPLATE_PROCEDURE((short) 1405),
+  PIPE_ENRICHED_ALTER_LOGICAL_VIEW_PROCEDURE((short) 1406),
+  PIPE_ENRICHED_DELETE_LOGICAL_VIEW_PROCEDURE((short) 1407),
+  PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE((short) 1408),
+  PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE((short) 1409),
+  PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE((short) 1410),
+
+  /** Other */
+  @TestOnly
+  NEVER_FINISH_PROCEDURE((short) 66600),
+  @TestOnly
+  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 66601);
 
   private final short typeCode;
 

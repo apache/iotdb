@@ -88,6 +88,11 @@ public class BatchActivateTemplateNode extends WritePlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.BATCH_ACTIVATE_TEMPLATE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new BatchActivateTemplateNode(getPlanNodeId(), templateActivationMap, regionReplicaSet);
   }
