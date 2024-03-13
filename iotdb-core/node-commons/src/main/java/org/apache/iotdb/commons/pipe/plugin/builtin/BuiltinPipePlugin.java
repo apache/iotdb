@@ -112,6 +112,7 @@ public enum BuiltinPipePlugin {
                   DO_NOTHING_SOURCE.getPipePluginName().toUpperCase(),
                   // Processors
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
