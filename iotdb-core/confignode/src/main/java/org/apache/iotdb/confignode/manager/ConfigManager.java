@@ -1795,15 +1795,17 @@ public class ConfigManager implements IManager {
       if (!canOptimize) {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
       }
-      PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
-      for (PartialPath path : deleteTimeSeriesPatternPaths) {
-        deleteTimeSeriesPatternTree.appendPathPattern(path);
+      if(!deleteTimeSeriesPatternPaths.isEmpty()){
+        // 1. delete time series that can not be optimized
+        PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
+        for (PartialPath path : deleteTimeSeriesPatternPaths) {
+          deleteTimeSeriesPatternTree.appendPathPattern(path);
+        }
+        deleteTimeSeriesPatternTree.constructTree();
+        status =
+                procedureManager.deleteTimeSeries(
+                        queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
       }
-      deleteTimeSeriesPatternTree.constructTree();
-      // 1. delete time series that can not be optimized
-      status =
-          procedureManager.deleteTimeSeries(
-              queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // 2. delete database
         List<TSStatus> failedStatus = new ArrayList<>();
