@@ -366,10 +366,8 @@ public class NodeManager {
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    RegionMaintainHandler dataNodeRemoveHandler =
-        new RegionMaintainHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus =
-        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
+    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "The remove DataNode request check failed. req: {}, check result: {}",

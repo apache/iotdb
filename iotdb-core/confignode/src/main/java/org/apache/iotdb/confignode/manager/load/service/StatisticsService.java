@@ -274,10 +274,11 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   private void recordRegionPriorityMap(
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
-    LOGGER.info("[RegionPriority] RegionPriorityMap: "); // TODO: multi line log is bad
+    LOGGER.info("[RegionPriority] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
-      if (!Objects.equals( // TODO: bad comparison
+      // TODO: [1,2] and [2,1] will be treated as different, but they are actually the same
+      if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
         try {
           LOGGER.info(
@@ -288,11 +289,9 @@ public class StatisticsService implements IClusterStatusSubscriber {
                   : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
                       .map(TDataNodeLocation::getDataNodeId)
                       .collect(Collectors.toList()),
-              regionPriorityEntry.getValue().getRight().getDataNodeLocations() == null
-                  ? "null"
-                  : regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-                      .map(TDataNodeLocation::getDataNodeId)
-                      .collect(Collectors.toList()));
+              regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                  .map(TDataNodeLocation::getDataNodeId)
+                  .collect(Collectors.toList()));
         } catch (Exception e) {
           LOGGER.error("unexcepted exception", e);
         }

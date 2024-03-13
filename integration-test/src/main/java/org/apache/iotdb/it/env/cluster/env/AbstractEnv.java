@@ -1015,10 +1015,10 @@ public abstract class AbstractEnv implements BaseEnv {
     try (SyncConfigNodeIServiceClient leaderClient =
         (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
       TShowDataNodesResp resp = leaderClient.showDataNodes();
-      for (TDataNodeInfo info : resp.getDataNodesInfoList()) {
-        if (info.dataNodeId == nodeId) {
+      for (TDataNodeInfo dataNodeInfo : resp.getDataNodesInfoList()) {
+        if (dataNodeInfo.getDataNodeId() == nodeId) {
           return dataNodeWrapperList.stream()
-              .filter(dataNodeWrapper -> dataNodeWrapper.getPort() == info.rpcPort)
+              .filter(dataNodeWrapper -> dataNodeWrapper.getPort() == dataNodeInfo.getRpcPort())
               .findAny();
         }
       }

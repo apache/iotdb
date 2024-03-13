@@ -68,7 +68,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
       return Flow.NO_MORE_STATE;
     }
 
-    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
@@ -126,11 +126,11 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     migratedDataNodeRegions.forEach(
         regionId -> {
           TDataNodeLocation destDataNode =
-              env.getDataNodeRemoveHandler().findDestDataNode(regionId);
+              env.getRegionMaintainHandler().findDestDataNode(regionId);
           // TODO: need to improve the coordinator selection method here, maybe through load
           // balancing and other means.
           final TDataNodeLocation coordinatorForAddPeer =
-              env.getDataNodeRemoveHandler()
+              env.getRegionMaintainHandler()
                   .filterDataNodeWithOtherRegionReplica(regionId, destDataNode)
                   .orElse(removedDataNode);
           final TDataNodeLocation coordinatorForRemovePeer = destDataNode;

@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -68,11 +68,11 @@ public class RegionMigrateService implements IService {
   private RegionMigratePool regionMigratePool;
 
   // Map<taskId, taskStatus>
-  // TODO：暂时无法处理一个procedure中向同一个datanode提交多个异步任务的情况
-  private static final ConcurrentHashMap<Long, TRegionMigrateResultReportReq> taskResultMap =
+  // TODO: Due to the use of procedureId as taskId, it is currently unable to handle the situation
+  // where different asynchronous tasks are submitted to the same datanode within a single procedure
+  private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
-  private static final TRegionMigrateResultReportReq unfinishedResult =
-      new TRegionMigrateResultReportReq();
+  private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
 
   private RegionMigrateService() {}
 
@@ -94,6 +94,7 @@ public class RegionMigrateService implements IService {
             "{} The AddRegionPeerTask {} has already been submitted and will not be submitted again.",
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
+        return true;
       }
       regionMigratePool.submit(
           new AddRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -123,6 +124,7 @@ public class RegionMigrateService implements IService {
             "{} The RemoveRegionPeer {} has already been submitted and will not be submitted again.",
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
+        return true;
       }
       regionMigratePool.submit(
           new RemoveRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -151,6 +153,7 @@ public class RegionMigrateService implements IService {
             "{} The DeleteOldRegionPeerTask {} has already been submitted and will not be submitted again.",
             REGION_MIGRATE_PROCESS,
             req.getTaskId());
+        return true;
       }
       regionMigratePool.submit(
           new DeleteOldRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
@@ -552,8 +555,7 @@ public class RegionMigrateService implements IService {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage(
         String.format("Region: %s, state: %s, executed succeed", tRegionId, migrateState));
-    TRegionMigrateResultReportReq req =
-        new TRegionMigrateResultReportReq(TRegionMaintainTaskStatus.SUCCESS);
+    TRegionMigrateResult req = new TRegionMigrateResult(TRegionMaintainTaskStatus.SUCCESS);
     req.setRegionId(tRegionId).setMigrateResult(status);
     taskResultMap.put(taskId, req);
   }
@@ -566,16 +568,14 @@ public class RegionMigrateService implements IService {
       TSStatus status) {
     Map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason = new HashMap<>();
     failedNodeAndReason.put(failedNode, failedType);
-    TRegionMigrateResultReportReq req =
-        new TRegionMigrateResultReportReq(TRegionMaintainTaskStatus.FAIL);
+    TRegionMigrateResult req = new TRegionMigrateResult(TRegionMaintainTaskStatus.FAIL);
     req.setRegionId(tRegionId).setMigrateResult(status);
     req.setFailedNodeAndReason(failedNodeAndReason);
     taskResultMap.put(taskId, req);
   }
 
-  // TODO: 单例模式下static与非static的区别？
-  public static TRegionMigrateResultReportReq getRegionMaintainResult(Long taskId) {
-    TRegionMigrateResultReportReq result = new TRegionMigrateResultReportReq();
+  public TRegionMigrateResult getRegionMaintainResult(Long taskId) {
+    TRegionMigrateResult result = new TRegionMigrateResult();
     if (!taskResultMap.containsKey(taskId)) {
       result.setTaskStatus(TRegionMaintainTaskStatus.TASK_NOT_EXIST);
     } else if (taskResultMap.get(taskId) == unfinishedResult) {

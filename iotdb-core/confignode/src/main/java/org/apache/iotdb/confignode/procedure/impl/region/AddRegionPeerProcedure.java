@@ -19,7 +19,7 @@ package org.apache.iotdb.confignode.procedure.impl.region; /*
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -71,7 +71,7 @@ public class AddRegionPeerProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
-    RegionMaintainHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
       outerSwitch:
       switch (state) {
@@ -82,7 +82,7 @@ public class AddRegionPeerProcedure
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          TRegionMigrateResultReportReq result;
+          TRegionMigrateResult result;
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {

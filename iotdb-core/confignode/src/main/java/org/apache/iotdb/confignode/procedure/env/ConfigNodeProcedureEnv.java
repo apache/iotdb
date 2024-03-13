@@ -106,14 +106,14 @@ public class ConfigNodeProcedureEnv {
 
   private final ProcedureScheduler scheduler;
 
-  private final RegionMaintainHandler dataNodeRemoveHandler;
+  private final RegionMaintainHandler regionMaintainHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.dataNodeRemoveHandler = new RegionMaintainHandler(configManager);
+    this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -733,15 +733,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   public LockQueue getRegionMigrateLock() {
-    return dataNodeRemoveHandler.getRegionMigrateLock();
+    return regionMaintainHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
-  public RegionMaintainHandler getDataNodeRemoveHandler() {
-    return dataNodeRemoveHandler;
+  public RegionMaintainHandler getRegionMaintainHandler() {
+    return regionMaintainHandler;
   }
 
   private ConsensusManager getConsensusManager() {
