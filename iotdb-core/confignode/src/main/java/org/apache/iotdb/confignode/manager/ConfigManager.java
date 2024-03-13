@@ -1795,7 +1795,7 @@ public class ConfigManager implements IManager {
       if (!canOptimize) {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
       }
-      if(!deleteTimeSeriesPatternPaths.isEmpty()){
+      if (!deleteTimeSeriesPatternPaths.isEmpty()) {
         // 1. delete time series that can not be optimized
         PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
         for (PartialPath path : deleteTimeSeriesPatternPaths) {
@@ -1803,8 +1803,8 @@ public class ConfigManager implements IManager {
         }
         deleteTimeSeriesPatternTree.constructTree();
         status =
-                procedureManager.deleteTimeSeries(
-                        queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
+            procedureManager.deleteTimeSeries(
+                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
       }
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // 2. delete database

@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -168,9 +167,6 @@ public class Coordinator {
       if (!execution.isQuery() && result.status != null && needRetry(result.status)) {
         // if it's write request and the result status needs to retry
         result.status.setNeedRetry(true);
-      }
-      if(statement instanceof DeleteTimeSeriesStatement){
-        System.out.println("DeleteTimeSeriesStatement cost time: " + (System.currentTimeMillis() - startTime) + "ms");
       }
       return result;
     } finally {
