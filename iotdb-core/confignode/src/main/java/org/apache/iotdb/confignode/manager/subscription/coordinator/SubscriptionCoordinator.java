@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.pipe.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
 
@@ -50,10 +52,13 @@ public class SubscriptionCoordinator {
 
   private final ConfigManager configManager;
   private final SubscriptionInfo subscriptionInfo;
+  private final PipeTaskCoordinatorLock coordinatorLock;
+  private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
+    this.coordinatorLock = new PipeTaskCoordinatorLock();
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -61,12 +66,29 @@ public class SubscriptionCoordinator {
   }
   /////////////////////////////// Lock ///////////////////////////////
 
-  public void lock() {
-    subscriptionInfo.acquireWriteLock();
+  public AtomicReference<SubscriptionInfo> tryLock() {
+    if (coordinatorLock.tryLock()) {
+      subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
+      return subscriptionInfoHolder;
+    }
+
+    return null;
   }
 
-  public void unlock() {
-    subscriptionInfo.releaseWriteLock();
+  public boolean unlock() {
+    if (subscriptionInfoHolder != null) {
+      subscriptionInfoHolder.set(null);
+      subscriptionInfoHolder = null;
+    }
+
+    try {
+      coordinatorLock.unlock();
+      return true;
+    } catch (IllegalMonitorStateException ignored) {
+      // This is thrown if unlock() is called without lock() called first.
+      LOGGER.warn("This thread is not holding the lock.");
+      return false;
+    }
   }
 
   /////////////////////////////// Operate ///////////////////////////////

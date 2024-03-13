@@ -83,7 +83,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   public void executeFromLock(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterConsumerGroupProcedure: executeFromLock, try to acquire subscription lock");
 
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().lock();
+    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().tryLock();
 
     validateAndGetOldAndNewMeta(
         env, env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator());

@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -43,6 +44,90 @@ public abstract class AbstractOperateSubscriptionProcedure
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
   private static final int RETRY_THRESHOLD = 1;
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    LOGGER.info("ProcedureId {} try to acquire subscription lock.", getProcId());
+    subscriptionInfo =
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getSubscriptionManager()
+            .getSubscriptionCoordinator()
+            .tryLock();
+    if (subscriptionInfo == null) {
+      LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
+    } else {
+      LOGGER.info("ProcedureId {} acquired subscription lock.", getProcId());
+    }
+
+    final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
+    switch (procedureLockState) {
+      case LOCK_ACQUIRED:
+        if (subscriptionInfo == null) {
+          LOGGER.warn(
+              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without subscription lock.",
+              getProcId());
+        } else {
+          LOGGER.info(
+              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription lock.",
+              getProcId());
+        }
+        break;
+      case LOCK_EVENT_WAIT:
+        if (subscriptionInfo == null) {
+          LOGGER.warn(
+              "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring subscription lock.", getProcId());
+        } else {
+          LOGGER.info(
+              "ProcedureId {}: LOCK_EVENT_WAIT. Subscription lock will be released.", getProcId());
+          configNodeProcedureEnv
+              .getConfigManager()
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .unlock();
+          subscriptionInfo = null;
+        }
+        break;
+      default:
+        if (subscriptionInfo == null) {
+          LOGGER.error(
+              "ProcedureId {}: {}. Invalid lock state. Without acquiring subscription lock.",
+              getProcId(),
+              procedureLockState);
+        } else {
+          LOGGER.error(
+              "ProcedureId {}: {}. Invalid lock state. Subscription lock will be released.",
+              getProcId(),
+              procedureLockState);
+          configNodeProcedureEnv
+              .getConfigManager()
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .unlock();
+          subscriptionInfo = null;
+        }
+        break;
+    }
+    return procedureLockState;
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    super.releaseLock(configNodeProcedureEnv);
+
+    if (subscriptionInfo == null) {
+      LOGGER.warn(
+          "ProcedureId {} release lock. No need to release subscription lock.", getProcId());
+    } else {
+      LOGGER.info("ProcedureId {} release lock. Subscription lock will be released.", getProcId());
+      configNodeProcedureEnv
+          .getConfigManager()
+          .getSubscriptionManager()
+          .getSubscriptionCoordinator()
+          .unlock();
+      subscriptionInfo = null;
+    }
+  }
 
   protected abstract PipeTaskOperation getOperation();
 

@@ -70,7 +70,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
-    subscriptionCoordinator.lock();
+    subscriptionCoordinator.tryLock();
 
     // check if the consumer and all topics exists
     try {

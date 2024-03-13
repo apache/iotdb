@@ -67,7 +67,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
-    subscriptionCoordinator.lock();
+    subscriptionCoordinator.tryLock();
 
     // 1. check if the topic exists
     try {

@@ -66,7 +66,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
-    subscriptionCoordinator.lock();
+    subscriptionCoordinator.tryLock();
 
     validateOldAndNewTopicMeta(subscriptionCoordinator);
   }

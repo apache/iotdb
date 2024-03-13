@@ -60,7 +60,7 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     final SubscriptionCoordinator subscriptionCoordinator =
         env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
 
-    subscriptionCoordinator.lock();
+    subscriptionCoordinator.tryLock();
 
     try {
       subscriptionCoordinator.getSubscriptionInfo().validateBeforeDroppingTopic(topicName);

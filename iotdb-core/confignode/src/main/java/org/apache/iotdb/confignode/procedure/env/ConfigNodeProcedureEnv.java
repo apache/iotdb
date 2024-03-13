@@ -76,6 +76,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -94,6 +95,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class ConfigNodeProcedureEnv {
 
@@ -728,11 +730,13 @@ public class ConfigNodeProcedureEnv {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleTopicMetaReq request = new TPushSingleTopicMetaReq().setTopicMeta(topicMeta);
 
-    final AsyncClientHandler<TPushSingleTopicMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    return clientHandler.getResponseList().stream()
+        .map(TPushTopicMetaResp::getStatus)
+        .collect(Collectors.toList());
   }
 
   public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
@@ -741,11 +745,13 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleTopicMetaReq request =
         new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
 
-    final AsyncClientHandler<TPushSingleTopicMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    return clientHandler.getResponseList().stream()
+        .map(TPushTopicMetaResp::getStatus)
+        .collect(Collectors.toList());
   }
 
   public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
