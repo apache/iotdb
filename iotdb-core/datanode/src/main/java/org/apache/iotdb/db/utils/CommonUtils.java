@@ -52,6 +52,8 @@ public class CommonUtils {
 
   private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
 
+  private static final String UNKNOWN_RESULT = "UNKNOWN";
+
   private CommonUtils() {}
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
@@ -241,35 +243,35 @@ public class CommonUtils {
   }
 
   public static String getContentOfRequest(
-      org.apache.thrift.TBase request, IQueryExecution queryExecution) {
-    String content = "UNKNOWN";
+      org.apache.thrift.TBase<?, ?> request, IQueryExecution queryExecution) {
     if (queryExecution == null) {
-      return content;
+      return UNKNOWN_RESULT;
     }
 
-    if (request == null || !queryExecution.getExecuteSQL().orElse("").isEmpty()) {
-      content = queryExecution.getExecuteSQL().orElse("UNKNOWN");
+    String executeSql = queryExecution.getExecuteSQL().orElse("");
+    if (!executeSql.isEmpty()) {
+      return executeSql;
+    } else if (request == null) {
+      return UNKNOWN_RESULT;
     } else if (request instanceof TSRawDataQueryReq) {
       TSRawDataQueryReq req = (TSRawDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < Math.min(req.getPathsSize(), MAX_SLOW_NATIVE_API_OUTPUT_NUM); i++) {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
-      content =
-          String.format(
-              "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
-                  + "endTime: %s, some paths: %s",
-              req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
+      return String.format(
+          "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
+              + "endTime: %s, some paths: %s",
+          req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
     } else if (request instanceof TSLastDataQueryReq) {
       TSLastDataQueryReq req = (TSLastDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < Math.min(req.getPathsSize(), MAX_SLOW_NATIVE_API_OUTPUT_NUM); i++) {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
-      content =
-          String.format(
-              "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
-              req.getPathsSize(), sb);
+      return String.format(
+          "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
+          req.getPathsSize(), sb);
     } else if (request instanceof TSAggregationQueryReq) {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -279,16 +281,16 @@ public class CommonUtils {
             .append(":")
             .append(req.getPaths().get(i));
       }
-      content =
-          String.format(
-              "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, paths size: %s, some paths: %s",
-              req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
+      return String.format(
+          "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, "
+              + "paths size: %s, some paths: %s",
+          req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
-      content =
-          String.format(
-              "Request name: TSFastLastDataQueryForOneDeviceReq, db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
-              req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
+      return String.format(
+          "Request name: TSFastLastDataQueryForOneDeviceReq, "
+              + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
+          req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
     } else if (request instanceof TSFetchResultsReq) {
       TSFetchResultsReq req = (TSFetchResultsReq) request;
       StringBuilder sb = new StringBuilder();
@@ -298,13 +300,14 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",")
             .append(queryExecution.getDatasetHeader().getRespColumns().get(i));
       }
-      content =
-          String.format(
-              "Request name: TSFetchResultsReq, queryId: %s, output value column count: %s, fetchSize: %s, "
-                  + "some response headers: %s",
-              req.getQueryId(), queryExecution.getOutputValueColumnCount(), req.getFetchSize(), sb);
+      return String.format(
+          "Request name: TSFetchResultsReq, "
+              + "queryId: %s, output value column count: %s, fetchSize: %s, "
+              + "some response headers: %s",
+          req.getQueryId(), queryExecution.getOutputValueColumnCount(), req.getFetchSize(), sb);
+    } else {
+      return UNKNOWN_RESULT;
     }
-    return content;
   }
 
   public static int runCli(

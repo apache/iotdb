@@ -67,7 +67,6 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
 
   private static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
@@ -229,7 +228,7 @@ public class Coordinator {
   }
 
   public void cleanupQueryExecution(
-      Long queryId, org.apache.thrift.TBase nativeApiRequest, Throwable t) {
+      Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
