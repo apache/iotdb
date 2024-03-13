@@ -40,7 +40,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -79,14 +78,12 @@ public class AddRegionPeerProcedure
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           handler.createNewRegionPeer(consensusGroupId, destDataNode);
-          logBreakpoint(state.name());
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
           TRegionMigrateResultReportReq result;
-          logBreakpoint(state.name());
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
           } else {
@@ -126,7 +123,6 @@ public class AddRegionPeerProcedure
           }
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
-          logBreakpoint(state.name());
           LOGGER.info("AddRegionPeer state {} success", state);
           LOGGER.info(
               "AddRegionPeerProcedure success, region {} has been added to DataNode {}",

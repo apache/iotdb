@@ -38,8 +38,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
-
 /** Region migrate procedure */
 public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
@@ -88,7 +86,6 @@ public class RegionMigrateProcedure
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
-          logBreakpoint(state.name());
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -109,7 +106,6 @@ public class RegionMigrateProcedure
           break;
         case CHANGE_REGION_LEADER:
           handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
-          logBreakpoint(state.name());
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:

@@ -21,8 +21,6 @@ package org.apache.iotdb.consensus.iot.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.utils.DataNodeKillPoints;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -149,7 +147,6 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       resultHandler.onComplete(new TInactivatePeerRes(status));
-      FileUtils.logBreakpoint(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name());
       return;
     }
     impl.setActive(false);
