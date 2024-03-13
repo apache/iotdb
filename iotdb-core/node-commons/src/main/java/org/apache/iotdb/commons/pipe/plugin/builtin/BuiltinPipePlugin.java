@@ -51,8 +51,9 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
-  DOWN_SAMPLING_PROCESSOR("tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
-  SDT_FILTER_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
+  TUMBLING_TIME_SAMPLING_PROCESSOR(
+      "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
+  SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -110,7 +111,7 @@ public enum BuiltinPipePlugin {
                   // Sources
                   DO_NOTHING_SOURCE.getPipePluginName().toUpperCase(),
                   // Processors
-                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),

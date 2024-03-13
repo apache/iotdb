@@ -37,10 +37,10 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(),
+        BuiltinPipePlugin.TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName(),
         TumblingTimeSamplingProcessor::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.SDT_FILTER_PROCESSOR.getPipePluginName(),
+        BuiltinPipePlugin.SDT_SAMPLING_PROCESSOR.getPipePluginName(),
         SwingingDoorTrendingSamplingProcessor::new);
   }
 }
