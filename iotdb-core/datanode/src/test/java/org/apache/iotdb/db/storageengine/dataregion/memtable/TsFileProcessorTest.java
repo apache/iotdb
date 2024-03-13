@@ -477,7 +477,7 @@ public class TsFileProcessorTest {
       throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
     synchronized (resource) {
-      for (String deviceId : resource.getDevices()) {
+      for (IDeviceID deviceId : resource.getDevices()) {
         resource.updateEndTime(deviceId, resource.getStartTime(deviceId));
       }
       try {

@@ -93,7 +93,8 @@ public class LastFlushTimeMapTest {
       tsfileProcessor.syncFlush();
     }
     Assert.assertEquals(
-        10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        10000,
+        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
   }
 
   @Test

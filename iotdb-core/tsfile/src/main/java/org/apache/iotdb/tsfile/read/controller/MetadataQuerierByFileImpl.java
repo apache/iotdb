@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -134,8 +133,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
           measurementId = ((TimeseriesMetadata) timeseriesMetadata).getMeasurementId();
         }
         this.chunkMetaDataCache.put(
-            new Path(((PlainDeviceID) selectedDevice).toStringID(), measurementId, true),
-            chunkMetadataList);
+            new Path(selectedDevice, measurementId, true), chunkMetadataList);
         count += chunkMetadataList.size();
         if (count == CACHED_ENTRY_NUMBER) {
           enough = true;

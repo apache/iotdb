@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 

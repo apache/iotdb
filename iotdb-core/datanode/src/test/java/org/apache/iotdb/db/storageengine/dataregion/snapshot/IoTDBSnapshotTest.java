@@ -86,7 +86,8 @@ public class IoTDBSnapshotTest {
       resources.add(resource);
       for (int idx = 0; idx < 5; idx++) {
         resource.updateStartTime(new PlainDeviceID(testSgName + PATH_SEPARATOR + "d" + i), i * 100);
-        resource.updateEndTime(new PlainDeviceID(testSgName + PATH_SEPARATOR + "d" + i), (i + 1) * 100);
+        resource.updateEndTime(
+            new PlainDeviceID(testSgName + PATH_SEPARATOR + "d" + i), (i + 1) * 100);
       }
       resource.updatePlanIndexes(i);
       resource.setStatusForTest(TsFileResourceStatus.NORMAL);

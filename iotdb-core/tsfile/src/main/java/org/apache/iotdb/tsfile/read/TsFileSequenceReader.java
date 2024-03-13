@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -836,7 +835,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     for (IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (String measurementId : timeseriesMetadataMap.keySet()) {
-        paths.add(new Path(((PlainDeviceID) device).toStringID(), measurementId, true));
+        paths.add(new Path(device, measurementId, true));
       }
     }
     return paths;
@@ -880,7 +879,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           while (nextBuffer.hasRemaining()) {
             paths.add(
                 new Path(
-                    ((PlainDeviceID) startEndPair.left).toStringID(),
+                    startEndPair.left,
                     TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId(),
                     true));
           }
@@ -1882,11 +1881,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(
-                          ((PlainDeviceID) lastDeviceId).toStringID(),
-                          tsSchema.getMeasurementId(),
-                          true),
-                      tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1905,11 +1900,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
-                      new Path(
-                          ((PlainDeviceID) lastDeviceId).toStringID(),
-                          tsSchema.getMeasurementId(),
-                          true),
-                      tsSchema);
+                      new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
                 }
               }
               measurementSchemaList = new ArrayList<>();
@@ -1932,9 +1923,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (newSchema != null) {
           for (IMeasurementSchema tsSchema : measurementSchemaList) {
             newSchema.putIfAbsent(
-                new Path(
-                    ((PlainDeviceID) lastDeviceId).toStringID(), tsSchema.getMeasurementId(), true),
-                tsSchema);
+                new Path(lastDeviceId, tsSchema.getMeasurementId(), true), tsSchema);
           }
         }
         // last chunk group Metadata

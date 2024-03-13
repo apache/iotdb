@@ -385,21 +385,19 @@ public class MetadataIndexConstructorTest {
       if (singleMeasurement != null) {
         for (String measurement : singleMeasurement[i]) {
           measurements.add(measurement);
-          correctPaths.add(
-              new Path(((PlainDeviceID) device).toStringID(), measurement, true).getFullPath());
+          correctPaths.add(new Path(device, measurement, true).getFullPath());
         }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
-        correctPaths.add(new Path(((PlainDeviceID) device).toStringID(), "", true).getFullPath());
+        correctPaths.add(new Path(device, "", true).getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
-          correctPaths.add(
-              new Path(((PlainDeviceID) device).toStringID(), measurementName, true).getFullPath());
+          correctPaths.add(new Path(device, measurementName, true).getFullPath());
         }
       }
       Collections.sort(measurements);
@@ -427,7 +425,7 @@ public class MetadataIndexConstructorTest {
           IDeviceID device = devices[i];
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
-                new Path(((PlainDeviceID) device).toStringID()),
+                new Path(device),
                 new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
@@ -469,7 +467,7 @@ public class MetadataIndexConstructorTest {
             tabletSchema.add(schema1);
           }
           MeasurementGroup group = new MeasurementGroup(true, schemas);
-          schema.registerMeasurementGroup(new Path(((PlainDeviceID) device).toStringID()), group);
+          schema.registerMeasurementGroup(new Path(device), group);
           // add measurements into TSFileWriter
           // construct the tablet
           Tablet tablet = new Tablet(((PlainDeviceID) device).toStringID(), tabletSchema);
