@@ -93,8 +93,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.ln.wf01.wt01(time, status) values(now(), false)")) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"))) {
         return;
       }
 
