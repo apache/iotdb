@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.balancer.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TieredReplicationAllocator implements IRegionGroupAllocator {
 
-  private final int dataNodeNum;
+  private int dataNodeNum = -1;
   private final Random RANDOM = new Random();
   private final Map<Integer, List<List<Integer>>> COPY_SETS = new TreeMap<>();
 
@@ -56,13 +57,13 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
     }
   }
 
-  public TieredReplicationAllocator(int dataNodeNum, int replicationFactor, int loadFactor) {
+  private void init(int dataNodeNum, int replicationFactor, int loadFactor) {
     this.dataNodeNum = dataNodeNum;
     Map<Integer, BitSet> scatterWidthMap = new TreeMap<>();
     for (int i = 1; i <= dataNodeNum; i++) {
       scatterWidthMap.put(i, new BitSet(dataNodeNum + 1));
     }
-    int targetScatterWidth = loadFactor * (replicationFactor - 1);
+    int targetScatterWidth = Math.min(loadFactor * (replicationFactor - 1), dataNodeNum - 1);
     while (existScatterWidthUnsatisfied(scatterWidthMap, targetScatterWidth)) {
       for (int firstRegion = 1; firstRegion <= dataNodeNum; firstRegion++) {
         if (scatterWidthMap.get(firstRegion).cardinality() < targetScatterWidth) {
@@ -109,10 +110,13 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
           for (int e : copySet) {
             COPY_SETS.computeIfAbsent(e, k -> new ArrayList<>()).add(copySet);
           }
+          break;
         }
       }
     }
   }
+
+  public TieredReplicationAllocator() {}
 
   private boolean existScatterWidthUnsatisfied(
       Map<Integer, BitSet> scatterWidthMap, int targetScatterWidth) {
@@ -134,6 +138,15 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
+    if (this.dataNodeNum == -1) {
+      init(
+          availableDataNodeMap.size(),
+          replicationFactor,
+          ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase()
+              * replicationFactor
+              / availableDataNodeMap.size());
+    }
+
     TRegionReplicaSet result = new TRegionReplicaSet();
     Map<Integer, Integer> regionCounter = new TreeMap<>();
     for (int i = 1; i <= dataNodeNum; i++) {

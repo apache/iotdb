@@ -29,9 +29,11 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.TieredReplicationAllocator;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -54,6 +56,12 @@ public class RegionBalancer {
     switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
       case GREEDY:
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
+        break;
+      case TIERED_REPLICATION:
+        this.regionGroupAllocator = new TieredReplicationAllocator();
+        break;
+      case COPY_SET:
+        this.regionGroupAllocator = new CopySetRegionGroupAllocator();
         break;
       case GREEDY_COPY_SET:
       default:

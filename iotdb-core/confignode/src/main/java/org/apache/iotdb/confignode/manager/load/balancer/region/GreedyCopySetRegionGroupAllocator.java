@@ -49,6 +49,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   private int[] databaseRegionCounter;
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
+  private int maxDataNodeId;
 
   // First Key: the sum of Regions at the DataNodes within the same Database in the allocation
   // result is minimal
@@ -58,6 +59,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   // Third Key: the sum of overlapped 2-Region combination Regions with other allocated
   // RegionGroups is minimal
   int optimalCombinationSum;
+  int optimalIdXorSum;
   List<int[]> optimalReplicaSets;
   private static final int MAX_OPTIMAL_PLAN_NUM = 1000;
 
@@ -157,6 +159,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
                 .mapToInt(TDataNodeLocation::getDataNodeId)
                 .max()
                 .orElse(0));
+    this.maxDataNodeId = maxDataNodeId;
 
     // Compute regionCounter, databaseRegionCounter and combinationCounter
     regionCounter = new int[maxDataNodeId + 1];
@@ -221,6 +224,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     optimalDatabaseRegionSum = Integer.MAX_VALUE;
     optimalRegionSum = Integer.MAX_VALUE;
     optimalCombinationSum = Integer.MAX_VALUE;
+    optimalIdXorSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
   }
 
@@ -262,17 +266,42 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           combinationSum += combinationCounter[currentReplicaSet[i]][currentReplicaSet[j]];
         }
       }
+      if (databaseRegionSum == optimalDatabaseRegionSum
+          && regionSum == optimalRegionSum
+          && combinationSum > optimalCombinationSum) {
+        return;
+      }
 
+      if (maxDataNodeId < 160) {
+        if (databaseRegionSum < optimalDatabaseRegionSum
+            || regionSum < optimalRegionSum
+            || combinationSum < optimalCombinationSum) {
+          // Reset the optimal result when a better one is found
+          optimalDatabaseRegionSum = databaseRegionSum;
+          optimalRegionSum = regionSum;
+          optimalCombinationSum = combinationSum;
+          optimalReplicaSets.clear();
+        }
+        optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
+        return;
+      }
+
+      int idXorSum = 0;
+      for (int id : currentReplicaSet) {
+        idXorSum ^= id;
+      }
       if (databaseRegionSum < optimalDatabaseRegionSum
           || regionSum < optimalRegionSum
-          || combinationSum < optimalCombinationSum) {
+          || combinationSum < optimalCombinationSum
+          || (optimalIdXorSum > 0 && idXorSum == 0)) {
         // Reset the optimal result when a better one is found
         optimalDatabaseRegionSum = databaseRegionSum;
         optimalRegionSum = regionSum;
         optimalCombinationSum = combinationSum;
+        optimalIdXorSum = idXorSum;
         optimalReplicaSets.clear();
       }
-      if (combinationSum == optimalCombinationSum) {
+      if (idXorSum == 0 || (idXorSum > 0 && optimalIdXorSum > 0)) {
         optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
       }
       return;

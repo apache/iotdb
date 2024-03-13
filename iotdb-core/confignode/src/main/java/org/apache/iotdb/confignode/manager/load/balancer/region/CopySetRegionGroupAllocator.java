@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.balancer.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -35,9 +36,11 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
   private final Random RANDOM = new Random();
   private final Map<Integer, List<List<Integer>>> COPY_SETS = new TreeMap<>();
 
-  private final int dataNodeNum;
+  private int dataNodeNum = -1;
 
-  public CopySetRegionGroupAllocator(int dataNodeNum, int replicationFactor, int loadFactor) {
+  public CopySetRegionGroupAllocator() {}
+
+  private void init(int dataNodeNum, int replicationFactor, int loadFactor) {
     this.dataNodeNum = dataNodeNum;
     BitSet bitSet = new BitSet(dataNodeNum + 1);
     for (int p = 0; p < loadFactor || bitSet.cardinality() < dataNodeNum; p++) {
@@ -51,7 +54,7 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
         permutation.set(i, permutation.get(pos));
         permutation.set(pos, tmp);
       }
-      for (int i = 0; i + replicationFactor < permutation.size(); i += replicationFactor) {
+      for (int i = 0; i + replicationFactor <= permutation.size(); i += replicationFactor) {
         List<Integer> copySet = new ArrayList<>();
         for (int j = 0; j < replicationFactor; j++) {
           int e = permutation.get(i + j);
@@ -73,6 +76,15 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
+    if (this.dataNodeNum == -1) {
+      init(
+          availableDataNodeMap.size(),
+          replicationFactor,
+          ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase()
+              * replicationFactor
+              / availableDataNodeMap.size());
+    }
+
     TRegionReplicaSet result = new TRegionReplicaSet();
     Map<Integer, Integer> regionCounter = new TreeMap<>();
     for (int i = 1; i <= dataNodeNum; i++) {
