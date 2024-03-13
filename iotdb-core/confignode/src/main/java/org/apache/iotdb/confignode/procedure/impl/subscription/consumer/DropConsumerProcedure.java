@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -44,10 +43,9 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  public void validateAndGetOldAndNewMeta(
-      ConfigNodeProcedureEnv env, SubscriptionCoordinator subscriptionCoordinator) {
+  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
-      subscriptionCoordinator.getSubscriptionInfo().validateBeforeDroppingConsumer(dropConsumerReq);
+      subscriptionInfo.get().validateBeforeDroppingConsumer(dropConsumerReq);
     } catch (PipeException e) {
       // The consumer does not exist, we should end the procedure
       LOGGER.warn(
@@ -59,9 +57,7 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
     }
 
     existingConsumerGroupMeta =
-        subscriptionCoordinator
-            .getSubscriptionInfo()
-            .getConsumerGroupMeta(dropConsumerReq.getConsumerGroupId());
+        subscriptionInfo.get().getConsumerGroupMeta(dropConsumerReq.getConsumerGroupId());
 
     updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
     updatedConsumerGroupMeta.removeConsumer(dropConsumerReq.getConsumerId());

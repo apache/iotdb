@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -55,12 +54,10 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropTopicProcedure: executeFromLock({})", topicName);
-    final SubscriptionCoordinator subscriptionCoordinator =
-        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
+    LOGGER.info("DropTopicProcedure: executeFromValidate({})", topicName);
 
     try {
-      subscriptionCoordinator.getSubscriptionInfo().validateBeforeDroppingTopic(topicName);
+      subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
     } catch (PipeException e) {
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
@@ -90,8 +87,7 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropTopicProcedure: rollbackFromLock({})", topicName);
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
+    LOGGER.info("DropTopicProcedure: rollbackFromValidate({})", topicName);
   }
 
   @Override

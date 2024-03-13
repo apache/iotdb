@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -106,34 +105,27 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromLock, try to acquire subscription lock");
-
-    final SubscriptionCoordinator subscriptionCoordinator =
-        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
+    LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
     // check if the consumer and all topics exists
     try {
-      subscriptionCoordinator.getSubscriptionInfo().validateBeforeSubscribe(subscribeReq);
+      subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
     } catch (PipeException e) {
       LOGGER.error(
-          "CreateSubscriptionProcedure: executeFromLock, validateBeforeSubscribe failed", e);
+          "CreateSubscriptionProcedure: executeFromValidate, validateBeforeSubscribe failed", e);
       throw e;
     }
 
     // Construct AlterConsumerGroupProcedure
     ConsumerGroupMeta updatedConsumerGroupMeta =
-        subscriptionCoordinator
-            .getSubscriptionInfo()
-            .getConsumerGroupMeta(subscribeReq.getConsumerGroupId())
-            .copy();
+        subscriptionInfo.get().getConsumerGroupMeta(subscribeReq.getConsumerGroupId()).copy();
     updatedConsumerGroupMeta.addSubscription(
         subscribeReq.getConsumerId(), subscribeReq.getTopicNames());
     consumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
 
     for (String topic : subscribeReq.getTopicNames()) {
       // Construct AlterTopicProcedures
-      TopicMeta updatedTopicMeta =
-          subscriptionCoordinator.getSubscriptionInfo().getTopicMeta(topic).copy();
+      TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).copy();
 
       // Construct pipe procedures
       if (updatedTopicMeta.addSubscribedConsumerGroup(subscribeReq.getConsumerGroupId())) {

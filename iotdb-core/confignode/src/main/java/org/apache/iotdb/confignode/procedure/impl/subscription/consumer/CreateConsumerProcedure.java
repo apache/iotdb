@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
 import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.ConsumerMeta;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -46,12 +45,9 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  public void validateAndGetOldAndNewMeta(
-      ConfigNodeProcedureEnv env, SubscriptionCoordinator subscriptionCoordinator) {
+  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
-      subscriptionCoordinator
-          .getSubscriptionInfo()
-          .validateBeforeCreatingConsumer(createConsumerReq);
+      subscriptionInfo.get().validateBeforeCreatingConsumer(createConsumerReq);
     } catch (PipeException e) {
       // The consumer has already been created, we should end the procedure
       LOGGER.warn(
@@ -63,9 +59,7 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
     }
 
     existingConsumerGroupMeta =
-        subscriptionCoordinator
-            .getSubscriptionInfo()
-            .getConsumerGroupMeta(createConsumerReq.getConsumerGroupId());
+        subscriptionInfo.get().getConsumerGroupMeta(createConsumerReq.getConsumerGroupId());
 
     final long createTime = System.currentTimeMillis();
     final ConsumerMeta newConsumerMeta =

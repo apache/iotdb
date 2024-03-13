@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -63,26 +62,20 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
 
   @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropSubscriptionProcedure: executeFromLock, try to acquire subscription lock");
-
-    final SubscriptionCoordinator subscriptionCoordinator =
-        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
+    LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
     // check if the consumer and all topics exists
     try {
-      subscriptionCoordinator.getSubscriptionInfo().validateBeforeUnsubscribe(unsubscribeReq);
+      subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
     } catch (PipeException e) {
       LOGGER.error(
-          "DropSubscriptionProcedure: executeFromLock, validateBeforeUnsubscribe failed", e);
+          "DropSubscriptionProcedure: executeFromValidate, validateBeforeUnsubscribe failed", e);
       throw e;
     }
 
     // Construct AlterConsumerGroupProcedure
     ConsumerGroupMeta updatedConsumerGroupMeta =
-        subscriptionCoordinator
-            .getSubscriptionInfo()
-            .getConsumerGroupMeta(unsubscribeReq.getConsumerGroupId())
-            .copy();
+        subscriptionInfo.get().getConsumerGroupMeta(unsubscribeReq.getConsumerGroupId()).copy();
 
     // Get topics subscribed by no consumers in this group after this un-subscription
     Set<String> topicsUnsubByGroup =
@@ -94,8 +87,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
       if (topicsUnsubByGroup.contains(topic)) {
         // Topic will be subscribed by no consumers in this group
 
-        TopicMeta updatedTopicMeta =
-            subscriptionCoordinator.getSubscriptionInfo().getTopicMeta(topic).copy();
+        TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).copy();
         updatedTopicMeta.removeSubscribedConsumerGroup(unsubscribeReq.getConsumerGroupId());
 
         topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
@@ -148,7 +140,6 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   @Override
   protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromLock");
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
   }
 
   @Override

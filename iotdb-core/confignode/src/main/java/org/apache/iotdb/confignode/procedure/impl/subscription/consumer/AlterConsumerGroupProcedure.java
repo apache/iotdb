@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -57,12 +56,9 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     return PipeTaskOperation.ALTER_CONSUMER_GROUP;
   }
 
-  public void validateAndGetOldAndNewMeta(
-      ConfigNodeProcedureEnv env, SubscriptionCoordinator subscriptionCoordinator) {
+  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
-      subscriptionCoordinator
-          .getSubscriptionInfo()
-          .validateBeforeAlterConsumerGroup(updatedConsumerGroupMeta);
+      subscriptionInfo.get().validateBeforeAlterConsumerGroup(updatedConsumerGroupMeta);
     } catch (PipeException e) {
       // Consumer group not exist, we should end the procedure
       LOGGER.warn(
@@ -73,19 +69,14 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     }
 
     this.existingConsumerGroupMeta =
-        subscriptionCoordinator
-            .getSubscriptionInfo()
-            .getConsumerGroupMeta(updatedConsumerGroupMeta.getConsumerGroupId());
+        subscriptionInfo.get().getConsumerGroupMeta(updatedConsumerGroupMeta.getConsumerGroupId());
   }
 
   @Override
   public void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("AlterConsumerGroupProcedure: executeFromLock, try to acquire subscription lock");
+    LOGGER.info("AlterConsumerGroupProcedure: executeFromValidate, try to validate");
 
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().tryLock();
-
-    validateAndGetOldAndNewMeta(
-        env, env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator());
+    validateAndGetOldAndNewMeta(env);
   }
 
   @Override
@@ -134,8 +125,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterConsumerGroupProcedure: rollbackFromLock");
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
+    LOGGER.info("AlterConsumerGroupProcedure: rollbackFromValidate");
   }
 
   @Override

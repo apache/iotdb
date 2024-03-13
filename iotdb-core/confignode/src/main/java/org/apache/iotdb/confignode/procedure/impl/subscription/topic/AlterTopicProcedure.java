@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
-import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -63,23 +62,20 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("AlterTopicProcedure: executeFromValidate");
 
-    final SubscriptionCoordinator subscriptionCoordinator =
-        env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator();
-
-    validateOldAndNewTopicMeta(subscriptionCoordinator);
+    validateOldAndNewTopicMeta();
   }
 
-  public void validateOldAndNewTopicMeta(SubscriptionCoordinator subscriptionCoordinator) {
+  public void validateOldAndNewTopicMeta() {
     try {
-      subscriptionCoordinator.getSubscriptionInfo().validateBeforeAlteringTopic(updatedTopicMeta);
+      subscriptionInfo.get().validateBeforeAlteringTopic(updatedTopicMeta);
     } catch (PipeException e) {
-      LOGGER.error("AlterTopicProcedure: executeFromLock, validateBeforeAlteringTopic failed", e);
+      LOGGER.error(
+          "AlterTopicProcedure: executeFromValidate, validateBeforeAlteringTopic failed", e);
       setFailure(new ProcedureException(e.getMessage()));
       throw e;
     }
 
-    this.existedTopicMeta =
-        subscriptionCoordinator.getSubscriptionInfo().getTopicMeta(updatedTopicMeta.getTopicName());
+    this.existedTopicMeta = subscriptionInfo.get().getTopicMeta(updatedTopicMeta.getTopicName());
   }
 
   @Override
@@ -124,8 +120,7 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterTopicProcedure: rollbackFromLock({})", updatedTopicMeta.getTopicName());
-    env.getConfigManager().getSubscriptionManager().getSubscriptionCoordinator().unlock();
+    LOGGER.info("AlterTopicProcedure: rollbackFromValidate({})", updatedTopicMeta.getTopicName());
   }
 
   @Override
