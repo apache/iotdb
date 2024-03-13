@@ -41,6 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -53,6 +55,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.BiFunction;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 
@@ -100,39 +103,11 @@ public class Coordinator {
     this.scheduledExecutor = getScheduledExecutor();
   }
 
-  private IQueryExecution createQueryExecution(
-      Statement statement,
-      MPPQueryContext queryContext,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher,
-      long timeOut,
-      long startTime) {
-    queryContext.setTimeOut(timeOut);
-    queryContext.setStartTime(startTime);
-    if (statement instanceof IConfigStatement) {
-      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor);
-    }
-    return new QueryExecution(
-        statement,
-        queryContext,
-        executor,
-        writeOperationExecutor,
-        scheduledExecutor,
-        partitionFetcher,
-        schemaFetcher,
-        SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
-        ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
-  }
-
-  public ExecutionResult execute(
-      Statement statement,
+  private ExecutionResult execution(
       long queryId,
       SessionInfo session,
       String sql,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher,
-      long timeOut) {
+      BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
@@ -148,14 +123,7 @@ public class Coordinator {
               session,
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
-      IQueryExecution execution =
-          createQueryExecution(
-              statement,
-              queryContext,
-              partitionFetcher,
-              schemaFetcher,
-              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-              startTime);
+      IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       } else {
@@ -170,23 +138,76 @@ public class Coordinator {
       }
       return result;
     } finally {
-      int lockNums = queryContext.getAcquiredLockNum();
-      if (queryContext != null && lockNums > 0) {
-        for (int i = 0; i < lockNums; i++) DataNodeSchemaCache.getInstance().releaseInsertLock();
+      if (queryContext != null && queryContext.getAcquiredLockNum() > 0) {
+        for (int i = 0, lockNums = queryContext.getAcquiredLockNum(); i < lockNums; i++) {
+          DataNodeSchemaCache.getInstance().releaseInsertLock();
+        }
       }
     }
   }
 
   /** This method is called by the write method. So it does not set the timeout parameter. */
-  public ExecutionResult execute(
+  public ExecutionResult executeForTreeModel(
       Statement statement,
       long queryId,
       SessionInfo session,
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    return execute(
+    return executeForTreeModel(
         statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
+  }
+
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long timeOut) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        ((queryContext, startTime) ->
+            createQueryExecutionForTreeModel(
+                statement,
+                queryContext,
+                partitionFetcher,
+                schemaFetcher,
+                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                startTime)));
+  }
+
+  private IQueryExecution createQueryExecutionForTreeModel(
+      Statement statement,
+      MPPQueryContext queryContext,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long timeOut,
+      long startTime) {
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    if (statement instanceof IConfigStatement) {
+      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
+      return new ConfigExecution(
+          queryContext,
+          statement.getType(),
+          executor,
+          statement.accept(new ConfigTaskVisitor(), queryContext));
+    }
+    TreeModelPlanner treeModelPlanner =
+        new TreeModelPlanner(
+            statement,
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            partitionFetcher,
+            schemaFetcher,
+            SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+    return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {

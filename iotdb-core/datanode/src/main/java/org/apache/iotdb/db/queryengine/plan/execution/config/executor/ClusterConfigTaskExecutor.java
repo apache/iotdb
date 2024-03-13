@@ -1938,7 +1938,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setViewExpressions(Collections.singletonList(viewExpression));
     ExecutionResult executionResult =
         Coordinator.getInstance()
-            .execute(
+            .executeForTreeModel(
                 createLogicalViewStatement,
                 0,
                 null,

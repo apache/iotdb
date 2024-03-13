@@ -20,9 +20,6 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -40,31 +37,15 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
-import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
-import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceContext;
-import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -77,7 +58,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -99,9 +79,9 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DIST
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
-  private static final Logger logger = LoggerFactory.getLogger(QueryExecution.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryExecution.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final int MAX_RETRY_COUNT = 3;
   private static final long RETRY_INTERVAL_IN_MS = 2000;
   private int retryCount = 0;
@@ -109,18 +89,11 @@ public class QueryExecution implements IQueryExecution {
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
 
-  private final Statement rawStatement;
-  private Analysis analysis;
+  private final IPlanner planner;
+
+  private IAnalysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
-
-  private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
-  private final ScheduledExecutorService scheduledExecutor;
-  // TODO need to use factory to decide standalone or cluster
-  private final IPartitionFetcher partitionFetcher;
-  // TODO need to use factory to decide standalone or cluster,
-  private final ISchemaFetcher schemaFetcher;
 
   // The result of QueryExecution will be written to the MPPDataExchangeManager in current Node.
   // We use this SourceHandle to fetch the TsBlock from it.
@@ -128,12 +101,6 @@ public class QueryExecution implements IQueryExecution {
 
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
-
-  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      syncInternalServiceClientManager;
-
-  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-      asyncInternalServiceClientManager;
 
   private final AtomicBoolean stopped;
 
@@ -148,28 +115,11 @@ public class QueryExecution implements IQueryExecution {
       PerformanceOverviewMetrics.getInstance();
 
   @SuppressWarnings("squid:S107")
-  public QueryExecution(
-      Statement statement,
-      MPPQueryContext context,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
-      ScheduledExecutorService scheduledExecutor,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
-      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-          asyncInternalServiceClientManager) {
-    this.rawStatement = statement;
-    this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
-    this.scheduledExecutor = scheduledExecutor;
+  public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
-    this.analysis = analyze(statement, context, partitionFetcher, schemaFetcher);
+    this.planner = planner;
+    this.analysis = analyze(context);
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-    this.partitionFetcher = partitionFetcher;
-    this.schemaFetcher = schemaFetcher;
-    this.syncInternalServiceClientManager = syncInternalServiceClientManager;
-    this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
@@ -184,7 +134,7 @@ public class QueryExecution implements IQueryExecution {
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              logger.debug("[ReleaseQueryResource] state is: {}", state);
+              LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
               Throwable cause = stateMachine.getFailureException();
               releaseResource(cause);
             }
@@ -203,7 +153,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
-      logger.debug("[SkipExecute]");
+      LOGGER.debug("[SkipExecute]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
@@ -255,60 +205,52 @@ public class QueryExecution implements IQueryExecution {
 
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
-      logger.warn("[ReachMaxRetryCount]");
+      LOGGER.warn("[ReachMaxRetryCount]");
       stateMachine.transitionToFailed();
       return getStatus();
     }
-    logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
+    LOGGER.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
-    logger.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
+    LOGGER.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
-      logger.warn("interrupted when waiting retry");
+      LOGGER.warn("interrupted when waiting retry");
       Thread.currentThread().interrupt();
     }
     retryCount++;
-    logger.info("[Retry] retry count is: {}", retryCount);
+    LOGGER.info("[Retry] retry count is: {}", retryCount);
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
-    partitionFetcher.invalidAllCache();
+    planner.invalidatePartitionCache();
     // clear runtime variables in MPPQueryContext
     context.prepareForRetry();
     // re-stop
     this.stopped.compareAndSet(true, false);
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
-    this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
+    this.analysis = analyze(context);
     // re-start the QueryExecution
     this.start();
     return getStatus();
   }
 
   private boolean skipExecute() {
-    return analysis.isFinishQueryAfterAnalyze()
-        || (context.getQueryType() == QueryType.READ && !analysis.hasDataSource());
+    return analysis.canSkipExecute(context);
   }
 
   private void constructResultForMemorySource() {
-    StatementMemorySource memorySource =
-        new StatementMemorySourceVisitor()
-            .process(analysis.getStatement(), new StatementMemorySourceContext(context, analysis));
-    this.resultHandle = new MemorySourceHandle(memorySource.getTsBlock());
-    this.analysis.setRespDatasetHeader(memorySource.getDatasetHeader());
+    TsBlock tsBlock = analysis.constructResultForMemorySource(context);
+    this.resultHandle = new MemorySourceHandle(tsBlock);
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
-  private Analysis analyze(
-      Statement statement,
-      MPPQueryContext context,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
+  private IAnalysis analyze(MPPQueryContext context) {
     final long startTime = System.nanoTime();
-    Analysis result;
+    IAnalysis result;
     try {
-      result = new Analyzer(context, partitionFetcher, schemaFetcher).analyze(statement);
+      result = planner.analyze(context);
     } finally {
       long analyzeCost = System.nanoTime() - startTime;
       context.setAnalyzeCost(analyzeCost);
@@ -319,45 +261,15 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    boolean isPipeEnrichedTsFileLoad =
-        rawStatement instanceof PipeEnrichedStatement
-            && ((PipeEnrichedStatement) rawStatement).getInnerStatement()
-                instanceof LoadTsFileStatement;
-    if (rawStatement instanceof LoadTsFileStatement || isPipeEnrichedTsFileLoad) {
-      this.scheduler =
-          new LoadTsFileScheduler(
-              distributedPlan,
-              context,
-              stateMachine,
-              syncInternalServiceClientManager,
-              partitionFetcher,
-              isPipeEnrichedTsFileLoad);
-      this.scheduler.start();
-      return;
-    }
-
-    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
-    this.scheduler =
-        new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            writeOperationExecutor,
-            scheduledExecutor,
-            syncInternalServiceClientManager,
-            asyncInternalServiceClientManager);
-    this.scheduler.start();
+    this.scheduler = planner.doSchedule(analysis, distributedPlan, context, stateMachine);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(System.nanoTime() - startTime);
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
-    LogicalPlanner planner = new LogicalPlanner(this.context);
-    this.logicalPlan = planner.plan(this.analysis);
-    if (isQuery() && logger.isDebugEnabled()) {
-      logger.debug(
+    this.logicalPlan = planner.doLogicalPlan(analysis, context);
+    if (isQuery() && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
           "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
     }
     // check timeout after building logical plan because it could be time-consuming in some cases.
@@ -367,10 +279,9 @@ public class QueryExecution implements IQueryExecution {
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
     long startTime = System.nanoTime();
-    DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
-    this.distributedPlan = planner.planFragments();
+    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan);
 
-    if (rawStatement.isQuery()) {
+    if (analysis.isQuery()) {
       long distributionPlanCost = System.nanoTime() - startTime;
       context.setDistributionPlanCost(distributionPlanCost);
       QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
@@ -378,12 +289,12 @@ public class QueryExecution implements IQueryExecution {
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
-    if (StatementType.SHOW_QUERIES.equals(rawStatement.getType())) {
+    if (analysis.needSetHighestPriority()) {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }
 
-    if (isQuery() && logger.isDebugEnabled()) {
-      logger.debug(
+    if (isQuery() && LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),
           printFragmentInstances(distributedPlan.getInstances()));
@@ -493,7 +404,7 @@ public class QueryExecution implements IQueryExecution {
     while (true) {
       try {
         if (resultHandle.isAborted()) {
-          logger.warn("[ResultHandleAborted]");
+          LOGGER.warn("[ResultHandleAborted]");
           stateMachine.transitionToAborted();
           if (stateMachine.getFailureStatus() != null) {
             throw new IoTDBException(
@@ -504,7 +415,7 @@ public class QueryExecution implements IQueryExecution {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          logger.debug("[ResultHandleFinished]");
+          LOGGER.debug("[ResultHandleFinished]");
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
@@ -695,41 +606,9 @@ public class QueryExecution implements IQueryExecution {
     // collect redirect info to client for writing
     // if 0.13_data_insert_adapt is true and ClientVersion is NOT V_1_0, stop returning redirect
     // info to client
-    if (analysis.getStatement() instanceof InsertBaseStatement
-        && !analysis.isFinishQueryAfterAnalyze()
-        && (!config.isEnable13DataInsertAdapt()
-            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
-      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
-      if (insertStatement instanceof InsertRowsStatement
-          || insertStatement instanceof InsertMultiTabletsStatement) {
-        // multiple devices
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
-          boolean needRedirect = false;
-          List<TSStatus> subStatus = new ArrayList<>();
-          for (TEndPoint endPoint : redirectNodeList) {
-            // redirect writing only if the redirectEndPoint is not the current node
-            if (!config.getAddressAndPort().equals(endPoint)) {
-              subStatus.add(
-                  RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(endPoint));
-              needRedirect = true;
-            } else {
-              subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-            }
-          }
-          if (needRedirect) {
-            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-            tsstatus.setSubStatus(subStatus);
-          }
-        }
-      } else {
-        // single device
-        TEndPoint redirectEndPoint = redirectNodeList.get(0);
-        // redirect writing only if the redirectEndPoint is not the current node
-        if (!config.getAddressAndPort().equals(redirectEndPoint)) {
-          tsstatus.setRedirectNode(redirectEndPoint);
-        }
-      }
+    if (!CONFIG.isEnable13DataInsertAdapt()
+        || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion())) {
+      planner.setRedirectInfo(analysis, CONFIG.getAddressAndPort(), tsstatus, statusCode);
     }
 
     return new ExecutionResult(context.getQueryId(), tsstatus);
@@ -737,10 +616,6 @@ public class QueryExecution implements IQueryExecution {
 
   public DistributedQueryPlan getDistributedPlan() {
     return distributedPlan;
-  }
-
-  public LogicalQueryPlan getLogicalPlan() {
-    return logicalPlan;
   }
 
   @Override
@@ -774,8 +649,8 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public Statement getStatement() {
-    return analysis.getStatement();
+  public String getStatementType() {
+    return analysis.getStatementType();
   }
 
   public MPPQueryContext getContext() {
@@ -787,6 +662,6 @@ public class QueryExecution implements IQueryExecution {
   }
 
   public ScheduledExecutorService getScheduledExecutor() {
-    return scheduledExecutor;
+    return planner.getScheduledExecutorService();
   }
 }

@@ -322,7 +322,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     final ExecutionResult result =
         Coordinator.getInstance()
-            .execute(
+            .executeForTreeModel(
                 statement,
                 SessionManager.getInstance().requestQueryId(),
                 new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
