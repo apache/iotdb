@@ -49,7 +49,7 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
 
   protected String dataBaseNameWithPathSeparator;
 
-  protected PartialPathLastObjectCache pathLastObjectCache;
+  protected PartialPathLastObjectCache<?> pathLastObjectCache;
 
   @Override
   public void customize(
@@ -73,8 +73,10 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
                 .getDatabaseName()
             + TsFileConstant.PATH_SEPARATOR;
 
-    pathLastObjectCache = new PartialPathLastObjectCache(memoryLimitInBytes);
+    pathLastObjectCache = initPathLastObjectCache(memoryLimitInBytes);
   }
+
+  protected abstract PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes);
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)

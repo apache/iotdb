@@ -30,7 +30,7 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PartialPathLastObjectCache implements AutoCloseable {
+public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastObjectCache.class);
 
@@ -38,7 +38,7 @@ public class PartialPathLastObjectCache implements AutoCloseable {
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
-  private final Cache<String, Object> partialPath2ObjectCache;
+  private final Cache<String, T> partialPath2ObjectCache;
 
   public PartialPathLastObjectCache(long memoryLimitInBytes) {
     allocatedMemoryBlock =
@@ -72,11 +72,11 @@ public class PartialPathLastObjectCache implements AutoCloseable {
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
                 // Here partial path is a part of full path adequate to inspect the last object
-                (Weigher<String, Object>)
+                (Weigher<String, T>)
                     (partialPath, object) -> {
                       final long weightInLong =
                           (long)
-                              ((MemUtils.getStringMem(partialPath) + Long.BYTES)
+                              ((MemUtils.getStringMem(partialPath) + calculateMemoryUsage(object))
                                   * memoryUsageCheatFactor.get());
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
@@ -87,13 +87,15 @@ public class PartialPathLastObjectCache implements AutoCloseable {
             .build();
   }
 
+  protected abstract long calculateMemoryUsage(T object);
+
   /////////////////////////// Getter & Setter ///////////////////////////
 
   public Object getPartialPathLastObject(String partialPath) {
     return partialPath2ObjectCache.getIfPresent(partialPath);
   }
 
-  public void setPartialPathLastObject(String partialPath, Object object) {
+  public void setPartialPathLastObject(String partialPath, T object) {
     partialPath2ObjectCache.put(partialPath, object);
   }
 

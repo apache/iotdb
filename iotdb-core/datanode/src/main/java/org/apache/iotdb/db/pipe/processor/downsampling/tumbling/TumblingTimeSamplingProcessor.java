@@ -47,7 +47,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // No need to validate.
+    // do nothing
   }
 
   @Override
@@ -72,8 +72,16 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
     intervalInCurrentPrecision =
         TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
+  }
 
-    pathLastObjectCache = new PartialPathLastObjectCache(memoryLimitInBytes);
+  @Override
+  protected PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes) {
+    return new PartialPathLastObjectCache<Long>(memoryLimitInBytes) {
+      @Override
+      protected long calculateMemoryUsage(Long object) {
+        return Long.BYTES;
+      }
+    };
   }
 
   @Override
