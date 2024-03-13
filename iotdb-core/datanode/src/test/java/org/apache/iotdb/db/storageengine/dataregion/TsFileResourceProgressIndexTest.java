@@ -98,14 +98,14 @@ public class TsFileResourceProgressIndexTest {
   public void testProgressIndexRecorder() {
     HybridProgressIndex hybridProgressIndex =
         new HybridProgressIndex(new SimpleProgressIndex(3, 4));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 3)));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
         new RecoverProgressIndex(2, new SimpleProgressIndex(4, 3)));
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
         new RecoverProgressIndex(3, new SimpleProgressIndex(5, 5)));
     Assert.assertTrue(hybridProgressIndex.isAfter(new SimpleProgressIndex(6, 5)));
     Assert.assertTrue(
@@ -186,7 +186,7 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
-    public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
+    public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
       if (!(progressIndex instanceof MockProgressIndex)) {
         throw new IllegalStateException("Mock update error.");
       }
@@ -216,7 +216,7 @@ public class TsFileResourceProgressIndexTest {
         new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
     final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex(ioTProgressIndex);
 
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
+    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(recoverProgressIndex);
 
     Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
     Assert.assertTrue(
@@ -320,13 +320,13 @@ public class TsFileResourceProgressIndexTest {
                       new IoTProgressIndex(
                           random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange)));
               if (random.nextInt(2) == 1) {
-                hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+                hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                     new SimpleProgressIndex(
                         random.nextInt(rebootTimesRange),
                         random.nextInt(memtableFlushOrderIdRange)));
               }
               if (random.nextInt(2) == 1) {
-                hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+                hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
                     new RecoverProgressIndex(
                         random.nextInt(dataNodeIdRange),
                         new SimpleProgressIndex(

@@ -150,6 +150,11 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ALTER_TIME_SERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("Clone of AlterTimeSeriesNode is not implemented");
   }
@@ -166,8 +171,8 @@ public class AlterTimeSeriesNode extends WritePlanNode {
 
   public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath path = null;
-    AlterType alterType = null;
+    PartialPath path;
+    AlterType alterType;
     String alias = null;
     Map<String, String> alterMap = null;
     Map<String, String> tagsMap = null;

@@ -54,6 +54,11 @@ public class FillNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.FILL;
+  }
+
+  @Override
   public PlanNode clone() {
     return new FillNode(getPlanNodeId(), fillDescriptor, scanOrder);
   }

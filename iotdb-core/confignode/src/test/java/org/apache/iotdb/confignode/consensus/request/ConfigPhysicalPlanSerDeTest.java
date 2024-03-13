@@ -34,12 +34,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -100,6 +102,11 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -137,8 +144,8 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
@@ -168,6 +175,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
@@ -839,7 +848,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void updateProcedureTest() throws IOException {
     // test procedure equals DeleteStorageGroupProcedure
-    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure();
+    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure(false);
     deleteDatabaseProcedure.setDeleteDatabaseSchema(new TDatabaseSchema("root.sg"));
     UpdateProcedurePlan updateProcedurePlan0 = new UpdateProcedurePlan();
     updateProcedurePlan0.setProcedure(deleteDatabaseProcedure);
@@ -887,7 +896,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void UpdateProcedurePlanTest() throws IOException {
     UpdateProcedurePlan req0 = new UpdateProcedurePlan();
-    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure();
+    DeleteDatabaseProcedure deleteDatabaseProcedure = new DeleteDatabaseProcedure(false);
     TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
     tDatabaseSchema.setName("root.sg");
     deleteDatabaseProcedure.setDeleteDatabaseSchema(tDatabaseSchema);
@@ -1113,8 +1122,8 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -1138,8 +1147,8 @@ public class ConfigPhysicalPlanSerDeTest {
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("batch.enable", "false");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -1212,6 +1221,8 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeHandleLeaderChangePlanTest() throws IOException {
     Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+    // Do not test SchemaRegion or ConfigRegion since the Type is always "DataRegion" when
+    // deserialized
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
@@ -1222,8 +1233,8 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeHandleLeaderChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
-        pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
-        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
+        pipeHandleLeaderChangePlan.getConsensusGroupId2NewLeaderIdMap(),
+        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewLeaderIdMap());
   }
 
   @Test
@@ -1233,30 +1244,24 @@ public class ConfigPhysicalPlanSerDeTest {
         new PipeStaticMeta(
             "pipeName",
             123L,
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("extractor-key", "extractor-value");
               }
             },
-            new HashMap() {
+            new HashMap<String, String>() {
               {
                 put("processor-key-1", "processor-value-1");
                 put("processor-key-2", "processor-value-2");
               }
             },
-            new HashMap() {});
+            new HashMap<String, String>() {});
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
-            new HashMap() {
+            new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(
-                        MinimumProgressIndex.INSTANCE, 789)); // TODO: replace with IoTConsensus
+                put(456, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 987));
+                put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 789));
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
@@ -1700,5 +1705,75 @@ public class ConfigPhysicalPlanSerDeTest {
         (UpdateClusterIdPlan)
             ConfigPhysicalPlan.Factory.create(updateClusterIdPlan.serializeToByteBuffer());
     Assert.assertEquals(updateClusterIdPlan, deserializedPlan);
+  }
+
+  @Test
+  public void pipeEnrichedPlanTest() throws IOException {
+    DatabaseSchemaPlan req0 =
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema()
+                .setName("sg")
+                .setTTL(Long.MAX_VALUE)
+                .setSchemaReplicationFactor(3)
+                .setDataReplicationFactor(3)
+                .setTimePartitionInterval(604800));
+    PipeEnrichedPlan plan = new PipeEnrichedPlan(req0);
+    PipeEnrichedPlan plan1 =
+        (PipeEnrichedPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, plan1);
+  }
+
+  @Test
+  public void pipeUnsetSchemaTemplatePlanTest() throws IOException {
+    PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan =
+        new PipeUnsetSchemaTemplatePlan("template0", "root.sg");
+    PipeUnsetSchemaTemplatePlan deserializedPlan =
+        (PipeUnsetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(pipeUnsetSchemaTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals(pipeUnsetSchemaTemplatePlan, deserializedPlan);
+  }
+
+  @Test
+  public void pipeDeleteTimeSeriesPlanTest() throws IOException, IllegalPathException {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+
+    PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan =
+        new PipeDeleteTimeSeriesPlan(patternTree.serialize());
+    PipeDeleteTimeSeriesPlan deserializedPlan =
+        (PipeDeleteTimeSeriesPlan)
+            ConfigPhysicalPlan.Factory.create(pipeDeleteTimeSeriesPlan.serializeToByteBuffer());
+    Assert.assertEquals(pipeDeleteTimeSeriesPlan, deserializedPlan);
+  }
+
+  @Test
+  public void pipeDeleteLogicalViewPlanTest() throws IOException, IllegalPathException {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+
+    PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan =
+        new PipeDeleteLogicalViewPlan(patternTree.serialize());
+    PipeDeleteLogicalViewPlan deserializedPlan =
+        (PipeDeleteLogicalViewPlan)
+            ConfigPhysicalPlan.Factory.create(pipeDeleteLogicalViewPlan.serializeToByteBuffer());
+    Assert.assertEquals(pipeDeleteLogicalViewPlan, deserializedPlan);
+  }
+
+  @Test
+  public void pipeDeactivateTemplatePlanTest() throws IllegalPathException, IOException {
+    Map<PartialPath, List<Template>> templateSetInfo = new HashMap<>();
+    templateSetInfo.put(
+        new PartialPath("root.**.s1"),
+        Collections.singletonList(newSchemaTemplate("template_name")));
+
+    PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan =
+        new PipeDeactivateTemplatePlan(templateSetInfo);
+    PipeDeactivateTemplatePlan deserializedPlan =
+        (PipeDeactivateTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals(pipeDeactivateTemplatePlan, deserializedPlan);
   }
 }

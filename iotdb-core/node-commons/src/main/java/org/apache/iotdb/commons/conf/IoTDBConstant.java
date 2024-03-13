@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
@@ -102,6 +103,7 @@ public class IoTDBConstant {
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
+  public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
   public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
   public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";

@@ -100,6 +100,16 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
   }
 
   @Override
+  public void addChild(PlanNode child) {
+    throw new UnsupportedOperationException("no child is allowed for AlignedSeriesScanNode");
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ALIGNED_SERIES_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new AlignedSeriesScanNode(
         getPlanNodeId(),

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothin
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 
-public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
+class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
 
   PipeDataRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);

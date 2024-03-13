@@ -43,6 +43,11 @@ public class DevicesCountNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEVICES_COUNT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DevicesCountNode(getPlanNodeId(), path, isPrefixPath, scope);
   }

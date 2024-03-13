@@ -20,8 +20,7 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.openjdk.jol.info.ClassLayout;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
@@ -33,7 +32,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 public class NullColumn implements Column {
 
   private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(BooleanColumn.class).instanceSize();
+      (int) RamUsageEstimator.shallowSizeOfInstance(BooleanColumn.class);
 
   private final int positionCount;
 

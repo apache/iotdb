@@ -81,6 +81,11 @@ public class TransformNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TRANSFORM;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, scanOrder);
   }

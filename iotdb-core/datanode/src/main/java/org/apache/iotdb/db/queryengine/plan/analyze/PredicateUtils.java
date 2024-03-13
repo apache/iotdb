@@ -172,6 +172,8 @@ public class PredicateUtils {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.CASE_WHEN_THEN)) {
       return new Pair<>(null, true);
+    } else if (ExpressionType.FUNCTION.equals(predicate.getExpressionType())) {
+      return new Pair<>(null, true);
     } else {
       throw new UnknownExpressionTypeException(predicate.getExpressionType());
     }

@@ -32,11 +32,11 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +50,9 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.airlift.slice.SizeOf.sizeOfCharArray;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
@@ -250,9 +250,9 @@ public class TimeSeriesMetadataCache {
 
   public static class TimeSeriesMetadataCacheKey {
 
-    private static final int INSTANCE_SIZE =
-        ClassLayout.parseClass(TimeSeriesMetadataCacheKey.class).instanceSize()
-            + 2 * ClassLayout.parseClass(String.class).instanceSize();
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(TimeSeriesMetadataCacheKey.class)
+            + 2 * RamUsageEstimator.shallowSizeOfInstance(String.class);
 
     private final int regionId;
     private final long timePartitionId;

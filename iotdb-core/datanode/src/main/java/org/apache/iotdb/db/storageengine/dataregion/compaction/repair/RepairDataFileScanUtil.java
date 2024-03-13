@@ -83,15 +83,15 @@ public class RepairDataFileScanUtil {
           checkNonAlignedDeviceSeries(reader, device);
         }
       }
-    } catch (IOException ioException) {
+    } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
+      this.hasUnsortedData = true;
+    } catch (Exception e) {
       // ignored the exception caused by thread interrupt
       if (Thread.currentThread().isInterrupted()) {
         return;
       }
-      logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), ioException);
+      logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
-    } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
-      this.hasUnsortedData = true;
     }
   }
 
