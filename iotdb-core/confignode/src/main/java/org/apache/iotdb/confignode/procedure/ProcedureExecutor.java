@@ -194,7 +194,7 @@ public class ProcedureExecutor<Env> {
 
     waitingList.forEach(
         procedure -> {
-          if (procedure.hasChildren()) {
+          if (!procedure.hasChildren()) {
             procedure.setState(ProcedureState.RUNNABLE);
             runnableList.add(procedure);
           } else {

@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -98,16 +97,20 @@ public class AddRegionPeerProcedure
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
-              LOGGER.warn("result is {}, try to resetPeerList to clean", result.getTaskStatus());
-              List<TDataNodeLocation> correctDataNodeLocations =
-                  env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
-                      .filter(
-                          tRegionReplicaSet ->
-                              tRegionReplicaSet.getRegionId().equals(consensusGroupId))
-                      .findAny()
-                      .get()
-                      .getDataNodeLocations();
-              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              LOGGER.warn(
+                  "result is {}, will use resetPeerList to clean in the future",
+                  result.getTaskStatus());
+              //              List<TDataNodeLocation> correctDataNodeLocations =
+              //
+              // env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+              //                      .filter(
+              //                          tRegionReplicaSet ->
+              //
+              // tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+              //                      .findAny()
+              //                      .get()
+              //                      .getDataNodeLocations();
+              //              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
               // should never happen
@@ -124,13 +127,20 @@ public class AddRegionPeerProcedure
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
           logBreakpoint(state.name());
+          LOGGER.info("AddRegionPeer state {} success", state);
+          LOGGER.info(
+              "AddRegionPeerProcedure success, region {} has been added to DataNode {}",
+              consensusGroupId.getId(),
+              destDataNode.getDataNodeId());
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
+      LOGGER.error("AddRegionPeer state {} failed", state, e);
       return Flow.NO_MORE_STATE;
     }
+    LOGGER.info("AddRegionPeer state {} complete", state);
     return Flow.HAS_MORE_STATE;
   }
 

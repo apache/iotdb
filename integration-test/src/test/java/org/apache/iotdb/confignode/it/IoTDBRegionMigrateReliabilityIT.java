@@ -23,19 +23,23 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
+import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,18 +52,19 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class IoTDBRegionMigrateReliabilityIT {
   private static final Logger LOGGER =
@@ -75,13 +80,13 @@ public class IoTDBRegionMigrateReliabilityIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws InterruptedException {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -89,12 +94,12 @@ public class IoTDBRegionMigrateReliabilityIT {
 
   @Test
   public void normal1C2DTest() throws Exception {
-    generalTest(1, 1, 1, 2, Collections.emptySet(), Collections.emptySet());
+    generalTest(1, 1, 1, 2, buildSet(), buildSet());
   }
 
   @Test
   public void normal3C3DTest() throws Exception {
-    generalTest(2, 3, 3, 3, Collections.emptySet(), Collections.emptySet());
+    generalTest(2, 3, 3, 3, buildSet(), buildSet());
   }
 
   // endregion
@@ -103,56 +108,103 @@ public class IoTDBRegionMigrateReliabilityIT {
   @Test
   public void cnCrashDuringPreCheck() throws Exception {
     generalTest(
-        1,
-        1,
-        1,
-        2,
-        Stream.of(RegionTransitionState.REGION_MIGRATE_PREPARE.toString())
-            .collect(Collectors.toSet()),
-        Collections.emptySet());
+        1, 1, 1, 2, buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE.toString()), buildSet());
   }
 
   @Test
   public void cnCrashDuringCreatePeer() throws Exception {
     generalTest(
-        1,
-        1,
-        1,
-        2,
-        Stream.of(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()).collect(Collectors.toSet()),
-        Collections.emptySet());
+        1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()), buildSet());
   }
 
   @Test
   public void cnCrashDuringDoAddPeer() throws Exception {
-    generalTest(
-        1,
-        1,
-        1,
-        2,
-        Stream.of(AddRegionPeerState.DO_ADD_REGION_PEER.toString()).collect(Collectors.toSet()),
-        Collections.emptySet());
+    generalTest(1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER.toString()), buildSet());
   }
 
   @Test
-  public void cnCrashDuring() throws Exception {
+  public void cnCrashDuringUpdateCache() throws Exception {
     generalTest(
         1,
         1,
         1,
         2,
-        Stream.of(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE.toString())
-            .collect(Collectors.toSet()),
-        Collections.emptySet());
+        buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE.toString()),
+        buildSet());
   }
 
-  // TODO: other cn crash test
+  @Test
+  public void cnCrashDuringChangeRegionLeader() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(RegionTransitionState.CHANGE_REGION_LEADER.toString()), buildSet());
+  }
+
+  @Test
+  public void cnCrashDuringRemoveRegionPeer() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER.toString()), buildSet());
+  }
+
+  @Test
+  public void cnCrashDuringDeleteOldRegionPeer() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER.toString()), buildSet());
+  }
+
+  @Test
+  public void cnCrashDuringRemoveRegionLocationCache() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE.toString()),
+        buildSet());
+  }
+
+  @Test
+  public void cnCrashTest() throws Exception {
+    KeySetView<String, Boolean> killConfigNodeKeywords = buildSet();
+    killConfigNodeKeywords.addAll(
+        Arrays.stream(AddRegionPeerState.values())
+            .map(Enum::toString)
+            .collect(Collectors.toList()));
+    killConfigNodeKeywords.addAll(
+        Arrays.stream(RemoveRegionPeerState.values())
+            .map(Enum::toString)
+            .collect(Collectors.toList()));
+    generalTest(1, 1, 1, 2, killConfigNodeKeywords, buildSet());
+  }
+
+  @Ignore
+  @Test
+  public void badKillPoint() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+  }
 
   // endregion
 
-  // region DataNode crash tests
+  // region coordinator DataNode crash tests
+
+  @Test
+  public void coordinatorCrashDuringRemovePeer() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.CoordinatorRemovePeer.name()));
+  }
 
   // endregion
+
+  // region original DataNode crash tests
+
+  @Test
+  public void originalCrashDuringRemovePeer() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalRemovePeer.name()));
+  }
+
+  @Test
+  public void originalCrashDuringDeleteLocalPeer() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
+  }
 
   // region Helpers
 
@@ -161,8 +213,8 @@ public class IoTDBRegionMigrateReliabilityIT {
       final int schemaReplicationFactor,
       final int configNodeNum,
       final int dataNodeNum,
-      Set<String> killConfigNodeKeywords,
-      Set<String> killDataNodeKeywords // TODO：此参数尚未生效
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords // TODO：此参数尚未生效
       ) throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -178,6 +230,11 @@ public class IoTDBRegionMigrateReliabilityIT {
         .forEach(
             configNodeWrapper ->
                 service.submit(() -> nodeLogKillPoint(configNodeWrapper, killConfigNodeKeywords)));
+    EnvFactory.getEnv()
+        .getDataNodeWrapperList()
+        .forEach(
+            dataNodeWrapper ->
+                service.submit(() -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords)));
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement();
@@ -203,7 +260,13 @@ public class IoTDBRegionMigrateReliabilityIT {
 
       awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
 
+      // make sure all kill points have been triggered
+      Assert.assertTrue(killConfigNodeKeywords.isEmpty());
+      Assert.assertTrue(killDataNodeKeywords.isEmpty());
+
       checkRegionFileClear(originalDataNode);
+    } catch (InconsistentDataException ignore) {
+
     }
     LOGGER.info("test pass");
   }
@@ -215,7 +278,7 @@ public class IoTDBRegionMigrateReliabilityIT {
    * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
    */
   private static void nodeLogKillPoint(
-      AbstractNodeWrapper nodeWrapper, Set<String> killNodeKeywords) {
+      AbstractNodeWrapper nodeWrapper, KeySetView<String, Boolean> killNodeKeywords) {
     if (killNodeKeywords.isEmpty()) {
       return;
     }
@@ -246,11 +309,11 @@ public class IoTDBRegionMigrateReliabilityIT {
                   .filter(keyword -> finalLine.contains("breakpoint:" + keyword))
                   .findAny();
           if (detectedKeyword.isPresent()) {
+            // each keyword only trigger once
+            killNodeKeywords.remove(detectedKeyword.get());
             // reboot the node
             nodeWrapper.stopForcibly();
             nodeWrapper.start();
-            // each keyword only trigger once
-            killNodeKeywords.remove(detectedKeyword.get());
           }
           if (killNodeKeywords.isEmpty()) {
             break;
@@ -303,6 +366,7 @@ public class IoTDBRegionMigrateReliabilityIT {
   private static void awaitUntilSuccess(
       Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
     AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
+    AtomicReference<Exception> lastException = new AtomicReference<>();
     try {
       Awaitility.await()
           .atMost(1, TimeUnit.MINUTES)
@@ -316,11 +380,17 @@ public class IoTDBRegionMigrateReliabilityIT {
                   return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
                 } catch (Exception e) {
                   // Any exception can be ignored
+                  lastException.set(e);
                   return false;
                 }
               });
     } catch (ConditionTimeoutException e) {
-      //      Set<Integer> expectation = new Set<>(lastTimeDataNodes);
+      if (lastTimeDataNodes.get() == null) {
+        LOGGER.error(
+            "maybe show regions fail, lastTimeDataNodes is null, last Exception:",
+            lastException.get());
+        throw e;
+      }
       String actualSetStr = lastTimeDataNodes.get().toString();
       lastTimeDataNodes.get().remove(originalDataNode);
       lastTimeDataNodes.get().add(destDataNode);
@@ -346,6 +416,12 @@ public class IoTDBRegionMigrateReliabilityIT {
                 + "data_region");
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+  }
+
+  private static KeySetView<String, Boolean> buildSet(String... keywords) {
+    KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
+    result.addAll(Arrays.asList(keywords));
+    return result;
   }
 
   // endregion

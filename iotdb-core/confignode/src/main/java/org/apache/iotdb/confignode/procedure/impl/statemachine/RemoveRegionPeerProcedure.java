@@ -109,14 +109,20 @@ public class RemoveRegionPeerProcedure
         case REMOVE_REGION_LOCATION_CACHE:
           handler.removeRegionLocation(consensusGroupId, targetDataNode);
           logBreakpoint(state.name());
+          LOGGER.info("RemoveRegionPeer state {} success", state);
+          LOGGER.info(
+              "RemoveRegionPeerProcedure success, region {} has been removed from DataNode {}",
+              consensusGroupId.getId(),
+              targetDataNode.getDataNodeId());
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("RemoveRegionPeer fail", e);
+      LOGGER.error("RemoveRegionPeer state {} failed", state, e);
       return Flow.NO_MORE_STATE;
     }
+    LOGGER.info("RemoveRegionPeer state {} success", state);
     return Flow.HAS_MORE_STATE;
   }
 

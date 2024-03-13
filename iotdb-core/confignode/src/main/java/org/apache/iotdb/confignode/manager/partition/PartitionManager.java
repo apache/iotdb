@@ -733,6 +733,11 @@ public class PartitionManager {
     return partitionInfo.getReplicaSets(database, regionGroupIds);
   }
 
+  public boolean isDataNodeContainsRegion(int dataNodeId, TConsensusGroupId regionId) {
+    return getAllReplicaSets(dataNodeId).stream()
+        .anyMatch(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(regionId));
+  }
+
   /**
    * Only leader use this interface.
    *

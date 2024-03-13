@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -126,6 +128,7 @@ public class RegionMigrateService implements IService {
       }
       regionMigratePool.submit(
           new RemoveRegionPeerTask(req.getTaskId(), req.getRegionId(), req.getDestNode()));
+      FileUtils.logBreakpoint(DataNodeKillPoints.CoordinatorRemovePeer.name());
     } catch (Exception e) {
       LOGGER.error(
           "{}, Submit RemoveRegionPeer task error for Region: {}",

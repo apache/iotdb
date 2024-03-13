@@ -268,22 +268,28 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   private void recordRegionPriorityMap(
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
-    LOGGER.info("[RegionPriority] RegionPriorityMap: ");
+    LOGGER.info("[RegionPriority] RegionPriorityMap: "); // TODO: multi line log is bad
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
-      if (!Objects.equals(
+      if (!Objects.equals( // TODO: bad comparison
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
-        LOGGER.info(
-            "[RegionPriority]\t {}: {}->{}",
-            regionPriorityEntry.getKey(),
-            regionPriorityEntry.getValue().getLeft() == null
-                ? "null"
-                : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
-                    .map(TDataNodeLocation::getDataNodeId)
-                    .collect(Collectors.toList()),
-            regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-                .map(TDataNodeLocation::getDataNodeId)
-                .collect(Collectors.toList()));
+        try {
+          LOGGER.info(
+              "[RegionPriority]\t {}: {}->{}",
+              regionPriorityEntry.getKey(),
+              regionPriorityEntry.getValue().getLeft() == null
+                  ? "null"
+                  : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
+                      .map(TDataNodeLocation::getDataNodeId)
+                      .collect(Collectors.toList()),
+              regionPriorityEntry.getValue().getRight().getDataNodeLocations() == null
+                  ? "null"
+                  : regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                      .map(TDataNodeLocation::getDataNodeId)
+                      .collect(Collectors.toList()));
+        } catch (Exception e) {
+          LOGGER.error("unexcepted exception", e);
+        }
       }
     }
   }

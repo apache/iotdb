@@ -80,7 +80,8 @@ public class RegionMaintainHandler {
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
-  private static final long DATANODE_MAX_DISCONNECTION_MS = 1000;
+  // TODO: 需要明确DataNode失联多久认为执行失败
+  private static final long DATANODE_MAX_DISCONNECTION_MS = 10000;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 

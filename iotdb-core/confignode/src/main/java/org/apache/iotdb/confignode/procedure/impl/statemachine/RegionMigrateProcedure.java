@@ -39,8 +39,6 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.FileUtils.logBreakpoint;
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
-import static org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler.getIdWithRpcEndpoint;
 
 /** Region migrate procedure */
 public class RegionMigrateProcedure
@@ -99,10 +97,9 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.CHECK_ADD_REGION_PEER);
           break;
         case CHECK_ADD_REGION_PEER:
-          if (env.getConfigManager().getPartitionManager()
-              .getAllReplicaSets(destDataNode.getDataNodeId()).stream()
-              .noneMatch(
-                  tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))) {
+          if (!env.getConfigManager()
+              .getPartitionManager()
+              .isDataNodeContainsRegion(destDataNode.getDataNodeId(), consensusGroupId)) {
             LOGGER.warn(
                 "sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue");
             return Flow.NO_MORE_STATE;
@@ -120,38 +117,30 @@ public class RegionMigrateProcedure
               new RemoveRegionPeerProcedure(
                   consensusGroupId, coordinatorForRemovePeer, originalDataNode));
           setNextState(RegionTransitionState.CHECK_REMOVE_REGION_PEER);
+          break;
         case CHECK_REMOVE_REGION_PEER:
-          // TODO：检查是否remove成功
+          if (env.getConfigManager()
+              .getPartitionManager()
+              .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
+            LOGGER.warn(
+                "RegionMigrateProcedure success, but you may need to manually clean the old region to make everything works fine");
+          } else {
+            LOGGER.info(
+                "RegionMigrateProcedure success, region {} has been migrated from DataNode {} to {}",
+                consensusGroupId.getId(),
+                originalDataNode.getDataNodeId(),
+                destDataNode.getDataNodeId());
+          }
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error(
-          "{}, Meets error in region migrate state, "
-              + "please do the rollback operation yourself manually according to the error message!!! "
-              + "error state: {}, migrateResult: {}",
-          REGION_MIGRATE_PROCESS,
-          state,
-          migrateResult, e);
-      if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Region migrate failed at state: " + state));
-      } else {
-        LOGGER.error(
-            "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
-            REGION_MIGRATE_PROCESS,
-            state,
-            getIdWithRpcEndpoint(originalDataNode));
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  "Procedure retried failed exceed 5 times, state stuck at " + state));
-        }
-
-        // meets exception in region migrate process terminate the process
-        return Flow.NO_MORE_STATE;
-      }
+      LOGGER.error("RegionMigrateProcedure state {} fail", state, e);
+      // meets exception in region migrate process terminate the process
+      return Flow.NO_MORE_STATE;
     }
+    LOGGER.info("RegionMigrateProcedure state {} complete", state);
     return Flow.HAS_MORE_STATE;
   }
 
