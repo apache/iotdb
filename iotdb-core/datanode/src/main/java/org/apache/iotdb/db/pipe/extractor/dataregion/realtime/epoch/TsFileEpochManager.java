@@ -64,7 +64,7 @@ public class TsFileEpochManager {
         epoch,
         resource.getDevices().stream()
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
-        event.getPattern());
+        event.getPipePattern());
   }
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
@@ -76,6 +76,6 @@ public class TsFileEpochManager {
         event,
         epoch,
         Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
-        event.getPattern());
+        event.getPipePattern());
   }
 }
