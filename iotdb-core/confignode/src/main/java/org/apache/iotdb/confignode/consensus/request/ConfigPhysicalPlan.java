@@ -454,6 +454,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowSubscription:
           plan = new ShowSubscriptionPlan();
+          break;
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();
           break;

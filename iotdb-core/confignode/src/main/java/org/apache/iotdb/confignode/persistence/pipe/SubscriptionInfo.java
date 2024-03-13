@@ -88,7 +88,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     subscriptionInfoLock.writeLock().unlock();
   }
 
-  /////////////////////////////// Topic Validator ///////////////////////////////
+  /////////////////////////////// Topic ///////////////////////////////
   public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq) throws PipeException {
     acquireReadLock();
     try {

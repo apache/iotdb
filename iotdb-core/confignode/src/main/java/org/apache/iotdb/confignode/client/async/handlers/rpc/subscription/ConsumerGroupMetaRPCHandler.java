@@ -83,7 +83,7 @@ public class ConsumerGroupMetaRPCHandler
     responseMap.put(
         requestId,
         new TPushConsumerGroupMetaResp(
-            RpcUtils.getStatus(TSStatusCode.PIPE_PUSH_META_ERROR, errorMsg)));
+            RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg)));
 
     // Always CountDown
     countDownLatch.countDown();

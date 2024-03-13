@@ -19,12 +19,27 @@
 
 package org.apache.iotdb.db.subscription.agent.topic;
 
+import org.apache.iotdb.commons.subscription.config.TopicConfig;
+import org.apache.iotdb.commons.subscription.config.TopicConfigValidator;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.TopicMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.Map;
+
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.optionsAreAllLegal;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.END_TIME_KEY;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.FORMAT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.FORMAT_KEY;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.PATH_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.PATH_FORMAT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.PATH_FORMAT_KEY;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.PATH_KEY;
+import static org.apache.iotdb.commons.subscription.config.TopicConstant.START_TIME_KEY;
 
 public class TopicDataNodeAgent {
 
@@ -199,5 +214,46 @@ public class TopicDataNodeAgent {
     }
 
     return true;
+  }
+
+  public void validate(Map<String, String> topicAttributes) {
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    try {
+      TopicConfigValidator validator = new TopicConfigValidator(topicConfig);
+      validator
+          .validate(
+              args -> optionsAreAllLegal((String) args),
+              "The 'path' string contains illegal path.",
+              validator
+                  .getParameters()
+                  .getStringOrDefault(Collections.singletonList(PATH_KEY), PATH_DEFAULT_VALUE))
+          .validate(
+              args -> optionsAreAllLegal((String) args),
+              "The 'path.format' string contains illegal path.",
+              validator
+                  .getParameters()
+                  .getStringOrDefault(
+                      Collections.singletonList(PATH_FORMAT_KEY), PATH_FORMAT_DEFAULT_VALUE))
+          .validate(
+              args -> optionsAreAllLegal((String) args),
+              "The 'start-time' string contains illegal path.",
+              validator
+                  .getParameters()
+                  .getLongOrDefault(Collections.singletonList(START_TIME_KEY), Long.MIN_VALUE))
+          .validate(
+              args -> optionsAreAllLegal((String) args),
+              "The 'end-time' string contains illegal path.",
+              validator
+                  .getParameters()
+                  .getLongOrDefault(Collections.singletonList(END_TIME_KEY), Long.MIN_VALUE))
+          .validate(
+              args -> optionsAreAllLegal((String) args),
+              "The 'format' string contains illegal path.",
+              validator
+                  .getParameters()
+                  .getStringOrDefault(Collections.singletonList(FORMAT_KEY), FORMAT_DEFAULT_VALUE));
+    } catch (Exception e) {
+      LOGGER.warn("Failed to validate topic attributes", e);
+    }
   }
 }

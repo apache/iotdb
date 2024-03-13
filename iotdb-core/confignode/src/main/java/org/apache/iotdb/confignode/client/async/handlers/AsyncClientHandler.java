@@ -30,11 +30,15 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -212,14 +216,28 @@ public class AsyncClientHandler<Q, R> {
             countDownLatch);
       case PIPE_PUSH_ALL_META:
       case PIPE_PUSH_SINGLE_META:
-      case TOPIC_PUSH_SINGLE_META:
-      case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TPushPipeMetaResp>) responseMap,
+            countDownLatch);
+      case TOPIC_PUSH_SINGLE_META:
+        return new TopicMetaRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushTopicMetaResp>) responseMap,
+            countDownLatch);
+      case CONSUMER_GROUP_PUSH_SINGLE_META:
+        return new ConsumerGroupMetaRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushConsumerGroupMetaResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
