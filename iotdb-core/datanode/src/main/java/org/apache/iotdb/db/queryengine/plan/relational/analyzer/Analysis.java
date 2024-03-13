@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
@@ -42,6 +46,7 @@ import org.apache.iotdb.db.relational.sql.tree.Relation;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -77,7 +82,7 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 
-public class Analysis {
+public class Analysis implements IAnalysis {
 
   @Nullable private final Statement root;
 
@@ -535,6 +540,46 @@ public class Analysis {
 
   public boolean isAliased(Relation relation) {
     return aliasedRelations.contains(NodeRef.of(relation));
+  }
+
+  @Override
+  public boolean isFailed() {
+    return false;
+  }
+
+  @Override
+  public TSStatus getFailStatus() {
+    return null;
+  }
+
+  @Override
+  public boolean canSkipExecute(MPPQueryContext context) {
+    return false;
+  }
+
+  @Override
+  public TsBlock constructResultForMemorySource(MPPQueryContext context) {
+    return null;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return false;
+  }
+
+  @Override
+  public boolean needSetHighestPriority() {
+    return false;
+  }
+
+  @Override
+  public DatasetHeader getRespDatasetHeader() {
+    return null;
+  }
+
+  @Override
+  public String getStatementType() {
+    return null;
   }
 
   public static final class AccessControlInfo {
