@@ -290,6 +290,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeNameList);
+        authorType, userName, roleName, password, newPassword, permissions, nodeNameList, grantOpt);
   }
 }
