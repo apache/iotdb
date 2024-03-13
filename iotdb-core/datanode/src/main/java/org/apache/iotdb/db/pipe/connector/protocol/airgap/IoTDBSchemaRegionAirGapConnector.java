@@ -72,10 +72,10 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   private void doTransfer(
       Socket socket, PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
-    final File mlogFile = pipeSchemaRegionSnapshotEvent.getMLogFile();
+    final File mlogFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tLogFile = pipeSchemaRegionSnapshotEvent.getTLogFile();
 
-    // 1. Transfer mLogFile, and tLog file if exists
+    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
     transferFilePieces(mlogFile, socket, true);
     if (Objects.nonNull(tLogFile)) {
       transferFilePieces(tLogFile, socket, true);

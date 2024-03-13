@@ -36,7 +36,7 @@ import java.util.Objects;
 
 public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
-  private String mLogPath;
+  private String mTreeSnapshotPath;
   private String tLogPath;
   private String databaseName;
 
@@ -45,25 +45,26 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
     this(null, null, null);
   }
 
-  public PipeSchemaRegionSnapshotEvent(String mLogPath, String tLogPath, String databaseName) {
-    this(mLogPath, tLogPath, databaseName, null, null, null);
+  public PipeSchemaRegionSnapshotEvent(
+      String mTreeSnapshotPath, String tLogPath, String databaseName) {
+    this(mTreeSnapshotPath, tLogPath, databaseName, null, null, null);
   }
 
   public PipeSchemaRegionSnapshotEvent(
-      String mLogPath,
+      String mTreeSnapshotPath,
       String tLogPath,
       String databaseName,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
       PipePattern pattern) {
     super(pipeName, pipeTaskMeta, pattern, PipeResourceManager.snapshot());
-    this.mLogPath = mLogPath;
+    this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tLogPath = Objects.nonNull(tLogPath) ? tLogPath : "";
     this.databaseName = databaseName;
   }
 
-  public File getMLogFile() {
-    return new File(mLogPath);
+  public File getMTreeSnapshotFile() {
+    return new File(mTreeSnapshotPath);
   }
 
   public File getTLogFile() {
@@ -77,14 +78,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      mLogPath = resourceManager.increaseSnapshotReference(mLogPath);
+      mTreeSnapshotPath = resourceManager.increaseSnapshotReference(mTreeSnapshotPath);
       tLogPath = resourceManager.increaseSnapshotReference(tLogPath);
       return true;
     } catch (IOException e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for snapshot %s or %s error. Holder Message: %s",
-              mLogPath, tLogPath, holderMessage),
+              "Increase reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
+              mTreeSnapshotPath, tLogPath, holderMessage),
           e);
       return false;
     }
@@ -93,14 +94,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      resourceManager.decreaseSnapshotReference(mLogPath);
+      resourceManager.decreaseSnapshotReference(mTreeSnapshotPath);
       resourceManager.decreaseSnapshotReference(tLogPath);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
-              "Decrease reference count for snapshot %s or %s error. Holder Message: %s",
-              mLogPath, tLogPath, holderMessage),
+              "Decrease reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
+              mTreeSnapshotPath, tLogPath, holderMessage),
           e);
       return false;
     }
@@ -114,7 +115,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
       long startTime,
       long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
-        mLogPath, tLogPath, databaseName, pipeName, pipeTaskMeta, pattern);
+        mTreeSnapshotPath, tLogPath, databaseName, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
@@ -123,11 +124,11 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         ByteBuffer.allocate(
             Byte.BYTES
                 + 3 * Integer.BYTES
-                + mLogPath.getBytes().length
+                + mTreeSnapshotPath.getBytes().length
                 + tLogPath.getBytes().length
                 + databaseName.getBytes().length);
     ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_SNAPSHOT.getType(), result);
-    ReadWriteIOUtils.write(mLogPath, result);
+    ReadWriteIOUtils.write(mTreeSnapshotPath, result);
     ReadWriteIOUtils.write(tLogPath, result);
     ReadWriteIOUtils.write(databaseName, result);
     return result;
@@ -135,7 +136,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
-    mLogPath = ReadWriteIOUtils.readString(buffer);
+    mTreeSnapshotPath = ReadWriteIOUtils.readString(buffer);
     tLogPath = ReadWriteIOUtils.readString(buffer);
     databaseName = ReadWriteIOUtils.readString(buffer);
   }

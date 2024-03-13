@@ -315,13 +315,13 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotSealReq() throws IOException {
-    String mLogName = "mlog.txt";
+    String mTreeSnapshotName = "mtree.snapshot";
     String tLogName = "tlog.txt";
     String databaseName = "root.db";
 
     PipeTransferSchemaSnapshotSealReq req =
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            mLogName, 100, tLogName, 10, databaseName);
+            mTreeSnapshotName, 100, tLogName, 10, databaseName);
     PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 

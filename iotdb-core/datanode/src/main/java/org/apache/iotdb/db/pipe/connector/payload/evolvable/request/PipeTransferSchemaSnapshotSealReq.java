@@ -44,7 +44,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      String mLogName, long mLogLength, String tLogName, long tLogLength, String databaseName)
+      String mTreeSnapshotName,
+      long mTreeSnapshotLength,
+      String tLogName,
+      long tLogLength,
+      String databaseName)
       throws IOException {
     Map<String, String> parameters = new HashMap<>();
     parameters.put("database", databaseName);
@@ -52,11 +56,11 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
         new PipeTransferSchemaSnapshotSealReq()
             .convertToTPipeTransferReq(
                 Objects.nonNull(tLogName)
-                    ? Arrays.asList(mLogName, tLogName)
-                    : Collections.singletonList(mLogName),
+                    ? Arrays.asList(mTreeSnapshotName, tLogName)
+                    : Collections.singletonList(mTreeSnapshotName),
                 Objects.nonNull(tLogName)
-                    ? Arrays.asList(mLogLength, tLogLength)
-                    : Collections.singletonList(mLogLength),
+                    ? Arrays.asList(mTreeSnapshotLength, tLogLength)
+                    : Collections.singletonList(mTreeSnapshotLength),
                 parameters);
   }
 

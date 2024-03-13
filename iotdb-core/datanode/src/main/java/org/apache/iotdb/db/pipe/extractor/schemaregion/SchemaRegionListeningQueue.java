@@ -69,11 +69,11 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
   }
 
   public synchronized void tryListenToSnapshot(
-      String mLogPath, String tLogPath, String databaseName) {
+      String mTreeSnapshotPath, String tLogPath, String databaseName) {
     tryListen(
-        Objects.nonNull(mLogPath)
+        Objects.nonNull(mTreeSnapshotPath)
             ? Collections.singletonList(
-                new PipeSchemaRegionSnapshotEvent(mLogPath, tLogPath, databaseName))
+                new PipeSchemaRegionSnapshotEvent(mTreeSnapshotPath, tLogPath, databaseName))
             : Collections.emptyList());
   }
 

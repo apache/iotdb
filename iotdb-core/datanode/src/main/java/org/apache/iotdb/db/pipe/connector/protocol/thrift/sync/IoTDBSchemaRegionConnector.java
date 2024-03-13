@@ -69,13 +69,13 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
-    final File mlogFile = snapshotEvent.getMLogFile();
+    final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tLogFile = snapshotEvent.getTLogFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
-    // 1. Transfer mLogFile, and tLog file if exists
-    transferFilePieces(mlogFile, clientAndStatus, true);
+    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
+    transferFilePieces(mTreeSnapshotFile, clientAndStatus, true);
     if (Objects.nonNull(tLogFile)) {
       transferFilePieces(tLogFile, clientAndStatus, true);
     }
@@ -86,8 +86,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      mlogFile.getName(),
-                      mlogFile.length(),
+                      mTreeSnapshotFile.getName(),
+                      mTreeSnapshotFile.length(),
                       Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
                       Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
                       snapshotEvent.getDatabaseName()));
@@ -96,16 +96,17 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       throw new PipeConnectionException(
           String.format(
               "Network error when seal snapshot file %s and %s, because %s.",
-              mlogFile, tLogFile, e.getMessage()),
+              mTreeSnapshotFile, tLogFile, e.getMessage()),
           e);
     }
 
     receiverStatusHandler.handle(
         resp.getStatus(),
         String.format(
-            "Seal file %s and %s error, result status %s.", mlogFile, tLogFile, resp.getStatus()),
+            "Seal file %s and %s error, result status %s.",
+            mTreeSnapshotFile, tLogFile, resp.getStatus()),
         snapshotEvent.toString());
 
-    LOGGER.info("Successfully transferred file {} and {}.", mlogFile, tLogFile);
+    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tLogFile);
   }
 }
