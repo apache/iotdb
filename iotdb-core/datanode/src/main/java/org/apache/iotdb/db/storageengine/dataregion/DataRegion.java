@@ -2356,19 +2356,21 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileProcessor.close();
       if (isEmptyFile) {
         tsFileProcessor.getTsFileResource().remove();
-        tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else if (isValidateTsFileFailed) {
         String tsFilePath = tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath();
         renameAndHandleError(tsFilePath, tsFilePath + BROKEN_SUFFIX);
         renameAndHandleError(
             tsFilePath + RESOURCE_SUFFIX, tsFilePath + RESOURCE_SUFFIX + BROKEN_SUFFIX);
-        tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else {
         tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
       }
     } finally {
       closeQueryLock.writeLock().unlock();
     }
+    if (isEmptyFile || isValidateTsFileFailed) {
+      tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
+    }
+
     // closingSequenceTsFileProcessor is a thread safety class.
 
     synchronized (closeStorageGroupCondition) {
