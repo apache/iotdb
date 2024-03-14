@@ -62,7 +62,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testDownSamplingProcessor() throws Exception {
+  public void testTumblingTimeSamplingProcessor() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -87,8 +87,8 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("source.realtime.mode", "log");
 
-      processorAttributes.put("processor", "down-sampling-processor");
-      processorAttributes.put("processor.down-sampling.interval-seconds", "20");
+      processorAttributes.put("processor", "tumbling-time-sampling-processor");
+      processorAttributes.put("processor.tumbling-time.interval-seconds", "20");
       processorAttributes.put("processor.down-sampling.split-file", "true");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");

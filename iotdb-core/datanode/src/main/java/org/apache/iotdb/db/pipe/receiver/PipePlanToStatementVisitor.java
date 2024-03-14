@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.receiver;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -46,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -133,18 +131,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
           Objects.nonNull(group.getAttributesList())
               ? group.getAttributesList()
               : new ArrayList<>());
-      try {
-        if (Objects.nonNull(group.getMeasurements())) {
-          for (int i = 0; i < group.getMeasurements().size(); ++i) {
-            paths.add(
-                new PartialPath(path2Group.getKey().getFullPath(), group.getMeasurements().get(i)));
-          }
+      if (Objects.nonNull(group.getMeasurements())) {
+        for (int i = 0; i < group.getMeasurements().size(); ++i) {
+          paths.add(path2Group.getKey().concatNode(group.getMeasurements().get(i)));
         }
-      } catch (IllegalPathException e) {
-        LOGGER.error(
-            "failed to create multi timeseries statement because of {}", e.getMessage(), e);
-        throw new PipeException(
-            "failed to create multi timeseries statement because of " + e.getMessage(), e);
       }
     }
 

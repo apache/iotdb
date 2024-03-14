@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -53,11 +54,15 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
+        List<DataRegion> dataRegionsToScheduleCompaction = new ArrayList<>();
         for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
           if (i % workerNum != workerId) {
             continue;
           }
-          DataRegion dataRegion = dataRegionListSnapshot.get(i);
+          dataRegionsToScheduleCompaction.add(dataRegionListSnapshot.get(i));
+        }
+        Collections.shuffle(dataRegionsToScheduleCompaction);
+        for (DataRegion dataRegion : dataRegionsToScheduleCompaction) {
           if (Thread.interrupted()) {
             throw new InterruptedException();
           }

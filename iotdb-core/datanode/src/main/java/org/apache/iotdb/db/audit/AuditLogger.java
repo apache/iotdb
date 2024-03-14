@@ -115,7 +115,7 @@ public class AuditLogger {
     if (auditLogOperationList.contains(operation)) {
       if (auditLogStorageList.contains(AuditLogStorage.IOTDB)) {
         try {
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               generateInsertStatement(log, address, username),
               SESSION_MANAGER.requestQueryId(),
               sessionInfo,

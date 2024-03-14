@@ -184,7 +184,11 @@ public class CompactionScheduler {
     return trySubmitCount;
   }
 
-  private static boolean canAddTaskToWaitingQueue(AbstractCompactionTask task) {
+  private static boolean canAddTaskToWaitingQueue(AbstractCompactionTask task)
+      throws InterruptedException {
+    if (Thread.interrupted()) {
+      throw new InterruptedException();
+    }
     // check file num
     long fileNumLimitForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
     if (task.getProcessedFileNum() > fileNumLimitForCompaction) {

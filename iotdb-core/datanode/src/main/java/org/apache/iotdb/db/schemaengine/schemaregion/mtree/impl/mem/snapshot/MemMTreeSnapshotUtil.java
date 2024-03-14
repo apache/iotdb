@@ -357,7 +357,7 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static class MNodeDeserializer {
+  public static class MNodeDeserializer {
 
     public IMemMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);

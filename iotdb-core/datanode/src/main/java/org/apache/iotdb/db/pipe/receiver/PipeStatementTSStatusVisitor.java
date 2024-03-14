@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTime
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -153,6 +154,22 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (TSStatus status : context.getSubStatus()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+          return visitStatement(createLogicalViewStatement, context);
+        }
+      }
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitCreateLogicalView(createLogicalViewStatement, context);
   }
 
   @Override

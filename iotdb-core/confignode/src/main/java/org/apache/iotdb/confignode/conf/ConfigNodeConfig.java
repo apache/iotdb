@@ -135,11 +135,11 @@ public class ConfigNodeConfig {
 
   /** System directory, including version file for each database and metadata. */
   private String systemDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Consensus directory, storage consensus protocol logs. */
   private String consensusDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
+      IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.CONSENSUS_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files. */
   private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -318,6 +318,7 @@ public class ConfigNodeConfig {
     triggerTemporaryLibDir = addHomeDir(triggerTemporaryLibDir);
     pipeDir = addHomeDir(pipeDir);
     pipeTemporaryLibDir = addHomeDir(pipeTemporaryLibDir);
+    pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
   private String addHomeDir(String dir) {
