@@ -58,12 +58,12 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> (double) x >= 0,
-            "The param 'frequency' must greater than 0.",
+            x -> (double) x > 0,
+            "The param 'frequency' must > 0.",
             validator.getParameters().getDoubleOrDefault(FREQUENCY, 0))
         .validate(
             x -> (int) x >= 1,
-            "The param 'amplification' must greater than 1.",
+            "The param 'amplification' must >= 1.",
             validator.getParameters().getIntOrDefault(AMPLIFICATION, 1));
   }
 
