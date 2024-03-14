@@ -1792,7 +1792,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
-              tsFileManager.getTsFileList(true, timePartitions),
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
               pathList,
               singleDeviceId,
               context,
@@ -1800,7 +1800,7 @@ public class DataRegion implements IDataRegionForQuery {
               true);
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
-              tsFileManager.getTsFileList(false, timePartitions),
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
               pathList,
               singleDeviceId,
               context,

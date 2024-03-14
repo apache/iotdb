@@ -38,12 +38,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -128,8 +128,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
-    } catch (IOException e) {
-      if (e instanceof ClosedByInterruptException || Thread.interrupted()) {
+    } catch (Exception e) {
+      if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
         Thread.currentThread().interrupt();
         return new CrossCompactionTaskResource();
       }

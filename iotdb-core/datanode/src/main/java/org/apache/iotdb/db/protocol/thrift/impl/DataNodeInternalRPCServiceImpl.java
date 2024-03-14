@@ -1099,7 +1099,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
       // Create and cache dataset
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               s,
               queryId,
               SESSION_MANAGER.getSessionInfo(session),

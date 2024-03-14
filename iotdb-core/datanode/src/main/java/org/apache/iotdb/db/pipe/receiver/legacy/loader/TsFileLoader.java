@@ -63,7 +63,7 @@ public class TsFileLoader implements ILoader {
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
-              .execute(
+              .executeForTreeModel(
                   statement,
                   queryId,
                   new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),

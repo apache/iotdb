@@ -17,51 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution;
+package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.nio.ByteBuffer;
-import java.util.Optional;
+public interface IAnalysis {
 
-public interface IQueryExecution {
+  boolean isFailed();
 
-  void start();
+  TSStatus getFailStatus();
 
-  void stop(Throwable t);
+  boolean canSkipExecute(MPPQueryContext context);
 
-  void stopAndCleanup();
-
-  void stopAndCleanup(Throwable t);
-
-  void cancel();
-
-  ExecutionResult getStatus();
-
-  Optional<TsBlock> getBatchResult() throws IoTDBException;
-
-  Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
-
-  boolean hasNextResult();
-
-  int getOutputValueColumnCount();
-
-  DatasetHeader getDatasetHeader();
+  TsBlock constructResultForMemorySource(MPPQueryContext context);
 
   boolean isQuery();
 
-  String getQueryId();
+  boolean needSetHighestPriority();
 
-  long getStartExecutionTime();
-
-  void recordExecutionTime(long executionTime);
-
-  /** @return cost time in ns */
-  long getTotalExecutionTime();
-
-  Optional<String> getExecuteSQL();
+  DatasetHeader getRespDatasetHeader();
 
   String getStatementType();
 }

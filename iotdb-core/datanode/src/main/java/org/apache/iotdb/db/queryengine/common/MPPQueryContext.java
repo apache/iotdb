@@ -38,7 +38,7 @@ import java.util.List;
  */
 public class MPPQueryContext {
   private String sql;
-  private QueryId queryId;
+  private final QueryId queryId;
 
   // LocalQueryId is kept to adapt to the old client, it's unique in current datanode.
   // Now it's only be used by EXPLAIN ANALYZE to get queryExecution.

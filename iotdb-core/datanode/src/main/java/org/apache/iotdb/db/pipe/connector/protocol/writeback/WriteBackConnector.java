@@ -154,7 +154,7 @@ public class WriteBackConnector implements PipeConnector {
 
   private TSStatus executeStatement(InsertBaseStatement statement) {
     return Coordinator.getInstance()
-        .execute(
+        .executeForTreeModel(
             new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
             new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
