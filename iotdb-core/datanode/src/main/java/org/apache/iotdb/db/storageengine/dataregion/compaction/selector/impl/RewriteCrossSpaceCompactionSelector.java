@@ -38,8 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
