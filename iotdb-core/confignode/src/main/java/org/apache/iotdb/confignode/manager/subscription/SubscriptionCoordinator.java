@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.subscription.coordinator;
+package org.apache.iotdb.confignode.manager.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
@@ -52,6 +52,7 @@ public class SubscriptionCoordinator {
 
   private final ConfigManager configManager;
   private final SubscriptionInfo subscriptionInfo;
+
   private final PipeTaskCoordinatorLock coordinatorLock;
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
