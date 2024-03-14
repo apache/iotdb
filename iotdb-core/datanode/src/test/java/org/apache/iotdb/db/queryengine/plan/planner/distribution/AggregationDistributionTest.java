@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -788,10 +788,10 @@ public class AggregationDistributionTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
+    assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -812,13 +812,13 @@ public class AggregationDistributionTest {
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f3Root =
         plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
-    assertTrue(f3Root instanceof HorizontallyConcatNode);
-    assertTrue(f3Root.getChildren().get(0) instanceof SeriesSourceNode);
-    assertTrue(f1Root.getChildren().get(0) instanceof AggregationNode);
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
+    assertTrue(f3Root instanceof DeviceViewNode);
+    assertTrue(f3Root.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+    assertTrue(f1Root.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(f1Root.getChildren().get(1) instanceof ExchangeNode);
-    assertEquals(3, f1Root.getChildren().get(0).getChildren().size());
+    assertEquals(1, f1Root.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -837,8 +837,8 @@ public class AggregationDistributionTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode f2Root =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertTrue(f1Root instanceof DeviceViewNode);
-    assertTrue(f2Root instanceof HorizontallyConcatNode);
+    assertTrue(f1Root instanceof AggregationMergeSortNode);
+    assertTrue(f2Root instanceof DeviceViewNode);
     assertEquals(2, f1Root.getChildren().size());
   }
 

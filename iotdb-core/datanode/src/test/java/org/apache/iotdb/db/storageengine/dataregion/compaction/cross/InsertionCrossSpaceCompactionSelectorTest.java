@@ -1015,7 +1015,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       }
       InsertionCrossSpaceCompactionTask task =
           new InsertionCrossSpaceCompactionTask(
-              new Phaser(),
+              new Phaser(1),
               0,
               tsFileManager,
               taskResource,
@@ -1316,7 +1316,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       if (taskResource.isValid()) {
         InsertionCrossSpaceCompactionTask task =
             new InsertionCrossSpaceCompactionTask(
-                new Phaser(),
+                new Phaser(1),
                 0,
                 tsFileManager,
                 taskResource,
@@ -1712,7 +1712,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       }
       InsertionCrossSpaceCompactionTask task =
           new InsertionCrossSpaceCompactionTask(
-              new Phaser(),
+              new Phaser(1),
               0,
               tsFileManager,
               taskResource,
@@ -2033,7 +2033,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       if (taskResource.isValid()) {
         InsertionCrossSpaceCompactionTask task =
             new InsertionCrossSpaceCompactionTask(
-                new Phaser(),
+                new Phaser(1),
                 0,
                 tsFileManager,
                 taskResource,

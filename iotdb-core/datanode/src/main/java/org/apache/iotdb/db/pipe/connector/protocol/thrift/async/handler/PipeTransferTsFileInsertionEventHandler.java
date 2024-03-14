@@ -21,12 +21,11 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -49,7 +48,7 @@ public class PipeTransferTsFileInsertionEventHandler
       LoggerFactory.getLogger(PipeTransferTsFileInsertionEventHandler.class);
 
   private final PipeTsFileInsertionEvent event;
-  private final IoTDBThriftAsyncConnector connector;
+  private final IoTDBDataRegionAsyncConnector connector;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -63,7 +62,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      PipeTsFileInsertionEvent event, IoTDBThriftAsyncConnector connector)
+      PipeTsFileInsertionEvent event, IoTDBDataRegionAsyncConnector connector)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
@@ -89,12 +88,12 @@ public class PipeTransferTsFileInsertionEventHandler
     if (readLength == -1) {
       isSealSignalSent.set(true);
       client.pipeTransfer(
-          PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+          PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
       return;
     }
 
     client.pipeTransfer(
-        PipeTransferFilePieceReq.toTPipeTransferReq(
+        PipeTransferTsFilePieceReq.toTPipeTransferReq(
             tsFile.getName(),
             position,
             readLength == readFileBufferSize
@@ -107,11 +106,16 @@ public class PipeTransferTsFileInsertionEventHandler
   @Override
   public void onComplete(TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
-      if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        onError(
-            new PipeException(
+      try {
+        connector
+            .statusHandler()
+            .handle(
+                response.getStatus(),
                 String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus())));
+                    "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                tsFile.getName());
+      } catch (Exception e) {
+        onError(e);
         return;
       }
 
@@ -151,9 +155,10 @@ public class PipeTransferTsFileInsertionEventHandler
         position = resp.getEndWritingOffset();
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
-      } else if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(
-            String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
+      } else {
+        connector
+            .statusHandler()
+            .handle(response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
       }
 
       transfer(client);

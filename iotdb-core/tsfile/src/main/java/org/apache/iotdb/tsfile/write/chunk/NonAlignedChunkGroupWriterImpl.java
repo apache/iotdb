@@ -47,7 +47,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private final IDeviceID deviceId;
 
   /** Map(measurementID, ChunkWriterImpl). Aligned measurementId is empty. */
-  private Map<String, ChunkWriterImpl> chunkWriters = new LinkedHashMap<>();
+  private final Map<String, ChunkWriterImpl> chunkWriters = new LinkedHashMap<>();
 
   // measurementId -> lastTime
   private Map<String, Long> lastTimeMap = new HashMap<>();
