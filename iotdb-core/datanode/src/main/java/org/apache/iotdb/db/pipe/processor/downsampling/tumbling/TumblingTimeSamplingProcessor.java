@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -43,21 +44,34 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TumblingTimeSamplingProcessor.class);
 
+  private long intervalInCurrentPrecision;
+
   private PartialPathLastObjectCache<Long> pathLastObjectCache;
 
-  private long intervalInCurrentPrecision;
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+
+    final long intervalSeconds =
+        validator
+            .getParameters()
+            .getLongOrDefault(
+                PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
+                PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE);
+    validator.validate(
+        seconds -> (Long) seconds > 0,
+        String.format(
+            "The value of %s must be greater than 0, but got %d.",
+            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY, intervalSeconds),
+        intervalSeconds);
+    intervalInCurrentPrecision =
+        TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
+  }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
     super.customize(parameters, configuration);
-
-    final long intervalSeconds =
-        parameters.getLongOrDefault(
-            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
-            PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE);
-    intervalInCurrentPrecision =
-        TimestampPrecisionUtils.convertToCurrPrecision(intervalSeconds, TimeUnit.SECONDS);
 
     LOGGER.info(
         "TumblingTimeSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",

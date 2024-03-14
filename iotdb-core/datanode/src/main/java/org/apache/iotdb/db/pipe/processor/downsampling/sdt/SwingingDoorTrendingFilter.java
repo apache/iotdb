@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 
 public class SwingingDoorTrendingFilter<T> {
+
   private final SwingingDoorTrendingSamplingProcessor processor;
 
   private double upperDoor = Integer.MIN_VALUE;
@@ -44,7 +45,7 @@ public class SwingingDoorTrendingFilter<T> {
     this.lastReadValue = firstValue;
   }
 
-  public boolean shouldStore(long timestamp, T value) {
+  public boolean filter(long timestamp, T value) {
     if (processor.getCompressionMinTimeInterval()
             != PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE
         && (timestamp - lastStoredTimestamp <= processor.getCompressionMinTimeInterval())) {

@@ -45,8 +45,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
 
-  protected boolean shouldSplitFile;
   protected long memoryLimitInBytes;
+
+  protected boolean shouldSplitFile;
 
   protected String dataBaseNameWithPathSeparator;
 
@@ -54,16 +55,24 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // do nothing
+    memoryLimitInBytes =
+        validator
+            .getParameters()
+            .getLongOrDefault(
+                PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
+                PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE);
+
+    validator.validate(
+        memoryLimitInBytes -> (Long) memoryLimitInBytes > 0,
+        String.format(
+            "%s must be > 0, but got %s",
+            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY, memoryLimitInBytes),
+        memoryLimitInBytes);
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    memoryLimitInBytes =
-        parameters.getLongOrDefault(
-            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY,
-            PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE);
     shouldSplitFile =
         parameters.getBooleanOrDefault(
             PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY,

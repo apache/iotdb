@@ -41,10 +41,10 @@ public class PipeProcessorConstant {
   public static final double PROCESSOR_SDT_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
   public static final String PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY =
       "processor.sdt.min-time-interval";
-  public static final long PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE = -1;
+  public static final long PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE = 0;
   public static final String PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY =
       "processor.sdt.max-time-interval";
-  public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = -1;
+  public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
