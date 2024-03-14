@@ -32,11 +32,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TopicMetaRPCHandler extends AbstractAsyncRPCHandler<TPushTopicMetaResp> {
+public class TopicPushMetaRPCHandler extends AbstractAsyncRPCHandler<TPushTopicMetaResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopicMetaRPCHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TopicPushMetaRPCHandler.class);
 
-  public TopicMetaRPCHandler(
+  public TopicPushMetaRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,

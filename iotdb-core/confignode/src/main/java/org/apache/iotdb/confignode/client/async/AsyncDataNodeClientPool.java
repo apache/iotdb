@@ -39,8 +39,8 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupMetaRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -278,12 +278,13 @@ public class AsyncDataNodeClientPool {
         case TOPIC_PUSH_SINGLE_META:
           client.pushSingleTopicMeta(
               (TPushSingleTopicMetaReq) clientHandler.getRequest(requestId),
-              (TopicMetaRPCHandler) clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TopicPushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CONSUMER_GROUP_PUSH_SINGLE_META:
           client.pushSingleConsumerGroupMeta(
               (TPushSingleConsumerGroupMetaReq) clientHandler.getRequest(requestId),
-              (ConsumerGroupMetaRPCHandler)
+              (ConsumerGroupPushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case PIPE_HEARTBEAT:

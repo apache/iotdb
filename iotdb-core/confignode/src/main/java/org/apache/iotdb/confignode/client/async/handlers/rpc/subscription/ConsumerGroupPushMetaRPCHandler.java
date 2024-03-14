@@ -33,11 +33,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class ConsumerGroupMetaRPCHandler
+public class ConsumerGroupPushMetaRPCHandler
     extends AbstractAsyncRPCHandler<TPushConsumerGroupMetaResp> {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePushMetaRPCHandler.class);
 
-  public ConsumerGroupMetaRPCHandler(
+  public ConsumerGroupPushMetaRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
