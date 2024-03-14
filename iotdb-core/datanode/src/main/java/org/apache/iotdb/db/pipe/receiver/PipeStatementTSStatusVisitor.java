@@ -157,12 +157,19 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitCreateLogicalView(CreateLogicalViewStatement statement, TSStatus context) {
-    if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+  public TSStatus visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, TSStatus context) {
+    if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (TSStatus status : context.getSubStatus()) {
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+          return visitStatement(createLogicalViewStatement, context);
+        }
+      }
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitCreateLogicalView(statement, context);
+    return super.visitCreateLogicalView(createLogicalViewStatement, context);
   }
 
   @Override
