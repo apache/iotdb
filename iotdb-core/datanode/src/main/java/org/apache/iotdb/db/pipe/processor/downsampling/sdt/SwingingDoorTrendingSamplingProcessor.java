@@ -26,14 +26,21 @@ import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SwingingDoorTrendingSamplingProcessor.class);
 
   /**
    * the maximum absolute difference the user set if the data's value is within
@@ -108,6 +115,22 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
                 compressionMaxTimeInterval),
             compressionMinTimeInterval,
             compressionMaxTimeInterval);
+  }
+
+  @Override
+  public void customize(
+      PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
+    super.customize(parameters, configuration);
+
+    LOGGER.info(
+        "SwingingDoorTrendingSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}.",
+        dataBaseNameWithPathSeparator,
+        PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
+        compressionDeviation,
+        PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY,
+        compressionMinTimeInterval,
+        PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY,
+        compressionMaxTimeInterval);
   }
 
   @Override
