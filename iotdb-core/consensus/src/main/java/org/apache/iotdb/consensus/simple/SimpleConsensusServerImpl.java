@@ -27,12 +27,14 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimpleConsensusServerImpl implements IStateMachine {
 
   private final Peer peer;
   private final IStateMachine stateMachine;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   public SimpleConsensusServerImpl(Peer peer, IStateMachine stateMachine) {
     this.peer = peer;
@@ -48,28 +50,48 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public synchronized void start() {
-    if (initialized.compareAndSet(false, true)) {
-      stateMachine.start();
-      // Notify itself as the leader
-      stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
-      stateMachine.event().notifyLeaderReady();
+  public void start() {
+    lock.writeLock().lock();
+    try {
+      if (initialized.compareAndSet(false, true)) {
+        stateMachine.start();
+        // Notify itself as the leader
+        stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
+        stateMachine.event().notifyLeaderReady();
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
   @Override
-  public synchronized void stop() {
-    stateMachine.stop();
+  public void stop() {
+    lock.writeLock().lock();
+    try {
+      stateMachine.stop();
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
-  public synchronized boolean isReadOnly() {
-    return stateMachine.isReadOnly();
+  public boolean isReadOnly() {
+    lock.readLock().lock();
+    try {
+      return stateMachine.isReadOnly();
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override
-  public synchronized TSStatus write(IConsensusRequest request) {
-    return stateMachine.write(request);
+  public TSStatus write(IConsensusRequest request) {
+    lock.writeLock().lock();
+    try {
+      return stateMachine.write(request);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
@@ -78,17 +100,32 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public synchronized DataSet read(IConsensusRequest request) {
-    return stateMachine.read(request);
+  public DataSet read(IConsensusRequest request) {
+    lock.readLock().lock();
+    try {
+      return stateMachine.read(request);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override
-  public synchronized boolean takeSnapshot(File snapshotDir) {
-    return stateMachine.takeSnapshot(snapshotDir);
+  public boolean takeSnapshot(File snapshotDir) {
+    lock.writeLock().lock();
+    try {
+      return stateMachine.takeSnapshot(snapshotDir);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
-  public synchronized void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    lock.writeLock().lock();
+    try {
+      stateMachine.loadSnapshot(latestSnapshotRootDir);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 }
