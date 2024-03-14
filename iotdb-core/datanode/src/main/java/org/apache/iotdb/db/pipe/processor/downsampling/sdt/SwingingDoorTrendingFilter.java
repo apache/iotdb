@@ -19,71 +19,89 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import java.util.Objects;
 
 public class SwingingDoorTrendingFilter<T> {
 
   private final SwingingDoorTrendingSamplingProcessor processor;
 
-  private double upperDoor = Integer.MIN_VALUE;
-  private double lowerDoor = Integer.MAX_VALUE;
+  /**
+   * the maximum curUpperSlope between the lastStoredPoint to the current point upperDoor can only
+   * open up
+   */
+  private double upperDoor = Double.MIN_VALUE;
+  /**
+   * the minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
+   * open downward
+   */
+  private double lowerDoor = Double.MAX_VALUE;
 
-  private long lastStoredTimestamp;
-  private T lastStoredValue;
-
+  /**
+   * the last read time and value if upperDoor >= lowerDoor meaning out of compressionDeviation
+   * range, will store lastReadTimestamp and lastReadValue
+   */
   private long lastReadTimestamp;
+
   private T lastReadValue;
+
+  /**
+   * the last stored time and value we compare current point against lastReadTimestamp and
+   * lastReadValue
+   */
+  private long lastStoredTimestamp;
+
+  private T lastStoredValue;
 
   public SwingingDoorTrendingFilter(
       SwingingDoorTrendingSamplingProcessor processor, long firstTimestamp, T firstValue) {
     this.processor = processor;
 
-    this.lastStoredTimestamp = firstTimestamp;
-    this.lastStoredValue = firstValue;
-
     this.lastReadTimestamp = firstTimestamp;
     this.lastReadValue = firstValue;
+
+    this.lastStoredTimestamp = firstTimestamp;
+    this.lastStoredValue = firstValue;
   }
 
   public boolean filter(long timestamp, T value) {
-    if (processor.getCompressionMinTimeInterval()
-            != PipeProcessorConstant.PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE
-        && (timestamp - lastStoredTimestamp <= processor.getCompressionMinTimeInterval())) {
+    final long timeDiff = timestamp - lastStoredTimestamp;
+    final long absTimeDiff = Math.abs(timeDiff);
+
+    if (absTimeDiff <= processor.getCompressionMinTimeInterval()) {
       return false;
     }
 
-    if (processor.getCompressionMaxTimeInterval()
-            != PipeProcessorConstant.PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE
-        && (timestamp - lastStoredTimestamp >= processor.getCompressionMaxTimeInterval())) {
+    if (absTimeDiff >= processor.getCompressionMaxTimeInterval()) {
       reset(timestamp, value);
       return true;
     }
 
-    if ((value instanceof Boolean || value instanceof String)) {
-      if (!lastStoredValue.equals(value)) {
-        reset(timestamp, value);
-        return true;
+    // For boolean and string type, we only compare the value
+    if (value instanceof Boolean || value instanceof String) {
+      if (Objects.equals(lastStoredValue, value)) {
+        return false;
       }
-      return false;
+
+      reset(timestamp, value);
+      return true;
     }
 
-    final Double doubleValue = Double.valueOf(value.toString());
-    final Double lastStoredDoubleValue = Double.valueOf(lastStoredValue.toString());
-    final double currentUpperSlope =
-        (doubleValue - lastStoredDoubleValue - processor.getCompressionDeviation())
-            / (timestamp - lastStoredTimestamp);
+    // For other numerical types, we compare the value and the time difference
+    final double doubleValue = Double.parseDouble(value.toString());
+    final double lastStoredDoubleValue = Double.parseDouble(lastStoredValue.toString());
+    final double valueDiff = doubleValue - lastStoredDoubleValue;
+
+    final double currentUpperSlope = (valueDiff - processor.getCompressionDeviation()) / timeDiff;
     if (currentUpperSlope > upperDoor) {
       upperDoor = currentUpperSlope;
     }
 
-    final double currentLowerSlope =
-        (doubleValue - lastStoredDoubleValue + processor.getCompressionDeviation())
-            / (timestamp - lastStoredTimestamp);
+    final double currentLowerSlope = (valueDiff + processor.getCompressionDeviation()) / timeDiff;
     if (currentLowerSlope < lowerDoor) {
       lowerDoor = currentLowerSlope;
     }
 
-    if (upperDoor >= lowerDoor) {
+    if (upperDoor > lowerDoor) {
       lastStoredTimestamp = lastReadTimestamp;
       lastStoredValue = lastReadValue;
 
@@ -103,10 +121,10 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private void reset(long timestamp, T value) {
+    upperDoor = Double.MIN_VALUE;
+    lowerDoor = Double.MAX_VALUE;
+
     lastStoredTimestamp = timestamp;
     lastStoredValue = value;
-
-    upperDoor = Integer.MIN_VALUE;
-    lowerDoor = Integer.MAX_VALUE;
   }
 }

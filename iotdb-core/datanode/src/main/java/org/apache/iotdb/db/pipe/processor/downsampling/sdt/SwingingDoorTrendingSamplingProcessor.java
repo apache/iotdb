@@ -35,8 +35,25 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor {
 
+  /**
+   * the maximum absolute difference the user set if the data's value is within
+   * compressionDeviation, it will be compressed and discarded after compression, it will only store
+   * out of range (time, data) to form the trend
+   */
   private double compressionDeviation;
+
+  /**
+   * the minimum time distance between two stored data points if current point time to the last
+   * stored point time distance <= compressionMinTimeInterval, current point will NOT be stored
+   * regardless of compression deviation
+   */
   private long compressionMinTimeInterval;
+
+  /**
+   * the maximum time distance between two stored data points if current point time to the last
+   * stored point time distance >= compressionMaxTimeInterval, current point will be stored
+   * regardless of compression deviation
+   */
   private long compressionMaxTimeInterval;
 
   private PartialPathLastObjectCache<SwingingDoorTrendingFilter<?>> pathLastObjectCache;
@@ -61,7 +78,7 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
 
     validator
         .validate(
-            compressionDeviation -> (Long) compressionDeviation >= 0,
+            compressionDeviation -> (Double) compressionDeviation >= 0,
             String.format(
                 "%s must be >= 0, but got %s",
                 PipeProcessorConstant.PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY,
