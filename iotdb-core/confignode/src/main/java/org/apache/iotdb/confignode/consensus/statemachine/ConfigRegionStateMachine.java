@@ -408,8 +408,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  private void createLogFile(int endIndex) {
-    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
+  private void createLogFile(int startIndex) {
+    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + startIndex);
     try {
       if (!simpleLogFile.createNewFile()) {
         LOGGER.warn(
