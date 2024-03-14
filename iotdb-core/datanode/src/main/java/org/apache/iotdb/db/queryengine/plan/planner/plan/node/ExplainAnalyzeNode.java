@@ -40,11 +40,7 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     super(id, child);
     this.verbose = verbose;
     this.queryId = queryId;
-
-    // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
-    // times.
-    // And the maximum time interval is 15s.
-    this.timeIntervalForLog = Math.min(timeout / 3, 15000);
+    this.timeIntervalForLog = timeout;
   }
 
   @Override

@@ -73,7 +73,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       Operator child,
       long queryId,
       boolean verbose,
-      long log_interval_in_ms) {
+      long timeout) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
@@ -84,12 +84,17 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     fragmentInstanceStatisticsDrawer.renderPlanStatistics(queryExecution.getContext());
+
+    // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
+    // times.
+    // And the maximum time interval is 15s.
+    long logIntervalInMs = Math.min(timeout / 3, 15000);
     this.logRecordTask =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             queryExecution.getScheduledExecutor(),
             this::logIntermediateResultIfTimeout,
-            log_interval_in_ms,
-            log_interval_in_ms,
+            logIntervalInMs,
+            logIntervalInMs,
             TimeUnit.MILLISECONDS);
   }
 
