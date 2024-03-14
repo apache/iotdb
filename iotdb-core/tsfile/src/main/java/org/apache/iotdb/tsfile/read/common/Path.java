@@ -151,7 +151,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   public IDeviceID getIDeviceID() {
     // TODO
-    return new PlainDeviceID(device);
+    return new PlainDeviceID(getDevice());
   }
 
   public String getMeasurement() {

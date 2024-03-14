@@ -189,7 +189,7 @@ public class PipeTsFileResource implements AutoCloseable {
         final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
         deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
       }
-      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceID2Bool(deviceIsAlignedMap);
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
       measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
       memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);

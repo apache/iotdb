@@ -118,7 +118,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       } else {
         // We need to create these objects here and remove them later.
         deviceIsAlignedMap = readDeviceIsAlignedMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceID2Bool(deviceIsAlignedMap);
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
@@ -241,7 +241,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             }
 
             final Tablet tablet = tabletIterator.next();
-            final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
+            final boolean isAligned =
+                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

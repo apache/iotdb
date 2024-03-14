@@ -70,7 +70,8 @@ public class TsFileResourceProgressIndexTest {
 
   @Before
   public void setUp() {
-    IntStream.range(0, DEVICE_NUM).forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
+    IntStream.range(0, DEVICE_NUM)
+        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
     DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(

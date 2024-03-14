@@ -152,7 +152,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
-      deviceIDFactory.getDeviceID(devicePath);
+      deviceID = deviceIDFactory.getDeviceID(devicePath);
     }
     return deviceID;
   }

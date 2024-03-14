@@ -55,7 +55,7 @@ public abstract class AbstractSeriesScanTest {
 
   protected static final String TEST_DATABASE = "root.sg_pd";
   protected static final IDeviceID TEST_DEVICE = new PlainDeviceID(TEST_DATABASE + ".d1");
-  protected static final String TEST_PATH = TEST_DEVICE + ".s1";
+  protected static final String TEST_PATH = ((PlainDeviceID) TEST_DEVICE).toStringID() + ".s1";
 
   /**
    * The data distribution is as follows.

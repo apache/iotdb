@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -370,7 +371,7 @@ public class TsFileResourceUtils {
           logger.error(
               "Device {} is overlapped between {} and {}, "
                   + "end time in {} is {}, start time in {} is {}",
-              device,
+              ((PlainDeviceID) device).toStringID(),
               lastDeviceInfo.left,
               resource,
               lastDeviceInfo.left,

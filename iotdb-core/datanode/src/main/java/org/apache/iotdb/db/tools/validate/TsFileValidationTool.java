@@ -438,7 +438,7 @@ public class TsFileValidationTool {
                         currentChunkEndTime));
                 break;
               case MetaMarker.CHUNK_GROUP_HEADER:
-                if (!deviceID.equals("")) {
+                if (!deviceID.equals(new PlainDeviceID(""))) {
                   // record the end time of last device in current file
                   if (resource.getEndTime(deviceID)
                       > deviceEndTime.computeIfAbsent(

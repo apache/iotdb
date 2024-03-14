@@ -4783,8 +4783,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -4793,8 +4792,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -4803,8 +4801,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
       } else {
         Assert.assertTrue(
             targetResources
@@ -4823,8 +4820,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -4833,8 +4829,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -4843,8 +4838,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -5019,8 +5013,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5029,8 +5022,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5039,8 +5031,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5049,8 +5040,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 4)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4))));
       } else if (i == 1) {
         Assert.assertFalse(
             targetResources
@@ -5069,8 +5059,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5079,8 +5068,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5089,8 +5077,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5099,8 +5086,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 4)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4))));
       } else {
         Assert.assertTrue(
             targetResources
@@ -5119,8 +5105,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5129,8 +5114,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5139,8 +5123,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5149,8 +5132,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 4)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 4))));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -5687,7 +5669,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
-                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 10)));
+                + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
         new PlainDeviceID(
             COMPACTION_TEST_SG
@@ -5719,8 +5701,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5729,8 +5710,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertFalse(
             targetResources
                 .get(i)
@@ -5739,8 +5719,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
       } else {
         Assert.assertTrue(
             targetResources
@@ -5759,8 +5738,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 1)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5769,8 +5747,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 2)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2))));
         Assert.assertTrue(
             targetResources
                 .get(i)
@@ -5779,8 +5756,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
-                            + (TsFileGeneratorUtils.getAlignDeviceOffset())
-                            + 3)));
+                            + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3))));
       }
       check(targetResources.get(i), deviceIdList);
     }

@@ -182,7 +182,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return chunks' metadata
    */
   public List<ChunkMetadata> getVisibleMetadataList(
-      String deviceId, String measurementId, TSDataType dataType) {
+      IDeviceID deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatasForQuery.containsKey(deviceId)
         && metadatasForQuery.get(deviceId).containsKey(measurementId)) {

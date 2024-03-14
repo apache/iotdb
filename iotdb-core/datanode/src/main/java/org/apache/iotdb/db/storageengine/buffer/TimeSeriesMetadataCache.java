@@ -143,7 +143,9 @@ public class TimeSeriesMetadataCache {
         }
         // allow for the parallelism of different devices
         synchronized (
-            devices.computeIfAbsent(key.device + SEPARATOR + filePath, WeakReference::new)) {
+            devices.computeIfAbsent(
+                ((PlainDeviceID) key.device).toStringID() + SEPARATOR + filePath,
+                WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
@@ -162,7 +164,9 @@ public class TimeSeriesMetadataCache {
                         debug);
             if (bloomFilter != null
                 && !bloomFilter.contains(
-                    key.device + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+                    ((PlainDeviceID) key.device).toStringID()
+                        + TsFileConstant.PATH_SEPARATOR
+                        + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }

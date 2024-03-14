@@ -143,7 +143,7 @@ public class MemTableFlushTask {
       }
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
       List<String> seriesInOrder = new ArrayList<>(value.keySet());
-      Collections.sort(deviceIDList);
+      Collections.sort(seriesInOrder);
       for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = value.get(seriesId);

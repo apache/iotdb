@@ -29,7 +29,7 @@ import java.util.Map;
 
 public class PipeMemoryWeighUtil {
   /** Estimates memory usage of a {@link Map}<{@link IDeviceID}, {@link Boolean}>. */
-  public static long memoryOfIDeviceID2Bool(Map<IDeviceID, Boolean> map) {
+  public static long memoryOfIDeviceId2Bool(Map<IDeviceID, Boolean> map) {
     long usageInBytes = 0L;
     for (Map.Entry<IDeviceID, Boolean> entry : map.entrySet()) {
       // TODO

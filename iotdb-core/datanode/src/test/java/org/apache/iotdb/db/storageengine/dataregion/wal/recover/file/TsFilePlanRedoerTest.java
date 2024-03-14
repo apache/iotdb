@@ -251,7 +251,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
@@ -444,7 +444,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
@@ -727,7 +727,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
