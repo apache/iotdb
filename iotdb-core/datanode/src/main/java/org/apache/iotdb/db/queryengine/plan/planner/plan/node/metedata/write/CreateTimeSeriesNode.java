@@ -171,6 +171,11 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CREATE_TIME_SERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("Clone of CreateTimeSeriesNode is not implemented");
   }

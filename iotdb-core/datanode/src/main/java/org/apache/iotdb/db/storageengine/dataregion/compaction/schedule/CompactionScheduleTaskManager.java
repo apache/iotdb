@@ -150,13 +150,15 @@ public class CompactionScheduleTaskManager implements IService {
       }
       try {
         compactionScheduleTaskThreadPool.shutdownNow();
-        compactionScheduleTaskThreadPool.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
+        if (!compactionScheduleTaskThreadPool.awaitTermination(
+            milliseconds, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException();
+        }
       } catch (InterruptedException e) {
         logger.warn(
             "compaction schedule task thread pool can not be closed in {} ms", milliseconds);
         Thread.currentThread().interrupt();
       }
-      waitForThreadPoolTerminated();
     } finally {
       lock.unlock();
     }
@@ -289,10 +291,11 @@ public class CompactionScheduleTaskManager implements IService {
 
     public Future<Void> submitRepairScanTask(RepairTimePartitionScanTask scanTask) {
       lock.lock();
-      if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
-        return null;
-      }
       try {
+        if (repairTaskStatus.get() != RepairTaskStatus.RUNNING) {
+          logger.info("[RepairTaskManager] skip current task because repair task is stopping");
+          return null;
+        }
         Future<Void> future = compactionScheduleTaskThreadPool.submit(scanTask);
         submitRepairScanTaskFutures.add(future);
         return future;

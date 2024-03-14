@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.persistence.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -41,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -428,7 +428,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
-  /** Handle the data region leader change event and update the pipe task meta accordingly. */
+  /** Handle the region leader change event and update the pipe task meta accordingly. */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     acquireWriteLock();
     try {
@@ -439,34 +439,33 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleLeaderChangeInternal(PipeHandleLeaderChangePlan plan) {
-    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+    plan.getConsensusGroupId2NewLeaderIdMap()
         .forEach(
-            (dataRegionGroupId, newDataRegionLeader) ->
+            (consensusGroupId, newLeader) ->
                 pipeMetaKeeper
                     .getPipeMetaList()
                     .forEach(
                         pipeMeta -> {
-                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                          final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
-                            // If the data region leader is -1, it means the data region is
+                          if (consensusGroupIdToTaskMetaMap.containsKey(consensusGroupId.getId())) {
+                            // If the region leader is -1, it means the region is
                             // removed
-                            if (newDataRegionLeader != -1) {
+                            if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap
-                                  .get(dataRegionGroupId)
-                                  .setLeaderDataNodeId(newDataRegionLeader);
+                                  .get(consensusGroupId.getId())
+                                  .setLeaderNodeId(newLeader);
                             } else {
-                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                              consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
                           } else {
-                            // If CN does not contain the data region group, it means the data
+                            // If CN does not contain the region group, it means the data
                             // region group is newly added.
-                            if (newDataRegionLeader != -1) {
+                            if (newLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
-                                  dataRegionGroupId,
-                                  new PipeTaskMeta(
-                                      MinimumProgressIndex.INSTANCE, newDataRegionLeader));
+                                  consensusGroupId.getId(),
+                                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or
@@ -478,9 +477,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Replace the local pipeMetas by the pipeMetas from the leader ConfigNode.
+   * Replace the local {@link PipeMeta}s by the {@link PipeMeta}s from the leader {@link
+   * ConfigNode}.
    *
-   * @param plan The plan containing all the pipeMetas from leader ConfigNode
+   * @param plan The plan containing all the {@link PipeMeta}s from leader {@link ConfigNode}
    * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
@@ -507,41 +507,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean hasExceptions(String pipeName) {
-    acquireReadLock();
-    try {
-      return hasExceptionsInternal(pipeName);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  private boolean hasExceptionsInternal(String pipeName) {
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return false;
-    }
-
-    final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-    final Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-
-    if (!exceptionMap.isEmpty()) {
-      return true;
-    }
-
-    final AtomicBoolean hasException = new AtomicBoolean(false);
-    runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(
-            pipeTaskMeta -> {
-              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                hasException.set(true);
-              }
-            });
-    return hasException.get();
-  }
-
   public boolean isStoppedByRuntimeException(String pipeName) {
     acquireReadLock();
     try {
@@ -557,8 +522,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of, and set the isAutoStopped flag to false for a pipe locally after it
-   * starts successfully.
+   * Clear the exceptions of a pipe locally after it starts successfully.
    *
    * <p>If there are exceptions cleared or flag changed, the messages will then be updated to all
    * the nodes through {@link PipeHandleMetaChangeProcedure}.
@@ -587,7 +551,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
 
     final Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
       exceptionMap.clear();
     }
@@ -621,24 +585,26 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta.
+   * Record the exceptions of all pipes locally if they encountered failure when pushing {@link
+   * PipeMeta}s to dataNodes.
    *
    * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
    * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
    *
    * @param respMap The responseMap after pushing pipe meta
-   * @return true if there are exceptions encountered
+   * @return {@link true} if there are exceptions encountered
    */
-  public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
+  public boolean recordDataNodePushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
     acquireWriteLock();
     try {
-      return recordPushPipeMetaExceptionsInternal(respMap);
+      return recordDataNodePushPipeMetaExceptionsInternal(respMap);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private boolean recordPushPipeMetaExceptionsInternal(Map<Integer, TPushPipeMetaResp> respMap) {
+  private boolean recordDataNodePushPipeMetaExceptionsInternal(
+      Map<Integer, TPushPipeMetaResp> respMap) {
     boolean hasException = false;
 
     for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
@@ -665,7 +631,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     runtimeMeta.setIsStoppedByRuntimeException(true);
 
                     final Map<Integer, PipeRuntimeException> exceptionMap =
-                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                        runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
                     if (!exceptionMap.containsKey(dataNodeId)
                         || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
                       exceptionMap.put(
@@ -694,7 +660,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * Set the statuses of all the pipes stopped automatically because of critical exceptions to
    * {@link PipeStatus#RUNNING} in order to restart them.
    *
-   * @return true if there are pipes need restarting
+   * @return {@code true} if there are pipes need restarting
    */
   private boolean autoRestartInternal() {
     final AtomicBoolean needRestart = new AtomicBoolean(false);
@@ -728,7 +694,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of, and set the isAutoStopped flag to false for the successfully restarted
+   * Clear the exceptions to, and set the isAutoStopped flag to false for the successfully restarted
    * pipe.
    */
   private void handleSuccessfulRestartInternal() {

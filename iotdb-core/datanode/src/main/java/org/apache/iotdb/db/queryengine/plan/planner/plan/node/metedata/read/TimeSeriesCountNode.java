@@ -69,6 +69,11 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TIME_SERIES_COUNT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new TimeSeriesCountNode(
         getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap, scope);

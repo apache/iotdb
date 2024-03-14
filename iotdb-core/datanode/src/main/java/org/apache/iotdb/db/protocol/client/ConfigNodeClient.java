@@ -98,6 +98,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -123,6 +125,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -138,7 +141,6 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -469,9 +471,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.showAllTTL(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
-  public TSStatus createManyDatabases() throws TException {
+  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
+        () -> client.callSpecialProcedure(operation), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -910,10 +912,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) throws TException {
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+      throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.executeSyncCommand(configPhysicalPlanBinary),
-        status -> !updateConfigNodeLeader(status));
+        () -> client.handleTransferConfigPlan(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

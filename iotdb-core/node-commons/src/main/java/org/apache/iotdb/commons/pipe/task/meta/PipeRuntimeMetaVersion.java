@@ -21,10 +21,9 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,11 +59,7 @@ public enum PipeRuntimeMetaVersion {
     return version;
   }
 
-  public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(version, outputStream);
-  }
-
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(version, outputStream);
   }
 

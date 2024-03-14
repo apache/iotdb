@@ -956,7 +956,7 @@ stopRepairData
 
 // Explain
 explain
-    : EXPLAIN selectStatement
+    : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
     ;
 
 // Set System To readonly/running/error

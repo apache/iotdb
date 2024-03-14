@@ -36,8 +36,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isBuiltinAggregationName;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.STDDEV;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class AggregationDescriptor {
 
@@ -76,7 +81,7 @@ public class AggregationDescriptor {
     this.inputAttributes = inputAttributes;
   }
 
-  private TAggregationType getAggregationTypeByFuncName(String funcName) {
+  public static TAggregationType getAggregationTypeByFuncName(String funcName) {
     if (isBuiltinAggregationName(funcName.toLowerCase())) {
       return TAggregationType.valueOf(funcName.toUpperCase());
     } else {
@@ -143,7 +148,7 @@ public class AggregationDescriptor {
   }
 
   /** Keep the lower case of function name for partial result, and origin value for others. */
-  protected List<String> getActualAggregationNames(boolean isPartial) {
+  public List<String> getActualAggregationNames(boolean isPartial) {
     List<String> outputAggregationNames = new ArrayList<>();
     if (isPartial) {
       switch (aggregationType) {
@@ -152,7 +157,7 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.SUM);
           break;
         case FIRST_VALUE:
-          outputAggregationNames.add(SqlConstant.FIRST_VALUE);
+          outputAggregationNames.add(FIRST_VALUE);
           outputAggregationNames.add(SqlConstant.MIN_TIME);
           break;
         case LAST_VALUE:
@@ -164,7 +169,7 @@ public class AggregationDescriptor {
           outputAggregationNames.add(SqlConstant.MIN_TIME);
           break;
         case STDDEV:
-          outputAggregationNames.add(addPartialSuffix(SqlConstant.STDDEV));
+          outputAggregationNames.add(addPartialSuffix(STDDEV));
           break;
         case STDDEV_POP:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.STDDEV_POP));

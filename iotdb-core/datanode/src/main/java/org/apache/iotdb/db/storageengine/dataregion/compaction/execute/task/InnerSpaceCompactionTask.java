@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import java.io.File;
@@ -485,7 +486,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
         memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
-      } catch (IOException e) {
+      } catch (Exception e) {
+        if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
+          Thread.currentThread().interrupt();
+          return -1;
+        }
         innerSpaceEstimator.cleanup();
         LOGGER.error("Meet error when estimate inner compaction memory", e);
         return -1;

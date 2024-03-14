@@ -69,6 +69,36 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
   public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
 
+  public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
+      "connector.exception.conflict.resolve-strategy";
+  public static final String SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY =
+      "sink.exception.conflict.resolve-strategy";
+  public static final String CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE = "retry";
+
+  public static final String CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY =
+      "connector.exception.conflict.retry-max-time-seconds";
+  public static final String SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY =
+      "sink.exception.conflict.retry-max-time-seconds";
+  public static final long CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE = 60;
+
+  public static final String CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY =
+      "connector.exception.conflict.record-ignored-data";
+  public static final String SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY =
+      "sink.exception.conflict.record-ignored-data";
+  public static final boolean CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY =
+      "connector.exception.others.retry-max-time-seconds";
+  public static final String SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY =
+      "sink.exception.others.retry-max-time-seconds";
+  public static final long CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE = -1;
+
+  public static final String CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY =
+      "connector.exception.others.record-ignored-data";
+  public static final String SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY =
+      "sink.exception.others.record-ignored-data";
+  public static final boolean CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE = true;
+
   public static final String CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY =
       "connector.air-gap.e-language.enable";
   public static final String SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY = "sink.air-gap.e-language.enable";

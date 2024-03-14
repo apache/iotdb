@@ -484,7 +484,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the specific DatabaseSchema
+   * Only leader use this interface. Get the specific {@link TDatabaseSchema}
    *
    * @param database DatabaseName
    * @return The specific DatabaseSchema
@@ -726,6 +726,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return result;
+  }
+
+  public Template getTemplate(int id) throws MetadataException {
+    return templateTable.getTemplate(id);
   }
 
   public synchronized TemplateInfoResp checkTemplateSettable(

@@ -73,6 +73,11 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LAST_QUERY;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LastQueryNode(getPlanNodeId(), timeseriesOrdering, containsLastTransformNode);
   }
