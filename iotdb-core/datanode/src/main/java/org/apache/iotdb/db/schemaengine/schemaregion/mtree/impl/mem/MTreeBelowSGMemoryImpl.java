@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -159,7 +160,7 @@ public class MTreeBelowSGMemoryImpl {
     storageGroupMNode = null;
   }
 
-  public synchronized boolean createSnapshot(File snapshotDir) {
+  public boolean createSnapshot(File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
 
@@ -211,66 +212,62 @@ public class MTreeBelowSGMemoryImpl {
     PartialPath devicePath = path.getDevicePath();
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
-    // synchronize check and add, we need addChild and add Alias become atomic operation
-    // only write on mtree will be synchronized
-    synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+    IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
-      MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
+    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
-      String leafName = path.getMeasurement();
+    String leafName = path.getMeasurement();
 
-      if (alias != null && device.hasChild(alias)) {
-        throw new AliasAlreadyExistException(path.getFullPath(), alias);
-      }
-
-      if (device.hasChild(leafName)) {
-        IMemMNode node = device.getChild(leafName);
-        if (node.isMeasurement()) {
-          if (node.getAsMeasurementMNode().isPreDeleted()) {
-            throw new MeasurementInBlackListException(path);
-          } else {
-            throw new MeasurementAlreadyExistException(
-                path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
-          }
-        } else {
-          throw new PathAlreadyExistException(path.getFullPath());
-        }
-      }
-
-      if (device.isDevice()
-          && device.getAsDeviceMNode().isAlignedNullable() != null
-          && device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
-            device.getFullPath());
-      }
-
-      IDeviceMNode<IMemMNode> entityMNode;
-      if (device.isDevice()) {
-        entityMNode = device.getAsDeviceMNode();
-      } else {
-        entityMNode = store.setToEntity(device);
-      }
-
-      // create a non-aligned timeseries
-      if (entityMNode.isAlignedNullable() == null) {
-        entityMNode.setAligned(false);
-      }
-
-      IMeasurementMNode<IMemMNode> measurementMNode =
-          nodeFactory.createMeasurementMNode(
-              entityMNode,
-              leafName,
-              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
-              alias);
-      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
-      // link alias to LeafMNode
-      if (alias != null) {
-        entityMNode.addAlias(alias, measurementMNode);
-      }
-      return measurementMNode;
+    if (alias != null && device.hasChild(alias)) {
+      throw new AliasAlreadyExistException(path.getFullPath(), alias);
     }
+
+    if (device.hasChild(leafName)) {
+      IMemMNode node = device.getChild(leafName);
+      if (node.isMeasurement()) {
+        if (node.getAsMeasurementMNode().isPreDeleted()) {
+          throw new MeasurementInBlackListException(path);
+        } else {
+          throw new MeasurementAlreadyExistException(
+              path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
+        }
+      } else {
+        throw new PathAlreadyExistException(path.getFullPath());
+      }
+    }
+
+    if (device.isDevice()
+        && device.getAsDeviceMNode().isAlignedNullable() != null
+        && device.getAsDeviceMNode().isAligned()) {
+      throw new AlignedTimeseriesException(
+          "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
+          device.getFullPath());
+    }
+
+    IDeviceMNode<IMemMNode> entityMNode;
+    if (device.isDevice()) {
+      entityMNode = device.getAsDeviceMNode();
+    } else {
+      entityMNode = store.setToEntity(device);
+    }
+
+    // create a non-aligned timeseries
+    if (entityMNode.isAlignedNullable() == null) {
+      entityMNode.setAligned(false);
+    }
+
+    IMeasurementMNode<IMemMNode> measurementMNode =
+        nodeFactory.createMeasurementMNode(
+            entityMNode,
+            leafName,
+            new MeasurementSchema(leafName, dataType, encoding, compressor, props),
+            alias);
+    store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+    // link alias to LeafMNode
+    if (alias != null) {
+      entityMNode.addAlias(alias, measurementMNode);
+    }
+    return measurementMNode;
   }
 
   /**
@@ -295,71 +292,65 @@ public class MTreeBelowSGMemoryImpl {
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
-    // synchronize check and add, we need addChild operation be atomic.
-    // only write operations on mtree will be synchronized
-    synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+    IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
-      for (int i = 0; i < measurements.size(); i++) {
-        if (device.hasChild(measurements.get(i))) {
-          IMemMNode node = device.getChild(measurements.get(i));
-          if (node.isMeasurement()) {
-            if (node.getAsMeasurementMNode().isPreDeleted()) {
-              throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
-            } else {
-              throw new MeasurementAlreadyExistException(
-                  devicePath.getFullPath() + "." + measurements.get(i),
-                  node.getAsMeasurementMNode().getMeasurementPath());
-            }
+    for (int i = 0; i < measurements.size(); i++) {
+      if (device.hasChild(measurements.get(i))) {
+        IMemMNode node = device.getChild(measurements.get(i));
+        if (node.isMeasurement()) {
+          if (node.getAsMeasurementMNode().isPreDeleted()) {
+            throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
           } else {
-            throw new PathAlreadyExistException(
-                devicePath.getFullPath() + "." + measurements.get(i));
+            throw new MeasurementAlreadyExistException(
+                devicePath.getFullPath() + "." + measurements.get(i),
+                node.getAsMeasurementMNode().getMeasurementPath());
           }
-        }
-        if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
-          throw new AliasAlreadyExistException(
-              devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
+        } else {
+          throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurements.get(i));
         }
       }
-
-      if (device.isDevice()
-          && device.getAsDeviceMNode().isAlignedNullable() != null
-          && !device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "Timeseries under this device is not aligned, please use createTimeseries or change device.",
-            devicePath.getFullPath());
+      if (aliasList != null && aliasList.get(i) != null && device.hasChild(aliasList.get(i))) {
+        throw new AliasAlreadyExistException(
+            devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
       }
-
-      IDeviceMNode<IMemMNode> entityMNode;
-      if (device.isDevice()) {
-        entityMNode = device.getAsDeviceMNode();
-      } else {
-        entityMNode = store.setToEntity(device);
-        entityMNode.setAligned(true);
-      }
-
-      // create a aligned timeseries
-      if (entityMNode.isAlignedNullable() == null) {
-        entityMNode.setAligned(true);
-      }
-
-      for (int i = 0; i < measurements.size(); i++) {
-        IMeasurementMNode<IMemMNode> measurementMNode =
-            nodeFactory.createMeasurementMNode(
-                entityMNode,
-                measurements.get(i),
-                new MeasurementSchema(
-                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
-                aliasList == null ? null : aliasList.get(i));
-        store.addChild(
-            entityMNode.getAsMNode(), measurements.get(i), measurementMNode.getAsMNode());
-        if (aliasList != null && aliasList.get(i) != null) {
-          entityMNode.addAlias(aliasList.get(i), measurementMNode);
-        }
-        measurementMNodeList.add(measurementMNode);
-      }
-      return measurementMNodeList;
     }
+
+    if (device.isDevice()
+        && device.getAsDeviceMNode().isAlignedNullable() != null
+        && !device.getAsDeviceMNode().isAligned()) {
+      throw new AlignedTimeseriesException(
+          "Timeseries under this device is not aligned, please use createTimeseries or change device.",
+          devicePath.getFullPath());
+    }
+
+    IDeviceMNode<IMemMNode> entityMNode;
+    if (device.isDevice()) {
+      entityMNode = device.getAsDeviceMNode();
+    } else {
+      entityMNode = store.setToEntity(device);
+      entityMNode.setAligned(true);
+    }
+
+    // create a aligned timeseries
+    if (entityMNode.isAlignedNullable() == null) {
+      entityMNode.setAligned(true);
+    }
+
+    for (int i = 0; i < measurements.size(); i++) {
+      IMeasurementMNode<IMemMNode> measurementMNode =
+          nodeFactory.createMeasurementMNode(
+              entityMNode,
+              measurements.get(i),
+              new MeasurementSchema(
+                  measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
+              aliasList == null ? null : aliasList.get(i));
+      store.addChild(entityMNode.getAsMNode(), measurements.get(i), measurementMNode.getAsMNode());
+      if (aliasList != null && aliasList.get(i) != null) {
+        entityMNode.addAlias(aliasList.get(i), measurementMNode);
+      }
+      measurementMNodeList.add(measurementMNode);
+    }
+    return measurementMNodeList;
   }
 
   private IMemMNode checkAndAutoCreateInternalPath(PartialPath devicePath)
@@ -474,19 +465,17 @@ public class MTreeBelowSGMemoryImpl {
     IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
     // upsert alias
     if (alias != null && !alias.equals(measurementMNode.getAlias())) {
-      synchronized (this) {
-        IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
-        IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
-        if (memMNode != null) {
-          throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement.");
-        }
-        if (measurementMNode.getAlias() != null) {
-          device.deleteAliasChild(measurementMNode.getAlias());
-        }
-        device.addAlias(alias, measurementMNode);
-        setAlias(measurementMNode, alias);
+      IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+      IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
+      if (memMNode != null) {
+        throw new MetadataException(
+            "The alias is duplicated with the name or alias of other measurement.");
       }
+      if (measurementMNode.getAlias() != null) {
+        device.deleteAliasChild(measurementMNode.getAlias());
+      }
+      device.addAlias(alias, measurementMNode);
+      setAlias(measurementMNode, alias);
       return true;
     }
     return false;
@@ -506,11 +495,9 @@ public class MTreeBelowSGMemoryImpl {
     IMeasurementMNode<IMemMNode> deletedNode = getMeasurementMNode(path);
     IMemMNode parent = deletedNode.getParent();
     // delete the last node of path
-    synchronized (this) {
-      store.deleteChild(parent, path.getMeasurement());
-      if (deletedNode.getAlias() != null) {
-        parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
-      }
+    store.deleteChild(parent, path.getMeasurement());
+    if (deletedNode.getAlias() != null) {
+      parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
     }
     deleteEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -536,9 +523,7 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       if (!hasMeasurement) {
-        synchronized (this) {
-          curNode = store.setToInternal(entityMNode);
-        }
+        curNode = store.setToInternal(entityMNode);
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
@@ -552,13 +537,11 @@ public class MTreeBelowSGMemoryImpl {
         return;
       }
 
-      synchronized (this) {
-        if (!isEmptyInternalMNode(curNode)) {
-          break;
-        }
-        store.deleteChild(curNode.getParent(), curNode.getName());
-        curNode = curNode.getParent();
+      if (!isEmptyInternalMNode(curNode)) {
+        break;
       }
+      store.deleteChild(curNode.getParent(), curNode.getName());
+      curNode = curNode.getParent();
     }
   }
 
@@ -817,12 +800,10 @@ public class MTreeBelowSGMemoryImpl {
 
     IDeviceMNode<IMemMNode> entityMNode;
 
-    synchronized (this) {
-      if (cur.isDevice()) {
-        entityMNode = cur.getAsDeviceMNode();
-      } else {
-        entityMNode = store.setToEntity(cur);
-      }
+    if (cur.isDevice()) {
+      entityMNode = cur.getAsDeviceMNode();
+    } else {
+      entityMNode = store.setToEntity(cur);
     }
 
     if (entityMNode.isUseTemplate()) {
@@ -1155,44 +1136,42 @@ public class MTreeBelowSGMemoryImpl {
     PartialPath devicePath = path.getDevicePath();
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
-    synchronized (this) {
-      String leafName = path.getMeasurement();
-      IMeasurementMNode<IMemMNode> measurementMNode =
-          nodeFactory.createLogicalViewMNode(
-              null, leafName, new LogicalViewSchema(leafName, viewExpression));
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+    String leafName = path.getMeasurement();
+    IMeasurementMNode<IMemMNode> measurementMNode =
+        nodeFactory.createLogicalViewMNode(
+            null, leafName, new LogicalViewSchema(leafName, viewExpression));
+    IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
-      // no need to check alias, because logical view has no alias
+    // no need to check alias, because logical view has no alias
 
-      if (device.hasChild(leafName)) {
-        IMemMNode node = device.getChild(leafName);
-        if (node.isMeasurement()) {
-          if (node.getAsMeasurementMNode().isPreDeleted()) {
-            throw new MeasurementInBlackListException(path);
-          } else {
-            throw new MeasurementAlreadyExistException(
-                path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
-          }
+    if (device.hasChild(leafName)) {
+      IMemMNode node = device.getChild(leafName);
+      if (node.isMeasurement()) {
+        if (node.getAsMeasurementMNode().isPreDeleted()) {
+          throw new MeasurementInBlackListException(path);
         } else {
-          throw new PathAlreadyExistException(path.getFullPath());
+          throw new MeasurementAlreadyExistException(
+              path.getFullPath(), node.getAsMeasurementMNode().getMeasurementPath());
         }
-      }
-
-      IDeviceMNode<IMemMNode> entityMNode;
-      if (device.isDevice()) {
-        entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
-        // this parent has no measurement before. The leafName is his first child who is a logical
-        // view.
-        entityMNode.setAligned(null);
+        throw new PathAlreadyExistException(path.getFullPath());
       }
-
-      measurementMNode.setParent(entityMNode.getAsMNode());
-      store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
-
-      return measurementMNode;
     }
+
+    IDeviceMNode<IMemMNode> entityMNode;
+    if (device.isDevice()) {
+      entityMNode = device.getAsDeviceMNode();
+    } else {
+      entityMNode = store.setToEntity(device);
+      // this parent has no measurement before. The leafName is his first child who is a logical
+      // view.
+      entityMNode.setAligned(null);
+    }
+
+    measurementMNode.setParent(entityMNode.getAsMNode());
+    store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
+
+    return measurementMNode;
   }
 
   public List<PartialPath> constructLogicalViewBlackList(PartialPath pathPattern)
