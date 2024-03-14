@@ -34,7 +34,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AlignedChunkReader extends AbstractChunkReader {
 
@@ -49,6 +51,8 @@ public class AlignedChunkReader extends AbstractChunkReader {
   private final List<ByteBuffer> valueChunkDataBufferList = new ArrayList<>();
   // deleted intervals of all the sub sensors
   private final List<List<TimeRange>> valueDeleteIntervalsList = new ArrayList<>();
+
+  private final Set<Long> timeSet = new HashSet<>();
 
   @SuppressWarnings("unchecked")
   public AlignedChunkReader(
@@ -237,7 +241,8 @@ public class AlignedChunkReader extends AbstractChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            queryFilter);
+            queryFilter,
+            timeSet);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalsList);
     return alignedPageReader;
   }

@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -58,6 +59,8 @@ public class AlignedPageReader implements IPageReader {
   private boolean isModified;
   private TsBlockBuilder builder;
 
+  private final Set<Long> timeSet;
+
   private static final int MASK = 0x80;
 
   @SuppressWarnings("squid:S107")
@@ -69,7 +72,8 @@ public class AlignedPageReader implements IPageReader {
       List<ByteBuffer> valuePageDataList,
       List<TSDataType> valueDataTypeList,
       List<Decoder> valueDecoderList,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      Set<Long> timeSet) {
     timePageReader = new TimePageReader(timePageHeader, timePageData, timeDecoder);
     isModified = timePageReader.isModified();
     valuePageReaderList = new ArrayList<>(valuePageHeaderList.size());
@@ -89,6 +93,7 @@ public class AlignedPageReader implements IPageReader {
     }
     this.globalTimeFilter = globalTimeFilter;
     this.valueCount = valuePageReaderList.size();
+    this.timeSet = timeSet;
   }
 
   @Override
@@ -169,19 +174,18 @@ public class AlignedPageReader implements IPageReader {
   public TsBlock getAllSatisfiedData() throws IOException {
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
-    if (allPageDataSatisfy()) {
-      buildResultWithoutAnyFilterAndDelete(timeBatch);
-      return builder.build();
-    }
-
     // if all the sub sensors' value are null in current row, just discard it
     // if !filter.satisfy, discard this row
     boolean[] keepCurrentRow = new boolean[timeBatch.length];
-    boolean globalTimeFilterAllSatisfy = globalTimeFilterAllSatisfy();
-    if (globalTimeFilterAllSatisfy) {
-      Arrays.fill(keepCurrentRow, true);
-    } else {
-      updateKeepCurrentRowThroughGlobalTimeFilter(keepCurrentRow, timeBatch);
+    for (int i = 0, n = timeBatch.length; i < n; i++) {
+      keepCurrentRow[i] = timeSet.add(timeBatch[i]);
+    }
+    if (globalTimeFilter != null) {
+      for (int i = 0, n = timeBatch.length; i < n; i++) {
+        if (keepCurrentRow[i]) {
+          keepCurrentRow[i] = globalTimeFilter.satisfy(timeBatch[i], null);
+        }
+      }
     }
 
     boolean[][] isDeleted = null;

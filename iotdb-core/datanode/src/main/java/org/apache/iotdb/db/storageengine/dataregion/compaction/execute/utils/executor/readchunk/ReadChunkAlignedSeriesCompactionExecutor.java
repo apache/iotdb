@@ -58,6 +58,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -341,7 +342,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             uncompressedValuePageDatas,
             valueDataTypes,
             valueDecoders,
-            null);
+            null,
+            new HashSet<>());
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     long processedPointNum = 0;
     IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();

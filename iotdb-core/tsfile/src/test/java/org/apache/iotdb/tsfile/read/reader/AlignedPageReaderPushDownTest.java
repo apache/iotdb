@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 public class AlignedPageReaderPushDownTest {
@@ -137,7 +138,8 @@ public class AlignedPageReaderPushDownTest {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            globalTimeFilter);
+            globalTimeFilter,
+            new HashSet<>());
     alignedPageReader.initTsBlockBuilder(valueDataTypeList);
     return alignedPageReader;
   }
@@ -163,7 +165,8 @@ public class AlignedPageReaderPushDownTest {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            globalTimeFilter);
+            globalTimeFilter,
+            new HashSet<>());
     alignedPageReader.initTsBlockBuilder(valueDataTypeList);
     return alignedPageReader;
   }
