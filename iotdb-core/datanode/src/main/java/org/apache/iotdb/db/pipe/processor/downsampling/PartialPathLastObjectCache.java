@@ -30,21 +30,17 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Map-like component to look up for the last chosen time of a timeSeries. It has max size and
- * timeSeries may fail to find its last time and must design the logic to handle this.
- */
-public class PartialPathLastTimeCache implements AutoCloseable {
+public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastTimeCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PartialPathLastObjectCache.class);
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache
   private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
 
-  private final Cache<String, Long> partialPath2TimeCache;
+  private final Cache<String, T> partialPath2ObjectCache;
 
-  public PartialPathLastTimeCache(long memoryLimitInBytes) {
+  public PartialPathLastObjectCache(long memoryLimitInBytes) {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(memoryLimitInBytes)
@@ -54,7 +50,7 @@ public class PartialPathLastTimeCache implements AutoCloseable {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
                   LOGGER.info(
-                      "PartialPathLastTimeCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                      "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
                       newMemory);
                 })
@@ -64,23 +60,23 @@ public class PartialPathLastTimeCache implements AutoCloseable {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
                   LOGGER.info(
-                      "PartialPathLastTimeCache.allocatedMemoryBlock has expanded from {} to {}.",
+                      "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,
                       newMemory);
                 });
 
     // Currently disable the metric here because it's not a constant cache and the number may
     // fluctuate. In the future all the "processorCache"s may be recorded in single metric entry
-    partialPath2TimeCache =
+    partialPath2ObjectCache =
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                // Here partial path is a part of full path adequate to inspect the last time
-                (Weigher<String, Long>)
-                    (partialPath, timeStamp) -> {
+                // Here partial path is a part of full path adequate to inspect the last object
+                (Weigher<String, T>)
+                    (partialPath, object) -> {
                       final long weightInLong =
                           (long)
-                              ((MemUtils.getStringMem(partialPath) + Long.BYTES)
+                              ((MemUtils.getStringMem(partialPath) + calculateMemoryUsage(object))
                                   * memoryUsageCheatFactor.get());
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
@@ -91,21 +87,23 @@ public class PartialPathLastTimeCache implements AutoCloseable {
             .build();
   }
 
+  protected abstract long calculateMemoryUsage(T object);
+
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public Long getPartialPathLastTime(String partialPath) {
-    return partialPath2TimeCache.getIfPresent(partialPath);
+  public T getPartialPathLastObject(String partialPath) {
+    return partialPath2ObjectCache.getIfPresent(partialPath);
   }
 
-  public void setPartialPathLastTime(String partialPath, long timeStamp) {
-    partialPath2TimeCache.put(partialPath, timeStamp);
+  public void setPartialPathLastObject(String partialPath, T object) {
+    partialPath2ObjectCache.put(partialPath, object);
   }
 
   /////////////////////////// Close ///////////////////////////
 
   @Override
   public void close() throws Exception {
-    partialPath2TimeCache.invalidateAll();
+    partialPath2ObjectCache.invalidateAll();
     allocatedMemoryBlock.close();
   }
 }

@@ -523,7 +523,7 @@ public class IoTDBConfig {
   private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
-  private int candidateCompactionTaskQueueSize = 50;
+  private int candidateCompactionTaskQueueSize = 200;
 
   /**
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
