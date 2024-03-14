@@ -543,6 +543,9 @@ public class FragmentInstanceContext extends QueryContext {
             getQueryStatistics().pageReadersDecodeAlignedDiskTime.get(),
             getQueryStatistics().pageReadersDecodeNonAlignedMemTime.get(),
             getQueryStatistics().pageReadersDecodeNonAlignedDiskTime.get());
+
+    SeriesScanCostMetricSet.getInstance()
+        .updatePageReaderMemoryUsage(getQueryStatistics().pageReaderMaxUsedMemorySize.get());
   }
 
   private void releaseDataNodeQueryContext() {

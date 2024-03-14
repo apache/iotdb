@@ -69,6 +69,8 @@ public class QueryStatistics {
   public AtomicLong pageReadersDecodeNonAlignedMemCount = new AtomicLong(0);
   public AtomicLong pageReadersDecodeNonAlignedMemTime = new AtomicLong(0);
 
+  public AtomicLong pageReaderMaxUsedMemorySize = new AtomicLong(0);
+
   public TQueryStatistics toThrift() {
     return new TQueryStatistics(
         loadTimeSeriesMetadataDiskSeqCount.get(),
