@@ -169,7 +169,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return visitStatement(createLogicalViewStatement, context);
+    return super.visitCreateLogicalView(createLogicalViewStatement, context);
   }
 
   @Override
