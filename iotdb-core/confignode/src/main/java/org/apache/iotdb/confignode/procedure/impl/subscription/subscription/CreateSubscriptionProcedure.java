@@ -137,13 +137,15 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
                 new TCreatePipeReq()
                     .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
                     .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())));
+
+        topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
       } else {
         // Consumer group already subscribed this topic
         pipeProcedures.add(
             new StartPipeProcedureV2(topic + "_" + subscribeReq.getConsumerGroupId()));
-      }
 
-      topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
+        topicProcedures.add(null);
+      }
     }
   }
 
@@ -154,7 +156,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
     int topicCount = topicProcedures.size();
     for (int i = topicCount - 1; i >= 0; --i) {
       pipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
-      topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
+      if (topicProcedures.get(i) != null) {
+        topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
+      }
     }
 
     consumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
@@ -182,7 +186,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
             e.getMessage());
         throw new PipeException(e.getMessage());
       }
-      topicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+
+      if (topicProcedures.get(i) != null) {
+        topicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+      }
     }
 
     consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);

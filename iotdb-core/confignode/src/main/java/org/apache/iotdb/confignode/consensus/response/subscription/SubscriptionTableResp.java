@@ -65,7 +65,7 @@ public class SubscriptionTableResp implements DataSet {
               subscriptionMeta.getConsumerGroupID(),
               subscriptionMeta.getConsumerIDs()));
     }
-    return new TShowSubscriptionResp(status);
+    return new TShowSubscriptionResp(status).setSubscriptionInfoList(showSubscriptionInfoList);
   }
 
   public TGetAllSubscriptionInfoResp convertToTGetAllSubscriptionInfoResp() throws IOException {
