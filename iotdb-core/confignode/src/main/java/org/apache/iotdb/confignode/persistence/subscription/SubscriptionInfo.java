@@ -89,6 +89,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   /////////////////////////////// Topic ///////////////////////////////
+
   public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq) throws PipeException {
     acquireReadLock();
     try {
@@ -147,7 +148,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to alter pipe topic %s, the pipe topic with the same name is not existed",
+            "Failed to alter pipe topic %s, the pipe topic is not existed",
             topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);

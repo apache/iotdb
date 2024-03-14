@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -1034,14 +1035,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
     try {
-      TPushTopicRespExceptionMessage exceptionMessage;
+      final TPushTopicRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
         exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
       } else if (req.isSetTopicMeta()) {
-        final TopicMeta topicMeta = TopicMeta.deserialize(ByteBuffer.wrap(req.getTopicMeta()));
-        exceptionMessage = SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
+        exceptionMessage =
+            SubscriptionAgent.topic()
+                .handleSingleTopicMetaChanges(
+                    TopicMeta.deserialize(ByteBuffer.wrap(req.getTopicMeta())));
       } else {
-        throw new Exception("Invalid TPushSingleTopicMetaReq");
+        throw new SubscriptionException("Invalid request " + req + " from config node.");
       }
 
       return exceptionMessage == null
@@ -1051,7 +1054,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing single topic meta", e);
+      LOGGER.warn("Error occurred when pushing single topic meta", e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
     }
