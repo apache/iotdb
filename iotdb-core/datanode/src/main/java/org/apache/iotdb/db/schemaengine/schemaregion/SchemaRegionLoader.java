@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
@@ -104,6 +105,19 @@ public class SchemaRegionLoader {
     } else {
       currentMode = schemaEngineMode;
       currentConstructor = constructor;
+    }
+    if (currentMode.equals(SchemaConstant.DEFAULT_SCHEMA_ENGINE_MODE)) {
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
+      logger.info(
+          "[SchemaRegionLoader], schemaEngineMode:{}, currentMode:{}",
+          schemaEngineMode,
+          currentMode);
+    } else {
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
+      logger.info(
+          "[SchemaRegionLoader], schemaEngineMode:{}, currentMode:{}",
+          schemaEngineMode,
+          currentMode);
     }
   }
 

@@ -62,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -567,5 +568,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, C context) {
     return visitStatement(showThrottleQuotaStatement, context);
+  }
+
+  public R visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
+    return visitStatement(showCurrentTimestampStatement, context);
   }
 }
