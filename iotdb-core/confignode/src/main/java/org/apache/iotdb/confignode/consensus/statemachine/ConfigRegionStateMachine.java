@@ -295,8 +295,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  /** TODO optimize the lock usage. */
-  private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
+  private void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
     if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
       try {
         simpleLogWriter.force();

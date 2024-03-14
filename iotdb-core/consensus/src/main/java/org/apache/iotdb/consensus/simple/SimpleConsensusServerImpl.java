@@ -48,7 +48,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
     if (initialized.compareAndSet(false, true)) {
       stateMachine.start();
       // Notify itself as the leader
@@ -58,17 +58,17 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     stateMachine.stop();
   }
 
   @Override
-  public boolean isReadOnly() {
+  public synchronized boolean isReadOnly() {
     return stateMachine.isReadOnly();
   }
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
+  public synchronized TSStatus write(IConsensusRequest request) {
     return stateMachine.write(request);
   }
 
@@ -78,17 +78,17 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
+  public synchronized DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir) {
+  public synchronized boolean takeSnapshot(File snapshotDir) {
     return stateMachine.takeSnapshot(snapshotDir);
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public synchronized void loadSnapshot(File latestSnapshotRootDir) {
     stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 }
