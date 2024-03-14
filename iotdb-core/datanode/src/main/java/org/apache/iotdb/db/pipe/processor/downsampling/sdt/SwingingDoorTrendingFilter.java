@@ -29,12 +29,12 @@ public class SwingingDoorTrendingFilter<T> {
    * the maximum curUpperSlope between the lastStoredPoint to the current point upperDoor can only
    * open up
    */
-  private double upperDoor = Double.MIN_VALUE;
+  private double upperDoor;
   /**
    * the minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
    * open downward
    */
-  private double lowerDoor = Double.MAX_VALUE;
+  private double lowerDoor;
 
   /**
    * the last read time and value if upperDoor >= lowerDoor meaning out of compressionDeviation
@@ -55,15 +55,30 @@ public class SwingingDoorTrendingFilter<T> {
   public SwingingDoorTrendingFilter(
       SwingingDoorTrendingSamplingProcessor processor, long firstTimestamp, T firstValue) {
     this.processor = processor;
+    init(firstTimestamp, firstValue);
+  }
 
-    this.lastReadTimestamp = firstTimestamp;
-    this.lastReadValue = firstValue;
+  private void init(long firstTimestamp, T firstValue) {
+    upperDoor = Double.MIN_VALUE;
+    lowerDoor = Double.MAX_VALUE;
 
-    this.lastStoredTimestamp = firstTimestamp;
-    this.lastStoredValue = firstValue;
+    lastReadTimestamp = firstTimestamp;
+    lastReadValue = firstValue;
+
+    lastStoredTimestamp = firstTimestamp;
+    lastStoredValue = firstValue;
   }
 
   public boolean filter(long timestamp, T value) {
+    try {
+      return tryFilter(timestamp, value);
+    } catch (Exception e) {
+      init(timestamp, value);
+      return true;
+    }
+  }
+
+  private boolean tryFilter(long timestamp, T value) {
     final long timeDiff = timestamp - lastStoredTimestamp;
     final long absTimeDiff = Math.abs(timeDiff);
 
