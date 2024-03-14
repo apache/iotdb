@@ -64,6 +64,7 @@ public class SubscriptionCoordinator {
   public SubscriptionInfo getSubscriptionInfo() {
     return subscriptionInfo;
   }
+
   /////////////////////////////// Lock ///////////////////////////////
 
   public AtomicReference<SubscriptionInfo> tryLock() {
@@ -92,10 +93,15 @@ public class SubscriptionCoordinator {
   }
 
   /////////////////////////////// Operate ///////////////////////////////
+
   public TSStatus createTopic(TCreateTopicReq req) {
     final TSStatus status = configManager.getProcedureManager().createTopic(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create topic {}. Result status: {}.", req.getTopicName(), status);
+      LOGGER.warn(
+          "Failed to create topic {} with attributes {}. Result status: {}.",
+          req.getTopicName(),
+          req.getTopicAttributes(),
+          status);
     }
     return status;
   }
@@ -114,10 +120,12 @@ public class SubscriptionCoordinator {
           .filter(req.getTopicName())
           .convertToTShowTopicResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new TopicTableResp(res, Collections.emptyList()).convertToTShowTopicResp();
+      LOGGER.warn("Failed to show topic info.", e);
+      return new TopicTableResp(
+              new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()),
+              Collections.emptyList())
+          .convertToTShowTopicResp();
     }
   }
 
@@ -126,7 +134,7 @@ public class SubscriptionCoordinator {
       return ((TopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
           .convertToTGetAllTopicInfoResp();
     } catch (Exception e) {
-      LOGGER.error("Failed to get all topic info.", e);
+      LOGGER.warn("Failed to get all topic info.", e);
       return new TGetAllTopicInfoResp(
           new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());
@@ -190,10 +198,11 @@ public class SubscriptionCoordinator {
           .filter(req.getTopicName())
           .convertToTShowSubscriptionResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-      return new SubscriptionTableResp(res, Collections.emptyList())
+      LOGGER.warn("Failed to show subscription info.", e);
+      return new SubscriptionTableResp(
+              new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()),
+              Collections.emptyList())
           .convertToTShowSubscriptionResp();
     }
   }
@@ -204,9 +213,10 @@ public class SubscriptionCoordinator {
               configManager.getConsensusManager().read(new ShowSubscriptionPlan()))
           .convertToTGetAllSubscriptionInfoResp();
     } catch (Exception e) {
-      LOGGER.error("Failed to get all subscription info.", e);
+      LOGGER.warn("Failed to get all subscription info.", e);
       return new TGetAllSubscriptionInfoResp(
-          new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
           Collections.emptyList());
     }
   }
