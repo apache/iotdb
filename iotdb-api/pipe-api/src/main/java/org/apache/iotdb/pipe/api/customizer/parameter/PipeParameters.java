@@ -50,11 +50,11 @@ public class PipeParameters {
   private final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
-    this.attributes = attributes;
+    this.attributes = attributes == null ? new HashMap<>() : attributes;
   }
 
   public Map<String, String> getAttribute() {
-    return attributes == null ? new HashMap<>() : attributes;
+    return attributes;
   }
 
   public boolean hasAttribute(String key) {
