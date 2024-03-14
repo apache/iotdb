@@ -277,7 +277,6 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionPriority] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
-      // TODO: [1,2] and [2,1] will be treated as different, but they are actually the same
       if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
         try {

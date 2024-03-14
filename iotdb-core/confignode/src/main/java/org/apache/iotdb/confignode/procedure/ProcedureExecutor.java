@@ -307,7 +307,7 @@ public class ProcedureExecutor<Env> {
    *
    * @return next procedure id
    */
-  public synchronized long nextProcId() {
+  private long nextProcId() {
     long procId = lastProcId.incrementAndGet();
     if (procId < 0) {
       while (!lastProcId.compareAndSet(procId, 0)) {

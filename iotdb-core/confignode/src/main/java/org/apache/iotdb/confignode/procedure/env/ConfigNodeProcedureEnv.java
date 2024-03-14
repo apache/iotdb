@@ -207,7 +207,7 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
+  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
     final int runningOrReadOnlyDataNodeNum =
         getNodeManager()
             .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)

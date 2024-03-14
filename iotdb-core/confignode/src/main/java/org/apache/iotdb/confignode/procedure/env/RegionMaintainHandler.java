@@ -418,13 +418,13 @@ public class RegionMaintainHandler {
   public void removeRegionLocation(
       TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
     LOGGER.info(
-        "RemoveRegionLocation started, add region {} to {}",
+        "RemoveRegionLocation started, remove region {} from DataNode {}",
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation));
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
     LOGGER.info(
-        "AddRegionLocation finished, add region {} to {}, result is {}",
+        "RemoveRegionLocation finished, remove region {} from DataNode {}, result is {}",
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);

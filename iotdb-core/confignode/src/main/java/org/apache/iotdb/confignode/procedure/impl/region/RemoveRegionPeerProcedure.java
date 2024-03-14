@@ -174,4 +174,15 @@ public class RemoveRegionPeerProcedure
   public TDataNodeLocation getTargetDataNode() {
     return targetDataNode;
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof RemoveRegionPeerProcedure)) {
+      return false;
+    }
+    RemoveRegionPeerProcedure procedure = (RemoveRegionPeerProcedure) obj;
+    return this.consensusGroupId.equals(procedure.consensusGroupId)
+        && this.targetDataNode.equals(procedure.targetDataNode)
+        && this.coordinator.equals(procedure.coordinator);
+  }
 }
