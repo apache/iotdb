@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe;
+package org.apache.iotdb.confignode.procedure.impl.subscription;
 
-public enum PipeTaskOperation {
-  CREATE_PIPE("createPipe"),
-  START_PIPE("startPipe"),
-  STOP_PIPE("stopPipe"),
-  DROP_PIPE("dropPipe"),
-  ALTER_PIPE("alterPipe"),
-  HANDLE_LEADER_CHANGE("handleLeaderChange"),
-  SYNC_PIPE_META("syncPipeMeta"),
-  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
+public enum SubscriptionOperation {
+  CREATE_TOPIC("createTopic"),
+  DROP_TOPIC("dropTopic"),
+  ALTER_TOPIC("alterTopic"),
+  CREATE_CONSUMER("createConsumer"),
+  DROP_CONSUMER("dropConsumer"),
+  ALTER_CONSUMER_GROUP("alterConsumerGroup"),
+  CREATE_SUBSCRIPTION("createSubscription"),
+  DROP_SUBSCRIPTION("dropSubscription"),
   ;
 
   private final String name;
 
-  PipeTaskOperation(String name) {
+  SubscriptionOperation(String name) {
     this.name = name;
   }
 

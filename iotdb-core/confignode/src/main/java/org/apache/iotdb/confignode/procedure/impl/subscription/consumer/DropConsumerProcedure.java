@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -38,8 +38,8 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.DROP_CONSUMER;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.DROP_CONSUMER;
   }
 
   @Override

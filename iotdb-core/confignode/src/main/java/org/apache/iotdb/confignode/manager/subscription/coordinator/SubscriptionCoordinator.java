@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionT
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
-import org.apache.iotdb.confignode.persistence.pipe.SubscriptionInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;

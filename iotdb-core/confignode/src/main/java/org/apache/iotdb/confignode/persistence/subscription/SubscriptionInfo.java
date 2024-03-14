@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence.pipe;
+package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -338,11 +338,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
-      consumerGroupMetaKeeper.removeConsumerGroupMeta(
-          plan.getConsumerGroupMeta().getConsumerGroupId());
       if (plan.getConsumerGroupMeta() != null) {
-        consumerGroupMetaKeeper.addConsumerGroupMeta(
-            plan.getConsumerGroupMeta().getConsumerGroupId(), plan.getConsumerGroupMeta());
+        String consumerGroupId = plan.getConsumerGroupMeta().getConsumerGroupId();
+        consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+        consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, plan.getConsumerGroupMeta());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

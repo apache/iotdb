@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -54,8 +54,8 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.ALTER_TOPIC;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.ALTER_TOPIC;
   }
 
   @Override

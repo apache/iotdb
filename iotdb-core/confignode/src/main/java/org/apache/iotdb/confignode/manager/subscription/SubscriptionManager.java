@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.subscription;
 
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.subscription.coordinator.SubscriptionCoordinator;
-import org.apache.iotdb.confignode.persistence.pipe.SubscriptionInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 
 public class SubscriptionManager {
 

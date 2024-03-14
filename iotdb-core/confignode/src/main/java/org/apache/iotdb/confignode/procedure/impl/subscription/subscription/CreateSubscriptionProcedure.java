@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -58,8 +58,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.CREATE_SUBSCRIPTION;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.CREATE_SUBSCRIPTION;
   }
 
   @Override

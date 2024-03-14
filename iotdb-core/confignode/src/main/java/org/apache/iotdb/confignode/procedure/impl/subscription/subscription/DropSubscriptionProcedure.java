@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.TopicMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -56,8 +56,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.DROP_SUBSCRIPTION;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.DROP_SUBSCRIPTION;
   }
 
   @Override

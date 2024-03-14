@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -48,8 +48,8 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.DROP_TOPIC;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.DROP_TOPIC;
   }
 
   @Override

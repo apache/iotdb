@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.ConsumerMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -40,8 +40,8 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.CREATE_CONSUMER;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.CREATE_CONSUMER;
   }
 
   @Override

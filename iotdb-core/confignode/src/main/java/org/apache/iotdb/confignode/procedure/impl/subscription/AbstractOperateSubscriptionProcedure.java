@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
-import org.apache.iotdb.confignode.persistence.pipe.SubscriptionInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -129,7 +128,7 @@ public abstract class AbstractOperateSubscriptionProcedure
     }
   }
 
-  protected abstract PipeTaskOperation getOperation();
+  protected abstract SubscriptionOperation getOperation();
 
   protected abstract void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException;
 
