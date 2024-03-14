@@ -164,6 +164,8 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.session.req.InsertRecordsRequest;
+import org.apache.iotdb.session.util.SessionRPCUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1706,7 +1708,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus insertRecordsV2(TSInsertRecordsReqV2 req) {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    try {
+      InsertRecordsRequest request =
+          SessionRPCUtils.deserializeInsertRecordsReq(req.schemaBuffer, req.valueBuffer, null);
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IOException e) {
+      return onNpeOrUnexpectedException(
+          e, OperationType.INSERT_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Override

@@ -914,6 +914,7 @@ public class SessionConnection {
   }
 
   private TSStatus insertRecordsV2Internal(TSInsertRecordsReqV2 request) throws TException {
+    request.setSessionId(sessionId);
     return client.insertRecordsV2(request);
   }
 

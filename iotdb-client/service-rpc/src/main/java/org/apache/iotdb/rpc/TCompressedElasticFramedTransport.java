@@ -99,4 +99,14 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
 
   protected abstract void uncompress(byte[] input, int inOff, int size, byte[] output, int outOff)
       throws IOException;
+
+  public int getCompressedSize() throws IOException {
+    int length = writeBuffer.getPos();
+    RpcStat.writeBytes.addAndGet(length);
+    int maxCompressedLength = maxCompressedLength(length);
+    writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
+    int compressedLength =
+        compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
+    return compressedLength;
+  }
 }

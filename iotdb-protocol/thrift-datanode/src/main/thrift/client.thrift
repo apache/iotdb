@@ -259,6 +259,7 @@ struct TSInsertRecordsReqV2 {
   1: required binary schemaBuffer
   2: required binary valueBuffer
   3: required binary auxiliaryBuffer
+  4: optional i64 sessionId
 }
 
 struct TSInsertRecordsOfOneDeviceReq {
