@@ -92,11 +92,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -1830,16 +1830,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowSubscriptionReq showSubscriptionReq = new TShowSubscriptionReq();
+      final TShowSubscriptionReq showSubscriptionReq = new TShowSubscriptionReq();
       if (showSubscriptionsStatement.getTopicName() != null) {
         showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
       }
-      List<TShowSubscriptionInfo> tShowSubscriptionInfoList =
-          configNodeClient.showSubscription(showSubscriptionReq).getSubscriptionInfoList();
-      ShowSubscriptionTask.buildTSBlock(tShowSubscriptionInfoList, future);
+
+      final TShowSubscriptionResp showSubscriptionResp =
+          configNodeClient.showSubscription(showSubscriptionReq);
+      if (showSubscriptionResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showSubscriptionResp.getStatus().getMessage(),
+                showSubscriptionResp.getStatus().getCode()));
+        return future;
+      }
+
+      ShowSubscriptionTask.buildTSBlock(
+          showSubscriptionResp.isSetSubscriptionInfoList()
+              ? showSubscriptionResp.getSubscriptionInfoList()
+              : Collections.emptyList(),
+          future);
     } catch (Exception e) {
       future.setException(e);
     }
@@ -1848,15 +1863,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    try (ConfigNodeClient configNodeClient =
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreateTopicReq req =
+      final TCreateTopicReq req =
           new TCreateTopicReq()
               .setTopicName(createTopicStatement.getTopicName())
               .setTopicAttributes(createTopicStatement.getTopicAttributes());
-      TSStatus tsStatus = configNodeClient.createTopic(req);
+      final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to create topic {} in config node, status is {}.",
@@ -1893,17 +1907,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTopicReq tShowTopicReq = new TShowTopicReq();
+      final TShowTopicReq showTopicReq = new TShowTopicReq();
       if (showTopicsStatement.getTopicName() != null) {
-        tShowTopicReq.setTopicName(showTopicsStatement.getTopicName());
+        showTopicReq.setTopicName(showTopicsStatement.getTopicName());
       }
 
-      List<TShowTopicInfo> tShowTopicInfoList =
-          configNodeClient.showTopic(tShowTopicReq).getTopicInfoList();
-      ShowTopicsTask.buildTSBlock(tShowTopicInfoList, future);
+      final TShowTopicResp showTopicResp = configNodeClient.showTopic(showTopicReq);
+      if (showTopicResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showTopicResp.getStatus().getMessage(), showTopicResp.getStatus().getCode()));
+        return future;
+      }
+
+      ShowTopicsTask.buildTSBlock(
+          showTopicResp.isSetTopicInfoList()
+              ? showTopicResp.getTopicInfoList()
+              : Collections.emptyList(),
+          future);
     } catch (Exception e) {
       future.setException(e);
     }

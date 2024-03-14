@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -30,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -56,11 +54,12 @@ public class ShowSubscriptionTask implements IConfigTask {
 
   public static void buildTSBlock(
       List<TShowSubscriptionInfo> subscriptionInfoList, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showSubscriptionColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    final TsBlockBuilder builder =
+        new TsBlockBuilder(
+            ColumnHeaderConstant.showSubscriptionColumnHeaders.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList()));
+
     for (TShowSubscriptionInfo tSubscriptionInfo : subscriptionInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
@@ -77,7 +76,11 @@ public class ShowSubscriptionTask implements IConfigTask {
                   tSubscriptionInfo.getConsumerIds().toString(), TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowSubscriptionHeader();
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            DatasetHeaderFactory.getShowSubscriptionHeader()));
   }
 }

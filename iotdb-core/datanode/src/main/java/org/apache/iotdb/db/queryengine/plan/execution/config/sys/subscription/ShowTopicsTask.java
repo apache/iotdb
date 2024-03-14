@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -30,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -56,12 +54,13 @@ public class ShowTopicsTask implements IConfigTask {
 
   public static void buildTSBlock(
       List<TShowTopicInfo> topicInfoList, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showPipeColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TShowTopicInfo topicInfo : topicInfoList) {
+    final TsBlockBuilder builder =
+        new TsBlockBuilder(
+            ColumnHeaderConstant.showPipeColumnHeaders.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList()));
+
+    for (final TShowTopicInfo topicInfo : topicInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
@@ -71,7 +70,11 @@ public class ShowTopicsTask implements IConfigTask {
           .writeBinary(new Binary(topicInfo.getTopicAttributes(), TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTopicHeader();
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+
+    future.set(
+        new ConfigTaskResult(
+            TSStatusCode.SUCCESS_STATUS,
+            builder.build(),
+            DatasetHeaderFactory.getShowTopicHeader()));
   }
 }
