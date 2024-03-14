@@ -3260,10 +3260,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
-        operatorContext,
-        operator,
-        node.getQueryId(),
-        node.isVerbose(),
-        node.getTimeIntervalForLog());
+        operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
   }
 }

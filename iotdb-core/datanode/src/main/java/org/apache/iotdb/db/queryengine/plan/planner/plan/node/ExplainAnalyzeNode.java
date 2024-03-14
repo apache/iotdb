@@ -33,19 +33,19 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final boolean verbose;
 
   private final long queryId;
-  private final long timeIntervalForLog;
+  private final long timeout;
 
   public ExplainAnalyzeNode(
       PlanNodeId id, PlanNode child, boolean verbose, long queryId, long timeout) {
     super(id, child);
     this.verbose = verbose;
     this.queryId = queryId;
-    this.timeIntervalForLog = timeout;
+    this.timeout = timeout;
   }
 
   @Override
   public PlanNode clone() {
-    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId, timeIntervalForLog);
+    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId, timeout);
   }
 
   @Override
@@ -69,15 +69,15 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     PlanNodeType.EXPLAIN_ANALYZE.serialize(stream);
     ReadWriteIOUtils.write(verbose, stream);
     ReadWriteIOUtils.write(queryId, stream);
-    ReadWriteIOUtils.write(timeIntervalForLog, stream);
+    ReadWriteIOUtils.write(timeout, stream);
   }
 
   public static ExplainAnalyzeNode deserialize(ByteBuffer byteBuffer) {
     boolean verbose = ReadWriteIOUtils.readBool(byteBuffer);
     long queryId = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    long timeIntervalForLog = ReadWriteIOUtils.readLong(byteBuffer);
-    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId, timeIntervalForLog);
+    long timeout = ReadWriteIOUtils.readLong(byteBuffer);
+    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId, timeout);
   }
 
   public boolean isVerbose() {
@@ -88,8 +88,8 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return queryId;
   }
 
-  public long getTimeIntervalForLog() {
-    return timeIntervalForLog;
+  public long getTimeout() {
+    return timeout;
   }
 
   @Override
@@ -97,9 +97,7 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     if (this == o) return true;
     if (!(o instanceof ExplainAnalyzeNode)) return false;
     ExplainAnalyzeNode that = (ExplainAnalyzeNode) o;
-    return verbose == that.verbose
-        && queryId == that.queryId
-        && timeIntervalForLog == that.timeIntervalForLog;
+    return verbose == that.verbose && queryId == that.queryId && timeout == that.timeout;
   }
 
   @Override
@@ -107,6 +105,6 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return super.hashCode()
         + Boolean.hashCode(verbose)
         + Long.hashCode(queryId)
-        + Long.hashCode(timeIntervalForLog);
+        + Long.hashCode(timeout);
   }
 }
