@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.pipe.agent.receiver;
 
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiverAgent;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 
 /** {@link PipeDataNodeReceiverAgent} is the entry point of all pipe receivers' logic. */
@@ -59,27 +58,11 @@ public class PipeDataNodeReceiverAgent {
     return legacyAgent;
   }
 
-  private static void cleanPipeReceiverDir(File receiverFileDir) {
-    try {
-      FileUtils.deleteDirectory(receiverFileDir);
-      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (Exception e) {
-      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
-    }
-
-    try {
-      FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (IOException e) {
-      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
-    }
-  }
-
   public void cleanPipeReceiverDirs() {
     String[] pipeReceiverFileDirs =
         IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs();
     Arrays.stream(pipeReceiverFileDirs)
         .map(File::new)
-        .forEach(PipeDataNodeReceiverAgent::cleanPipeReceiverDir);
+        .forEach(IoTDBReceiverAgent::cleanPipeReceiverDir);
   }
 }

@@ -494,7 +494,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
       // sender.
       closeCurrentWritingFileWriter();
-      files.forEach(this::deleteFile);
+      // Clear the directory instead of only deleting the referenced files in seal request
+      // to avoid previously undeleted file when transferring file pieces being redundant
+      IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
     }
   }
 
