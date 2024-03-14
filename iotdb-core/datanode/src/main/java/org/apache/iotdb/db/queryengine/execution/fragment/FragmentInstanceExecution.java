@@ -206,7 +206,8 @@ public class FragmentInstanceExecution {
         setOperatorStatistics(operatorStatistics, operatorContext);
         operatorStatisticsMap.put(operatorContext.getPlanNodeId().toString(), operatorStatistics);
         operatorCoutMap.put(operatorType, operatorCoutMap.getOrDefault(operatorType, 0) + 1);
-        if (operatorCoutMap.get(operatorType) >= 10) {
+        if (operatorCoutMap.get(operatorType)
+            >= IoTDBDescriptor.getInstance().getConfig().getMergeThresholdOfExplainAnalyze()) {
           needMerge = true;
           // merge all the operatorStatistics with the overload type and remain only one in
           // operatorStatisticsMap

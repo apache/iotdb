@@ -33,16 +33,23 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
   private final boolean verbose;
 
   private final long queryId;
+  private final long timeIntervalForLog;
 
-  public ExplainAnalyzeNode(PlanNodeId id, PlanNode child, boolean verbose, long queryId) {
+  public ExplainAnalyzeNode(
+      PlanNodeId id, PlanNode child, boolean verbose, long queryId, long timeout) {
     super(id, child);
     this.verbose = verbose;
     this.queryId = queryId;
+
+    // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
+    // times.
+    // And the maximum time interval is 15s.
+    this.timeIntervalForLog = Math.min(timeout / 3, 15000);
   }
 
   @Override
   public PlanNode clone() {
-    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId);
+    return new ExplainAnalyzeNode(getPlanNodeId(), child, verbose, queryId, timeIntervalForLog);
   }
 
   @Override
@@ -66,13 +73,15 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     PlanNodeType.EXPLAIN_ANALYZE.serialize(stream);
     ReadWriteIOUtils.write(verbose, stream);
     ReadWriteIOUtils.write(queryId, stream);
+    ReadWriteIOUtils.write(timeIntervalForLog, stream);
   }
 
   public static ExplainAnalyzeNode deserialize(ByteBuffer byteBuffer) {
     boolean verbose = ReadWriteIOUtils.readBool(byteBuffer);
     long queryId = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId);
+    long timeIntervalForLog = ReadWriteIOUtils.readLong(byteBuffer);
+    return new ExplainAnalyzeNode(planNodeId, null, verbose, queryId, timeIntervalForLog);
   }
 
   public boolean isVerbose() {
@@ -83,16 +92,25 @@ public class ExplainAnalyzeNode extends SingleChildProcessNode {
     return queryId;
   }
 
+  public long getTimeIntervalForLog() {
+    return timeIntervalForLog;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof ExplainAnalyzeNode)) return false;
     ExplainAnalyzeNode that = (ExplainAnalyzeNode) o;
-    return verbose == that.verbose;
+    return verbose == that.verbose
+        && queryId == that.queryId
+        && timeIntervalForLog == that.timeIntervalForLog;
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode() + Boolean.hashCode(verbose);
+    return super.hashCode()
+        + Boolean.hashCode(verbose)
+        + Long.hashCode(queryId)
+        + Long.hashCode(timeIntervalForLog);
   }
 }

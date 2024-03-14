@@ -59,18 +59,21 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final boolean verbose;
   private boolean outputResult = false;
   private final List<FragmentInstance> instances;
-  private static final long LOG_INTERNAL_IN_MS = 10000;
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
   private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
       new FragmentInstanceStatisticsDrawer();
   private static final String LOG_TITLE =
-      "---------------------Intermediate result of EXPLAIN ANALYZE---------------------:";
+      "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public ExplainAnalyzeOperator(
-      OperatorContext operatorContext, Operator child, long queryId, boolean verbose) {
+      OperatorContext operatorContext,
+      Operator child,
+      long queryId,
+      boolean verbose,
+      long log_interval_in_ms) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
@@ -85,8 +88,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             queryExecution.getScheduledExecutor(),
             this::logIntermediateResultIfTimeout,
-            LOG_INTERNAL_IN_MS,
-            LOG_INTERNAL_IN_MS,
+            log_interval_in_ms,
+            log_interval_in_ms,
             TimeUnit.MILLISECONDS);
   }
 

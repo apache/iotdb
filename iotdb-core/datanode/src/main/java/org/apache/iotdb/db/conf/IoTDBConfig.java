@@ -349,6 +349,8 @@ public class IoTDBConfig {
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+  private int mergeThresholdOfExplainAnalyze = 10;
+
   private int modeMapSizeThreshold = 10000;
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
@@ -1602,6 +1604,14 @@ public class IoTDBConfig {
 
   public int getDegreeOfParallelism() {
     return degreeOfParallelism;
+  }
+
+  public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {
+    this.mergeThresholdOfExplainAnalyze = mergeThresholdOfExplainAnalyze;
+  }
+
+  public int getMergeThresholdOfExplainAnalyze() {
+    return mergeThresholdOfExplainAnalyze;
   }
 
   public int getMaxAllowedConcurrentQueries() {
