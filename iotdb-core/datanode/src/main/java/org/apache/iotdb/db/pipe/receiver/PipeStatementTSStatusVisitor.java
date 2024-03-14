@@ -118,6 +118,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     return visitGeneralInternalCreateTimeseries(internalCreateMultiTimeSeriesStatement, context);
   }
 
+  @Override
+  public TSStatus visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, TSStatus context) {
+    return visitGeneralInternalCreateTimeseries(createLogicalViewStatement, context);
+  }
+
   private TSStatus visitGeneralInternalCreateTimeseries(
       Statement internalCreateTimeSeriesStatement, TSStatus context) {
     if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
@@ -154,15 +160,6 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return visitStatement(alterTimeSeriesStatement, context);
-  }
-
-  @Override
-  public TSStatus visitCreateLogicalView(CreateLogicalViewStatement statement, TSStatus context) {
-    if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
-    return super.visitCreateLogicalView(statement, context);
   }
 
   @Override
