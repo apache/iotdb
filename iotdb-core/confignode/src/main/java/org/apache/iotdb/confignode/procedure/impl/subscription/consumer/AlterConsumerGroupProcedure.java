@@ -199,7 +199,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
       return false;
     }
     AlterConsumerGroupProcedure that = (AlterConsumerGroupProcedure) o;
-    return this.updatedConsumerGroupMeta.equals(that.updatedConsumerGroupMeta);
+    return Objects.equals(this.updatedConsumerGroupMeta, that.updatedConsumerGroupMeta);
   }
 
   @Override

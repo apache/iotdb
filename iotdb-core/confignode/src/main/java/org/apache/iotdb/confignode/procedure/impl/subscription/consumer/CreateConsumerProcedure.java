@@ -81,7 +81,7 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
           new ConsumerGroupMeta(
               createConsumerReq.getConsumerGroupId(), createTime, newConsumerMeta);
     } else {
-      updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
+      updatedConsumerGroupMeta = existingConsumerGroupMeta.deepCopy();
       updatedConsumerGroupMeta.addConsumer(newConsumerMeta);
     }
   }
@@ -127,13 +127,14 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
       return false;
     }
     CreateConsumerProcedure that = (CreateConsumerProcedure) o;
-    return this.createConsumerReq.getConsumerId().equals(that.createConsumerReq.getConsumerId())
-        && this.createConsumerReq
-            .getConsumerGroupId()
-            .equals(that.createConsumerReq.getConsumerGroupId())
-        && this.createConsumerReq
-            .getConsumerAttributes()
-            .equals(that.createConsumerReq.getConsumerAttributes());
+    return Objects.equals(
+            this.createConsumerReq.getConsumerId(), that.createConsumerReq.getConsumerId())
+        && Objects.equals(
+            this.createConsumerReq.getConsumerGroupId(),
+            that.createConsumerReq.getConsumerGroupId())
+        && Objects.equals(
+            this.createConsumerReq.getConsumerAttributes(),
+            that.createConsumerReq.getConsumerAttributes());
   }
 
   @Override

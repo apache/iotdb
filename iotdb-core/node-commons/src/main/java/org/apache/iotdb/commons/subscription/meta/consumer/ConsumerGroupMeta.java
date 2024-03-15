@@ -56,7 +56,7 @@ public class ConsumerGroupMeta {
     consumerIdToConsumerMeta.put(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
   }
 
-  public ConsumerGroupMeta copy() {
+  public ConsumerGroupMeta deepCopy() {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;

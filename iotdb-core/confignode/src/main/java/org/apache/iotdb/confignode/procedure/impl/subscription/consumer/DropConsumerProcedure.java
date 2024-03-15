@@ -66,7 +66,7 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
     existingConsumerGroupMeta =
         subscriptionInfo.get().getConsumerGroupMeta(dropConsumerReq.getConsumerGroupId());
 
-    updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
+    updatedConsumerGroupMeta = existingConsumerGroupMeta.deepCopy();
     updatedConsumerGroupMeta.removeConsumer(dropConsumerReq.getConsumerId());
   }
 
@@ -99,10 +99,10 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
       return false;
     }
     DropConsumerProcedure that = (DropConsumerProcedure) o;
-    return this.dropConsumerReq.getConsumerId().equals(that.dropConsumerReq.getConsumerId())
-        && this.dropConsumerReq
-            .getConsumerGroupId()
-            .equals(that.dropConsumerReq.getConsumerGroupId());
+    return Objects.equals(
+            this.dropConsumerReq.getConsumerId(), that.dropConsumerReq.getConsumerId())
+        && Objects.equals(
+            this.dropConsumerReq.getConsumerGroupId(), that.dropConsumerReq.getConsumerGroupId());
   }
 
   @Override

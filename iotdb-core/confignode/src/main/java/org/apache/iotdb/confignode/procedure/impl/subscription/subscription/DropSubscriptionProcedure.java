@@ -82,7 +82,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
 
     // Construct AlterConsumerGroupProcedure
     ConsumerGroupMeta updatedConsumerGroupMeta =
-        subscriptionInfo.get().getConsumerGroupMeta(unsubscribeReq.getConsumerGroupId()).copy();
+        subscriptionInfo.get().getConsumerGroupMeta(unsubscribeReq.getConsumerGroupId()).deepCopy();
 
     // Get topics subscribed by no consumers in this group after this un-subscription
     Set<String> topicsUnsubByGroup =

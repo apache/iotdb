@@ -126,7 +126,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
     // Construct AlterConsumerGroupProcedure
     ConsumerGroupMeta updatedConsumerGroupMeta =
-        subscriptionInfo.get().getConsumerGroupMeta(subscribeReq.getConsumerGroupId()).copy();
+        subscriptionInfo.get().getConsumerGroupMeta(subscribeReq.getConsumerGroupId()).deepCopy();
     updatedConsumerGroupMeta.addSubscription(
         subscribeReq.getConsumerId(), subscribeReq.getTopicNames());
     consumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
