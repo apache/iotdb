@@ -17,31 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling;
 
-public interface BaseNodeWrapper {
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
 
-  void createNodeDir();
-
-  void createLogDir();
-
-  void destroyDir();
-
-  void start();
-
-  void stop();
-
-  void stopForcibly();
-
-  String getIp();
-
-  int getPort();
-
-  int getMetricPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the
+ * tumbling-time-sampling-processor. There is a real implementation in the server module but cannot
+ * be imported here. The pipe agent in the server module will replace this class with the real
+ * implementation when initializing the tumbling-time-sampling-processor.
+ */
+public class TumblingTimeSamplingProcessor extends PlaceHolderProcessor {}
