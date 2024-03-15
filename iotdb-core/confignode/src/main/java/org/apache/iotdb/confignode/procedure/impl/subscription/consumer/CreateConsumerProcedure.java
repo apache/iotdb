@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
@@ -37,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
+
   private TCreateConsumerReq createConsumerReq;
 
   public CreateConsumerProcedure() {
@@ -55,17 +55,7 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
 
   @Override
   protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
-    try {
-      subscriptionInfo.get().validateBeforeCreatingConsumer(createConsumerReq);
-    } catch (PipeException e) {
-      // The consumer has already been created, we should end the procedure
-      LOGGER.warn(
-          "Consumer {} in consumer group {} is already created, end the CreateConsumerProcedure",
-          createConsumerReq.getConsumerId(),
-          createConsumerReq.getConsumerGroupId());
-      setFailure(new ProcedureException(e.getMessage()));
-      throw e;
-    }
+    subscriptionInfo.get().validateBeforeCreatingConsumer(createConsumerReq);
 
     existingConsumerGroupMeta =
         subscriptionInfo.get().getConsumerGroupMeta(createConsumerReq.getConsumerGroupId());
@@ -103,7 +93,6 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   public void deserialize(ByteBuffer byteBuffer) {
     // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
     ReadWriteIOUtils.readShort(byteBuffer);
-
     super.deserialize(byteBuffer);
     createConsumerReq =
         new TCreateConsumerReq()
@@ -120,27 +109,12 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    CreateConsumerProcedure that = (CreateConsumerProcedure) o;
-    return this.createConsumerReq.getConsumerId().equals(that.createConsumerReq.getConsumerId())
-        && this.createConsumerReq
-            .getConsumerGroupId()
-            .equals(that.createConsumerReq.getConsumerGroupId())
-        && this.createConsumerReq
-            .getConsumerAttributes()
-            .equals(that.createConsumerReq.getConsumerAttributes());
+    return super.equals(o)
+        && Objects.equals(createConsumerReq, ((CreateConsumerProcedure) o).createConsumerReq);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        createConsumerReq.getConsumerId(),
-        createConsumerReq.getConsumerGroupId(),
-        createConsumerReq.getConsumerAttributes());
+    return Objects.hash(super.hashCode(), createConsumerReq);
   }
 }

@@ -248,7 +248,8 @@ public enum TSStatusCode {
   // Consumer
   CREATE_CONSUMER_ERROR(2100),
   DROP_CONSUMER_ERROR(2101),
-  CONSUMER_PUSH_META_ERROR(2102),
+  ALTER_CONSUMER_ERROR(2102),
+  CONSUMER_PUSH_META_ERROR(2103),
   ;
 
   private final int statusCode;
