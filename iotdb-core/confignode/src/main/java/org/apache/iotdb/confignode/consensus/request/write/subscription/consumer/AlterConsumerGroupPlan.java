@@ -65,7 +65,7 @@ public class AlterConsumerGroupPlan extends ConfigPhysicalPlan {
       return false;
     }
     AlterConsumerGroupPlan that = (AlterConsumerGroupPlan) obj;
-    return consumerGroupMeta.equals(that.consumerGroupMeta);
+    return Objects.equals(consumerGroupMeta, that.consumerGroupMeta);
   }
 
   @Override

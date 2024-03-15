@@ -65,7 +65,7 @@ public class AlterTopicPlan extends ConfigPhysicalPlan {
       return false;
     }
     AlterTopicPlan that = (AlterTopicPlan) obj;
-    return topicMeta.equals(that.topicMeta);
+    return Objects.equals(topicMeta, that.topicMeta);
   }
 
   @Override

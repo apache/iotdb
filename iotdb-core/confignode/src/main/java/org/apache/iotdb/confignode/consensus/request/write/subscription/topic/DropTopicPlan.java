@@ -65,7 +65,7 @@ public class DropTopicPlan extends ConfigPhysicalPlan {
       return false;
     }
     DropTopicPlan that = (DropTopicPlan) obj;
-    return topicName.equals(that.topicName);
+    return Objects.equals(topicName, that.topicName);
   }
 
   @Override
