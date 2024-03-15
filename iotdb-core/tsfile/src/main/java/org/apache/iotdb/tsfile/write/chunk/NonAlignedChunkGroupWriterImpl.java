@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -178,7 +179,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     if (time <= lastTimeMap.getOrDefault(measurementId, -1L)) {
       throw new WriteProcessException(
           "Not allowed to write out-of-order data in timeseries "
-              + deviceId
+              + ((PlainDeviceID) deviceId).toStringID()
               + TsFileConstant.PATH_SEPARATOR
               + measurementId
               + ", time should later than "

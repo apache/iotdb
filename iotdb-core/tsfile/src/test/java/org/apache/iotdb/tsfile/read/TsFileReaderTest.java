@@ -492,7 +492,8 @@ public class TsFileReaderTest {
         reader.getAlignedChunkMetadata(new PlainDeviceID("d3"));
       } catch (IOException e) {
         Assert.assertEquals(
-            "Device {" + new PlainDeviceID("d3") + "} is not in tsFileMetaData", e.getMessage());
+            "Device {" + new PlainDeviceID("d3").toStringID() + "} is not in tsFileMetaData",
+            e.getMessage());
       }
 
       // query for non-aligned device
@@ -500,7 +501,7 @@ public class TsFileReaderTest {
         reader.getAlignedChunkMetadata(new PlainDeviceID("d2"));
       } catch (IOException e) {
         Assert.assertEquals(
-            "Timeseries of device {" + new PlainDeviceID("d2") + "} are not aligned",
+            "Timeseries of device {" + new PlainDeviceID("d2").toStringID() + "} are not aligned",
             e.getMessage());
       }
 

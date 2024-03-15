@@ -2161,7 +2161,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<IMetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, device, true);
     if (metadataIndexPair == null) {
-      throw new IOException("Device {" + device + "} is not in tsFileMetaData");
+      throw new IOException(
+          "Device {" + ((PlainDeviceID) device).toStringID() + "} is not in tsFileMetaData");
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode;
@@ -2175,7 +2176,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     firstTimeseriesMetadata = tryToGetFirstTimeseriesMetadata(metadataIndexNode);
     if (firstTimeseriesMetadata == null) {
-      throw new IOException("Timeseries of device {" + device + "} are not aligned");
+      throw new IOException(
+          "Timeseries of device {" + ((PlainDeviceID) device).toStringID() + "} are not aligned");
     }
 
     Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();

@@ -164,9 +164,9 @@ public class TsFileIOWriterMemoryControlTest {
 
       List<String> measurementIds = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        measurementIds.add(sortedDeviceId.get(i) + ".");
+        measurementIds.add(((PlainDeviceID) sortedDeviceId.get(i)).toStringID() + ".");
         for (int j = 1; j <= 6; ++j) {
-          measurementIds.add(sortedDeviceId.get(i) + ".s" + j);
+          measurementIds.add(((PlainDeviceID) sortedDeviceId.get(i)).toStringID() + ".s" + j);
         }
       }
       TSMIterator iterator =
@@ -216,15 +216,15 @@ public class TsFileIOWriterMemoryControlTest {
                 break;
             }
             chunkWriter.writeToFileWriter(writer);
-            seriesIds.add(deviceId + "." + sortedSeriesId.get(j));
+            seriesIds.add(((PlainDeviceID) deviceId).toStringID() + "." + sortedSeriesId.get(j));
           }
         } else {
           // write vector
           AlignedChunkWriterImpl chunkWriter = generateVectorData(0L, new ArrayList<>(), 6);
           chunkWriter.writeToFileWriter(writer);
-          seriesIds.add(deviceId + ".");
+          seriesIds.add(((PlainDeviceID) deviceId).toStringID() + ".");
           for (int l = 1; l <= 6; ++l) {
-            seriesIds.add(deviceId + ".s" + l);
+            seriesIds.add(((PlainDeviceID) deviceId).toStringID() + ".s" + l);
           }
         }
         originChunkMetadataList.addAll(writer.chunkMetadataList);

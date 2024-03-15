@@ -154,7 +154,10 @@ public class TsFileIOWriterTest {
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         deviceTimeseriesMetadataMap.entrySet()) {
       for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-        String seriesPath = entry.getKey() + "." + timeseriesMetadata.getMeasurementId();
+        String seriesPath =
+            ((PlainDeviceID) entry.getKey()).toStringID()
+                + "."
+                + timeseriesMetadata.getMeasurementId();
         Assert.assertFalse(pathSet.contains(seriesPath));
         pathSet.add(seriesPath);
       }

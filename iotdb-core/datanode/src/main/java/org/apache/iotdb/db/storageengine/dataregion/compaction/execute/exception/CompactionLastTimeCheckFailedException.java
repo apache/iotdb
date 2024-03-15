@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
+import org.apache.iotdb.tsfile.read.common.Path;
+
 public class CompactionLastTimeCheckFailedException extends RuntimeException {
 
   public CompactionLastTimeCheckFailedException(
-      String path, long currentTimestamp, long lastTimestamp) {
+      Path path, long currentTimestamp, long lastTimestamp) {
     super(
         "Timestamp of the current point of "
             + path
