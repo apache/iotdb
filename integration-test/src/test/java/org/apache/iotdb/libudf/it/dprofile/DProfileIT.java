@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -147,6 +148,8 @@ public class DProfileIT {
           "create function timeliness as 'org.apache.iotdb.library.dquality.UDTFTimeliness'");
       statement.execute(
           "create function completeness as 'org.apache.iotdb.library.dquality.UDTFCompleteness'");
+      statement.execute(
+          "CREATE FUNCTION envelope AS 'org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -568,6 +571,21 @@ public class DProfileIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testEnvelope() {
+    String sqlStr = "select envelope(s1,'frequency'='10') from root.**";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      while (resultSet.next()) {
+        double result = resultSet.getDouble(2);
+        Assert.assertEquals(1.4365, result, 0.01);
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
