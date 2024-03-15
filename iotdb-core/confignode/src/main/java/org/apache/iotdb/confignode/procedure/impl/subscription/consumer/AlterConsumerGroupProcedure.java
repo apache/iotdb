@@ -20,16 +20,15 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -40,11 +39,13 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProcedure {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(AlterConsumerGroupProcedure.class);
+
   protected ConsumerGroupMeta existingConsumerGroupMeta;
   protected ConsumerGroupMeta updatedConsumerGroupMeta;
 
@@ -62,33 +63,26 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     return SubscriptionOperation.ALTER_CONSUMER_GROUP;
   }
 
-  protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
-    try {
-      subscriptionInfo.get().validateBeforeAlterConsumerGroup(updatedConsumerGroupMeta);
-    } catch (PipeException e) {
-      // Consumer group not exist, we should end the procedure
-      LOGGER.warn(
-          "Consumer group {} does not exist, end the AlterConsumerGroupProcedure",
-          updatedConsumerGroupMeta.getConsumerGroupId());
-      setFailure(new ProcedureException(e.getMessage()));
-      throw e;
-    }
-
-    this.existingConsumerGroupMeta =
-        subscriptionInfo.get().getConsumerGroupMeta(updatedConsumerGroupMeta.getConsumerGroupId());
-  }
-
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("AlterConsumerGroupProcedure: executeFromValidate, try to validate");
 
     validateAndGetOldAndNewMeta(env);
   }
 
+  protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
+    subscriptionInfo.get().validateBeforeAlterConsumerGroup(updatedConsumerGroupMeta);
+
+    existingConsumerGroupMeta =
+        subscriptionInfo.get().getConsumerGroupMeta(updatedConsumerGroupMeta.getConsumerGroupId());
+  }
+
   @Override
-  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
-        "AlterConsumerGroupProcedure: executeFromOperateOnConfigNodes, try to alter consumer group");
+        "AlterConsumerGroupProcedure: executeFromOperateOnConfigNodes({})",
+        updatedConsumerGroupMeta.getConsumerGroupId());
 
     TSStatus response;
     try {
@@ -98,35 +92,43 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
               .write(new AlterConsumerGroupPlan(updatedConsumerGroupMeta));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      response.setMessage(e.getMessage());
+      response =
+          new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
+              .setMessage(e.getMessage());
     }
+
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
+      throw new SubscriptionException(
+          String.format(
+              "Failed to alter consumer group %s on config nodes, because %s",
+              updatedConsumerGroupMeta.getConsumerGroupId(), response));
     }
   }
 
   @Override
-  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "AlterConsumerGroupProcedure: executeFromOperateOnDataNodes({})",
         updatedConsumerGroupMeta.getConsumerGroupId());
 
     try {
-      if (RpcUtils.squashResponseStatusList(
-                  env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize()))
-              .getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
+      final List<TSStatus> statuses =
+          env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize());
+      if (RpcUtils.squashResponseStatusList(statuses).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new SubscriptionException(
+            String.format(
+                "Failed to alter consumer group %s on data nodes, because %s",
+                updatedConsumerGroupMeta.getConsumerGroupId(), statuses));
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to serialize the consumer group meta due to: ", e);
+      throw new SubscriptionException(
+          String.format(
+              "Failed to alter consumer group %s on data nodes, because %s",
+              updatedConsumerGroupMeta.getConsumerGroupId(), e.getMessage()));
     }
-
-    throw new PipeException(
-        String.format(
-            "Failed to create consumer group instance [%s] on data nodes",
-            updatedConsumerGroupMeta.getConsumerGroupId()));
   }
 
   @Override
@@ -136,41 +138,66 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterConsumerGroupProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(
+        "AlterConsumerGroupProcedure: rollbackFromOperateOnConfigNodes({})",
+        updatedConsumerGroupMeta.getConsumerGroupId());
 
+    TSStatus response;
     try {
-      if (RpcUtils.squashResponseStatusList(
-                  env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize()))
-              .getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to serialize the consumer group meta due to: ", e);
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new AlterConsumerGroupPlan(existingConsumerGroupMeta));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response =
+          new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
+              .setMessage(e.getMessage());
     }
 
-    throw new PipeException(
-        String.format(
-            "Failed to create consumer group instance [%s] on data nodes",
-            updatedConsumerGroupMeta.getConsumerGroupId()));
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to rollback from altering consumer group {} on config nodes, because {}",
+          updatedConsumerGroupMeta.getConsumerGroupId(),
+          response);
+    }
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("AlterConsumerGroupProcedure: rollbackFromOperateOnDataNodes");
-    // Do nothing
+
+    try {
+      final List<TSStatus> statuses =
+          env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
+      if (RpcUtils.squashResponseStatusList(statuses).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new SubscriptionException(
+            String.format(
+                "Failed to rollback from altering consumer group %s on data nodes, because %s",
+                updatedConsumerGroupMeta.getConsumerGroupId(), statuses));
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize the consumer group meta due to: ", e);
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback from altering consumer group %s on data nodes, because %s",
+              updatedConsumerGroupMeta.getConsumerGroupId(), e.getMessage()));
+    }
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE.getTypeCode());
     super.serialize(stream);
+
     if (updatedConsumerGroupMeta != null) {
       ReadWriteIOUtils.write(true, stream);
       updatedConsumerGroupMeta.serialize(stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
+
     if (existingConsumerGroupMeta != null) {
       ReadWriteIOUtils.write(true, stream);
       existingConsumerGroupMeta.serialize(stream);
@@ -182,9 +209,11 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       updatedConsumerGroupMeta = ConsumerGroupMeta.deserialize(byteBuffer);
     }
+
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       existingConsumerGroupMeta = ConsumerGroupMeta.deserialize(byteBuffer);
     }
@@ -199,12 +228,21 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
       return false;
     }
     AlterConsumerGroupProcedure that = (AlterConsumerGroupProcedure) o;
-    return Objects.equals(this.updatedConsumerGroupMeta, that.updatedConsumerGroupMeta);
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && Objects.equals(updatedConsumerGroupMeta, that.updatedConsumerGroupMeta)
+        && Objects.equals(existingConsumerGroupMeta, that.existingConsumerGroupMeta);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(updatedConsumerGroupMeta);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        updatedConsumerGroupMeta,
+        existingConsumerGroupMeta);
   }
 
   @TestOnly
