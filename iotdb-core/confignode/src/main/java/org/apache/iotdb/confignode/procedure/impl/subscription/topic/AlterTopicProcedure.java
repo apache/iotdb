@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -164,12 +165,12 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
     ReadWriteIOUtils.write(updatedTopicMeta != null, stream);
     if (updatedTopicMeta != null) {
-      stream.write(updatedTopicMeta.serialize().array());
+      updatedTopicMeta.serialize(stream);
     }
 
     ReadWriteIOUtils.write(existedTopicMeta != null, stream);
     if (existedTopicMeta != null) {
-      stream.write(existedTopicMeta.serialize().array());
+      existedTopicMeta.serialize(stream);
     }
   }
 
@@ -184,5 +185,22 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       existedTopicMeta = TopicMeta.deserialize(byteBuffer);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AlterTopicProcedure that = (AlterTopicProcedure) o;
+    return this.updatedTopicMeta.equals(that.updatedTopicMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(updatedTopicMeta);
   }
 }

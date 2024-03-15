@@ -200,7 +200,7 @@ public class ConsumerGroupMeta {
     return consumerGroupMeta;
   }
 
-  public static ConsumerGroupMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+  public static ConsumerGroupMeta deserialize(ByteBuffer byteBuffer) {
     final ConsumerGroupMeta consumerGroupMeta = new ConsumerGroupMeta();
 
     consumerGroupMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);

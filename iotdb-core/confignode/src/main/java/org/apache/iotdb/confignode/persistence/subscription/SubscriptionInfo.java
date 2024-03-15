@@ -321,7 +321,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     try {
       ConsumerGroupMeta consumerGroupMeta =
           consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupName);
-      return consumerGroupMeta == null || consumerGroupMeta.containsConsumer(consumerId);
+      return consumerGroupMeta != null && consumerGroupMeta.containsConsumer(consumerId);
     } finally {
       releaseReadLock();
     }

@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class AlterTopicPlan extends ConfigPhysicalPlan {
 
@@ -53,5 +54,27 @@ public class AlterTopicPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     topicMeta = TopicMeta.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    AlterTopicPlan that = (AlterTopicPlan) obj;
+    return topicMeta.equals(that.topicMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicMeta);
+  }
+
+  @Override
+  public String toString() {
+    return "AlterTopicPlan{" + "topicMeta='" + topicMeta + "'}";
   }
 }

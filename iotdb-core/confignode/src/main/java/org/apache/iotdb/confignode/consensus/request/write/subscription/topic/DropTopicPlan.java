@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropTopicPlan extends ConfigPhysicalPlan {
 
@@ -53,5 +54,27 @@ public class DropTopicPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     topicName = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    DropTopicPlan that = (DropTopicPlan) obj;
+    return topicName.equals(that.topicName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicName);
+  }
+
+  @Override
+  public String toString() {
+    return "DropTopicPlan{" + "topicName='" + topicName + "'}";
   }
 }

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -119,5 +120,25 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     super.deserialize(byteBuffer);
 
     topicName = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DropTopicProcedure that = (DropTopicProcedure) o;
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && topicName.equals(that.topicName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), topicName);
   }
 }
