@@ -121,6 +121,8 @@ public class IoTDBConfig {
   /** whether to use Snappy compression before sending data through the network */
   private boolean rpcAdvancedCompressionEnable = false;
 
+  private boolean dataTransportCompressionEnable = false;
+
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
@@ -1097,6 +1099,8 @@ public class IoTDBConfig {
 
   /** Resource control */
   private boolean quotaEnable = false;
+
+  private boolean enableQuickGc = false;
 
   /**
    * 1. FixedIntervalRateLimiter : With this limiter resources will be refilled only after a fixed
@@ -2609,6 +2613,14 @@ public class IoTDBConfig {
     RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
+  public boolean isDataTransportCompressionEnable() {
+    return dataTransportCompressionEnable;
+  }
+
+  public void setDataTransportCompressionEnable(boolean dataTransportCompressionEnable) {
+    this.dataTransportCompressionEnable = dataTransportCompressionEnable;
+  }
+
   public int getMlogBufferSize() {
     return mlogBufferSize;
   }
@@ -3836,5 +3848,13 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public boolean isEnableQuickGc() {
+    return enableQuickGc;
+  }
+
+  public void setEnableQuickGc(boolean enableQuickGc) {
+    this.enableQuickGc = enableQuickGc;
   }
 }

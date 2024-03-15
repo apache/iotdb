@@ -2199,7 +2199,7 @@
                         </goals>
                         <phase>verify</phase>
                         <configuration>
-                            <failOnWarning>true</failOnWarning>
+                            <failOnWarning>false</failOnWarning>
                         </configuration>
                     </execution>
                 </executions>

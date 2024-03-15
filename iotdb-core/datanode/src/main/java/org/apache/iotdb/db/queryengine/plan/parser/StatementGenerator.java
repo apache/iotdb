@@ -100,6 +100,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.mine.rpc.InsertRecordsReq;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -400,6 +401,28 @@ public class StatementGenerator {
       if (statement.isEmpty()) {
         continue;
       }
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    return insertStatement;
+  }
+
+  public static InsertRowsStatement createStatement(InsertRecordsReq req)
+      throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    // construct insert statement
+    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    List<String> devicePath = req.getPrefixPath();
+    for (int i = 0, size = devicePath.size(); i < size; ++i) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(devicePath.get(i)));
+      statement.setMeasurements(req.getMeasurements().get(i).toArray(new String[0]));
+      TimestampPrecisionUtils.checkTimestampPrecision(req.getTimestamp().get(i));
+      statement.setTime(req.getTimestamp().get(i));
+      statement.setValues(req.getValues().get(i).toArray(new Object[0]));
+      statement.setDataTypes(req.getTypes().get(i).toArray(new TSDataType[0]));
       insertRowStatementList.add(statement);
     }
     insertStatement.setInsertRowStatementList(insertRowStatementList);

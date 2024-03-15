@@ -235,6 +235,14 @@ public class IoTDBDescriptor {
                     Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
                 .trim()));
 
+    conf.setDataTransportCompressionEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "dn_data_transfer_compression_enable",
+                    Boolean.toString(conf.isDataTransportCompressionEnable()))
+                .trim()));
+
     conf.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
@@ -596,6 +604,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "cross_compaction_file_selection_time_budget",
                 Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
+    conf.setEnableQuickGc(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_quick_gc", Boolean.toString(conf.isEnableQuickGc()).trim())));
     conf.setMergeIntervalSec(
         Long.parseLong(
             properties.getProperty(

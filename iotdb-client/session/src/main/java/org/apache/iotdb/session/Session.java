@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReqV2ColumnFormat;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -72,6 +73,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
+import org.mine.rpc.InsertRecordsReq;
+import org.mine.rpc.InsertRecordsSerializeInColumnUtils;
+import org.mine.rpc.SerializedBuffers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,6 +127,8 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+  public static boolean useNewFormat = true;
+
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -1901,10 +1907,11 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (enableRedirection) {
+    boolean flag = false;
+    if (enableRedirection && flag) {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
-    } else {
+    } else if (!SessionConfig.USE_NEW_RECORDS_RPC_FORMAT) {
       TSInsertRecordsReq request;
       try {
         request =
@@ -1917,6 +1924,26 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+      }
+    } else {
+      // insert using new column rpc format
+      InsertRecordsReq req =
+          new InsertRecordsReq(deviceIds, measurementsList, typesList, valuesList, times);
+      SerializedBuffers buffer = null;
+      try {
+        buffer = InsertRecordsSerializeInColumnUtils.encode(req);
+      } catch (IOException e) {
+        logger.error("Meets Exception when serializing buffer", e);
+        return;
+      }
+      TSInsertRecordsReqV2ColumnFormat request = new TSInsertRecordsReqV2ColumnFormat();
+      request.setDeviceBuffer(buffer.deviceBuffer);
+      request.setMeasurementsBuffer(buffer.measurementBuffer);
+      request.setValuesBuffer(buffer.valueBuffer);
+      try {
+        defaultSessionConnection.insertRecords(request);
+      } catch (Exception e) {
+        logger.error("Meets exception when insert new records", e);
       }
     }
   }
