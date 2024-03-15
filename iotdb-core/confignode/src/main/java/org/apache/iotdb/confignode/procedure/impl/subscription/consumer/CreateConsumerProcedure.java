@@ -71,7 +71,7 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
           new ConsumerGroupMeta(
               createConsumerReq.getConsumerGroupId(), createTime, newConsumerMeta);
     } else {
-      updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
+      updatedConsumerGroupMeta = existingConsumerGroupMeta.deepCopy();
       updatedConsumerGroupMeta.addConsumer(newConsumerMeta);
     }
   }

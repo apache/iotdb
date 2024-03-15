@@ -56,7 +56,7 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
     existingConsumerGroupMeta =
         subscriptionInfo.get().getConsumerGroupMeta(dropConsumerReq.getConsumerGroupId());
 
-    updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
+    updatedConsumerGroupMeta = existingConsumerGroupMeta.deepCopy();
     updatedConsumerGroupMeta.removeConsumer(dropConsumerReq.getConsumerId());
   }
 
