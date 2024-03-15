@@ -60,18 +60,7 @@ public class TopicAgent {
       TopicMeta topicMetaFromCoordinator) {
     acquireWriteLock();
     try {
-      return handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  protected TPushTopicRespExceptionMessage handleSingleTopicMetaChangesInternal(
-      TopicMeta topicMetaFromCoordinator) {
-    // TODO: check if node is removing or removed
-
-    try {
-      executeSingleTopicMetaChanges(topicMetaFromCoordinator);
+      handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
       return null;
     } catch (Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
@@ -82,53 +71,21 @@ public class TopicAgent {
       LOGGER.warn("Failed to handle single topic meta changes for {}", topicName, e);
       return new TPushTopicRespExceptionMessage(
           topicName, errorMessage, System.currentTimeMillis());
-    }
-  }
-
-  private void executeSingleTopicMetaChanges(final TopicMeta metaFromCoordinator) {
-    final String topicName = metaFromCoordinator.getTopicName();
-    final TopicMeta metaInAgent = topicMetaKeeper.getTopicMeta(topicName);
-
-    if (metaInAgent == null) {
-      createTopic(metaFromCoordinator);
-    }
-  }
-
-  private boolean createTopic(TopicMeta topicMeta) {
-    final String topicName = topicMeta.getTopicName();
-    final long creationTime = topicMeta.getCreationTime();
-
-    final TopicMeta existedTopicMeta = topicMetaKeeper.getTopicMeta(topicName);
-    if (existedTopicMeta != null) {
-      if (!checkBeforeCreatingTopic(existedTopicMeta, topicName, creationTime)) {
-        return false;
-      }
-
-      // Drop the topic if
-      // 1. the topic with the same name but with different creation time has been created before
-      // 2. the topic with the same name has been dropped before, but topic meta has not been
-      // cleaned up
-      dropTopic(topicName, creationTime);
-    }
-
-    topicMetaKeeper.addTopicMeta(topicName, topicMeta);
-    return true;
-  }
-
-  public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
-    acquireWriteLock();
-    try {
-      return handleDropTopicInternal(topicName);
     } finally {
       releaseWriteLock();
     }
   }
 
-  protected TPushTopicRespExceptionMessage handleDropTopicInternal(String topicName) {
-    // TODO: check if node is removing or removed
+  private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
+    final String topicName = metaFromCoordinator.getTopicName();
+    topicMetaKeeper.removeTopicMeta(topicName);
+    topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+  }
 
+  public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
+    acquireWriteLock();
     try {
-      dropTopic(topicName);
+      handleDropTopicInternal(topicName);
       return null;
     } catch (Exception e) {
       final String errorMessage =
@@ -136,69 +93,12 @@ public class TopicAgent {
       LOGGER.warn("Failed to drop topic {}", topicName, e);
       return new TPushTopicRespExceptionMessage(
           topicName, errorMessage, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
     }
   }
 
-  private void dropTopic(String topicName, long creationTime) {
-    final TopicMeta existedTopicMeta = topicMetaKeeper.getTopicMeta(topicName);
-
-    if (!checkBeforeDroppingTopic(existedTopicMeta, topicName, creationTime)) {
-      return;
-    }
-
+  private void handleDropTopicInternal(String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
-  }
-
-  private void dropTopic(String topicName) {
-    final TopicMeta existedTopicMeta = topicMetaKeeper.getTopicMeta(topicName);
-
-    if (!checkBeforeDroppingTopic(existedTopicMeta, topicName)) {
-      return;
-    }
-
-    topicMetaKeeper.removeTopicMeta(topicName);
-  }
-
-  ////////////////////////// Checker //////////////////////////
-
-  protected boolean checkBeforeCreatingTopic(
-      TopicMeta existedTopicMeta, String topicName, long creationTime) {
-    if (existedTopicMeta.getCreationTime() == creationTime) {
-      LOGGER.info("Topic {} has already been created. Skip creating.", topicName);
-      return false;
-    }
-
-    return true;
-  }
-
-  protected boolean checkBeforeDroppingTopic(
-      TopicMeta existedTopicMeta, String topicName, long creationTime) {
-    if (existedTopicMeta == null) {
-      LOGGER.info(
-          "Topic {} has already been dropped or has not been created. Skip dropping.", topicName);
-      return false;
-    }
-
-    if (existedTopicMeta.getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Topic {} (creation time = {}) has been created but does not match "
-              + "the creation time ({}) in dropTopic request. Skip dropping.",
-          topicName,
-          existedTopicMeta.getCreationTime(),
-          creationTime);
-      return false;
-    }
-
-    return true;
-  }
-
-  protected boolean checkBeforeDroppingTopic(TopicMeta existedTopicMeta, String topicName) {
-    if (existedTopicMeta == null) {
-      LOGGER.info(
-          "Topic {} has already been dropped or has not been created. Skip dropping.", topicName);
-      return false;
-    }
-
-    return true;
   }
 }
