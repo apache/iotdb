@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
@@ -38,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -61,14 +61,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
 
-  private final TopicMetaKeeper topicMetaKeeper;
-  private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
-  private final ReentrantReadWriteLock subscriptionInfoLock = new ReentrantReadWriteLock(true);
+  private final TopicMetaKeeper topicMetaKeeper = new TopicMetaKeeper();
+  private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
 
-  public SubscriptionInfo() {
-    this.topicMetaKeeper = new TopicMetaKeeper();
-    this.consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
-  }
+  private final ReentrantReadWriteLock subscriptionInfoLock = new ReentrantReadWriteLock(true);
 
   /////////////////////////////// Lock ///////////////////////////////
 
@@ -90,7 +86,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   /////////////////////////////// Topic ///////////////////////////////
 
-  public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq) throws PipeException {
+  public void validateBeforeCreatingTopic(TCreateTopicReq createTopicReq)
+      throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeCreateTopicInternal(createTopicReq);
@@ -99,7 +96,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq) throws PipeException {
+  private void checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
+      throws SubscriptionException {
     if (!isTopicExisted(createTopicReq.getTopicName())) {
       return;
     }
@@ -109,10 +107,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
             "Failed to create pipe topic %s, the topic with the same name has been created",
             createTopicReq.getTopicName());
     LOGGER.warn(exceptionMessage);
-    throw new PipeException(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
-  public void validateBeforeDroppingTopic(String topicName) throws PipeException {
+  public void validateBeforeDroppingTopic(String topicName) throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeDropTopicInternal(topicName);
@@ -121,18 +119,20 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeDropTopicInternal(String topicName) throws PipeException {
+  private void checkBeforeDropTopicInternal(String topicName) throws SubscriptionException {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Check before dropping topic: {}, topic exists:{}", topicName, isTopicExisted(topicName));
+          "Check before dropping topic: {}, topic exists: {}",
+          topicName,
+          isTopicExisted(topicName));
     }
 
-    // No matter whether the topic exists, we allow the drop operation executed on all nodes to
-    // ensure the consistency.
     // DO NOTHING HERE!
+    // No matter whether the topic exists, we allow the drop operation
+    // executed on all nodes to ensure the consistency.
   }
 
-  public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws PipeException {
+  public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeAlteringTopicInternal(topicMeta);
@@ -141,17 +141,16 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeAlteringTopicInternal(TopicMeta topicMeta) throws PipeException {
+  private void checkBeforeAlteringTopicInternal(TopicMeta topicMeta) throws SubscriptionException {
     if (isTopicExisted(topicMeta.getTopicName())) {
       return;
     }
 
     final String exceptionMessage =
         String.format(
-            "Failed to alter pipe topic %s, the pipe topic is not existed",
-            topicMeta.getTopicName());
+            "Failed to alter topic %s, the topic is not existed", topicMeta.getTopicName());
     LOGGER.warn(exceptionMessage);
-    throw new PipeException(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   public boolean isTopicExisted(String topicName) {
@@ -172,16 +171,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private Iterable<TopicMeta> getAllTopicMeta() {
-    return topicMetaKeeper.getAllTopicMeta();
-  }
-
   public DataSet showTopics() {
     acquireReadLock();
     try {
       return new TopicTableResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          StreamSupport.stream(getAllTopicMeta().spliterator(), false)
+          StreamSupport.stream(topicMetaKeeper.getAllTopicMeta().spliterator(), false)
               .collect(Collectors.toList()));
     } finally {
       releaseReadLock();
@@ -231,7 +226,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   /////////////////////////////////  Consumer  /////////////////////////////////
 
   public void validateBeforeCreatingConsumer(TCreateConsumerReq createConsumerReq)
-      throws PipeException {
+      throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeCreateConsumerInternal(createConsumerReq);
@@ -241,25 +236,25 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void checkBeforeCreateConsumerInternal(TCreateConsumerReq createConsumerReq)
-      throws PipeException {
+      throws SubscriptionException {
     if (!isConsumerGroupExisted(createConsumerReq.getConsumerGroupId())
         || !isConsumerExisted(
             createConsumerReq.getConsumerGroupId(), createConsumerReq.getConsumerId())) {
       return;
     }
 
-    // A consumer with same consumerId and consumerGroupId has already existed, we should end the
-    // procedure
+    // A consumer with same consumerId and consumerGroupId has already existed,
+    // we should end the procedure
     final String exceptionMessage =
         String.format(
             "Failed to create pipe consumer %s in consumer group %s, the consumer with the same name has been created",
             createConsumerReq.getConsumerId(), createConsumerReq.getConsumerGroupId());
     LOGGER.warn(exceptionMessage);
-    throw new PipeException(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   public void validateBeforeDroppingConsumer(TCloseConsumerReq dropConsumerReq)
-      throws PipeException {
+      throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeDropConsumerInternal(dropConsumerReq);
@@ -269,7 +264,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void checkBeforeDropConsumerInternal(TCloseConsumerReq dropConsumerReq)
-      throws PipeException {
+      throws SubscriptionException {
     if (isConsumerExisted(dropConsumerReq.getConsumerGroupId(), dropConsumerReq.getConsumerId())) {
       return;
     }
@@ -278,14 +273,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
     // procedure
     final String exceptionMessage =
         String.format(
-            "Failed to drop pipe consumer %s in consumer group %s, the consumer with the same name does not exist",
+            "Failed to drop pipe consumer %s in consumer group %s, the consumer does not exist",
             dropConsumerReq.getConsumerId(), dropConsumerReq.getConsumerGroupId());
     LOGGER.warn(exceptionMessage);
-    throw new PipeException(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   public void validateBeforeAlterConsumerGroup(ConsumerGroupMeta consumerGroupMeta)
-      throws PipeException {
+      throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeAlterConsumerGroupInternal(consumerGroupMeta);
@@ -295,16 +290,18 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   public void checkBeforeAlterConsumerGroupInternal(ConsumerGroupMeta consumerGroupMeta)
-      throws PipeException {
-    if (!isConsumerGroupExisted(consumerGroupMeta.getConsumerGroupId())) {
-      // Consumer group not exist, not allowed to alter
-      final String exceptionMessage =
-          String.format(
-              "Failed to alter consumer group because the consumer group %s does not exist",
-              consumerGroupMeta.getConsumerGroupId());
-      LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
+      throws SubscriptionException {
+    if (isConsumerGroupExisted(consumerGroupMeta.getConsumerGroupId())) {
+      return;
     }
+
+    // Consumer group not exist, not allowed to alter
+    final String exceptionMessage =
+        String.format(
+            "Failed to alter consumer group because the consumer group %s does not exist",
+            consumerGroupMeta.getConsumerGroupId());
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   public boolean isConsumerGroupExisted(String consumerGroupName) {
@@ -319,9 +316,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public boolean isConsumerExisted(String consumerGroupName, String consumerId) {
     acquireReadLock();
     try {
-      ConsumerGroupMeta consumerGroupMeta =
+      final ConsumerGroupMeta consumerGroupMeta =
           consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupName);
-      return consumerGroupMeta == null || consumerGroupMeta.containsConsumer(consumerId);
+      return consumerGroupMeta != null && consumerGroupMeta.containsConsumer(consumerId);
     } finally {
       releaseReadLock();
     }
@@ -352,7 +349,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   /////////////////////////////////  Subscription  /////////////////////////////////
 
-  public void validateBeforeSubscribe(TSubscribeReq subscribeReq) throws PipeException {
+  public void validateBeforeSubscribe(TSubscribeReq subscribeReq) throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeSubscribeInternal(subscribeReq);
@@ -361,17 +358,18 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeSubscribeInternal(TSubscribeReq subscribeReq) throws PipeException {
+  private void checkBeforeSubscribeInternal(TSubscribeReq subscribeReq)
+      throws SubscriptionException {
     // 1. Check if the consumer exists
     if (!isConsumerExisted(subscribeReq.getConsumerGroupId(), subscribeReq.getConsumerId())) {
-      // There is no consumer with the same consumerId and consumerGroupId, we should end the
-      // procedure
+      // There is no consumer with the same consumerId and consumerGroupId,
+      // we should end the procedure
       final String exceptionMessage =
           String.format(
               "Failed to subscribe because the consumer %s in consumer group %s does not exist",
               subscribeReq.getConsumerId(), subscribeReq.getConsumerGroupId());
       LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
     }
 
     // 2. Check if all topics exist. No need to check if already subscribed.
@@ -380,16 +378,13 @@ public class SubscriptionInfo implements SnapshotProcessor {
         final String exceptionMessage =
             String.format("Failed to subscribe because the topic %s does not exist", topic);
         LOGGER.warn(exceptionMessage);
-        throw new PipeException(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
       }
     }
   }
 
-  /**
-   * @return A set of topics from the TSubscribeReq that will have no consumer in this group after
-   *     this unsubscribe.
-   */
-  public void validateBeforeUnsubscribe(TUnsubscribeReq unsubscribeReq) throws PipeException {
+  public void validateBeforeUnsubscribe(TUnsubscribeReq unsubscribeReq)
+      throws SubscriptionException {
     acquireReadLock();
     try {
       checkBeforeUnsubscribeInternal(unsubscribeReq);
@@ -398,17 +393,18 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  private void checkBeforeUnsubscribeInternal(TUnsubscribeReq unsubscribeReq) throws PipeException {
+  private void checkBeforeUnsubscribeInternal(TUnsubscribeReq unsubscribeReq)
+      throws SubscriptionException {
     // 1. Check if the consumer exists
     if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
-      // There is no consumer with the same consumerId and consumerGroupId, we should end the
-      // procedure
+      // There is no consumer with the same consumerId and consumerGroupId,
+      // we should end the procedure
       final String exceptionMessage =
           String.format(
               "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
               unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
       LOGGER.warn(exceptionMessage);
-      throw new PipeException(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
     }
 
     // 2. Check if all topics exist. No need to check if already subscribed.
@@ -417,7 +413,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
         final String exceptionMessage =
             String.format("Failed to unsubscribe because the topic %s does not exist", topic);
         LOGGER.warn(exceptionMessage);
-        throw new PipeException(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
       }
     }
   }
@@ -458,7 +454,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (snapshotFile.exists() && snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to take snapshot, because snapshot file [{}] is already exist.",
+            "Failed to take subscription snapshot, because snapshot file {} is already exist.",
             snapshotFile.getAbsolutePath());
         return false;
       }
@@ -482,7 +478,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            "Failed to load subscription snapshot, snapshot file {} is not exist.",
             snapshotFile.getAbsolutePath());
         return;
       }
