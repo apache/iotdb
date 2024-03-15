@@ -327,7 +327,8 @@ public class ResourceManagerTest {
     }
     assertEquals(10, tsFileResourceManager.getPriorityQueueSize());
     for (int i = 0; i < seqFileNum; i++) {
-      if (i < 8) {
+      // size of PlainDeviceID may different with string device
+      if (i < 6) {
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX,
             TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));

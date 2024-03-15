@@ -196,7 +196,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(d1 + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
 
     unseqResources.add(unseqResource1);
 
