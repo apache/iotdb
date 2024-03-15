@@ -277,8 +277,8 @@ public class DataRegion implements IDataRegionForQuery {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private static final long ttlCheckInterval =
-      config.getTtlCheckInterval() / config.getCompactionScheduleIntervalInMs();
+  private long ttlCheckInterval = 1;
+
   private long scheduleCount = 0;
 
   /**
@@ -295,6 +295,8 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    ttlCheckInterval = config.getTtlCheckInterval() / config.getCompactionScheduleIntervalInMs();
+    ttlCheckInterval = ttlCheckInterval > 0 ? ttlCheckInterval : 1;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
