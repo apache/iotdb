@@ -71,7 +71,7 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
             (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
       } else {
         return new TElasticFramedTransport(
-            trans, thriftDefaultBufferSize, thriftMaxFrameSize, true);
+            trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
       }
     }
   }

@@ -30,7 +30,7 @@ import org.apache.iotdb.db.protocol.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
 import org.apache.iotdb.db.service.metrics.RPCServiceMetrics;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -75,7 +75,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
                 config.getKeyStorePath(),
                 config.getKeyStorePwd(),
                 config.getConnectionTimeoutInMS(),
-                RpcTransportFactory.INSTANCE);
+                ZeroCopyRpcTransportFactory.INSTANCE);
       } else {
         thriftServiceThread =
             new ThriftServiceThread(
@@ -88,7 +88,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
                 config.getThriftServerAwaitTimeForStopService(),
                 new RPCServiceThriftHandler(impl),
                 IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable(),
-                RpcTransportFactory.INSTANCE);
+                ZeroCopyRpcTransportFactory.INSTANCE);
       }
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
