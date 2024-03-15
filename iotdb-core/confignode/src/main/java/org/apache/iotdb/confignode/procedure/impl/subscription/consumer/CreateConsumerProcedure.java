@@ -24,8 +24,17 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   private TCreateConsumerReq createConsumerReq;
@@ -45,7 +54,7 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
+  protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
       subscriptionInfo.get().validateBeforeCreatingConsumer(createConsumerReq);
     } catch (PipeException e) {
@@ -75,5 +84,63 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
       updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
       updatedConsumerGroupMeta.addConsumer(newConsumerMeta);
     }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.CREATE_CONSUMER_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(createConsumerReq.getConsumerId(), stream);
+    ReadWriteIOUtils.write(createConsumerReq.getConsumerGroupId(), stream);
+    ReadWriteIOUtils.write(createConsumerReq.getConsumerAttributesSize(), stream);
+    for (Map.Entry<String, String> entry : createConsumerReq.getConsumerAttributes().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
+    ReadWriteIOUtils.readShort(byteBuffer);
+
+    super.deserialize(byteBuffer);
+    createConsumerReq =
+        new TCreateConsumerReq()
+            .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
+            .setConsumerGroupId(ReadWriteIOUtils.readString(byteBuffer))
+            .setConsumerAttributes(new HashMap<>());
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      createConsumerReq
+          .getConsumerAttributes()
+          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateConsumerProcedure that = (CreateConsumerProcedure) o;
+    return this.createConsumerReq.getConsumerId().equals(that.createConsumerReq.getConsumerId())
+        && this.createConsumerReq
+            .getConsumerGroupId()
+            .equals(that.createConsumerReq.getConsumerGroupId())
+        && this.createConsumerReq
+            .getConsumerAttributes()
+            .equals(that.createConsumerReq.getConsumerAttributes());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        createConsumerReq.getConsumerId(),
+        createConsumerReq.getConsumerGroupId(),
+        createConsumerReq.getConsumerAttributes());
   }
 }

@@ -38,6 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -128,5 +129,25 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
     super.deserialize(byteBuffer);
 
     topicName = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DropTopicProcedure that = (DropTopicProcedure) o;
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && Objects.equals(topicName, that.topicName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), topicName);
   }
 }

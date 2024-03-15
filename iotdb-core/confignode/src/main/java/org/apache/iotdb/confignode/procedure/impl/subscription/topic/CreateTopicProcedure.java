@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -202,5 +203,26 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       topicMeta = TopicMeta.deserialize(byteBuffer);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateTopicProcedure that = (CreateTopicProcedure) o;
+    return this.createTopicReq.getTopicName().equals(that.createTopicReq.getTopicName())
+        && this.createTopicReq
+            .getTopicAttributes()
+            .toString()
+            .equals(that.createTopicReq.getTopicAttributes().toString());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(createTopicReq.getTopicName(), createTopicReq.getTopicAttributes());
   }
 }

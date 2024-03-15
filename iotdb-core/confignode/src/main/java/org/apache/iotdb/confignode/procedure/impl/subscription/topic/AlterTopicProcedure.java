@@ -39,6 +39,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -197,5 +198,27 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       existedTopicMeta = TopicMeta.deserialize(byteBuffer);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AlterTopicProcedure that = (AlterTopicProcedure) o;
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && Objects.equals(updatedTopicMeta, that.updatedTopicMeta)
+        && Objects.equals(existedTopicMeta, that.existedTopicMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), updatedTopicMeta, existedTopicMeta);
   }
 }

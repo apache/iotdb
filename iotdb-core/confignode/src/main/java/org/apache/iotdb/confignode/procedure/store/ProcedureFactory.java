@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
@@ -226,6 +227,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_CONSUMER_PROCEDURE:
         procedure = new DropConsumerProcedure();
         break;
+      case ALTER_CONSUMER_GROUP_PROCEDURE:
+        procedure = new AlterConsumerGroupProcedure();
+        break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
         break;
@@ -312,6 +316,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_CONSUMER_PROCEDURE;
     } else if (procedure instanceof DropConsumerProcedure) {
       return ProcedureType.DROP_CONSUMER_PROCEDURE;
+    } else if (procedure instanceof AlterConsumerGroupProcedure) {
+      return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

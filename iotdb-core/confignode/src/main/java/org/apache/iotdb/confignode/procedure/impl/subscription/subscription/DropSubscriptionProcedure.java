@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
@@ -28,15 +29,21 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSu
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProcedure {
@@ -181,5 +188,149 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     }
 
     consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.DROP_SUBSCRIPTION_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(unsubscribeReq.getConsumerId(), stream);
+    ReadWriteIOUtils.write(unsubscribeReq.getConsumerGroupId(), stream);
+    ReadWriteIOUtils.write(unsubscribeReq.getTopicNamesSize(), stream);
+    for (String topicName : unsubscribeReq.getTopicNames()) {
+      ReadWriteIOUtils.write(topicName, stream);
+    }
+
+    // serialize consumerGroupProcedure
+    if (consumerGroupProcedure != null) {
+      ReadWriteIOUtils.write(true, stream);
+      consumerGroupProcedure.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
+    // serialize topic procedures
+    if (topicProcedures != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(topicProcedures.size(), stream);
+      for (AlterTopicProcedure topicProcedure : topicProcedures) {
+        topicProcedure.serialize(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
+    // serialize pipe procedures
+    if (pipeProcedures != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(pipeProcedures.size(), stream);
+      for (AbstractOperatePipeProcedureV2 pipeProcedure : pipeProcedures) {
+        pipeProcedure.serialize(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    unsubscribeReq =
+        new TUnsubscribeReq()
+            .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
+            .setConsumerGroupId(ReadWriteIOUtils.readString(byteBuffer))
+            .setTopicNames(new HashSet<>());
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      unsubscribeReq.getTopicNames().add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+
+    // deserialize consumerGroupProcedure
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
+      ReadWriteIOUtils.readShort(byteBuffer);
+
+      consumerGroupProcedure = new AlterConsumerGroupProcedure();
+      consumerGroupProcedure.deserialize(byteBuffer);
+    }
+
+    // deserialize topic procedures
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
+        ReadWriteIOUtils.readShort(byteBuffer);
+
+        AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
+        topicProcedure.deserialize(byteBuffer);
+        topicProcedures.add(topicProcedure);
+      }
+    }
+
+    // deserialize pipe procedures
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        // This readShort should return DROP_PIPE_PROCEDURE.
+        short typeCode = ReadWriteIOUtils.readShort(byteBuffer);
+        if (typeCode == ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode()) {
+          DropPipeProcedureV2 dropPipeProcedureV2 = new DropPipeProcedureV2();
+          dropPipeProcedureV2.deserialize(byteBuffer);
+          pipeProcedures.add(dropPipeProcedureV2);
+        }
+      }
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DropSubscriptionProcedure that = (DropSubscriptionProcedure) o;
+    return this.unsubscribeReq.getConsumerId().equals(that.unsubscribeReq.getConsumerId())
+        && this.unsubscribeReq.getConsumerGroupId().equals(that.unsubscribeReq.getConsumerGroupId())
+        && this.unsubscribeReq.getTopicNames().equals(that.unsubscribeReq.getTopicNames());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        unsubscribeReq.getConsumerId(),
+        unsubscribeReq.getConsumerGroupId(),
+        unsubscribeReq.getTopicNames());
+  }
+
+  @TestOnly
+  public void setConsumerGroupProcedure(AlterConsumerGroupProcedure consumerGroupProcedure) {
+    this.consumerGroupProcedure = consumerGroupProcedure;
+  }
+
+  @TestOnly
+  public AlterConsumerGroupProcedure getConsumerGroupProcedure() {
+    return this.consumerGroupProcedure;
+  }
+
+  @TestOnly
+  public void setTopicProcedures(List<AlterTopicProcedure> topicProcedures) {
+    this.topicProcedures = topicProcedures;
+  }
+
+  @TestOnly
+  public List<AlterTopicProcedure> getTopicProcedures() {
+    return this.topicProcedures;
+  }
+
+  @TestOnly
+  public void setPipeProcedures(List<AbstractOperatePipeProcedureV2> pipeProcedures) {
+    this.pipeProcedures = pipeProcedures;
+  }
+
+  @TestOnly
+  public List<AbstractOperatePipeProcedureV2> getPipeProcedures() {
+    return this.pipeProcedures;
   }
 }

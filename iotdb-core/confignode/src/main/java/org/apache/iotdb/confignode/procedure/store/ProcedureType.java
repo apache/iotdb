@@ -105,6 +105,7 @@ public enum ProcedureType {
   DROP_SUBSCRIPTION_PROCEDURE((short) 1504),
   CREATE_CONSUMER_PROCEDURE((short) 1505),
   DROP_CONSUMER_PROCEDURE((short) 1506),
+  ALTER_CONSUMER_GROUP_PROCEDURE((short) 1507),
 
   /** Other */
   @TestOnly

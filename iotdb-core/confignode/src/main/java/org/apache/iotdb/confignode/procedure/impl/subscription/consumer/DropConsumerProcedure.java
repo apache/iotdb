@@ -22,8 +22,15 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   private TCloseConsumerReq dropConsumerReq;
@@ -43,7 +50,7 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   }
 
   @Override
-  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
+  protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
       subscriptionInfo.get().validateBeforeDroppingConsumer(dropConsumerReq);
     } catch (PipeException e) {
@@ -61,5 +68,45 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
 
     updatedConsumerGroupMeta = existingConsumerGroupMeta.copy();
     updatedConsumerGroupMeta.removeConsumer(dropConsumerReq.getConsumerId());
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.DROP_CONSUMER_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(dropConsumerReq.getConsumerId(), stream);
+    ReadWriteIOUtils.write(dropConsumerReq.getConsumerGroupId(), stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
+    ReadWriteIOUtils.readShort(byteBuffer);
+
+    super.deserialize(byteBuffer);
+    dropConsumerReq =
+        new TCloseConsumerReq()
+            .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
+            .setConsumerGroupId(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DropConsumerProcedure that = (DropConsumerProcedure) o;
+    return this.dropConsumerReq.getConsumerId().equals(that.dropConsumerReq.getConsumerId())
+        && this.dropConsumerReq
+            .getConsumerGroupId()
+            .equals(that.dropConsumerReq.getConsumerGroupId());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(dropConsumerReq.getConsumerId(), dropConsumerReq.getConsumerGroupId());
   }
 }

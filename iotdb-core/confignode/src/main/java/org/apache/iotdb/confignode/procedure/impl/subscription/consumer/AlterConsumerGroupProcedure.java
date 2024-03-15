@@ -21,20 +21,26 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -42,7 +48,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   protected ConsumerGroupMeta existingConsumerGroupMeta;
   protected ConsumerGroupMeta updatedConsumerGroupMeta;
 
-  protected AlterConsumerGroupProcedure() {
+  public AlterConsumerGroupProcedure() {
     super();
   }
 
@@ -56,7 +62,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     return SubscriptionOperation.ALTER_CONSUMER_GROUP;
   }
 
-  public void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
+  protected void validateAndGetOldAndNewMeta(ConfigNodeProcedureEnv env) {
     try {
       subscriptionInfo.get().validateBeforeAlterConsumerGroup(updatedConsumerGroupMeta);
     } catch (PipeException e) {
@@ -153,5 +159,71 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("AlterConsumerGroupProcedure: rollbackFromOperateOnDataNodes");
     // Do nothing
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    if (updatedConsumerGroupMeta != null) {
+      ReadWriteIOUtils.write(true, stream);
+      updatedConsumerGroupMeta.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    if (existingConsumerGroupMeta != null) {
+      ReadWriteIOUtils.write(true, stream);
+      existingConsumerGroupMeta.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      updatedConsumerGroupMeta = ConsumerGroupMeta.deserialize(byteBuffer);
+    }
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      existingConsumerGroupMeta = ConsumerGroupMeta.deserialize(byteBuffer);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AlterConsumerGroupProcedure that = (AlterConsumerGroupProcedure) o;
+    return this.updatedConsumerGroupMeta.equals(that.updatedConsumerGroupMeta);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(updatedConsumerGroupMeta);
+  }
+
+  @TestOnly
+  public void setExistingConsumerGroupMeta(ConsumerGroupMeta meta) {
+    this.existingConsumerGroupMeta = meta;
+  }
+
+  @TestOnly
+  public ConsumerGroupMeta getExistingConsumerGroupMeta() {
+    return this.existingConsumerGroupMeta;
+  }
+
+  @TestOnly
+  public void setUpdatedConsumerGroupMeta(ConsumerGroupMeta meta) {
+    this.updatedConsumerGroupMeta = meta;
+  }
+
+  @TestOnly
+  public ConsumerGroupMeta getUpdatedConsumerGroupMeta() {
+    return this.updatedConsumerGroupMeta;
   }
 }

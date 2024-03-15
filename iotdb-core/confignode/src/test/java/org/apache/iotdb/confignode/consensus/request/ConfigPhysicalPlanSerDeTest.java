@@ -47,6 +47,9 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.commons.sync.PipeMessage;
 import org.apache.iotdb.commons.sync.PipeStatus;
@@ -123,6 +126,10 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV1;
@@ -1271,6 +1278,55 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(pipeHandleMetaChangePlan1.serializeToByteBuffer());
     Assert.assertEquals(
         pipeHandleMetaChangePlan1.getPipeMetaList(), pipeHandleMetaChangePlan2.getPipeMetaList());
+  }
+
+  @Test
+  public void CreateTopicPlanTest() throws IOException {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k1", "v1");
+    attributes.put("k2", "v2");
+    CreateTopicPlan createTopicPlan =
+        new CreateTopicPlan(new TopicMeta("test_topic", 1, attributes));
+    CreateTopicPlan createTopicPlan1 =
+        (CreateTopicPlan)
+            ConfigPhysicalPlan.Factory.create(createTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(createTopicPlan.getTopicMeta(), createTopicPlan1.getTopicMeta());
+  }
+
+  @Test
+  public void DropTopicPlanTest() throws IOException {
+    DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
+    DropTopicPlan dropTopicPlan1 =
+        (DropTopicPlan) ConfigPhysicalPlan.Factory.create(dropTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(dropTopicPlan.getTopicName(), dropTopicPlan1.getTopicName());
+  }
+
+  @Test
+  public void AlterTopicPlanTest() throws IOException {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k1", "v1");
+    attributes.put("k2", "v2");
+    AlterTopicPlan alterTopicPlan = new AlterTopicPlan(new TopicMeta("test_topic", 1, attributes));
+    AlterTopicPlan alterTopicPlan1 =
+        (AlterTopicPlan) ConfigPhysicalPlan.Factory.create(alterTopicPlan.serializeToByteBuffer());
+    Assert.assertEquals(alterTopicPlan.getTopicMeta(), alterTopicPlan1.getTopicMeta());
+  }
+
+  @Test
+  public void AlterConsumerGroupPlan() throws IOException {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k1", "v1");
+    attributes.put("k2", "v2");
+    AlterConsumerGroupPlan alterConsumerGroupPlan =
+        new AlterConsumerGroupPlan(
+            new ConsumerGroupMeta(
+                "test_consumer_group", 1, new ConsumerMeta("test_consumer", 2, attributes)));
+    AlterConsumerGroupPlan alterConsumerGroupPlan1 =
+        (AlterConsumerGroupPlan)
+            ConfigPhysicalPlan.Factory.create(alterConsumerGroupPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterConsumerGroupPlan.getConsumerGroupMeta(),
+        alterConsumerGroupPlan1.getConsumerGroupMeta());
   }
 
   @Test
