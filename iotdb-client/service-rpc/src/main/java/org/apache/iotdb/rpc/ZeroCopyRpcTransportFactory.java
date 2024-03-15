@@ -17,31 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.rpc;
 
-public interface BaseNodeWrapper {
+import org.apache.thrift.transport.TTransportFactory;
 
-  void createNodeDir();
+public class ZeroCopyRpcTransportFactory extends BaseRpcTransportFactory {
 
-  void createLogDir();
+  public static ZeroCopyRpcTransportFactory INSTANCE;
 
-  void destroyDir();
+  static {
+    reInit();
+  }
 
-  void start();
+  private ZeroCopyRpcTransportFactory(TTransportFactory inner) {
+    super(inner);
+  }
 
-  void stop();
-
-  void stopForcibly();
-
-  String getIp();
-
-  int getPort();
-
-  int getMetricPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
+  public static void reInit() {
+    INSTANCE =
+        USE_SNAPPY
+            ? new ZeroCopyRpcTransportFactory(
+                new TimeoutChangeableTSnappyFramedTransport.Factory(
+                    thriftDefaultBufferSize, thriftMaxFrameSize, false))
+            : new ZeroCopyRpcTransportFactory(
+                new TElasticFramedTransport.Factory(
+                    thriftDefaultBufferSize, thriftMaxFrameSize, false));
+  }
 }

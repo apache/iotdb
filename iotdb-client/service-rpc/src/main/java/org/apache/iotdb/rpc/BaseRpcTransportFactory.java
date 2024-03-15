@@ -27,22 +27,17 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class RpcTransportFactory extends TTransportFactory {
+public class BaseRpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
   public static boolean USE_SNAPPY = false;
-  public static RpcTransportFactory INSTANCE;
 
-  private static int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
-  private static int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
+  protected static int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
+  protected static int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
-  static {
-    reInit();
-  }
+  protected final TTransportFactory inner;
 
-  private final TTransportFactory inner;
-
-  private RpcTransportFactory(TTransportFactory inner) {
+  protected BaseRpcTransportFactory(TTransportFactory inner) {
     this.inner = inner;
   }
 
@@ -103,21 +98,10 @@ public class RpcTransportFactory extends TTransportFactory {
   }
 
   public static void setDefaultBufferCapacity(int thriftDefaultBufferSize) {
-    RpcTransportFactory.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    BaseRpcTransportFactory.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
   public static void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-    RpcTransportFactory.thriftMaxFrameSize = thriftMaxFrameSize;
-  }
-
-  public static void reInit() {
-    INSTANCE =
-        USE_SNAPPY
-            ? new RpcTransportFactory(
-                new TimeoutChangeableTSnappyFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize))
-            : new RpcTransportFactory(
-                new TimeoutChangeableTFastFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize));
+    BaseRpcTransportFactory.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 }
