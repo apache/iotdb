@@ -20,10 +20,11 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -45,6 +46,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -99,7 +101,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 req instanceof AirGapPseudoTPipeTransferRequest,
                 true);
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            return handleTransferSingleFileSeal(
+            return handleTransferFileSealV2(
                 PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
           default:
             break;
@@ -143,14 +145,24 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
-        ((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .setSchemaReplicationFactor(
-                ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
-        ((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .setDataReplicationFactor(
-                ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+        // Here we only reserve database name and substitute the sender's local information
+        // with the receiver's default configurations
+        TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
+        schema.setSchemaReplicationFactor(
+            ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+        schema.setDataReplicationFactor(
+            ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+        schema.setTimePartitionInterval(
+            CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
+        schema.setMinSchemaRegionGroupNum(
+            ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getDefaultSchemaRegionGroupNumPerDatabase());
+        schema.setMinDataRegionGroupNum(
+            ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
+        schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
+        schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
+        schema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case AlterDatabase:
         return configManager
@@ -241,15 +253,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadSingleFile(PipeTransferSingleFileSealReq req, String fileAbsolutePath) {
-    // TODO
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  protected TSStatus loadFileV1(PipeTransferFileSealReqV1 req, String fileAbsolutePath) {
+    throw new UnsupportedOperationException(
+        "IoTDBConfigNodeReceiver does not support load file V1.");
   }
 
   @Override
-  protected TSStatus loadMultiFiles(
-      PipeTransferMultiFilesSealReq req, List<String> fileAbsolutePaths) {
-    throw new UnsupportedOperationException(
-        "IoTDBConfigNodeReceiver does not support load multi files.");
+  protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths) {
+    // TODO
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

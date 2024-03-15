@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -103,6 +104,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected void confineHistoricalEventTransferTypes(Event event) {
+    ((PipeSchemaRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
+  }
+
+  @Override
   public synchronized void close() throws Exception {
     if (hasBeenClosed.get()) {
       return;
@@ -115,7 +121,6 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     super.close();
 
     if (!listenedTypeSet.isEmpty()) {
-      // TODO: check me
       // The queue is not closed here, and is closed iff the PipeMetaKeeper
       // has no schema pipe after one successful sync
       PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);

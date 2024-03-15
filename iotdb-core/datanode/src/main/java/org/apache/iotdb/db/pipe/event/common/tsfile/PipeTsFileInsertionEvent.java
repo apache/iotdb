@@ -59,6 +59,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
+    // The modFile must be copied before the event is assigned to the listening pipes
     this(
         resource,
         true,
@@ -84,11 +85,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
 
     this.resource = resource;
-    tsFile = resource.getTsFile();
 
     final ModificationFile modFile = resource.getModFile();
     this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = new File(modFile.getFilePath());
+
+    // The tsFile and modFile will be set when the "internallyIncreaseResourceReferenceCount" is
+    // called. The tsFile will be a hardlink file, and the modFile will a copied modFile's reference
+    // iff the modFile exists and should be transferred
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -156,16 +159,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(resource.getTsFile(), true);
       if (isWithMod) {
-        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false);
+        modFile =
+            PipeResourceManager.tsfile()
+                .increaseFileReference(new File(resource.getModFile().getFilePath()), false);
       }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s error. Holder Message: %s",
-              tsFile.getPath(), holderMessage),
+              resource.getTsFile().getPath(), holderMessage),
           e);
       return false;
     }
@@ -291,7 +296,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  /** Release the resource of data container. */
+  /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
     if (dataContainer != null) {

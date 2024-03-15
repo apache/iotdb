@@ -52,4 +52,9 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     return listenedTypeSet.contains(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
   }
+
+  @Override
+  protected void confineHistoricalEventTransferTypes(Event event) {
+    // TODO
+  }
 }

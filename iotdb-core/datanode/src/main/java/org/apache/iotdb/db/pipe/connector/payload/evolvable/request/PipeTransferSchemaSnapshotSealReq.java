@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
@@ -30,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSealReq {
+public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2 {
 
   private PipeTransferSchemaSnapshotSealReq() {
     // Empty constructor
@@ -48,10 +49,12 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
       long mTreeSnapshotLength,
       String tLogName,
       long tLogLength,
-      String databaseName)
+      String databaseName,
+      String typeString)
       throws IOException {
     Map<String, String> parameters = new HashMap<>();
-    parameters.put("database", databaseName);
+    parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return (PipeTransferSchemaSnapshotSealReq)
         new PipeTransferSchemaSnapshotSealReq()
             .convertToTPipeTransferReq(
@@ -72,10 +75,16 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferMultiFilesSea
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      String mLogName, long mLogLength, String tLogName, long tLogLength, String databaseName)
+      String mLogName,
+      long mLogLength,
+      String tLogName,
+      long tLogLength,
+      String databaseName,
+      String typeString)
       throws IOException {
     Map<String, String> parameters = new HashMap<>();
-    parameters.put("database", databaseName);
+    parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferSchemaSnapshotSealReq()
         .convertToTPipeTransferSnapshotSealBytes(
             Arrays.asList(mLogName, tLogName), Arrays.asList(mLogLength, tLogLength), parameters);

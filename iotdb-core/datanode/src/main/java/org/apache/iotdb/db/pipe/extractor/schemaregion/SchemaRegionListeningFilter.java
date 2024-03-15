@@ -68,7 +68,7 @@ public class SchemaRegionListeningFilter {
                   PlanNodeType.CREATE_ALIGNED_TIME_SERIES,
                   PlanNodeType.CREATE_MULTI_TIME_SERIES,
                   PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES,
-                  PlanNodeType.INTERNAL_CREATE_TIMESERIES)));
+                  PlanNodeType.INTERNAL_CREATE_TIME_SERIES)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.alter"),
           Collections.singletonList(PlanNodeType.ALTER_TIME_SERIES));

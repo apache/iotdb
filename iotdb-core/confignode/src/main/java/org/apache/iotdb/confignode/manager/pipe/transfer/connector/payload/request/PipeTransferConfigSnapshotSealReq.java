@@ -20,12 +20,14 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 
-public class PipeTransferConfigSnapshotSealReq extends PipeTransferSingleFileSealReq {
+public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2 {
 
   private PipeTransferConfigSnapshotSealReq() {
     // Empty constructor
@@ -41,7 +43,11 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferSingleFileSea
   public static PipeTransferConfigSnapshotSealReq toTPipeTransferReq(
       String fileName, long fileLength) throws IOException {
     return (PipeTransferConfigSnapshotSealReq)
-        new PipeTransferConfigSnapshotSealReq().convertToTPipeTransferReq(fileName, fileLength);
+        new PipeTransferConfigSnapshotSealReq()
+            .convertToTPipeTransferReq(
+                Collections.singletonList(fileName),
+                Collections.singletonList(fileLength),
+                new HashMap<>());
   }
 
   public static PipeTransferConfigSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -53,7 +59,10 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferSingleFileSea
 
   public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
     return new PipeTransferConfigSnapshotSealReq()
-        .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
+        .convertToTPipeTransferSnapshotSealBytes(
+            Collections.singletonList(fileName),
+            Collections.singletonList(fileLength),
+            new HashMap<>());
   }
 
   /////////////////////////////// Object ///////////////////////////////

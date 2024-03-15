@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -42,11 +44,13 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.receiver.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -54,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -62,6 +67,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
+import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -73,11 +80,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -133,15 +143,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 req instanceof AirGapPseudoTPipeTransferRequest,
                 true);
           case TRANSFER_TS_FILE_SEAL:
-            return handleTransferSingleFileSeal(
-                PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
+            return handleTransferFileSealV1(PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
           case TRANSFER_TS_FILE_PIECE_WITH_MOD:
             return handleTransferFilePiece(
                 PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
                 req instanceof AirGapPseudoTPipeTransferRequest,
                 false);
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-            return handleTransferMultiFilesSeal(
+            return handleTransferFileSealV2(
                 PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
           case TRANSFER_SCHEMA_PLAN:
             return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
@@ -151,7 +160,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 req instanceof AirGapPseudoTPipeTransferRequest,
                 false);
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
-            return handleTransferMultiFilesSeal(
+            return handleTransferFileSealV2(
                 PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
           case HANDSHAKE_CONFIGNODE_V1:
           case HANDSHAKE_CONFIGNODE_V2:
@@ -272,18 +281,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadSingleFile(PipeTransferSingleFileSealReq req, String fileAbsolutePath)
+  protected TSStatus loadFileV1(PipeTransferFileSealReqV1 req, String fileAbsolutePath)
       throws FileNotFoundException {
     return loadTsFile(fileAbsolutePath);
   }
 
   @Override
-  protected TSStatus loadMultiFiles(
-      PipeTransferMultiFilesSealReq req, List<String> fileAbsolutePaths) throws IOException {
+  protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths)
+      throws IOException, IllegalPathException {
     return req instanceof PipeTransferTsFileSealWithModReq
         // TsFile's absolute path will be the second element
         ? loadTsFile(fileAbsolutePaths.get(1))
-        : loadSchemaSnapShot(fileAbsolutePaths);
+        : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
   private TSStatus loadTsFile(String fileAbsolutePath) throws FileNotFoundException {
@@ -296,8 +305,27 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return executeStatementAndClassifyExceptions(statement);
   }
 
-  private TSStatus loadSchemaSnapShot(List<String> fileAbsolutePaths) {
-    // TODO
+  private TSStatus loadSchemaSnapShot(
+      Map<String, String> parameters, List<String> fileAbsolutePaths)
+      throws IllegalPathException, IOException {
+    final SRStatementGenerator generator =
+        SchemaRegionSnapshotParser.translate2Statements(
+            Paths.get(fileAbsolutePaths.get(0)),
+            fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
+            new PartialPath(parameters.get(ColumnHeaderConstant.DATABASE)));
+    final Set<StatementType> executionTypes =
+        PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
+            parameters.get(ColumnHeaderConstant.TYPE));
+    while (generator.hasNext()) {
+      final Statement statement = generator.next();
+      if (executionTypes.contains(statement.getType())) {
+        // The statements do not contain AlterLogicalViewStatements
+        TSStatus status = executeStatementAndClassifyExceptions(generator.next());
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+      }
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

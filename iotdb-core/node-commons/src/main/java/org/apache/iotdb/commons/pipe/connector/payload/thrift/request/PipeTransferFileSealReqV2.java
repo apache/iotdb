@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public abstract class PipeTransferMultiFilesSealReq extends TPipeTransferReq {
+public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
   private transient List<String> fileNames;
   private transient List<Long> fileLengths;
@@ -54,7 +54,7 @@ public abstract class PipeTransferMultiFilesSealReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  protected PipeTransferMultiFilesSealReq convertToTPipeTransferReq(
+  protected PipeTransferFileSealReqV2 convertToTPipeTransferReq(
       List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
       throws IOException {
 
@@ -85,7 +85,7 @@ public abstract class PipeTransferMultiFilesSealReq extends TPipeTransferReq {
     return this;
   }
 
-  public PipeTransferMultiFilesSealReq translateFromTPipeTransferReq(TPipeTransferReq req) {
+  public PipeTransferFileSealReqV2 translateFromTPipeTransferReq(TPipeTransferReq req) {
     fileNames = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(req.body);
     for (int i = 0; i < size; ++i) {
@@ -149,7 +149,7 @@ public abstract class PipeTransferMultiFilesSealReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferMultiFilesSealReq that = (PipeTransferMultiFilesSealReq) obj;
+    PipeTransferFileSealReqV2 that = (PipeTransferFileSealReqV2) obj;
     return fileNames.equals(that.fileNames)
         && fileLengths.equals(that.fileLengths)
         && parameters.equals(that.parameters)

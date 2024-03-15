@@ -45,7 +45,7 @@ public class TsFileEpochManager {
       PipeTsFileInsertionEvent event, TsFileResource resource) {
     final String filePath = resource.getTsFilePath();
 
-    // this would not happen, but just in case
+    // This would not happen, but just in case
     filePath2Epoch.computeIfAbsent(
         filePath,
         path -> {

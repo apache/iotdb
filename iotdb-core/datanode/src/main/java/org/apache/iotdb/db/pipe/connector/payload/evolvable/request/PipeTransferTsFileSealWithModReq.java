@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-public class PipeTransferTsFileSealWithModReq extends PipeTransferMultiFilesSealReq {
+public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
 
   private PipeTransferTsFileSealWithModReq() {
     // Empty constructor

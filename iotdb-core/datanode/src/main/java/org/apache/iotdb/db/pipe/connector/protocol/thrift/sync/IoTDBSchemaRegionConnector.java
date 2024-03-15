@@ -90,7 +90,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                       mTreeSnapshotFile.length(),
                       Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
                       Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
-                      snapshotEvent.getDatabaseName()));
+                      snapshotEvent.getDatabaseName(),
+                      snapshotEvent.toSealTypeString()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

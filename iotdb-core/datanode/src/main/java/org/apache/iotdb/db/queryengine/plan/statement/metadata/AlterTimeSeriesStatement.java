@@ -62,7 +62,7 @@ public class AlterTimeSeriesStatement extends Statement {
   public AlterTimeSeriesStatement() {
     super();
     isAlterView = false;
-    statementType = StatementType.ALTER_TIMESERIES;
+    statementType = StatementType.ALTER_TIME_SERIES;
   }
 
   public AlterTimeSeriesStatement(boolean isAlterView) {
@@ -71,7 +71,7 @@ public class AlterTimeSeriesStatement extends Statement {
     if (isAlterView) {
       statementType = StatementType.ALTER_LOGICAL_VIEW;
     } else {
-      statementType = StatementType.ALTER_TIMESERIES;
+      statementType = StatementType.ALTER_TIME_SERIES;
     }
   }
 

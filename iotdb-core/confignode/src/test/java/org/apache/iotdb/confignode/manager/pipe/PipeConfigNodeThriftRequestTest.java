@@ -91,7 +91,7 @@ public class PipeConfigNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
-    Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
-    Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+    Assert.assertEquals(req.getFileNames(), deserializeReq.getFileNames());
+    Assert.assertEquals(req.getFileLengths(), deserializeReq.getFileLengths());
   }
 }

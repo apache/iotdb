@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -252,7 +253,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public Statement visitBasicMNode(IMNode<?> node, PartialPath path) {
       if (node.isDevice()) {
-        // Aligned timeserie will be created when node pop.
+        // Aligned timeseries will be created when node pop.
         return SRStatementGenerator.genActivateTemplateStatement(node, path);
       }
       return null;

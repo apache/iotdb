@@ -88,6 +88,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     }
   }
 
+  // TODO: bind snapshot type to the files
   public synchronized void tryListenToSnapshots(List<String> snapshotPaths) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (String snapshotPath : snapshotPaths) {

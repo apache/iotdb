@@ -21,14 +21,15 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferMultiFilesSealReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSingleFileSealReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -354,8 +355,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return offsetCorrect;
   }
 
-  protected final TPipeTransferResp handleTransferSingleFileSeal(
-      final PipeTransferSingleFileSealReq req) {
+  protected final TPipeTransferResp handleTransferFileSealV1(final PipeTransferFileSealReqV1 req) {
     try {
       if (!isWritingFileAvailable()) {
         final TSStatus status =
@@ -389,7 +389,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
-      final TSStatus status = loadSingleFile(req, fileAbsolutePath);
+      final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
             "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
@@ -420,8 +420,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
-  protected final TPipeTransferResp handleTransferMultiFilesSeal(
-      final PipeTransferMultiFilesSealReq req) {
+  protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<File> files =
         req.getFileNames().stream()
             .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
@@ -467,7 +466,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
-      final TSStatus status = loadMultiFiles(req, fileAbsolutePaths);
+      final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
             "Seal file {} successfully. Receiver id is {}.", fileAbsolutePaths, receiverId.get());
@@ -479,7 +478,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverId.get());
       }
       return new TPipeTransferResp(status);
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       LOGGER.warn(
           String.format(
               "Failed to seal file %s from req %s. Receiver id is %d.",
@@ -495,7 +494,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // sender.
       closeCurrentWritingFileWriter();
       // Clear the directory instead of only deleting the referenced files in seal request
-      // to avoid previously undeleted file when transferring file pieces being redundant
+      // to avoid previously undeleted file being redundant when transferring multi files
       IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
     }
   }
@@ -565,12 +564,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return isWritingFileAvailable;
   }
 
-  protected abstract TSStatus loadSingleFile(
-      final PipeTransferSingleFileSealReq req, final String fileAbsolutePath) throws IOException;
+  protected abstract TSStatus loadFileV1(
+      final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) throws IOException;
 
-  protected abstract TSStatus loadMultiFiles(
-      final PipeTransferMultiFilesSealReq req, final List<String> fileAbsolutePaths)
-      throws IOException;
+  protected abstract TSStatus loadFileV2(
+      final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
+      throws IOException, IllegalPathException;
 
   @Override
   public synchronized void handleExit() {

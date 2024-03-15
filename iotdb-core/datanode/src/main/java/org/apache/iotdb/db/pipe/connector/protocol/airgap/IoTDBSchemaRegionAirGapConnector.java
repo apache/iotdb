@@ -89,7 +89,8 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             mlogFile.length(),
             Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
             Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
-            pipeSchemaRegionSnapshotEvent.getDatabaseName()))) {
+            pipeSchemaRegionSnapshotEvent.getDatabaseName(),
+            pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
       throw new PipeException(
           String.format(
               "Seal schema region snapshot file %s and %s error. Socket %s.",

@@ -318,10 +318,12 @@ public class PipeDataNodeThriftRequestTest {
     String mTreeSnapshotName = "mtree.snapshot";
     String tLogName = "tlog.txt";
     String databaseName = "root.db";
+    // CREATE_TIME_SERIES
+    String typeString = "19";
 
     PipeTransferSchemaSnapshotSealReq req =
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            mTreeSnapshotName, 100, tLogName, 10, databaseName);
+            mTreeSnapshotName, 100, tLogName, 10, databaseName, typeString);
     PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 

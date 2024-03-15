@@ -90,6 +90,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
 
       historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      confineHistoricalEventTransferTypes(historicalEvent);
       return historicalEvent;
     }
 
@@ -112,6 +113,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   }
 
   protected abstract boolean isTypeListened(Event event);
+
+  protected abstract void confineHistoricalEventTransferTypes(Event event);
 
   @Override
   public void close() throws Exception {

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -32,13 +34,35 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSchemaRegionSnapshotEvent.class);
   private String mTreeSnapshotPath;
   private String tLogPath;
   private String databaseName;
+
+  private static final Map<Short, StatementType> PLAN_NODE_2_STATEMENT_TYPE_MAP = new HashMap<>();
+
+  static {
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.CREATE_TIME_SERIES.getNodeType(), StatementType.CREATE_TIME_SERIES);
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.CREATE_ALIGNED_TIME_SERIES.getNodeType(),
+        StatementType.CREATE_ALIGNED_TIME_SERIES);
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.ACTIVATE_TEMPLATE.getNodeType(), StatementType.ACTIVATE_TEMPLATE);
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.CREATE_LOGICAL_VIEW.getNodeType(), StatementType.CREATE_LOGICAL_VIEW);
+  }
+
+  private Set<Short> transferredTypes;
 
   public PipeSchemaRegionSnapshotEvent() {
     // Used for deserialization
@@ -139,5 +163,29 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
     mTreeSnapshotPath = ReadWriteIOUtils.readString(buffer);
     tLogPath = ReadWriteIOUtils.readString(buffer);
     databaseName = ReadWriteIOUtils.readString(buffer);
+  }
+
+  /////////////////////////////// Type parsing ///////////////////////////////
+
+  public void confineTransferredTypes(Set<PlanNodeType> listenedTypeSet) {
+    final Set<Short> types = new HashSet<>(PLAN_NODE_2_STATEMENT_TYPE_MAP.keySet());
+    types.retainAll(
+        listenedTypeSet.stream().map(PlanNodeType::getNodeType).collect(Collectors.toSet()));
+    transferredTypes = types;
+  }
+
+  public String toSealTypeString() {
+    return String.join(
+        ",",
+        transferredTypes.stream().map(type -> Short.toString(type)).collect(Collectors.toSet()));
+  }
+
+  public static Set<StatementType> getStatementTypeSet(String sealTypes) {
+    Map<Short, StatementType> statementTypeMap = new HashMap<>(PLAN_NODE_2_STATEMENT_TYPE_MAP);
+    statementTypeMap
+        .keySet()
+        .retainAll(
+            Arrays.stream(sealTypes.split(",")).map(Short::valueOf).collect(Collectors.toSet()));
+    return new HashSet<>(statementTypeMap.values());
   }
 }
