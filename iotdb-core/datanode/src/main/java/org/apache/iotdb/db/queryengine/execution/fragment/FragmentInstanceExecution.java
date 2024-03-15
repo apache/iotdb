@@ -149,7 +149,7 @@ public class FragmentInstanceExecution {
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
-
+    statistics.setState(getInstanceState().toString());
     IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
     if (dataRegionForQuery instanceof VirtualDataRegion) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
@@ -206,7 +206,8 @@ public class FragmentInstanceExecution {
         setOperatorStatistics(operatorStatistics, operatorContext);
         operatorStatisticsMap.put(operatorContext.getPlanNodeId().toString(), operatorStatistics);
         operatorCoutMap.put(operatorType, operatorCoutMap.getOrDefault(operatorType, 0) + 1);
-        if (operatorCoutMap.get(operatorType) >= 10) {
+        if (operatorCoutMap.get(operatorType)
+            >= IoTDBDescriptor.getInstance().getConfig().getMergeThresholdOfExplainAnalyze()) {
           needMerge = true;
           // merge all the operatorStatistics with the overload type and remain only one in
           // operatorStatisticsMap
@@ -224,7 +225,7 @@ public class FragmentInstanceExecution {
     operatorStatistics.setTotalExecutionTimeInNanos(operatorContext.getTotalExecutionTimeInNanos());
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
-    operatorStatistics.setInputRows(operatorContext.getInputRows());
+    operatorStatistics.setOutputRows(operatorContext.getOutputRows());
     operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
   }

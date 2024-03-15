@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -298,6 +299,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           }
         }
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while reading file metadata of file {}", file);
       throw e;
@@ -523,6 +526,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           TimeseriesMetadata timeseriesMetadata;
           try {
             timeseriesMetadata = TimeseriesMetadata.deserializeFrom(tsFileInput, true);
+          } catch (StopReadTsFileByInterruptException e) {
+            throw e;
           } catch (Exception e1) {
             logger.error(
                 "Something error happened while deserializing TimeseriesMetadata of file {}", file);
@@ -728,6 +733,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       ByteBuffer nextBuffer = readData(startOffset, endOffset);
       MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer);
       getDevicesOfLeafNode(deviceLeafNode, measurementNodeOffsetQueue);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while getting all devices of file {}", file);
       throw e;
@@ -795,6 +802,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         getAllDeviceLeafNodeOffset(
             MetadataIndexNode.deserializeFrom(nextBuffer), leafDeviceNodeOffsets);
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while getting all devices of file {}", file);
       throw e;
@@ -926,6 +935,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndexNode.getNodeType(),
             queue);
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while getting all paths of file {}", file);
       throw e;
@@ -1144,6 +1155,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           }
         }
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while generating MetadataIndex of file {}", file);
       throw e;
@@ -1193,6 +1206,8 @@ public class TsFileSequenceReader implements AutoCloseable {
               needChunkMetadata);
         }
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while generating MetadataIndex of file {}", file);
       throw e;
@@ -1314,6 +1329,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         return getMetadataAndEndOffset(
             MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
       throw e;
@@ -1369,6 +1386,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ChunkHeader readChunkHeader(byte chunkType) throws IOException {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
       throw t;
@@ -1383,6 +1402,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ChunkHeader readChunkHeader(long position) throws IOException {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput, position);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
       throw t;
@@ -1399,6 +1420,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ByteBuffer readChunk(long position, int dataSize) throws IOException {
     try {
       return readData(position, dataSize);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
       throw t;
@@ -1415,6 +1438,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       ChunkHeader header = readChunkHeader(offset);
       ByteBuffer buffer = readChunk(offset + header.getSerializedSize(), header.getDataSize());
       return new Chunk(header, buffer);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
       throw t;
@@ -1434,6 +1459,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           readChunk(
               metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
       return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
       throw t;
@@ -1500,6 +1527,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public PageHeader readPageHeader(TSDataType type, boolean hasStatistic) throws IOException {
     try {
       return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading page header of {}", t.getMessage(), file);
       throw t;
@@ -1618,6 +1647,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected ByteBuffer readData(long start, long end) throws IOException {
     try {
       return readData(start, (int) (end - start));
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.warn("Exception {} happened while reading data of {}", t.getMessage(), file);
       throw t;
@@ -1947,6 +1978,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           return TsFileCheckStatus.COMPLETE_FILE;
         }
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (IOException e) {
       logger.error("Error occurred while fast checking TsFile.");
       throw e;
@@ -1960,6 +1993,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         long tscheckStatus = TsFileCheckStatus.COMPLETE_FILE;
         try {
           tscheckStatus = checkChunkAndPagesStatistics(chunkMetadata);
+        } catch (StopReadTsFileByInterruptException e) {
+          throw e;
         } catch (IOException e) {
           logger.error("Error occurred while checking the statistics of chunk and its pages");
           throw e;
@@ -2392,6 +2427,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
         collectEachLeafMeasurementNodeOffsetRange(readData(startOffset, endOffset), queue);
       }
+    } catch (StopReadTsFileByInterruptException e) {
+      throw e;
     } catch (Exception e) {
       logger.error(
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);

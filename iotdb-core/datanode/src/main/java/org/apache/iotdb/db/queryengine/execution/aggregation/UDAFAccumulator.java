@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -93,10 +94,8 @@ public class UDAFAccumulator implements Accumulator {
     state = udaf.createState();
 
     final UDFParameters parameters =
-        new UDFParameters(
-            childExpressions,
-            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-            attributes);
+        UDFParametersFactory.buildUdfParameters(
+            childExpressions, childExpressionDataTypes, attributes);
 
     // Only validate for raw input
     // There is no need to validate for partial input

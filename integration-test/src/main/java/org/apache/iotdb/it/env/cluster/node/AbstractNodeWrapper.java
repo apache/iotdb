@@ -487,24 +487,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       logger.error("Waiting node to shutdown error.", e);
       return;
     }
-    logger.info("Node {} has been shutdown", this.getPort());
   }
 
-  @Override
-  public void stopForcibly() {
-    if (this.instance == null) {
-      return;
+    @Override
+    public void stopForcibly() {
+        if (this.instance == null) {
+            return;
+        }
+        try {
+            this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Waiting node to shutdown error.", e);
+        }
     }
-    try {
-      logger.info("Node {} will be shutdown forcibly soon", this.getPort());
-      this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error.", e);
-      return;
-    }
-    logger.info("Node {} has been shutdown", this.getPort());
-  }
 
   @Override
   public final String getIp() {

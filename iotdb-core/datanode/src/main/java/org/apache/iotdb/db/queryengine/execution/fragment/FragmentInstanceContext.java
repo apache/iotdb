@@ -27,8 +27,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -132,7 +131,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Expression globalTimePredicate,
+      TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
@@ -167,14 +166,15 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Expression globalTimePredicate,
+      TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
-    this.globalTimeFilter = PredicateUtils.convertPredicateToTimeFilter(globalTimePredicate);
+    this.globalTimeFilter =
+        globalTimePredicate == null ? null : globalTimePredicate.convertPredicateToTimeFilter();
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
     this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
   }

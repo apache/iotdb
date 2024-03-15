@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.nio.ByteBuffer;
@@ -64,5 +63,5 @@ public interface IQueryExecution {
 
   Optional<String> getExecuteSQL();
 
-  Statement getStatement();
+  String getStatementType();
 }

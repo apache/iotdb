@@ -475,7 +475,7 @@ public class LoadTsfileAnalyzer {
       final long queryId = SessionManager.getInstance().requestQueryId();
       final ExecutionResult result =
           Coordinator.getInstance()
-              .execute(
+              .executeForTreeModel(
                   statement,
                   queryId,
                   null,
