@@ -56,7 +56,7 @@ public class ShowTopicsTask implements IConfigTask {
       List<TShowTopicInfo> topicInfoList, SettableFuture<ConfigTaskResult> future) {
     final TsBlockBuilder builder =
         new TsBlockBuilder(
-            ColumnHeaderConstant.showPipeColumnHeaders.stream()
+            ColumnHeaderConstant.showTopicColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList()));
 

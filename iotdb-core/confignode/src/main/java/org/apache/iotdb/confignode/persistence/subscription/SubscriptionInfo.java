@@ -104,7 +104,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe topic %s, the topic with the same name has been created",
+            "Failed to create topic %s, the topic with the same name has been created",
             createTopicReq.getTopicName());
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
