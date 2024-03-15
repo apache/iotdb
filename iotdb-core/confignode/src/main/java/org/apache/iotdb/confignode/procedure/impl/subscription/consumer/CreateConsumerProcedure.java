@@ -79,13 +79,18 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_CONSUMER_PROCEDURE.getTypeCode());
+
     super.serialize(stream);
+
     ReadWriteIOUtils.write(createConsumerReq.getConsumerId(), stream);
     ReadWriteIOUtils.write(createConsumerReq.getConsumerGroupId(), stream);
-    ReadWriteIOUtils.write(createConsumerReq.getConsumerAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : createConsumerReq.getConsumerAttributes().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
+    final int size = createConsumerReq.getConsumerAttributes().size();
+    ReadWriteIOUtils.write(size, stream);
+    if (size != 0) {
+      for (Map.Entry<String, String> entry : createConsumerReq.getConsumerAttributes().entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
     }
   }
 
@@ -93,13 +98,15 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
   public void deserialize(ByteBuffer byteBuffer) {
     // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
     ReadWriteIOUtils.readShort(byteBuffer);
+
     super.deserialize(byteBuffer);
+
     createConsumerReq =
         new TCreateConsumerReq()
             .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
             .setConsumerGroupId(ReadWriteIOUtils.readString(byteBuffer))
             .setConsumerAttributes(new HashMap<>());
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createConsumerReq
           .getConsumerAttributes()

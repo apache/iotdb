@@ -63,7 +63,9 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.DROP_CONSUMER_PROCEDURE.getTypeCode());
+
     super.serialize(stream);
+
     ReadWriteIOUtils.write(dropConsumerReq.getConsumerId(), stream);
     ReadWriteIOUtils.write(dropConsumerReq.getConsumerGroupId(), stream);
   }
@@ -74,6 +76,7 @@ public class DropConsumerProcedure extends AlterConsumerGroupProcedure {
     ReadWriteIOUtils.readShort(byteBuffer);
 
     super.deserialize(byteBuffer);
+
     dropConsumerReq =
         new TCloseConsumerReq()
             .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
