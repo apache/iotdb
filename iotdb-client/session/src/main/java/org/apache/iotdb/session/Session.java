@@ -1908,9 +1908,7 @@ public class Session implements ISession {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
     // judge if convert records to tablets.
-    // two devices are not same when:
-    // 1. they have different deviceId
-    // 2. they have same deviceId but different measurements.
+
     Set<String> deviceSet = new HashSet<>(deviceIds);
 
     if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
@@ -1962,9 +1960,6 @@ public class Session implements ISession {
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     // judge if convert records to tablets.
-    // two devices are not same when:
-    // 1. they have different deviceId
-    // 2. they have same deviceId but different measurements.
     Set<String> deviceSet = new HashSet<>(deviceIds);
 
     if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
@@ -2772,7 +2767,6 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
-    System.out.println("invertToTabletsAndInsert");
     // device -> tablet
     Map<String, Tablet> tablets = new HashMap<>();
     // device -> measurement
@@ -2791,7 +2785,7 @@ public class Session implements ISession {
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
         int finalColIndex = colIndex;
-        measurementType.computeIfAbsent(measurements.get(colIndex), k->types.get(finalColIndex));
+        measurementType.computeIfAbsent(measurements.get(colIndex), k -> types.get(finalColIndex));
       }
       rowMap.merge(device, 1, Integer::sum);
     }
