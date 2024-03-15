@@ -377,10 +377,6 @@ public class TsBlock {
       this.rowIndex = rowIndex;
     }
 
-    public long getRes() {
-      return getRetainedSizeInBytes();
-    }
-
     @Override
     public boolean hasNext() {
       return rowIndex < positionCount;
