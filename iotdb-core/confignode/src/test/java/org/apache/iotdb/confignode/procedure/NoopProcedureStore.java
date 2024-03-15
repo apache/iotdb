@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import java.util.List;
 
+@TestOnly
 public class NoopProcedureStore implements IProcedureStore {
 
   private volatile boolean running = false;

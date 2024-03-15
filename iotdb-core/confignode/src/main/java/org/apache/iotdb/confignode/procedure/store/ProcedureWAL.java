@@ -36,75 +36,39 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 
 public class ProcedureWAL {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureWAL.class);
-
-  private static final String TMP_SUFFIX = ".tmp";
   private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
-  private IProcedureFactory procedureFactory;
-  private Path walFilePath;
-
-  public ProcedureWAL(Path walFilePath, IProcedureFactory procedureFactory) {
-    this.walFilePath = walFilePath;
-    this.procedureFactory = procedureFactory;
-  }
-
-  /**
-   * Create a wal file
-   *
-   * @throws IOException ioe
-   */
-  public void save(Procedure procedure) throws IOException {
-    File walTmp = new File(walFilePath + TMP_SUFFIX);
-    Path walTmpPath = walTmp.toPath();
-    Files.deleteIfExists(walTmpPath);
-    Files.createFile(walTmpPath);
-    try (FileOutputStream fos = new FileOutputStream(walTmp);
-        FileChannel channel = fos.getChannel();
-        PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
-      procedure.serialize(dataOutputStream);
-      channel.write(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
-
-      channel.force(true);
-      fos.getFD().sync();
-    }
-    Files.deleteIfExists(walFilePath);
-    Files.move(walTmpPath, walFilePath);
-  }
 
   /**
    * Load wal files into memory
    *
-   * @param procedureList procedure list
    */
-  public void load(List<Procedure> procedureList) {
-    Procedure procedure = null;
-    try (FileInputStream fis = new FileInputStream(walFilePath.toFile());
-        FileChannel channel = fis.getChannel()) {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
-      if (channel.read(byteBuffer) > 0) {
-        byteBuffer.flip();
-        procedure = procedureFactory.create(byteBuffer);
-        byteBuffer.clear();
-      }
-      procedureList.add(procedure);
+  public static Optional<Procedure> load(Path walFilePath, IProcedureFactory procedureFactory) {
+      try (FileInputStream fis = new FileInputStream(walFilePath.toFile())) {
+      return load(fis, procedureFactory);
     } catch (IOException e) {
       LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
       if (!walFilePath.toFile().delete()) {
         LOG.error("{} delete failed; take appropriate action.", walFilePath, e);
       }
     }
+    return Optional.empty();
   }
 
-  public void delete() {
-    try {
-      Files.deleteIfExists(Paths.get(walFilePath + TMP_SUFFIX));
-      Files.deleteIfExists(walFilePath);
-    } catch (IOException e) {
-      LOG.error("Delete procedure wal failed.");
+  public static Optional<Procedure> load(FileInputStream fileInputStream, IProcedureFactory procedureFactory) throws IOException{
+    Procedure procedure = null;
+    try (FileChannel channel = fileInputStream.getChannel()) {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
+      if (channel.read(byteBuffer) > 0) {
+        byteBuffer.flip();
+        procedure = procedureFactory.create(byteBuffer);
+        byteBuffer.clear();
+      }
+      return Optional.ofNullable(procedure);
     }
   }
 }

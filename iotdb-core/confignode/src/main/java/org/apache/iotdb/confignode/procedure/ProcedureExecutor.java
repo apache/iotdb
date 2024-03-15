@@ -118,10 +118,6 @@ public class ProcedureExecutor<Env> {
 
   private void recover() {
     // 1.Build rollback stack
-    int runnableCount = 0;
-    int failedCount = 0;
-    int waitingCount = 0;
-    int waitingTimeoutCount = 0;
     List<Procedure> procedureList = new ArrayList<>();
     // Load procedure wal file
     store.load(procedureList);
@@ -134,27 +130,11 @@ public class ProcedureExecutor<Env> {
         }
       }
       procedures.putIfAbsent(proc.getProcId(), proc);
-      switch (proc.getState()) {
-        case RUNNABLE:
-          runnableCount++;
-          break;
-        case FAILED:
-          failedCount++;
-          break;
-        case WAITING:
-          waitingCount++;
-          break;
-        case WAITING_TIMEOUT:
-          waitingTimeoutCount++;
-          break;
-        default:
-          break;
-      }
     }
-    List<Procedure<Env>> runnableList = new ArrayList<>(runnableCount);
-    List<Procedure<Env>> failedList = new ArrayList<>(failedCount);
-    List<Procedure<Env>> waitingList = new ArrayList<>(waitingCount);
-    List<Procedure<Env>> waitingTimeoutList = new ArrayList<>(waitingTimeoutCount);
+    List<Procedure<Env>> runnableList = new ArrayList<>();
+    List<Procedure<Env>> failedList = new ArrayList<>();
+    List<Procedure<Env>> waitingList = new ArrayList<>();
+    List<Procedure<Env>> waitingTimeoutList = new ArrayList<>();
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished() && !proc.hasParent()) {
         continue;
@@ -166,7 +146,7 @@ public class ProcedureExecutor<Env> {
           parent.incChildrenLatch();
         }
       }
-      RootProcedureStack rootStack = rollbackStack.get(rootProcedureId);
+      RootProcedureStack<Env> rootStack = rollbackStack.get(rootProcedureId);
       if (rootStack != null) {
         rootStack.loadStack(proc);
       }

@@ -350,7 +350,7 @@ public class ConfigManager implements IManager {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
-      procedureManager.shiftExecutor(false);
+      procedureManager.stopExecutor();
     }
   }
 
