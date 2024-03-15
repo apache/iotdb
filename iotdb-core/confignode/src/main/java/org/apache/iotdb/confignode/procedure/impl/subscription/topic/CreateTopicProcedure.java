@@ -27,16 +27,21 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -151,6 +156,44 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Failed to rollback topic [%s] on data nodes", topicMeta.getTopicName()));
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.CREATE_TOPIC_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+
+    ReadWriteIOUtils.write(createTopicReq.getTopicName(), stream);
+    final int size = createTopicReq.getTopicAttributesSize();
+    ReadWriteIOUtils.write(size, stream);
+    if (size != 0) {
+      for (Map.Entry<String, String> entry : createTopicReq.getTopicAttributes().entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue(), stream);
+      }
+    }
+
+    ReadWriteIOUtils.write(topicMeta != null, stream);
+    if (topicMeta != null) {
+      topicMeta.serialize(stream);
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+
+    createTopicReq = new TCreateTopicReq();
+    createTopicReq.setTopicName(ReadWriteIOUtils.readString(byteBuffer));
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      createTopicReq.putToTopicAttributes(
+          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+    }
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      topicMeta = TopicMeta.deserialize(byteBuffer);
     }
   }
 }

@@ -41,8 +41,10 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
-  protected AtomicReference<SubscriptionInfo> subscriptionInfo;
+
   private static final int RETRY_THRESHOLD = 1;
+
+  protected AtomicReference<SubscriptionInfo> subscriptionInfo;
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {

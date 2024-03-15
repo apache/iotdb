@@ -20,14 +20,14 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 public enum SubscriptionOperation {
-  CREATE_TOPIC("createTopic"),
-  DROP_TOPIC("dropTopic"),
-  ALTER_TOPIC("alterTopic"),
-  CREATE_CONSUMER("createConsumer"),
-  DROP_CONSUMER("dropConsumer"),
-  ALTER_CONSUMER_GROUP("alterConsumerGroup"),
-  CREATE_SUBSCRIPTION("createSubscription"),
-  DROP_SUBSCRIPTION("dropSubscription"),
+  CREATE_TOPIC("create topic"),
+  DROP_TOPIC("drop topic"),
+  ALTER_TOPIC("alter topic"),
+  CREATE_CONSUMER("create consumer"),
+  DROP_CONSUMER("drop consumer"),
+  ALTER_CONSUMER_GROUP("alter consumer group"),
+  CREATE_SUBSCRIPTION("create subscription"),
+  DROP_SUBSCRIPTION("drop subscription"),
   ;
 
   private final String name;

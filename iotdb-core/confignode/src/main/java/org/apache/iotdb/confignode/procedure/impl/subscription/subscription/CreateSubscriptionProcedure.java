@@ -41,13 +41,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProcedure {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateSubscriptionProcedure.class);
 
   private TSubscribeReq subscribeReq;
 
   private AlterConsumerGroupProcedure consumerGroupProcedure;
-  private List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
-  private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+  private final List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
+  private final List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
 
   public CreateSubscriptionProcedure() {
     super();
