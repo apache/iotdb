@@ -846,7 +846,8 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     List<TSEncoding> encodingTypes = TsFileGeneratorUtils.createEncodingType(1);
     List<CompressionType> compressionTypes = TsFileGeneratorUtils.createCompressionType(1);
     List<PartialPath> timeSeriesPaths = new ArrayList<>();
-    timeSeriesPaths.add(new MeasurementPath(deviceId.toStringID() + ".s1", dataTypes.get(0)));
+    timeSeriesPaths.add(
+        new MeasurementPath(((PlainDeviceID) deviceId).toStringID() + ".s1", dataTypes.get(0)));
 
     List<IChunkWriter> chunkWriters =
         TsFileGeneratorUtils.createChunkWriter(

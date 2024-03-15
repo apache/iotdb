@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -122,7 +123,7 @@ public class RepairDataFileScanUtil {
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(device.toStringID(), currentTime);
+          checkPreviousTimeAndUpdate(((PlainDeviceID) device).toStringID(), currentTime);
         }
       }
     }

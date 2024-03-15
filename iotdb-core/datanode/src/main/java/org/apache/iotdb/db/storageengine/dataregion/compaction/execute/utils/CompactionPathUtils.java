@@ -37,7 +37,7 @@ public class CompactionPathUtils {
     if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
     } else {
-      path = new PartialPath(device.toStringID().split("\\."));
+      path = new PartialPath(((PlainDeviceID) device).toStringID().split("\\."));
     }
     return path.concatNode(measurement);
   }

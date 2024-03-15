@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -476,7 +477,7 @@ public abstract class AbstractMemTable implements IMemTable {
       List<Pair<PartialPath, IWritableMemChunkGroup>> targetDeviceList = new ArrayList<>();
       for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
         try {
-          PartialPath devicePathInMemTable = new PartialPath(entry.getKey().toStringID());
+          PartialPath devicePathInMemTable = new PartialPath(entry.getKey());
           if (devicePath.matchFullPath(devicePathInMemTable)) {
             targetDeviceList.add(new Pair<>(devicePathInMemTable, entry.getValue()));
           }
@@ -602,7 +603,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     int size = FIXED_SERIALIZED_SIZE;
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(entry.getKey().toStringID());
+      size += ReadWriteIOUtils.sizeToWrite(((PlainDeviceID) entry.getKey()).toStringID());
       size += Byte.BYTES;
       size += entry.getValue().serializedSize();
     }
@@ -627,7 +628,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      WALWriteUtils.write(entry.getKey().toStringID(), buffer);
+      WALWriteUtils.write(((PlainDeviceID) entry.getKey()).toStringID(), buffer);
 
       IWritableMemChunkGroup memChunkGroup = entry.getValue();
       WALWriteUtils.write(memChunkGroup instanceof AlignedWritableMemChunkGroup, buffer);

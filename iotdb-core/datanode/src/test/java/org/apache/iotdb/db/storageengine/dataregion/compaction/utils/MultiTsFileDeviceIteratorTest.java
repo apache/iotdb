@@ -313,7 +313,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -372,7 +372,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -518,7 +518,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -663,7 +663,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -808,7 +808,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -962,7 +962,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -1107,7 +1107,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);

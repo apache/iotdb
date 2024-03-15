@@ -29,13 +29,6 @@ import java.nio.ByteBuffer;
 /** Device id interface. */
 public interface IDeviceID extends Comparable<IDeviceID> {
 
-  /**
-   * To string format.
-   *
-   * @return string format device id
-   */
-  String toStringID();
-
   int serialize(ByteBuffer byteBuffer);
 
   int serialize(OutputStream outputStream) throws IOException;

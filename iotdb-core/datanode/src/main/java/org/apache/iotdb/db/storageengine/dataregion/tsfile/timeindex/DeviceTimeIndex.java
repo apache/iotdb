@@ -100,9 +100,9 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
 
     for (Entry<IDeviceID, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
-      IDeviceID deviceName = stringIntegerEntry.getKey();
+      IDeviceID device = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
-      ReadWriteIOUtils.write(deviceName.toStringID(), outputStream);
+      ReadWriteIOUtils.write(((PlainDeviceID) device).toStringID(), outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
   }
@@ -408,7 +408,8 @@ public class DeviceTimeIndex implements ITimeIndex {
           }
         } else {
           if (devicePattern.matchFullPath(
-              DataNodeDevicePathCache.getInstance().getPartialPath(entry.getKey().toStringID()))) {
+              DataNodeDevicePathCache.getInstance()
+                  .getPartialPath(((PlainDeviceID) entry.getKey()).toStringID()))) {
             deviceMatchInfo.add(entry.getKey());
             hasMatchedDevice = true;
             if (startTimes[entry.getValue()] < startTime) {
