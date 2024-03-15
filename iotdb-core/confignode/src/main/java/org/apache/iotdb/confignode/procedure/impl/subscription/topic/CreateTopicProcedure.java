@@ -214,15 +214,15 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       return false;
     }
     CreateTopicProcedure that = (CreateTopicProcedure) o;
-    return this.createTopicReq.getTopicName().equals(that.createTopicReq.getTopicName())
-        && this.createTopicReq
-            .getTopicAttributes()
-            .toString()
-            .equals(that.createTopicReq.getTopicAttributes().toString());
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && Objects.equals(createTopicReq, that.createTopicReq)
+        && Objects.equals(topicMeta, that.topicMeta);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(createTopicReq.getTopicName(), createTopicReq.getTopicAttributes());
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), createTopicReq, topicMeta);
   }
 }
