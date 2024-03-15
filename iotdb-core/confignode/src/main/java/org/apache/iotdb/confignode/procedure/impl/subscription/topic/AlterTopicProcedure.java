@@ -164,12 +164,12 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
     ReadWriteIOUtils.write(updatedTopicMeta != null, stream);
     if (updatedTopicMeta != null) {
-      stream.write(updatedTopicMeta.serialize().array());
+      updatedTopicMeta.serialize(stream);
     }
 
     ReadWriteIOUtils.write(existedTopicMeta != null, stream);
     if (existedTopicMeta != null) {
-      stream.write(existedTopicMeta.serialize().array());
+      existedTopicMeta.serialize(stream);
     }
   }
 
