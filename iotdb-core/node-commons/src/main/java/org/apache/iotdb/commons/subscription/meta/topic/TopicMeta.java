@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.topic;
 
 import org.apache.iotdb.commons.subscription.config.TopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,30 +35,35 @@ import java.util.Objects;
 import java.util.Set;
 
 public class TopicMeta {
+
   private String topicName;
-
   private long createTime;
-
-  private Set<String> subscribedConsumerGroupIDs;
   private TopicConfig config;
 
+  private Set<String> subscribedConsumerGroupIDs;
+
   private TopicMeta() {
-    // Empty constructor
+    this.config = new TopicConfig(new HashMap<>());
+
+    this.subscribedConsumerGroupIDs = new HashSet<>();
   }
 
   public TopicMeta(String topicName, long createTime, Map<String, String> topicAttributes) {
     this.topicName = topicName;
     this.createTime = createTime;
-    this.subscribedConsumerGroupIDs = new HashSet<>();
     this.config = new TopicConfig(topicAttributes);
+
+    this.subscribedConsumerGroupIDs = new HashSet<>();
   }
 
-  public TopicMeta copy() {
-    TopicMeta copy = new TopicMeta();
-    copy.topicName = topicName;
-    copy.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
-    copy.config = new TopicConfig(new HashMap<>(config.getAttribute()));
-    return copy;
+  public TopicMeta deepCopy() {
+    final TopicMeta copied = new TopicMeta();
+    copied.topicName = topicName;
+    copied.createTime = createTime;
+    copied.config = new TopicConfig(new HashMap<>(config.getAttribute()));
+
+    copied.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
+    return copied;
   }
 
   public String getTopicName() {
@@ -67,6 +72,10 @@ public class TopicMeta {
 
   public long getCreationTime() {
     return createTime;
+  }
+
+  public TopicConfig getConfig() {
+    return config;
   }
 
   /** @return true if the consumer group did not already subscribe this topic */
@@ -86,11 +95,7 @@ public class TopicMeta {
     return subscribedConsumerGroupIDs.contains(consumerGroupId);
   }
 
-  public TopicConfig getConfig() {
-    return config;
-  }
-
-  ////////////////////////////////////// ser deser ////////////////////////////////
+  ////////////////////////////////////// de/ser ////////////////////////////////
 
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -99,35 +104,19 @@ public class TopicMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
     ReadWriteIOUtils.write(createTime, outputStream);
-
-    ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
-    for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
-      ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
-    }
 
     ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
     for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
 
     ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
     for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
-    }
-
-    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
   }
 
@@ -139,14 +128,14 @@ public class TopicMeta {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(inputStream));
+      final String key = ReadWriteIOUtils.readString(inputStream);
+      final String value = ReadWriteIOUtils.readString(inputStream);
+      topicMeta.config.getAttribute().put(key, value);
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      final String key = ReadWriteIOUtils.readString(inputStream);
-      final String value = ReadWriteIOUtils.readString(inputStream);
-      topicMeta.config.getAttribute().put(key, value);
+      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(inputStream));
     }
 
     return topicMeta;
@@ -160,18 +149,20 @@ public class TopicMeta {
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i++) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
       topicMeta.config.getAttribute().put(key, value);
     }
 
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+
     return topicMeta;
   }
+
+  ////////////////////////////////////// Object ////////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
@@ -183,9 +174,9 @@ public class TopicMeta {
     }
     TopicMeta that = (TopicMeta) obj;
     return createTime == that.createTime
-        && topicName.equals(that.topicName)
-        && subscribedConsumerGroupIDs.equals(that.subscribedConsumerGroupIDs)
-        && config.equals(that.config);
+        && Objects.equals(topicName, that.topicName)
+        && Objects.equals(config, that.config)
+        && Objects.equals(subscribedConsumerGroupIDs, that.subscribedConsumerGroupIDs);
   }
 
   @Override
@@ -201,10 +192,10 @@ public class TopicMeta {
         + '\''
         + ", createTime="
         + createTime
-        + ", subscribedConsumerGroupIDs="
-        + subscribedConsumerGroupIDs
         + ", config="
         + config
+        + ", subscribedConsumerGroupIDs="
+        + subscribedConsumerGroupIDs
         + '}';
   }
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
-import org.apache.iotdb.commons.subscription.meta.ConsumerMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;

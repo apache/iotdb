@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.subscription.agent.topic.TopicDataNodeAgent;
+import org.apache.iotdb.db.subscription.agent.topic.TopicAgent;
 
 public class SubscriptionAgent {
-  private final TopicDataNodeAgent topicDataNodeAgent;
+  private final TopicAgent topicAgent;
 
   private SubscriptionAgent() {
-    topicDataNodeAgent = new TopicDataNodeAgent();
+    topicAgent = new TopicAgent();
   }
 
   private static class SubscriptionAgentHolder {
     private static final SubscriptionAgent HANDLE = new SubscriptionAgent();
   }
 
-  public static TopicDataNodeAgent topic() {
-    return SubscriptionAgentHolder.HANDLE.topicDataNodeAgent;
+  public static TopicAgent topic() {
+    return SubscriptionAgentHolder.HANDLE.topicAgent;
   }
 }

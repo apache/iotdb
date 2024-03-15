@@ -17,22 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.consumer;
 
 import org.apache.iotdb.commons.subscription.config.ConsumerConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class ConsumerMeta {
+
   private String consumerId;
   private long creationTime;
   private ConsumerConfig config;
@@ -59,18 +60,7 @@ public class ConsumerMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(consumerId, outputStream);
-    ReadWriteIOUtils.write(creationTime, outputStream);
-
-    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(consumerId, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
@@ -88,7 +78,6 @@ public class ConsumerMeta {
     consumerMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
 
     consumerMeta.config = new ConsumerConfig(new HashMap<>());
-
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
@@ -106,7 +95,6 @@ public class ConsumerMeta {
     consumerMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     consumerMeta.config = new ConsumerConfig(new HashMap<>());
-
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
@@ -126,9 +114,9 @@ public class ConsumerMeta {
       return false;
     }
     ConsumerMeta that = (ConsumerMeta) obj;
-    return consumerId.equals(that.consumerId)
-        && creationTime == that.creationTime
-        && config.equals(that.config);
+    return Objects.equals(consumerId, that.consumerId)
+        && Objects.equals(creationTime, that.creationTime)
+        && Objects.equals(config, that.config);
   }
 
   @Override

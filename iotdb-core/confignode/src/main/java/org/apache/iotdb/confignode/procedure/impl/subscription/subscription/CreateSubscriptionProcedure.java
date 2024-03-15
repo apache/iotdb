@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
-import org.apache.iotdb.commons.subscription.meta.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
@@ -125,7 +125,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
     for (String topic : subscribeReq.getTopicNames()) {
       // Construct AlterTopicProcedures
-      TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).copy();
+      TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).deepCopy();
 
       // Construct pipe procedures
       if (updatedTopicMeta.addSubscribedConsumerGroup(subscribeReq.getConsumerGroupId())) {

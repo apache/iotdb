@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.consumer;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,10 +36,11 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ConsumerGroupMeta {
+
   private String consumerGroupId;
   private long creationTime;
-  private Map<String, Set<String>> topicNameToSubscribedConsumers;
-  private Map<String, ConsumerMeta> consumers;
+  private Map<String, Set<String>> topicNameToSubscribedConsumerIdSet = new HashMap<>();
+  private Map<String, ConsumerMeta> consumerIdToConsumerMeta = new HashMap<>();
 
   public ConsumerGroupMeta() {
     // Empty constructor
@@ -49,37 +50,47 @@ public class ConsumerGroupMeta {
       String consumerGroupId, long creationTime, ConsumerMeta firstConsumerMeta) {
     this.consumerGroupId = consumerGroupId;
     this.creationTime = creationTime;
-    this.topicNameToSubscribedConsumers = new HashMap<>();
-    this.consumers = Collections.singletonMap(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
+    this.topicNameToSubscribedConsumerIdSet = new HashMap<>();
+    this.consumerIdToConsumerMeta = new HashMap<>();
+
+    consumerIdToConsumerMeta.put(firstConsumerMeta.getConsumerId(), firstConsumerMeta);
   }
 
   public ConsumerGroupMeta copy() {
-    ConsumerGroupMeta copy = new ConsumerGroupMeta();
-    copy.consumerGroupId = consumerGroupId;
-    copy.creationTime = creationTime;
-    copy.topicNameToSubscribedConsumers = new HashMap<>(topicNameToSubscribedConsumers);
-    copy.consumers = new HashMap<>(consumers);
-    return copy;
+    final ConsumerGroupMeta copied = new ConsumerGroupMeta();
+    copied.consumerGroupId = consumerGroupId;
+    copied.creationTime = creationTime;
+    copied.topicNameToSubscribedConsumerIdSet = new HashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.consumerIdToConsumerMeta = new HashMap<>(consumerIdToConsumerMeta);
+    return copied;
   }
 
   public String getConsumerGroupId() {
     return consumerGroupId;
   }
 
+  public long getCreationTime() {
+    return creationTime;
+  }
+
+  /////////////////////////////// consumer ///////////////////////////////
+
   public void addConsumer(ConsumerMeta consumerMeta) {
-    consumers.put(consumerMeta.getConsumerId(), consumerMeta);
+    consumerIdToConsumerMeta.put(consumerMeta.getConsumerId(), consumerMeta);
   }
 
   public void removeConsumer(String consumerId) {
-    consumers.remove(consumerId);
-    for (Set<String> subscribedConsumers : topicNameToSubscribedConsumers.values()) {
+    consumerIdToConsumerMeta.remove(consumerId);
+    for (Set<String> subscribedConsumers : topicNameToSubscribedConsumerIdSet.values()) {
       subscribedConsumers.remove(consumerId);
     }
   }
 
   public boolean containsConsumer(String consumerId) {
-    return consumers.containsKey(consumerId);
+    return consumerIdToConsumerMeta.containsKey(consumerId);
   }
+
+  ////////////////////////// subscription //////////////////////////
 
   /**
    * Get the consumers subscribing the given topic in this group.
@@ -89,43 +100,47 @@ public class ConsumerGroupMeta {
    *     subscribing the topic, return an empty set.
    */
   public Set<String> getConsumersSubscribingTopic(String topic) {
-    return topicNameToSubscribedConsumers.getOrDefault(topic, Collections.emptySet());
+    return topicNameToSubscribedConsumerIdSet.getOrDefault(topic, Collections.emptySet());
   }
 
   public void addSubscription(String consumerId, Set<String> topics) {
-    if (!consumers.containsKey(consumerId)) {
-      throw new PipeException(
+    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
+      throw new SubscriptionException(
           String.format(
               "Failed to add subscription to consumer group meta: consumer %s does not exist in consumer group %s",
               consumerId, consumerGroupId));
     }
 
     for (String topic : topics) {
-      topicNameToSubscribedConsumers.computeIfAbsent(topic, k -> new HashSet<>()).add(consumerId);
+      topicNameToSubscribedConsumerIdSet
+          .computeIfAbsent(topic, k -> new HashSet<>())
+          .add(consumerId);
     }
   }
 
   /** @return topics subscribed by no consumers in this group after this removal. */
   public Set<String> removeSubscription(String consumerId, Set<String> topics) {
-    if (!consumers.containsKey(consumerId)) {
-      throw new PipeException(
+    if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
+      throw new SubscriptionException(
           String.format(
               "Failed to remove subscription from consumer group meta: consumer %s does not exist in consumer group %s",
               consumerId, consumerGroupId));
     }
 
-    Set<String> ret = new HashSet<>();
+    Set<String> noSubscriptionTopicAfterRemoval = new HashSet<>();
     for (String topic : topics) {
-      if (topicNameToSubscribedConsumers.containsKey(topic)) {
-        topicNameToSubscribedConsumers.get(topic).remove(consumerId);
-        if (topicNameToSubscribedConsumers.get(topic).isEmpty()) {
-          ret.add(topic);
-          topicNameToSubscribedConsumers.remove(topic);
+      if (topicNameToSubscribedConsumerIdSet.containsKey(topic)) {
+        topicNameToSubscribedConsumerIdSet.get(topic).remove(consumerId);
+        if (topicNameToSubscribedConsumerIdSet.get(topic).isEmpty()) {
+          noSubscriptionTopicAfterRemoval.add(topic);
+          topicNameToSubscribedConsumerIdSet.remove(topic);
         }
       }
     }
-    return ret;
+    return noSubscriptionTopicAfterRemoval;
   }
+
+  /////////////////////////////// de/ser ///////////////////////////////
 
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -134,41 +149,21 @@ public class ConsumerGroupMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(topicNameToSubscribedConsumers.size(), outputStream);
-    for (Map.Entry<String, Set<String>> entry : topicNameToSubscribedConsumers.entrySet()) {
+    ReadWriteIOUtils.write(topicNameToSubscribedConsumerIdSet.size(), outputStream);
+    for (Map.Entry<String, Set<String>> entry : topicNameToSubscribedConsumerIdSet.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
-      for (String entry1 : entry.getValue()) {
-        ReadWriteIOUtils.write(entry1, outputStream);
+      for (String id : entry.getValue()) {
+        ReadWriteIOUtils.write(id, outputStream);
       }
     }
 
-    ReadWriteIOUtils.write(consumers.size(), outputStream);
-    for (Map.Entry<String, ConsumerMeta> entry : consumers.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      entry.getValue().serialize(outputStream);
-    }
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(consumerGroupId, outputStream);
-    ReadWriteIOUtils.write(creationTime, outputStream);
-
-    ReadWriteIOUtils.write(topicNameToSubscribedConsumers.size(), outputStream);
-    for (Map.Entry<String, Set<String>> entry : topicNameToSubscribedConsumers.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
-      for (String entry1 : entry.getValue()) {
-        ReadWriteIOUtils.write(entry1, outputStream);
-      }
-    }
-
-    ReadWriteIOUtils.write(consumers.size(), outputStream);
-    for (Map.Entry<String, ConsumerMeta> entry : consumers.entrySet()) {
+    ReadWriteIOUtils.write(consumerIdToConsumerMeta.size(), outputStream);
+    for (Map.Entry<String, ConsumerMeta> entry : consumerIdToConsumerMeta.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
@@ -180,8 +175,7 @@ public class ConsumerGroupMeta {
     consumerGroupMeta.consumerGroupId = ReadWriteIOUtils.readString(inputStream);
     consumerGroupMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
 
-    consumerGroupMeta.topicNameToSubscribedConsumers = new HashMap<>();
-
+    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new HashMap<>();
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
@@ -192,16 +186,15 @@ public class ConsumerGroupMeta {
         value.add(ReadWriteIOUtils.readString(inputStream));
       }
 
-      consumerGroupMeta.topicNameToSubscribedConsumers.put(key, value);
+      consumerGroupMeta.topicNameToSubscribedConsumerIdSet.put(key, value);
     }
 
-    consumerGroupMeta.consumers = new HashMap<>();
-
+    consumerGroupMeta.consumerIdToConsumerMeta = new HashMap<>();
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final ConsumerMeta value = ConsumerMeta.deserialize(inputStream);
-      consumerGroupMeta.consumers.put(key, value);
+      consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
     }
 
     return consumerGroupMeta;
@@ -213,8 +206,7 @@ public class ConsumerGroupMeta {
     consumerGroupMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
     consumerGroupMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
-    consumerGroupMeta.topicNameToSubscribedConsumers = new HashMap<>();
-
+    consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new HashMap<>();
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
@@ -225,20 +217,21 @@ public class ConsumerGroupMeta {
         value.add(ReadWriteIOUtils.readString(byteBuffer));
       }
 
-      consumerGroupMeta.topicNameToSubscribedConsumers.put(key, value);
+      consumerGroupMeta.topicNameToSubscribedConsumerIdSet.put(key, value);
     }
 
-    consumerGroupMeta.consumers = new HashMap<>();
-
+    consumerGroupMeta.consumerIdToConsumerMeta = new HashMap<>();
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final ConsumerMeta value = ConsumerMeta.deserialize(byteBuffer);
-      consumerGroupMeta.consumers.put(key, value);
+      consumerGroupMeta.consumerIdToConsumerMeta.put(key, value);
     }
 
     return consumerGroupMeta;
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
@@ -249,15 +242,20 @@ public class ConsumerGroupMeta {
       return false;
     }
     ConsumerGroupMeta that = (ConsumerGroupMeta) obj;
-    return consumerGroupId.equals(that.consumerGroupId)
+    return Objects.equals(consumerGroupId, that.consumerGroupId)
         && creationTime == that.creationTime
-        && topicNameToSubscribedConsumers.equals(that.topicNameToSubscribedConsumers)
-        && consumers.equals(that.consumers);
+        && Objects.equals(
+            topicNameToSubscribedConsumerIdSet, that.topicNameToSubscribedConsumerIdSet)
+        && Objects.equals(consumerIdToConsumerMeta, that.consumerIdToConsumerMeta);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consumerGroupId, creationTime, topicNameToSubscribedConsumers, consumers);
+    return Objects.hash(
+        consumerGroupId,
+        creationTime,
+        topicNameToSubscribedConsumerIdSet,
+        consumerIdToConsumerMeta);
   }
 
   @Override
@@ -267,10 +265,10 @@ public class ConsumerGroupMeta {
         + consumerGroupId
         + "', creationTime="
         + creationTime
-        + ", topicNameToSubscribedConsumers="
-        + topicNameToSubscribedConsumers
-        + ", consumers="
-        + consumers
+        + ", topicNameToSubscribedConsumerIdSet="
+        + topicNameToSubscribedConsumerIdSet
+        + ", consumerIdToConsumerMeta="
+        + consumerIdToConsumerMeta
         + "}";
   }
 }

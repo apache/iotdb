@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.topic;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TopicMetaKeeper {
-  private Map<String, TopicMeta> topicNameToTopicMetaMap;
+
+  private final Map<String, TopicMeta> topicNameToTopicMetaMap;
 
   private final ReentrantReadWriteLock topicMetaKeeperLock;
 

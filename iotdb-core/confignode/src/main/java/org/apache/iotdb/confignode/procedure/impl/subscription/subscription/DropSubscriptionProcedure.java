@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
-import org.apache.iotdb.commons.subscription.meta.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
@@ -87,7 +87,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
       if (topicsUnsubByGroup.contains(topic)) {
         // Topic will be subscribed by no consumers in this group
 
-        TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).copy();
+        TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).deepCopy();
         updatedTopicMeta.removeSubscribedConsumerGroup(unsubscribeReq.getConsumerGroupId());
 
         topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));

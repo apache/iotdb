@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.consumer;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,7 +31,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConsumerGroupMetaKeeper {
-  private Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMetaMap;
+
+  private final Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMetaMap;
 
   public ConsumerGroupMetaKeeper() {
     consumerGroupIDToConsumerGroupMetaMap = new ConcurrentHashMap<>();

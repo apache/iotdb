@@ -21,11 +21,11 @@ package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMetaKeeper;
-import org.apache.iotdb.commons.subscription.meta.SubscriptionMeta;
-import org.apache.iotdb.commons.subscription.meta.TopicMeta;
-import org.apache.iotdb.commons.subscription.meta.TopicMetaKeeper;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
+import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;

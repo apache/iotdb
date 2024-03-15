@@ -19,24 +19,25 @@
 
 package org.apache.iotdb.db.subscription.agent.topic;
 
-import org.apache.iotdb.commons.subscription.meta.TopicMeta;
-import org.apache.iotdb.commons.subscription.meta.TopicMetaKeeper;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TopicDataNodeAgent {
+public class TopicAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopicDataNodeAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TopicAgent.class);
 
   private final TopicMetaKeeper topicMetaKeeper;
 
-  public TopicDataNodeAgent() {
+  public TopicAgent() {
     topicMetaKeeper = new TopicMetaKeeper();
   }
 
   ////////////////////////// TopicMeta Lock Control //////////////////////////
+
   protected void acquireReadLock() {
     topicMetaKeeper.acquireReadLock();
   }

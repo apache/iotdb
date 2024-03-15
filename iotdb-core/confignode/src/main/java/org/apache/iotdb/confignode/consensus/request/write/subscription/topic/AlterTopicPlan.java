@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.subscription.topic;
 
-import org.apache.iotdb.commons.subscription.meta.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 

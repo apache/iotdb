@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.subscription.consumer;
 
-import org.apache.iotdb.commons.subscription.meta.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 

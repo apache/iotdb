@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.meta;
+package org.apache.iotdb.commons.subscription.meta.subscription;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,6 +32,7 @@ import java.util.Set;
 
 /** SubscriptionMeta is created for show subscription and is not stored in meta keeper. */
 public class SubscriptionMeta {
+
   private String topicName;
   private String consumerGroupID;
   private Set<String> consumerIDs;
