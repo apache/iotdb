@@ -1783,14 +1783,15 @@ public class ConfigManager implements IManager {
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
         if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
             && !path.getDevicePath().hasWildcard()) {
-          deleteDatabaseSchemas.addAll(
-              getClusterSchemaManager()
-                  .getMatchedDatabaseSchemasByPrefix(path.getDevicePath())
-                  .values());
-          canOptimize = true;
-        } else {
-          deleteTimeSeriesPatternPaths.add(path);
+          Map<String, TDatabaseSchema> databaseSchemaMap =
+              getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
+          if (!databaseSchemaMap.isEmpty()) {
+            deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
+            canOptimize = true;
+            continue;
+          }
         }
+        deleteTimeSeriesPatternPaths.add(path);
       }
       if (!canOptimize) {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
