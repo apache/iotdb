@@ -31,12 +31,16 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.Objects;
 
 public class SchemaRegionStateMachine extends BaseStateMachine {
 
@@ -83,10 +87,32 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return schemaRegion.createSnapshot(snapshotDir)
+    if (schemaRegion.createSnapshot(snapshotDir)
         && PipeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
-            .createSnapshot(snapshotDir);
+            .createSnapshot(snapshotDir)) {
+      Pair<Path, Path> snapshotPaths =
+          SchemaRegionSnapshotParser.getSnapshotPaths(
+              Integer.toString(schemaRegion.getSchemaRegionId().getId()));
+      if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+        logger.error(
+            "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
+            snapshotPaths);
+        // Do not affect the normal operation of the state machine when pipe
+        // snapshot listening failure is encountered
+        return true;
+      }
+      PipeAgent.runtime()
+          .schemaListener(schemaRegion.getSchemaRegionId())
+          .tryListenToSnapshot(
+              snapshotPaths.getLeft().toString(),
+              Objects.nonNull(snapshotPaths.getRight())
+                  ? snapshotPaths.getRight().toString()
+                  : null,
+              schemaRegion.getDatabaseFullPath());
+      return true;
+    }
+    return false;
   }
 
   @Override

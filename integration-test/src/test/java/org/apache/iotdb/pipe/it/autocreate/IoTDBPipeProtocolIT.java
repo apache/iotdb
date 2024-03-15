@@ -382,7 +382,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      // test mods transfer
+      // Test mods transfer
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
