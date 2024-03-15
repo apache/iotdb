@@ -90,9 +90,9 @@ public class CreateSubscriptionProcedureTest {
                 .setExtractorAttributes(Collections.singletonMap("extractor", "ex"))
                 .setProcessorAttributes(Collections.singletonMap("processor", "pro"))));
 
-    proc.setConsumerGroupProcedure(alterConsumerGroupProcedure);
-    proc.setTopicProcedures(topicProcedures);
-    proc.setPipeProcedures(pipeProcedures);
+    proc.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    proc.setAlterTopicProcedures(topicProcedures);
+    proc.setCreatePipeProcedures(pipeProcedures);
 
     try {
       proc.serialize(outputStream);
@@ -102,9 +102,9 @@ public class CreateSubscriptionProcedureTest {
           (CreateSubscriptionProcedure) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
-      assertEquals(alterConsumerGroupProcedure, proc2.getConsumerGroupProcedure());
-      assertEquals(topicProcedures, proc2.getTopicProcedures());
-      assertEquals(pipeProcedures, proc2.getPipeProcedures());
+      assertEquals(alterConsumerGroupProcedure, proc2.getAlterConsumerGroupProcedure());
+      assertEquals(topicProcedures, proc2.getAlterTopicProcedures());
+      assertEquals(pipeProcedures, proc2.getCreatePipeProcedures());
     } catch (Exception e) {
       fail();
     }

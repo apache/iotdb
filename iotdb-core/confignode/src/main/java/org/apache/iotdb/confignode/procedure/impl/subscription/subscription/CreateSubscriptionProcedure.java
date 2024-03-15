@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -33,7 +34,6 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicP
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -47,15 +47,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
+// TODO: check if lock is properly acquired
+// TODO: check if it also needs meta sync to keep CN and DN in sync
 public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProcedure {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateSubscriptionProcedure.class);
 
   private TSubscribeReq subscribeReq;
 
-  private AlterConsumerGroupProcedure consumerGroupProcedure;
-  private List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
-  private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+  private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
+  private List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>();
+  private List<AbstractOperatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
 
   public CreateSubscriptionProcedure() {
     super();
@@ -71,136 +73,86 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
-
-    int topicCount = topicProcedures.size();
-    for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromValidateTask(env);
-    }
-
-    for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
-    }
-
-    consumerGroupProcedure.executeFromOperateOnConfigNodes(env);
-
-    for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnConfigNodes(env);
-      pipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
-    }
-  }
-
-  @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
-
-    consumerGroupProcedure.executeFromOperateOnDataNodes(env);
-
-    int topicCount = topicProcedures.size();
-    for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnDataNodes(env);
-      try {
-        pipeProcedures.get(i).executeFromOperateOnDataNodes(env);
-      } catch (IOException e) {
-        LOGGER.warn(
-            "Failed to create or start pipe task for subscription on datanode, because {}",
-            e.getMessage());
-        throw new PipeException(e.getMessage());
-      }
-    }
-  }
-
-  @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
-    // check if the consumer and all topics exists
-    try {
-      subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
-    } catch (PipeException e) {
-      LOGGER.error(
-          "CreateSubscriptionProcedure: executeFromValidate, validateBeforeSubscribe failed", e);
-      throw e;
-    }
+    subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
-    // Construct AlterConsumerGroupProcedure
-    ConsumerGroupMeta updatedConsumerGroupMeta =
+    // alterConsumerGroupProcedure
+    final ConsumerGroupMeta updatedConsumerGroupMeta =
+        // TODO: fixme deepCopy() is not locked by the subscription procedure lock
         subscriptionInfo.get().getConsumerGroupMeta(subscribeReq.getConsumerGroupId()).deepCopy();
     updatedConsumerGroupMeta.addSubscription(
         subscribeReq.getConsumerId(), subscribeReq.getTopicNames());
-    consumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
+    alterConsumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
 
+    // alterTopicProcedures & createPipeProcedures
     for (String topic : subscribeReq.getTopicNames()) {
-      // Construct AlterTopicProcedures
+      // TODO: fixme deepCopy() is not locked by the subscription procedure lock
       TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).deepCopy();
 
-      // Construct pipe procedures
       if (updatedTopicMeta.addSubscribedConsumerGroup(subscribeReq.getConsumerGroupId())) {
-        // Consumer group not subscribed this topic
-        // TODO: now all configs are put to extractor attributes. need to put to processor and
-        // connector attributes correctly.
-        pipeProcedures.add(
+        createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
-                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())));
+                    // TODO: put attributes correctly.
+                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())
+                    .setProcessorAttributes(updatedTopicMeta.getConfig().getAttribute())
+                    .setConnectorAttributes(updatedTopicMeta.getConfig().getAttribute())));
 
-        topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
-      } else {
-        // Consumer group already subscribed this topic
-        pipeProcedures.add(
-            new StartPipeProcedureV2(topic + "_" + subscribeReq.getConsumerGroupId()));
-
-        topicProcedures.add(null);
+        alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
       }
+    }
+
+    for (int i = 0, topicCount = alterTopicProcedures.size(); i < topicCount; ++i) {
+      createPipeProcedures.get(i).executeFromValidateTask(env);
+      createPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }
   }
 
+  // TODO: record execution result for each procedure and only rollback the executed ones
+  // TODO: check periodically if the subscription is still valid but no working pipe?
   @Override
-  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
+    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
 
-    int topicCount = topicProcedures.size();
-    for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
-      if (topicProcedures.get(i) != null) {
-        topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
-      }
+    alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
+
+    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.executeFromOperateOnConfigNodes(env);
     }
 
-    consumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
-
-    for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
-    }
-
-    for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).executeFromValidateTask(env);
+    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+      createPipeProcedure.executeFromWriteConfigNodeConsensus(env);
     }
   }
 
+  // TODO: record execution result for each procedure and only rollback the executed ones
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
+    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
 
-    int topicCount = topicProcedures.size();
-    for (int i = topicCount - 1; i >= 0; --i) {
-      try {
-        pipeProcedures.get(i).rollbackFromOperateOnDataNodes(env);
-      } catch (IOException e) {
-        LOGGER.warn(
-            "Failed to roll back create or start pipe task for subscription on datanode, because {}",
-            e.getMessage());
-        throw new PipeException(e.getMessage());
-      }
+    alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
 
-      if (topicProcedures.get(i) != null) {
-        topicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
-      }
+    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.executeFromOperateOnDataNodes(env);
     }
 
-    consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+    try {
+      for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+        createPipeProcedure.executeFromOperateOnDataNodes(env);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to create or start pipe task for subscription on datanode, because {}",
+          e.getMessage());
+      throw new SubscriptionException(
+          "Failed to create or start pipe task for subscription on datanode, because "
+              + e.getMessage());
+    }
   }
 
   @Override
@@ -209,47 +161,86 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
+  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+
+    alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
+
+    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.rollbackFromOperateOnConfigNodes(env);
+    }
+
+    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+      createPipeProcedure.rollbackFromWriteConfigNodeConsensus(env);
+    }
+  }
+
+  @Override
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+
+    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+
+    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.rollbackFromOperateOnDataNodes(env);
+    }
+
+    try {
+      for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+        createPipeProcedure.rollbackFromOperateOnDataNodes(env);
+      }
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to rollback create or start pipe task for subscription on datanode, because {}",
+          e.getMessage());
+      throw new SubscriptionException(
+          "Failed to rollback create or start pipe task for subscription on datanode, because "
+              + e.getMessage());
+    }
+  }
+
+  // TODO: we still need some strategies to clean the subscription if it's not valid anymore
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_SUBSCRIPTION_PROCEDURE.getTypeCode());
+
     super.serialize(stream);
+
     ReadWriteIOUtils.write(subscribeReq.getConsumerId(), stream);
     ReadWriteIOUtils.write(subscribeReq.getConsumerGroupId(), stream);
-    ReadWriteIOUtils.write(subscribeReq.getTopicNamesSize(), stream);
-    for (String topicName : subscribeReq.getTopicNames()) {
-      ReadWriteIOUtils.write(topicName, stream);
+    final int size = subscribeReq.getTopicNamesSize();
+    ReadWriteIOUtils.write(size, stream);
+    if (size != 0) {
+      for (String topicName : subscribeReq.getTopicNames()) {
+        ReadWriteIOUtils.write(topicName, stream);
+      }
     }
 
     // serialize consumerGroupProcedure
-    if (consumerGroupProcedure != null) {
+    if (alterConsumerGroupProcedure != null) {
       ReadWriteIOUtils.write(true, stream);
-      consumerGroupProcedure.serialize(stream);
+      alterConsumerGroupProcedure.serialize(stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
 
     // serialize topic procedures
-    if (topicProcedures != null) {
+    if (alterTopicProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(topicProcedures.size(), stream);
-      for (AlterTopicProcedure topicProcedure : topicProcedures) {
-        // Topic procedure may be null
-        if (topicProcedure != null) {
-          ReadWriteIOUtils.write(true, stream);
-          topicProcedure.serialize(stream);
-        } else {
-          ReadWriteIOUtils.write(false, stream);
-        }
+      ReadWriteIOUtils.write(alterTopicProcedures.size(), stream);
+      for (AlterTopicProcedure topicProcedure : alterTopicProcedures) {
+        topicProcedure.serialize(stream);
       }
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
 
     // serialize pipe procedures
-    if (pipeProcedures != null) {
+    if (createPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(pipeProcedures.size(), stream);
-      for (AbstractOperatePipeProcedureV2 pipeProcedure : pipeProcedures) {
-        // Pipe procedure can't be null
+      ReadWriteIOUtils.write(createPipeProcedures.size(), stream);
+      for (AbstractOperatePipeProcedureV2 pipeProcedure : createPipeProcedures) {
         pipeProcedure.serialize(stream);
       }
     } else {
@@ -260,6 +251,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
+
     subscribeReq =
         new TSubscribeReq()
             .setConsumerId(ReadWriteIOUtils.readString(byteBuffer))
@@ -275,24 +267,20 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
       // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
       ReadWriteIOUtils.readShort(byteBuffer);
 
-      consumerGroupProcedure = new AlterConsumerGroupProcedure();
-      consumerGroupProcedure.deserialize(byteBuffer);
+      alterConsumerGroupProcedure = new AlterConsumerGroupProcedure();
+      alterConsumerGroupProcedure.deserialize(byteBuffer);
     }
 
     // deserialize topic procedures
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       size = ReadWriteIOUtils.readInt(byteBuffer);
       for (int i = 0; i < size; ++i) {
-        if (ReadWriteIOUtils.readBool(byteBuffer)) {
-          // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
-          ReadWriteIOUtils.readShort(byteBuffer);
+        // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
+        ReadWriteIOUtils.readShort(byteBuffer);
 
-          AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
-          topicProcedure.deserialize(byteBuffer);
-          topicProcedures.add(topicProcedure);
-        } else {
-          topicProcedures.add(null);
-        }
+        AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
+        topicProcedure.deserialize(byteBuffer);
+        alterTopicProcedures.add(topicProcedure);
       }
     }
 
@@ -305,11 +293,12 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
         if (typeCode == ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode()) {
           CreatePipeProcedureV2 createPipeProcedureV2 = new CreatePipeProcedureV2();
           createPipeProcedureV2.deserialize(byteBuffer);
-          pipeProcedures.add(createPipeProcedureV2);
+          createPipeProcedures.add(createPipeProcedureV2);
+          // TODO: check if we actually need it?
         } else if (typeCode == ProcedureType.START_PIPE_PROCEDURE_V2.getTypeCode()) {
           StartPipeProcedureV2 startPipeProcedureV2 = new StartPipeProcedureV2();
           startPipeProcedureV2.deserialize(byteBuffer);
-          pipeProcedures.add(startPipeProcedureV2);
+          createPipeProcedures.add(startPipeProcedureV2);
         }
       }
     }
@@ -324,46 +313,55 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
       return false;
     }
     CreateSubscriptionProcedure that = (CreateSubscriptionProcedure) o;
-    return this.subscribeReq.getConsumerId().equals(that.subscribeReq.getConsumerId())
-        && this.subscribeReq.getConsumerGroupId().equals(that.subscribeReq.getConsumerGroupId())
-        && this.subscribeReq.getTopicNames().equals(that.subscribeReq.getTopicNames());
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && Objects.equals(subscribeReq, that.subscribeReq)
+        && Objects.equals(alterConsumerGroupProcedure, that.alterConsumerGroupProcedure)
+        && Objects.equals(alterTopicProcedures, that.alterTopicProcedures)
+        && Objects.equals(createPipeProcedures, that.createPipeProcedures);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        subscribeReq.getConsumerId(),
-        subscribeReq.getConsumerGroupId(),
-        subscribeReq.getTopicNames());
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        subscribeReq,
+        alterConsumerGroupProcedure,
+        alterTopicProcedures,
+        createPipeProcedures);
   }
 
   @TestOnly
-  public void setConsumerGroupProcedure(AlterConsumerGroupProcedure consumerGroupProcedure) {
-    this.consumerGroupProcedure = consumerGroupProcedure;
+  public void setAlterConsumerGroupProcedure(
+      AlterConsumerGroupProcedure alterConsumerGroupProcedure) {
+    this.alterConsumerGroupProcedure = alterConsumerGroupProcedure;
   }
 
   @TestOnly
-  public AlterConsumerGroupProcedure getConsumerGroupProcedure() {
-    return this.consumerGroupProcedure;
+  public AlterConsumerGroupProcedure getAlterConsumerGroupProcedure() {
+    return this.alterConsumerGroupProcedure;
   }
 
   @TestOnly
-  public void setTopicProcedures(List<AlterTopicProcedure> topicProcedures) {
-    this.topicProcedures = topicProcedures;
+  public void setAlterTopicProcedures(List<AlterTopicProcedure> alterTopicProcedures) {
+    this.alterTopicProcedures = alterTopicProcedures;
   }
 
   @TestOnly
-  public List<AlterTopicProcedure> getTopicProcedures() {
-    return this.topicProcedures;
+  public List<AlterTopicProcedure> getAlterTopicProcedures() {
+    return this.alterTopicProcedures;
   }
 
   @TestOnly
-  public void setPipeProcedures(List<AbstractOperatePipeProcedureV2> pipeProcedures) {
-    this.pipeProcedures = pipeProcedures;
+  public void setCreatePipeProcedures(List<AbstractOperatePipeProcedureV2> createPipeProcedures) {
+    this.createPipeProcedures = createPipeProcedures;
   }
 
   @TestOnly
-  public List<AbstractOperatePipeProcedureV2> getPipeProcedures() {
-    return this.pipeProcedures;
+  public List<AbstractOperatePipeProcedureV2> getCreatePipeProcedures() {
+    return this.createPipeProcedures;
   }
 }

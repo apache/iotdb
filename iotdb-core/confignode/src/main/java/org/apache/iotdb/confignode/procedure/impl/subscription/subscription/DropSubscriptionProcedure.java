@@ -46,13 +46,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+// TODO: check if lock is properly acquired
+// TODO: check if it also needs meta sync to keep CN and DN in sync
+// TODO: fixme according to CreateSubscriptionProcedure
 public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProcedure {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DropSubscriptionProcedure.class);
 
   private TUnsubscribeReq unsubscribeReq;
-  private AlterConsumerGroupProcedure consumerGroupProcedure;
-  private List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
-  private List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+
+  private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
+  private List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>();
+  private List<AbstractOperatePipeProcedureV2> dropPipeProcedures = new ArrayList<>();
 
   public DropSubscriptionProcedure() {
     super();
@@ -71,14 +76,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
-    // check if the consumer and all topics exists
-    try {
-      subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
-    } catch (PipeException e) {
-      LOGGER.error(
-          "DropSubscriptionProcedure: executeFromValidate, validateBeforeUnsubscribe failed", e);
-      throw e;
-    }
+    subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
 
     // Construct AlterConsumerGroupProcedure
     ConsumerGroupMeta updatedConsumerGroupMeta =
@@ -88,7 +86,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     Set<String> topicsUnsubByGroup =
         updatedConsumerGroupMeta.removeSubscription(
             unsubscribeReq.getConsumerId(), unsubscribeReq.getTopicNames());
-    consumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
+    alterConsumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
 
     for (String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
@@ -97,8 +95,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
         TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).deepCopy();
         updatedTopicMeta.removeSubscribedConsumerGroup(unsubscribeReq.getConsumerGroupId());
 
-        topicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
-        pipeProcedures.add(
+        alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
+        dropPipeProcedures.add(
             new DropPipeProcedureV2(topic + "_" + unsubscribeReq.getConsumerGroupId()));
       }
     }
@@ -108,20 +106,20 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnConfigNodes");
 
-    int topicCount = topicProcedures.size();
+    int topicCount = alterTopicProcedures.size();
     for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromValidateTask(env);
+      dropPipeProcedures.get(i).executeFromValidateTask(env);
     }
 
     for (int i = 0; i < topicCount; ++i) {
-      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+      dropPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }
 
-    consumerGroupProcedure.executeFromOperateOnConfigNodes(env);
+    alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
 
     for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnConfigNodes(env);
-      pipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
+      alterTopicProcedures.get(i).executeFromOperateOnConfigNodes(env);
+      dropPipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);
     }
   }
 
@@ -129,13 +127,13 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnDataNodes");
 
-    consumerGroupProcedure.executeFromOperateOnDataNodes(env);
+    alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
 
-    int topicCount = topicProcedures.size();
+    int topicCount = alterTopicProcedures.size();
     for (int i = 0; i < topicCount; ++i) {
-      topicProcedures.get(i).executeFromOperateOnDataNodes(env);
+      alterTopicProcedures.get(i).executeFromOperateOnDataNodes(env);
       try {
-        pipeProcedures.get(i).executeFromOperateOnDataNodes(env);
+        dropPipeProcedures.get(i).executeFromOperateOnDataNodes(env);
       } catch (IOException e) {
         LOGGER.warn(
             "Failed to stop pipe task for subscription on datanode, because {}", e.getMessage());
@@ -153,20 +151,20 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
-    int topicCount = topicProcedures.size();
+    int topicCount = alterTopicProcedures.size();
     for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
-      topicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
+      dropPipeProcedures.get(i).rollbackFromWriteConfigNodeConsensus(env);
+      alterTopicProcedures.get(i).rollbackFromOperateOnConfigNodes(env);
     }
 
-    consumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
+    alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
     for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+      dropPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }
 
     for (int i = topicCount - 1; i >= 0; --i) {
-      pipeProcedures.get(i).executeFromValidateTask(env);
+      dropPipeProcedures.get(i).executeFromValidateTask(env);
     }
   }
 
@@ -174,20 +172,20 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
-    int topicCount = topicProcedures.size();
+    int topicCount = alterTopicProcedures.size();
     for (int i = topicCount - 1; i >= 0; --i) {
       try {
-        pipeProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+        dropPipeProcedures.get(i).rollbackFromOperateOnDataNodes(env);
       } catch (IOException e) {
         LOGGER.warn(
             "Failed to roll back stop pipe task for subscription on datanode, because {}",
             e.getMessage());
         throw new PipeException(e.getMessage());
       }
-      topicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
+      alterTopicProcedures.get(i).rollbackFromOperateOnDataNodes(env);
     }
 
-    consumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
   }
 
   @Override
@@ -202,18 +200,18 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     }
 
     // serialize consumerGroupProcedure
-    if (consumerGroupProcedure != null) {
+    if (alterConsumerGroupProcedure != null) {
       ReadWriteIOUtils.write(true, stream);
-      consumerGroupProcedure.serialize(stream);
+      alterConsumerGroupProcedure.serialize(stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
 
     // serialize topic procedures
-    if (topicProcedures != null) {
+    if (alterTopicProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(topicProcedures.size(), stream);
-      for (AlterTopicProcedure topicProcedure : topicProcedures) {
+      ReadWriteIOUtils.write(alterTopicProcedures.size(), stream);
+      for (AlterTopicProcedure topicProcedure : alterTopicProcedures) {
         topicProcedure.serialize(stream);
       }
     } else {
@@ -221,10 +219,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
     }
 
     // serialize pipe procedures
-    if (pipeProcedures != null) {
+    if (dropPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(pipeProcedures.size(), stream);
-      for (AbstractOperatePipeProcedureV2 pipeProcedure : pipeProcedures) {
+      ReadWriteIOUtils.write(dropPipeProcedures.size(), stream);
+      for (AbstractOperatePipeProcedureV2 pipeProcedure : dropPipeProcedures) {
         pipeProcedure.serialize(stream);
       }
     } else {
@@ -250,8 +248,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
       // This readShort should return ALTER_CONSUMER_GROUP_PROCEDURE, and we ignore it.
       ReadWriteIOUtils.readShort(byteBuffer);
 
-      consumerGroupProcedure = new AlterConsumerGroupProcedure();
-      consumerGroupProcedure.deserialize(byteBuffer);
+      alterConsumerGroupProcedure = new AlterConsumerGroupProcedure();
+      alterConsumerGroupProcedure.deserialize(byteBuffer);
     }
 
     // deserialize topic procedures
@@ -263,7 +261,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
 
         AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
         topicProcedure.deserialize(byteBuffer);
-        topicProcedures.add(topicProcedure);
+        alterTopicProcedures.add(topicProcedure);
       }
     }
 
@@ -276,7 +274,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
         if (typeCode == ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode()) {
           DropPipeProcedureV2 dropPipeProcedureV2 = new DropPipeProcedureV2();
           dropPipeProcedureV2.deserialize(byteBuffer);
-          pipeProcedures.add(dropPipeProcedureV2);
+          dropPipeProcedures.add(dropPipeProcedureV2);
         }
       }
     }
@@ -305,32 +303,33 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   }
 
   @TestOnly
-  public void setConsumerGroupProcedure(AlterConsumerGroupProcedure consumerGroupProcedure) {
-    this.consumerGroupProcedure = consumerGroupProcedure;
+  public void setAlterConsumerGroupProcedure(
+      AlterConsumerGroupProcedure alterConsumerGroupProcedure) {
+    this.alterConsumerGroupProcedure = alterConsumerGroupProcedure;
   }
 
   @TestOnly
-  public AlterConsumerGroupProcedure getConsumerGroupProcedure() {
-    return this.consumerGroupProcedure;
+  public AlterConsumerGroupProcedure getAlterConsumerGroupProcedure() {
+    return this.alterConsumerGroupProcedure;
   }
 
   @TestOnly
-  public void setTopicProcedures(List<AlterTopicProcedure> topicProcedures) {
-    this.topicProcedures = topicProcedures;
+  public void setAlterTopicProcedures(List<AlterTopicProcedure> alterTopicProcedures) {
+    this.alterTopicProcedures = alterTopicProcedures;
   }
 
   @TestOnly
-  public List<AlterTopicProcedure> getTopicProcedures() {
-    return this.topicProcedures;
+  public List<AlterTopicProcedure> getAlterTopicProcedures() {
+    return this.alterTopicProcedures;
   }
 
   @TestOnly
-  public void setPipeProcedures(List<AbstractOperatePipeProcedureV2> pipeProcedures) {
-    this.pipeProcedures = pipeProcedures;
+  public void setDropPipeProcedures(List<AbstractOperatePipeProcedureV2> dropPipeProcedures) {
+    this.dropPipeProcedures = dropPipeProcedures;
   }
 
   @TestOnly
-  public List<AbstractOperatePipeProcedureV2> getPipeProcedures() {
-    return this.pipeProcedures;
+  public List<AbstractOperatePipeProcedureV2> getDropPipeProcedures() {
+    return this.dropPipeProcedures;
   }
 }

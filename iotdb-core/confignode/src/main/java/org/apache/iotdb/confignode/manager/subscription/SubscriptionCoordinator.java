@@ -59,7 +59,11 @@ public class SubscriptionCoordinator {
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
-    this.coordinatorLock = new PipeTaskCoordinatorLock();
+
+    // TODO: check if 
+    // Subscription related procedures also manage pipe tasks, so we use the same lock.
+    this.coordinatorLock =
+        configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskCoordinatorLock();
   }
 
   public SubscriptionInfo getSubscriptionInfo() {

@@ -81,9 +81,9 @@ public class DropSubscriptionProcedureTest {
     pipeProcedures.add(new DropPipeProcedureV2("pipe_topic1"));
     pipeProcedures.add(new DropPipeProcedureV2("pipe_topic2"));
 
-    proc.setConsumerGroupProcedure(alterConsumerGroupProcedure);
-    proc.setTopicProcedures(topicProcedures);
-    proc.setPipeProcedures(pipeProcedures);
+    proc.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    proc.setAlterTopicProcedures(topicProcedures);
+    proc.setDropPipeProcedures(pipeProcedures);
 
     try {
       proc.serialize(outputStream);
@@ -93,9 +93,9 @@ public class DropSubscriptionProcedureTest {
           (DropSubscriptionProcedure) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
-      assertEquals(alterConsumerGroupProcedure, proc2.getConsumerGroupProcedure());
-      assertEquals(topicProcedures, proc2.getTopicProcedures());
-      assertEquals(pipeProcedures, proc2.getPipeProcedures());
+      assertEquals(alterConsumerGroupProcedure, proc2.getAlterConsumerGroupProcedure());
+      assertEquals(topicProcedures, proc2.getAlterTopicProcedures());
+      assertEquals(pipeProcedures, proc2.getDropPipeProcedures());
     } catch (Exception e) {
       fail();
     }
