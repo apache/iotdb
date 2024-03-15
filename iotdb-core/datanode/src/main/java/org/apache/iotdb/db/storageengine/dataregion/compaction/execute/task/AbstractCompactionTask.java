@@ -167,7 +167,7 @@ public abstract class AbstractCompactionTask {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
         }
       }
-    } else if (e instanceof InterruptedException) {
+    } else if (e instanceof InterruptedException || Thread.interrupted()) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
