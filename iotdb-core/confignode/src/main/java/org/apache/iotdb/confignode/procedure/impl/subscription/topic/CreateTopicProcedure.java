@@ -20,17 +20,16 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -41,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 
 public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
@@ -54,7 +54,7 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     super();
   }
 
-  public CreateTopicProcedure(TCreateTopicReq createTopicReq) throws PipeException {
+  public CreateTopicProcedure(TCreateTopicReq createTopicReq) throws SubscriptionException {
     super();
     this.createTopicReq = createTopicReq;
   }
@@ -65,21 +65,11 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("CreateTopicProcedure: executeFromValidate, try to validate");
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+    LOGGER.info("CreateTopicProcedure: executeFromValidate");
 
     // 1. check if the topic exists
-    try {
-      subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq);
-    } catch (PipeException e) {
-      // The topic has already created, we should end the procedure
-      LOGGER.warn(
-          "Topic {} is already created, end the CreateTopicProcedure({})",
-          createTopicReq.getTopicName(),
-          createTopicReq.getTopicName());
-      setFailure(new ProcedureException(e.getMessage()));
-      throw e;
-    }
+    subscriptionInfo.get().validateBeforeCreatingTopic(createTopicReq);
 
     // 2. create the topic meta
     topicMeta =
@@ -90,7 +80,8 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "CreateTopicProcedure: executeFromOperateOnConfigNodes({})", topicMeta.getTopicName());
 
@@ -99,32 +90,37 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
       response = env.getConfigManager().getConsensusManager().write(new CreateTopicPlan(topicMeta));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      response.setMessage(e.getMessage());
+      response =
+          new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
+
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
+      throw new SubscriptionException(
+          String.format(
+              "Failed to create topic %s on config nodes, because %s", topicMeta, response));
     }
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info(
         "CreateTopicProcedure: executeFromOperateOnDataNodes({})", topicMeta.getTopicName());
 
     try {
-      if (RpcUtils.squashResponseStatusList(env.pushSingleTopicOnDataNode(topicMeta.serialize()))
-              .getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return;
+      final List<TSStatus> statuses = env.pushSingleTopicOnDataNode(topicMeta.serialize());
+      if (RpcUtils.squashResponseStatusList(statuses).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new SubscriptionException(
+            String.format(
+                "Failed to create topic %s on data nodes, because %s", topicMeta, statuses));
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to serialize the topic meta due to: ", e);
+      throw new SubscriptionException(
+          String.format(
+              "Failed to create topic %s on data nodes, because %s", topicMeta, e.getMessage()));
     }
-
-    throw new PipeException(
-        String.format(
-            "Failed to create topic instance [%s] on data nodes", topicMeta.getTopicName()));
   }
 
   @Override
@@ -137,12 +133,22 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     LOGGER.info(
         "CreateTopicProcedure: rollbackFromCreateOnConfigNodes({})", topicMeta.getTopicName());
 
+    TSStatus response;
     try {
-      env.getConfigManager()
-          .getConsensusManager()
-          .write(new DropTopicPlan(topicMeta.getTopicName()));
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new DropTopicPlan(topicMeta.getTopicName()));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response =
+          new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback topic %s on config nodes, because %s", topicMeta, response));
     }
   }
 
@@ -151,11 +157,12 @@ public class CreateTopicProcedure extends AbstractOperateSubscriptionProcedure {
     LOGGER.info(
         "CreateTopicProcedure: rollbackFromCreateOnDataNodes({})", topicMeta.getTopicName());
 
-    if (RpcUtils.squashResponseStatusList(env.dropSingleTopicOnDataNode(topicMeta.getTopicName()))
-            .getCode()
+    final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicMeta.getTopicName());
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format("Failed to rollback topic [%s] on data nodes", topicMeta.getTopicName()));
+      throw new SubscriptionException(
+          String.format(
+              "Failed to rollback topic %s on data nodes, because %s", topicMeta, statuses));
     }
   }
 

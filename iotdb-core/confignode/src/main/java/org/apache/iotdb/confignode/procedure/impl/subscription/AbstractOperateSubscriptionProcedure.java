@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -27,7 +28,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,17 +132,25 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract SubscriptionOperation getOperation();
 
-  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract void executeFromValidate(ConfigNodeProcedureEnv env)
+      throws SubscriptionException;
 
   protected abstract void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
-      throws PipeException;
+      throws SubscriptionException;
 
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeException;
+      throws SubscriptionException;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+    if (subscriptionInfo == null) {
+      LOGGER.warn(
+          "ProcedureId {}: Subscription lock is not acquired, executeFromState({})'s execution will be skipped.",
+          getProcId(),
+          state);
+      return Flow.NO_MORE_STATE;
+    }
 
     try {
       switch (state) {
@@ -214,7 +222,8 @@ public abstract class AbstractOperateSubscriptionProcedure
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
               getProcId(),
               state,
-              e.getMessage());
+              e.getMessage(),
+              e);
         }
         break;
       case OPERATE_ON_CONFIG_NODES:
@@ -225,7 +234,8 @@ public abstract class AbstractOperateSubscriptionProcedure
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
               getProcId(),
               state,
-              e.getMessage());
+              e.getMessage(),
+              e);
         }
         break;
       case OPERATE_ON_DATA_NODES:
@@ -236,7 +246,8 @@ public abstract class AbstractOperateSubscriptionProcedure
               "ProcedureId {}: Failed to rollback from state [{}], because {}",
               getProcId(),
               state,
-              e.getMessage());
+              e.getMessage(),
+              e);
         }
         break;
       default:

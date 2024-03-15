@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -59,35 +60,43 @@ public class DropTopicProcedure extends AbstractOperateSubscriptionProcedure {
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("DropTopicProcedure: executeFromValidate({})", topicName);
 
-    try {
-      subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
-    } catch (PipeException e) {
-      LOGGER.warn(e.getMessage());
-      setFailure(new ProcedureException(e.getMessage()));
-      throw e;
-    }
+    subscriptionInfo.get().validateBeforeDroppingTopic(topicName);
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropTopicProcedure: executeFromOperateOnDataNodes({})", topicName);
-    if (RpcUtils.squashResponseStatusList(env.dropSingleTopicOnDataNode(topicName)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(String.format("Failed to drop topic %s on data nodes", topicName));
-    }
-  }
-
-  @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("DropTopicProcedure: executeFromOperateOnConfigNodes({})", topicName);
 
+    TSStatus response;
     try {
-      env.getConfigManager().getConsensusManager().write(new DropTopicPlan(topicName));
+      response = env.getConfigManager().getConsensusManager().write(new DropTopicPlan(topicName));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response =
+          new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SubscriptionException(
+          String.format(
+              "Failed to drop topic %s on config nodes, because %s", topicName, response));
+    }
+  }
+
+  @Override
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
+    LOGGER.info("DropTopicProcedure: executeFromOperateOnDataNodes({})", topicName);
+
+    final List<TSStatus> statuses = env.dropSingleTopicOnDataNode(topicName);
+    if (RpcUtils.squashResponseStatusList(statuses).getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SubscriptionException(
+          String.format("Failed to drop topic %s on data nodes, because %s", topicName, statuses));
     }
   }
 
