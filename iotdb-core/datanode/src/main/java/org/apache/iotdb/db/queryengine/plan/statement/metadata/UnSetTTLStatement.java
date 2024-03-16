@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
@@ -26,7 +27,7 @@ public class UnSetTTLStatement extends SetTTLStatement {
 
   public UnSetTTLStatement() {
     super();
-    ttl = Long.MAX_VALUE;
+    ttl = TTLCache.NULL_TTL;
     statementType = StatementType.TTL;
   }
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -131,7 +132,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     tsBlockReader =
         new SeriesDataBlockReader(
@@ -220,7 +222,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
     assertEquals(
@@ -351,7 +354,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
     assertEquals(
@@ -455,7 +459,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
@@ -561,7 +566,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 9; i++) {
       for (int j = 0; j < 9; j++) {
@@ -698,7 +704,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -824,7 +831,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -936,7 +944,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -1018,7 +1027,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2;
@@ -1128,7 +1138,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1248,7 +1259,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1373,7 +1385,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1548,7 +1561,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1703,7 +1717,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1810,7 +1825,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2;
@@ -1904,7 +1920,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     tsBlockReader =
         new SeriesDataBlockReader(
@@ -2018,7 +2034,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2208,7 +2224,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2404,7 +2420,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2597,7 +2613,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
@@ -2780,7 +2796,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {
@@ -2962,7 +2978,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
@@ -3134,7 +3150,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     tsBlockReader =
         new SeriesDataBlockReader(
@@ -3262,7 +3278,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3464,7 +3480,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
@@ -3701,7 +3717,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3816,7 +3832,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
@@ -3943,7 +3959,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -4083,7 +4099,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -4203,7 +4219,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -4343,7 +4359,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -4497,7 +4513,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
 
@@ -4708,7 +4724,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -4977,7 +4993,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -5162,7 +5178,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -5353,7 +5369,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -5667,7 +5683,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -5779,7 +5795,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
@@ -5909,7 +5925,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(3, targetResources.size());
 
@@ -6021,7 +6037,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-      CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+      CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
       Assert.assertEquals(4, targetResources.size());
       List<String> deviceIdList = new ArrayList<>();
@@ -6099,7 +6115,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
-      CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+      CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
 
       Assert.assertEquals(2, targetResources.size());
       List<String> deviceIdList = new ArrayList<>();

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInser
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -1440,20 +1442,24 @@ public class TsFileProcessor {
       try {
         for (PartialPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+          long deviceTTL = DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice());
+          long timeLowerBound =
+              deviceTTL != Long.MAX_VALUE
+                  ? CommonDateTimeUtils.currentTime() - deviceTTL
+                  : Long.MIN_VALUE;
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(
-                    context, seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
+                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(context, seriesPath, context.getQueryTimeLowerBound(), null);
+                workMemTable.query(context, seriesPath, timeLowerBound, null);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
@@ -1461,7 +1467,8 @@ public class TsFileProcessor {
 
           List<IChunkMetadata> chunkMetadataList =
               ResourceByPathUtils.getResourceInstance(seriesPath)
-                  .getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, context, timeLowerBound);
 
           // get in memory data
           if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {

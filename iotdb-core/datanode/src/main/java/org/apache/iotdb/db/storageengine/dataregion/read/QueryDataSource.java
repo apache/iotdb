@@ -45,9 +45,6 @@ public class QueryDataSource {
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
-  /** data older than currentTime - dataTTL should be ignored. */
-  private long dataTTL = Long.MAX_VALUE;
-
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
@@ -61,14 +58,6 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
-  }
-
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
   }
 
   public TsFileResource getSeqResourceByIndex(int curIndex) {

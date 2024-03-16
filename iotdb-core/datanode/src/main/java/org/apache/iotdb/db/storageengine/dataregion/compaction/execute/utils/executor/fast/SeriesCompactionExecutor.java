@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -31,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -44,6 +48,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -490,7 +495,8 @@ public abstract class SeriesCompactionExecutor {
   }
 
   /**
-   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
+   * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
+   * modification from ttl cache.
    *
    * @param path name of the time series
    */
@@ -498,8 +504,7 @@ public abstract class SeriesCompactionExecutor {
       TsFileResource tsFileResource, PartialPath path) {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications =
-        modificationCacheMap.computeIfAbsent(
-            tsFileResource, resource -> new ArrayList<>(resource.getModFile().getModifications()));
+        modificationCacheMap.computeIfAbsent(tsFileResource, x -> Collections.emptyList());
     List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     while (modificationIterator.hasNext()) {
@@ -508,6 +513,14 @@ public abstract class SeriesCompactionExecutor {
         pathModifications.add(modification);
       }
     }
+    long timeLowerBound =
+        CommonDateTimeUtils.currentTime() - DataNodeTTLCache.getInstance().getTTL(path.getDevice());
+    pathModifications.add(
+        new Deletion(
+            path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            timeLowerBound));
     return pathModifications;
   }
 

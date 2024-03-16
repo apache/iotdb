@@ -16,27 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.exception;
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-public enum CompactionTaskPriorityType {
-  /** default compaction task type */
-  NORMAL(10),
+public class TTLException extends Exception {
 
-  /**
-   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
-   * 2. the TsFile has .mods file and the disk availability rate is lower than the
-   * disk_space_warning_threshold.
-   */
-  MOD_SETTLE(20),
-  REPAIR_DATA(30);
-  private final int value;
-
-  CompactionTaskPriorityType(int value) {
-    this.value = value;
+  public TTLException(String path) {
+    super(
+        String.format(
+            "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
+            path));
   }
 
-  public int getValue() {
-    return value;
+  public TTLException() {
+    super(
+        String.format(
+            "The number of TTL stored in the system has reached threshold %d, please increase the ttl_count parameter.",
+            CommonDescriptor.getInstance().getConfig().getTTLCountThreshold()));
   }
 }

@@ -48,6 +48,7 @@ public enum ConfigPhysicalPlanType {
   GetDatabase((short) 208),
   CountDatabase((short) 209),
   AlterDatabase((short) 210),
+  ShowTTL((short) 211),
 
   /** Region. */
   CreateRegionGroups((short) 300),

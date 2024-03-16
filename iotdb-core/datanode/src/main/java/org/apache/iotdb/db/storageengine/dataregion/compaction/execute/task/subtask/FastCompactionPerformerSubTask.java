@@ -39,28 +39,28 @@ import java.util.concurrent.Callable;
 @SuppressWarnings("squid:S107")
 public class FastCompactionPerformerSubTask implements Callable<Void> {
 
-  private FastCompactionTaskSummary summary;
+  private final FastCompactionTaskSummary summary;
 
-  private AbstractCompactionWriter compactionWriter;
+  private final AbstractCompactionWriter compactionWriter;
 
-  private int subTaskId;
+  private final int subTaskId;
 
   // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
-  private Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
+  private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
-  private Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
+  private final Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
   private final Map<TsFileResource, List<Modification>> modificationCacheMap;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
   // does not exist.
-  private List<TsFileResource> sortedSourceFiles;
+  private final List<TsFileResource> sortedSourceFiles;
 
   private final boolean isAligned;
 
-  private String deviceId;
+  private final String deviceId;
 
   private List<String> measurements;
 

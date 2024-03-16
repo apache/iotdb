@@ -31,7 +31,8 @@ public class TsFileResourceValidator implements TsFileValidator {
 
   @Override
   public boolean validateTsFile(TsFileResource resource) {
-    return TsFileResourceUtils.validateTsFileResourceCorrectness(resource);
+    return TsFileResourceUtils.validateTsFileIsComplete(resource)
+        && TsFileResourceUtils.validateTsFileResourceCorrectness(resource);
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -120,7 +121,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -166,7 +169,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -217,7 +222,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -268,7 +275,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -323,7 +332,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),
@@ -371,7 +382,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(15, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -422,7 +435,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(0, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(8, summary.getDeserializeChunkCount());
     Assert.assertEquals(15, summary.getDirectlyFlushPageCount());
@@ -476,7 +491,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertTrue(summary.getDeserializePageCount() > 0);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
@@ -521,7 +538,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -567,7 +586,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDeserializePageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -624,7 +645,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(8, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -698,7 +721,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),

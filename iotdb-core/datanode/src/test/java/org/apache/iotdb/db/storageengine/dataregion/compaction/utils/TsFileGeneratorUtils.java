@@ -121,6 +121,7 @@ public class TsFileGeneratorUtils {
     List<PartialPath> timeseriesPath = new ArrayList<>();
     for (int d = 0; d < deviceNum; d++) {
       for (int i = 0; i < measurementNum; i++) {
+        // TODO:bug
         TSDataType dataType = getDataType(i);
         if (!isAligned) {
           timeseriesPath.add(

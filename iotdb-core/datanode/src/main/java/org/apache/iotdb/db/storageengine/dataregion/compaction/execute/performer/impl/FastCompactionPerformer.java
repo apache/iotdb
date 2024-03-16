@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -81,7 +82,7 @@ public class FastCompactionPerformer
 
   private Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
-  private boolean isCrossCompaction;
+  private final boolean isCrossCompaction;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -111,6 +112,7 @@ public class FastCompactionPerformer
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
+      readModification();
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -121,8 +123,16 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
-        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
+        sortedSourceFiles.removeIf(
+            x ->
+                x.definitelyNotContains(device)
+                    || !x.isDeviceAlive(device, DataNodeTTLCache.getInstance().getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
+
+        if (sortedSourceFiles.isEmpty()) {
+          // device is out of dated in all source files
+          continue;
+        }
 
         boolean isAligned = deviceInfo.right;
         compactionWriter.startChunkGroup(device, isAligned);
@@ -292,16 +302,15 @@ public class FastCompactionPerformer
     return seqFiles;
   }
 
-  public Map<TsFileResource, TsFileSequenceReader> getReaderCacheMap() {
-    return readerCacheMap;
-  }
-
-  public Map<TsFileResource, List<Modification>> getModificationCache() {
-    return modificationCache;
-  }
-
   @Override
   public void setSourceFiles(List<TsFileResource> unseqFiles) {
     this.seqFiles = unseqFiles;
+  }
+
+  private void readModification() {
+    seqFiles.forEach(
+        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
+    unseqFiles.forEach(
+        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -77,8 +79,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 import static org.junit.Assert.fail;
 
 public class AbstractCompactionTest {
-  protected int seqFileNum = 5;
-  protected int unseqFileNum = 0;
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
   private int chunkGroupSize = 0;
@@ -90,8 +90,10 @@ public class AbstractCompactionTest {
   protected int maxMeasurementNum = 25;
 
   private long[] timestamp = {0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7};
+  private int[] seqVersion = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
   // seq version is not in order
-  private int[] seqVersion = {18, 19, 0, 1, 14, 15, 16, 2, 3, 4, 12, 13, 5, 6, 9, 10, 11, 7, 8, 17};
+  //  private int[] seqVersion = {18, 19, 0, 1, 14, 15, 16, 2, 3, 4, 12, 13, 5, 6, 9, 10, 11, 7, 8,
+  // 17};
   private int[] unseqVersion = {
     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
   };
@@ -118,8 +120,14 @@ public class AbstractCompactionTest {
   private final long oldLowerTargetChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
-  private int oldMinCrossCompactionUnseqLevel =
+  private final int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
+  private final long oldModsFileSize =
+      IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTaskSelectionModsFileThreshold();
+
+  private final long oldLongestExpiredTime =
+      IoTDBDescriptor.getInstance().getConfig().getMaxExpiredTime();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -239,7 +247,7 @@ public class AbstractCompactionTest {
       int deviceNum,
       int measurementNum,
       int pointNum,
-      int startTime,
+      long startTime,
       int startValue,
       int timeInterval,
       int valueInterval,
@@ -441,6 +449,10 @@ public class AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setChunkPointNumLowerBoundInCompaction(oldLowerTargetChunkPointNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setInnerCompactionTaskSelectionModsFileThreshold(oldModsFileSize);
+    IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(oldLongestExpiredTime);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);
@@ -563,6 +575,36 @@ public class AbstractCompactionTest {
       }
     }
     sourceDatas.putAll(tmpSourceDatas);
+  }
+
+  protected void generateModsFile(
+      int deviceNum,
+      int measurementNum,
+      List<TsFileResource> resources,
+      long startTime,
+      long endTime)
+      throws IllegalPathException, IOException {
+    List<String> seriesPaths = new ArrayList<>();
+    for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
+      for (int mIndex = 0; mIndex < measurementNum; mIndex++) {
+        seriesPaths.add(
+            COMPACTION_TEST_SG
+                + IoTDBConstant.PATH_SEPARATOR
+                + "d"
+                + dIndex
+                + IoTDBConstant.PATH_SEPARATOR
+                + "s"
+                + mIndex);
+      }
+    }
+    generateModsFile(seriesPaths, resources, startTime, endTime);
+  }
+
+  protected void generateTTL(int deviceNum, long ttl) {
+    for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
+      DataNodeTTLCache.getInstance()
+          .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + dIndex, ttl);
+    }
   }
 
   protected void generateModsFile(

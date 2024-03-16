@@ -26,6 +26,7 @@ public class CompactionScheduleSummary {
   private int submitUnseqInnerSpaceCompactionTaskNum = 0;
   private int submitCrossSpaceCompactionTaskNum = 0;
   private int submitInsertionCrossSpaceCompactionTaskNum = 0;
+  private int submitSettleCompactionTaskNum = 0;
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {
     switch (taskType) {
@@ -40,6 +41,9 @@ public class CompactionScheduleSummary {
         break;
       case INSERTION:
         submitInsertionCrossSpaceCompactionTaskNum += num;
+        break;
+      case SETTLE:
+        submitSettleCompactionTaskNum += num;
         break;
       default:
         break;
@@ -62,11 +66,16 @@ public class CompactionScheduleSummary {
     return submitUnseqInnerSpaceCompactionTaskNum;
   }
 
+  public int getSubmitSettleCompactionTaskNum() {
+    return submitSettleCompactionTaskNum;
+  }
+
   public boolean hasSubmitTask() {
     return submitCrossSpaceCompactionTaskNum
             + submitInsertionCrossSpaceCompactionTaskNum
             + submitSeqInnerSpaceCompactionTaskNum
             + submitUnseqInnerSpaceCompactionTaskNum
+            + submitSettleCompactionTaskNum
         > 0;
   }
 }

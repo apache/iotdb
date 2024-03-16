@@ -511,6 +511,21 @@ public class IoTDBConfig {
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
+  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
+  private long ttlCheckInterval = 7_200_000L;
+
+  /**
+   * The max expired time of device set with ttl. If the expired time exceeds this value, then
+   * expired data will be cleaned by compaction. The unit is ms. Default is 1 month.
+   */
+  private long maxExpiredTime = 2_592_000_000L;
+
+  /**
+   * The expired device rate. If the number of expired device in one tsfile exceeds this value, then
+   * expired data of this tsfile will be cleaned by compaction.
+   */
+  private float expiredDataRate = 0.3f;
+
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
 
@@ -2788,6 +2803,30 @@ public class IoTDBConfig {
 
   public void setCompactionScheduleIntervalInMs(long compactionScheduleIntervalInMs) {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
+  }
+
+  public long getTtlCheckInterval() {
+    return ttlCheckInterval;
+  }
+
+  public void setTtlCheckInterval(long ttlCheckInterval) {
+    this.ttlCheckInterval = ttlCheckInterval;
+  }
+
+  public long getMaxExpiredTime() {
+    return maxExpiredTime;
+  }
+
+  public void setMaxExpiredTime(long maxExpiredTime) {
+    this.maxExpiredTime = maxExpiredTime;
+  }
+
+  public float getExpiredDataRate() {
+    return expiredDataRate;
+  }
+
+  public void setExpiredDataRate(float expiredDataRate) {
+    this.expiredDataRate = expiredDataRate;
   }
 
   public int getFileLimitPerInnerTask() {
