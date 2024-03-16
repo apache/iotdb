@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -204,6 +205,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -1759,10 +1761,73 @@ public class ConfigManager implements IManager {
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.deleteTimeSeries(req);
-    } else {
-      return status;
+      String queryId = req.getQueryId();
+      PathPatternTree rawPatternTree =
+          PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+      boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
+      /**
+       * If delete pattern is prefix path (such as root.db.**), it may be optimized to delete
+       * database plus create database. We need to determine two conditions: whether the pattern
+       * ends in **, and that the device is a full path and is matched in the ConfigMTree.
+       */
+      boolean canOptimize = false;
+      HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
+      List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
+      for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
+        if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
+            && !path.getDevicePath().hasWildcard()) {
+          Map<String, TDatabaseSchema> databaseSchemaMap =
+              getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
+          if (!databaseSchemaMap.isEmpty()) {
+            deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
+            canOptimize = true;
+            continue;
+          }
+        }
+        deleteTimeSeriesPatternPaths.add(path);
+      }
+      if (!canOptimize) {
+        return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
+      }
+      if (!deleteTimeSeriesPatternPaths.isEmpty()) {
+        // 1. delete time series that can not be optimized
+        PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
+        for (PartialPath path : deleteTimeSeriesPatternPaths) {
+          deleteTimeSeriesPatternTree.appendPathPattern(path);
+        }
+        deleteTimeSeriesPatternTree.constructTree();
+        status =
+            procedureManager.deleteTimeSeries(
+                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
+      }
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // 2. delete database
+        List<TSStatus> failedStatus = new ArrayList<>();
+        status =
+            procedureManager.deleteDatabases(
+                new ArrayList<>(deleteDatabaseSchemas), isGeneratedByPipe);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failedStatus.add(status);
+        }
+        // 3. create database whatever the delete database operation is successful or not
+        for (TDatabaseSchema databaseSchema : deleteDatabaseSchemas) {
+          status =
+              clusterSchemaManager.setDatabase(
+                  new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema),
+                  isGeneratedByPipe);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedStatus.add(status);
+          }
+        }
+        // 4. squash or generate status
+        if (!failedStatus.isEmpty()) {
+          status = RpcUtils.squashResponseStatusList(failedStatus);
+        } else {
+          status = StatusUtils.OK;
+        }
+      }
     }
+    return status;
   }
 
   @Override
