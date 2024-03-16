@@ -39,7 +39,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer =
-      ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
+      ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());  // uncompressed data buffer
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());

@@ -59,6 +59,7 @@ public class WALWriter extends LogWriter {
   }
 
   private void endFile() throws IOException {
+    this.isEndFile = true;
     WALSignalEntry endMarker = new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER);
     int metaDataSize = metaData.serializedSize();
     ByteBuffer buffer =
@@ -72,6 +73,7 @@ public class WALWriter extends LogWriter {
     // add magic string
     buffer.put(MAGIC_STRING.getBytes());
     write(buffer);
+    this.isEndFile = false;
   }
 
   @Override

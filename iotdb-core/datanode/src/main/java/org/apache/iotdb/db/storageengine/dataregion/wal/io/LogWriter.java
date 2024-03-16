@@ -47,6 +47,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long size;
+  protected boolean isEndFile = false;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
   private final ICompressor compressor = ICompressor.getCompressor(CompressionType.LZ4);
   private final ByteBuffer compressedByteBuffer;
@@ -71,8 +72,8 @@ public abstract class LogWriter implements ILogWriter {
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
-        && bufferSize > 1024 * 512 /* Do not compress buffer that is less than 512KB */) {
+    if (!isEndFile && IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
+      /* && bufferSize > 1024 * 512 Do not compress buffer that is less than 512KB */) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
       buffer = compressedByteBuffer;
