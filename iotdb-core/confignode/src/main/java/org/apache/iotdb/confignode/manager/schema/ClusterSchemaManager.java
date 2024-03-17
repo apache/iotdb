@@ -689,6 +689,25 @@ public class ClusterSchemaManager {
   }
 
   /**
+   * Only leader use this interface. Get the specified Databases' schemaengine
+   *
+   * @param prefix prefix full path
+   * @return the matched DatabaseSchemas
+   */
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(PartialPath prefix) {
+    Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
+    clusterSchemaInfo
+        .getMatchedDatabaseSchemasByPrefix(prefix)
+        .forEach(
+            (database, databaseSchema) -> {
+              if (isDatabaseExist(database)) {
+                result.put(database, databaseSchema);
+              }
+            });
+    return result;
+  }
+
+  /**
    * Only leader use this interface. Get the TTL of specified Database
    *
    * @param database DatabaseName

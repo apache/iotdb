@@ -154,10 +154,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   @Test
   public void testDeleteTimeSeriesIdempotent() throws Exception {
     testIdempotent(
-        Arrays.asList(
-            "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN",
-            "create timeseries root.ln.wf01.wt01.status1(status1) with datatype=BOOLEAN,encoding=PLAIN"),
-        "delete timeseries root.**",
+        Collections.singletonList(
+            "create timeseries root.ln.wf01.wt01.status0(status0) with datatype=BOOLEAN,encoding=PLAIN"),
+        "delete timeseries root.ln.wf01.wt01.status0",
         "create timeseries root.ln.wf01.wt01.status2(status2) with datatype=BOOLEAN,encoding=PLAIN",
         "count timeseries",
         "count(timeseries),",

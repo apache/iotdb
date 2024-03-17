@@ -58,7 +58,7 @@ public class OperatorContext {
   // SpecifiedInfo is used to record some custom information for the operator,
   // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
   private Map<String, String> specifiedInfo = null;
-  private long inputRows = 0;
+  private long output = 0;
   private long estimatedMemorySize;
 
   public OperatorContext(
@@ -149,12 +149,12 @@ public class OperatorContext {
     return estimatedMemorySize;
   }
 
-  public void addInputRows(long inputRows) {
-    this.inputRows += inputRows;
+  public void addOutputRows(long outputRows) {
+    this.output += outputRows;
   }
 
-  public long getInputRows() {
-    return inputRows;
+  public long getOutputRows() {
+    return output;
   }
 
   public void recordSpecifiedInfo(String key, String value) {

@@ -141,7 +141,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // alter pipe (replace)
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b replace processor ('processor'='down-sampling-processor')");
+      statement.execute(
+          "alter pipe a2b replace processor ('processor'='tumbling-time-sampling-processor')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -155,7 +156,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
       // check configurations
       Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult
@@ -187,7 +191,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -218,7 +225,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -249,7 +259,10 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
-          showPipeResult.get(0).pipeProcessor.contains("processor=down-sampling-processor"));
+          showPipeResult
+              .get(0)
+              .pipeProcessor
+              .contains("processor=tumbling-time-sampling-processor"));
       Assert.assertTrue(
           showPipeResult
               .get(0)
@@ -299,7 +312,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     // create pipe
     String sql =
         String.format(
-            "create pipe a2b with processor ('processor'='down-sampling-processor', 'down-sampling.interval-seconds'='1', 'down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
+            "create pipe a2b with processor ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -325,10 +338,11 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    // alter pipe (modify 'down-sampling.interval-seconds')
+    // alter pipe (modify 'processor.tumbling-time.interval-seconds')
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify processor ('down-sampling.interval-seconds'='2')");
+      statement.execute(
+          "alter pipe a2b modify processor ('processor.tumbling-time.interval-seconds'='2')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }

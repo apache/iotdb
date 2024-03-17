@@ -67,7 +67,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
     // Nothing needs to be checked
@@ -75,14 +75,14 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromCalculateInfoForTask");
 
     // Nothing needs to be calculated
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnConfigNodes");
 
     final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
@@ -108,35 +108,35 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
 
     pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromValidateTask");
 
     // Nothing to do
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCalculateInfoForTask");
 
     // Nothing to do
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromHandleOnConfigNodes");
 
     // Nothing to do
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
 
     // Nothing to do

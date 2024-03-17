@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling;
+package org.apache.iotdb.confignode.manager.subscription;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 
-/**
- * This class is a placeholder and should not be initialized. It represents the Down Sampling
- * processor. There is a real implementation in the server module but cannot be imported here. The
- * pipe agent in the server module will replace this class with the real implementation when
- * initializing the Down Sampling processor.
- */
-public class DownSamplingProcessor extends PlaceHolderProcessor {}
+public class SubscriptionManager {
+
+  private final SubscriptionCoordinator subscriptionCoordinator;
+
+  public SubscriptionManager(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
+    this.subscriptionCoordinator = new SubscriptionCoordinator(configManager, subscriptionInfo);
+  }
+
+  public SubscriptionCoordinator getSubscriptionCoordinator() {
+    return subscriptionCoordinator;
+  }
+}

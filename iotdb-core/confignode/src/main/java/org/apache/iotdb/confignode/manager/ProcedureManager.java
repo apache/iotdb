@@ -74,6 +74,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
@@ -87,14 +93,18 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -187,7 +197,7 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteDatabases(
-      ArrayList<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
+      List<TDatabaseSchema> deleteSgSchemaList, boolean isGeneratedByPipe) {
     List<Long> procedureIds = new ArrayList<>();
     for (TDatabaseSchema storageGroupSchema : deleteSgSchemaList) {
       DeleteDatabaseProcedure deleteDatabaseProcedure =
@@ -207,10 +217,8 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
-    String queryId = req.getQueryId();
-    PathPatternTree patternTree =
-        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+  public TSStatus deleteTimeSeries(
+      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
     long procedureId = -1;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -240,10 +248,7 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(
-                new DeleteTimeSeriesProcedure(
-                    queryId,
-                    patternTree,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+                new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -935,6 +940,113 @@ public class ProcedureManager {
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus createTopic(TCreateTopicReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropTopic(String topicName) {
+    try {
+      long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus createConsumer(TCreateConsumerReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropConsumer(TCloseConsumerReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus createSubscription(TSubscribeReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropSubscription(TUnsubscribeReq req) {
+    try {
+      long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return statusList.get(0);
+      } else {
+        return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 

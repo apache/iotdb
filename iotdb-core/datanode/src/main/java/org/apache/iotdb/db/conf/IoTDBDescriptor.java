@@ -53,7 +53,8 @@ import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -552,6 +553,12 @@ public class IoTDBDescriptor {
       conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
     }
 
+    conf.setMergeThresholdOfExplainAnalyze(
+        Integer.parseInt(
+            properties.getProperty(
+                "merge_threshold_of_explain_analyze",
+                Integer.toString(conf.getMergeThresholdOfExplainAnalyze()))));
+
     conf.setModeMapSizeThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -969,7 +976,8 @@ public class IoTDBDescriptor {
     loadTsFileProps(properties);
 
     // make RPCTransportFactory taking effect.
-    RpcTransportFactory.reInit();
+    ZeroCopyRpcTransportFactory.reInit();
+    DeepCopyRpcTransportFactory.reInit();
 
     // UDF
     loadUDFProps(properties);
@@ -1613,6 +1621,14 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "load_clean_up_task_execution_delay_time_seconds",
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+
+      // update merge_threshold_of_explain_analyze
+      conf.setMergeThresholdOfExplainAnalyze(
+          Integer.parseInt(
+              properties.getProperty(
+                  "merge_threshold_of_explain_analyze",
+                  String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
+
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
