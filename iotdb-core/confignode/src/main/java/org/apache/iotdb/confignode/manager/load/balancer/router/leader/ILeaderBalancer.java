@@ -29,7 +29,7 @@ public interface ILeaderBalancer {
 
   String GREEDY_POLICY = "GREEDY";
   String RANDOM_POLICY = "RANDOM";
-  String MIN_COST_FLOW_POLICY = "MIN_COST_FLOW";
+  String CFD = "CFD";
 
   /**
    * Generate an optimal leader distribution.

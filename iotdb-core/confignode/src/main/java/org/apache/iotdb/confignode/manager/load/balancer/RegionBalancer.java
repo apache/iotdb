@@ -65,7 +65,7 @@ public class RegionBalancer {
       case COPY_SET:
         this.regionGroupAllocator = new CopySetRegionGroupAllocator();
         break;
-      case GREEDY_COPY_SET:
+      case GCR:
       default:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
     }
@@ -165,6 +165,6 @@ public class RegionBalancer {
     GREEDY,
     COPY_SET,
     TIERED_REPLICATION,
-    GREEDY_COPY_SET
+    GCR
   }
 }

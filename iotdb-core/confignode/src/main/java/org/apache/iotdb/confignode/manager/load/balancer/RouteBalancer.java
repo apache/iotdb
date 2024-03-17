@@ -111,7 +111,7 @@ public class RouteBalancer {
       case ILeaderBalancer.RANDOM_POLICY:
         this.leaderBalancer = new RandomLeaderBalancer();
         break;
-      case ILeaderBalancer.MIN_COST_FLOW_POLICY:
+      case ILeaderBalancer.CFD:
       default:
         this.leaderBalancer = new MinCostFlowLeaderBalancer();
         break;

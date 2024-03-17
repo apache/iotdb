@@ -354,13 +354,13 @@ public class ConfigNodeDescriptor {
             .trim();
     if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
         || ILeaderBalancer.RANDOM_POLICY.equals(leaderDistributionPolicy)
-        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+        || ILeaderBalancer.CFD.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
               "Unknown leader_distribution_policy: %s, "
-                  + "please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+                  + "please set to \"GREEDY\" or \"CFD\"",
               leaderDistributionPolicy));
     }
 
