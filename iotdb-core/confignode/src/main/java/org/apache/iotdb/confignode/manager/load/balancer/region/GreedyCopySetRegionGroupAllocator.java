@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,47 +39,36 @@ import static java.util.Map.Entry.comparingByValue;
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
   private static final Random RANDOM = new Random();
-  private static final int GCR_MAX_OPTIMAL_PLAN_NUM =
-      ConfigNodeDescriptor.getInstance().getConf().getGcrMaxOptimalPlanNum();
 
   private int replicationFactor;
   // Sorted available DataNodeIds
   private int[] dataNodeIds;
   // The number of allocated Regions in each DataNode
   private int[] regionCounter;
-  // The number of allocated Regions in each DataNode within the same Database
-  private int[] databaseRegionCounter;
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
-  private int maxDataNodeId;
 
-  // First Key: the sum of Regions at the DataNodes within the same Database in the allocation
-  // result is minimal
-  int optimalDatabaseRegionSum;
-  // Second Key: the sum of Regions at the DataNodes in the allocation result is minimal
+  // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
-  // Third Key: the sum of overlapped 2-Region combination Regions with other allocated
+  // Second Key: the sum of overlapped 2-Region combination Regions with other allocated
   // RegionGroups is minimal
   int optimalCombinationSum;
   List<int[]> optimalReplicaSets;
+  private static final int MAX_OPTIMAL_PLAN_NUM = 10;
 
   private static class DataNodeEntry {
 
     private final int dataNodeId;
 
-    // First key: the number of Regions in the DataNode within the same Database
-    private final int databaseRegionCount;
-    // Second key: the number of Regions in the DataNode
+    // First key: the number of Regions in the DataNode
     private final int regionCount;
-    // Third key: the scatter width of the DataNode
+    // Second key: the scatter width of the DataNode
     private final int scatterWidth;
-    // Forth key: a random weight
+    // Third key: a random weight
     private final int randomWeight;
 
-    public DataNodeEntry(
-        int dataNodeId, int databaseRegionCount, int regionCount, int scatterWidth) {
+    public DataNodeEntry(int dataNodeId, int regionCount, int scatterWidth) {
       this.dataNodeId = dataNodeId;
-      this.databaseRegionCount = databaseRegionCount;
       this.regionCount = regionCount;
       this.scatterWidth = scatterWidth;
       this.randomWeight = RANDOM.nextInt();
@@ -91,13 +79,11 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     }
 
     public int compare(DataNodeEntry e) {
-      return databaseRegionCount != e.databaseRegionCount
-          ? Integer.compare(databaseRegionCount, e.databaseRegionCount)
-          : regionCount != e.regionCount
-              ? Integer.compare(regionCount, e.regionCount)
-              : scatterWidth != e.scatterWidth
-                  ? Integer.compare(scatterWidth, e.scatterWidth)
-                  : Integer.compare(randomWeight, e.randomWeight);
+      return regionCount != e.regionCount
+          ? Integer.compare(regionCount, e.regionCount)
+          : scatterWidth != e.scatterWidth
+              ? Integer.compare(scatterWidth, e.scatterWidth)
+              : Integer.compare(randomWeight, e.randomWeight);
     }
   }
 
@@ -114,12 +100,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     try {
-      prepare(
-          replicationFactor,
-          availableDataNodeMap,
-          allocatedRegionGroups,
-          databaseAllocatedRegionGroups);
-      dfs(-1, 0, new int[replicationFactor], 0, 0);
+      prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups);
+      dfs(-1, 0, new int[replicationFactor], 0);
 
       // Randomly pick one optimal plan as result
       Collections.shuffle(optimalReplicaSets);
@@ -129,7 +111,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       for (int i = 0; i < replicationFactor; i++) {
         result.addToDataNodeLocations(availableDataNodeMap.get(optimalReplicaSet[i]).getLocation());
       }
-
       return result;
     } finally {
       clear();
@@ -142,13 +123,11 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
    * @param replicationFactor replication factor in the cluster
    * @param availableDataNodeMap currently available DataNodes, ensure size() >= replicationFactor
    * @param allocatedRegionGroups already allocated RegionGroups in the cluster
-   * @param databaseAllocatedRegionGroups already allocated RegionGroups in the same Database
    */
   private void prepare(
       int replicationFactor,
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      List<TRegionReplicaSet> allocatedRegionGroups,
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups) {
+      List<TRegionReplicaSet> allocatedRegionGroups) {
 
     this.replicationFactor = replicationFactor;
     // Store the maximum DataNodeId
@@ -160,13 +139,10 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
                 .mapToInt(TDataNodeLocation::getDataNodeId)
                 .max()
                 .orElse(0));
-    this.maxDataNodeId = maxDataNodeId;
 
-    // Compute regionCounter, databaseRegionCounter and combinationCounter
+    // Compute regionCounter and combinationCounter
     regionCounter = new int[maxDataNodeId + 1];
     Arrays.fill(regionCounter, 0);
-    databaseRegionCounter = new int[maxDataNodeId + 1];
-    Arrays.fill(databaseRegionCounter, 0);
     combinationCounter = new int[maxDataNodeId + 1][maxDataNodeId + 1];
     for (int i = 0; i <= maxDataNodeId; i++) {
       Arrays.fill(combinationCounter[i], 0);
@@ -181,12 +157,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           combinationCounter[dataNodeLocations.get(j).getDataNodeId()][
               dataNodeLocations.get(i).getDataNodeId()]++;
         }
-      }
-    }
-    for (TRegionReplicaSet regionReplicaSet : databaseAllocatedRegionGroups) {
-      List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
-      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        databaseRegionCounter[dataNodeLocation.getDataNodeId()]++;
       }
     }
 
@@ -206,11 +176,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
               }
               dataNodeEntryMap.put(
                   dataNodeId,
-                  new DataNodeEntry(
-                      dataNodeId,
-                      databaseRegionCounter[dataNodeId],
-                      regionCounter[dataNodeId],
-                      scatterWidth));
+                  new DataNodeEntry(dataNodeId, regionCounter[dataNodeId], scatterWidth));
             });
     dataNodeIds =
         dataNodeEntryMap.entrySet().stream()
@@ -222,7 +188,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
             .toArray();
 
     // Reset the optimal result
-    optimalDatabaseRegionSum = Integer.MAX_VALUE;
     optimalRegionSum = Integer.MAX_VALUE;
     optimalCombinationSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
@@ -236,25 +201,12 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
    * @param lastIndex last decided index in dataNodeIds
    * @param currentReplica current replica index
    * @param currentReplicaSet current allocation plan
-   * @param databaseRegionSum the sum of Regions at the DataNodes within the same Database in the
-   *     current allocation plan
    * @param regionSum the sum of Regions at the DataNodes in the current allocation plan
    */
-  private void dfs(
-      int lastIndex,
-      int currentReplica,
-      int[] currentReplicaSet,
-      int databaseRegionSum,
-      int regionSum) {
-    if (databaseRegionSum > optimalDatabaseRegionSum) {
+  private void dfs(int lastIndex, int currentReplica, int[] currentReplicaSet, int regionSum) {
+    if (regionSum > optimalRegionSum) {
       // Pruning: no needs for further searching when the first key
       // is bigger than the historical optimal result
-      return;
-    }
-    if (databaseRegionSum == optimalDatabaseRegionSum && regionSum > optimalRegionSum) {
-      // Pruning: no needs for further searching when the first key is equal to the historical
-      // optimal result
-      // and the second key is bigger than the historical optimal result
       return;
     }
 
@@ -266,17 +218,14 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           combinationSum += combinationCounter[currentReplicaSet[i]][currentReplicaSet[j]];
         }
       }
-      if (databaseRegionSum == optimalDatabaseRegionSum
-          && regionSum == optimalRegionSum
-          && combinationSum > optimalCombinationSum) {
+      if (combinationSum > optimalCombinationSum) {
+        // Pruning: no needs for further searching when the second key
+        // is bigger than the historical optimal result
         return;
       }
 
-      if (databaseRegionSum < optimalDatabaseRegionSum
-          || regionSum < optimalRegionSum
-          || combinationSum < optimalCombinationSum) {
+      if (regionSum < optimalRegionSum || combinationSum < optimalCombinationSum) {
         // Reset the optimal result when a better one is found
-        optimalDatabaseRegionSum = databaseRegionSum;
         optimalRegionSum = regionSum;
         optimalCombinationSum = combinationSum;
         optimalReplicaSets.clear();
@@ -288,13 +237,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     for (int i = lastIndex + 1; i < dataNodeIds.length; i++) {
       // Decide the next DataNodeId in the allocation plan
       currentReplicaSet[currentReplica] = dataNodeIds[i];
-      dfs(
-          i,
-          currentReplica + 1,
-          currentReplicaSet,
-          databaseRegionSum + databaseRegionCounter[dataNodeIds[i]],
-          regionSum + regionCounter[dataNodeIds[i]]);
-      if (optimalReplicaSets.size() == GCR_MAX_OPTIMAL_PLAN_NUM) {
+      dfs(i, currentReplica + 1, currentReplicaSet, regionSum + regionCounter[dataNodeIds[i]]);
+      if (optimalReplicaSets.size() == MAX_OPTIMAL_PLAN_NUM) {
         // Pruning: no needs for further searching when
         // the number of optimal plans reaches the limitation
         return;

@@ -359,8 +359,7 @@ public class ConfigNodeDescriptor {
     } else {
       throw new IOException(
           String.format(
-              "Unknown leader_distribution_policy: %s, "
-                  + "please set to \"GREEDY\" or \"CFD\"",
+              "Unknown leader_distribution_policy: %s, " + "please set to \"GREEDY\" or \"CFD\"",
               leaderDistributionPolicy));
     }
 
