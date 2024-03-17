@@ -60,7 +60,7 @@ public class SubscriptionCoordinator {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
 
-    // TODO: check if 
+    // TODO: check if
     // Subscription related procedures also manage pipe tasks, so we use the same lock.
     this.coordinatorLock =
         configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskCoordinatorLock();
