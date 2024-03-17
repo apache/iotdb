@@ -79,7 +79,6 @@ public class CreateSubscriptionProcedureTest {
     List<AlterTopicProcedure> topicProcedures = new ArrayList<>();
     TopicMeta newTopicMeta = new TopicMeta("t1", 1, topicAttributes);
     newTopicMeta.addSubscribedConsumerGroup("cg1");
-    topicProcedures.add(null);
     topicProcedures.add(new AlterTopicProcedure(newTopicMeta));
 
     List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
@@ -106,6 +105,7 @@ public class CreateSubscriptionProcedureTest {
       assertEquals(topicProcedures, proc2.getAlterTopicProcedures());
       assertEquals(pipeProcedures, proc2.getCreatePipeProcedures());
     } catch (Exception e) {
+      e.printStackTrace();
       fail();
     }
   }
