@@ -57,7 +57,7 @@ public class RegionBalancer {
       case GREEDY:
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
-      case GREEDY_COPY_SET:
+      case GCR:
       default:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
     }
@@ -155,6 +155,6 @@ public class RegionBalancer {
 
   public enum RegionGroupAllocatePolicy {
     GREEDY,
-    GREEDY_COPY_SET
+    GCR
   }
 }
