@@ -80,10 +80,10 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     }
 
     public int compare(DataNodeEntry e) {
-      return databaseRegionCount != e.databaseRegionCount
-          ? Integer.compare(databaseRegionCount, e.databaseRegionCount)
-          : regionCount != e.regionCount
-              ? Integer.compare(regionCount, e.regionCount)
+      return regionCount != e.regionCount
+          ? Integer.compare(regionCount, e.regionCount)
+          :  databaseRegionCount != e.databaseRegionCount
+              ?  Integer.compare(databaseRegionCount, e.databaseRegionCount)
               : scatterWidth != e.scatterWidth
                   ? Integer.compare(scatterWidth, e.scatterWidth)
                   : Integer.compare(randomWeight, e.randomWeight);
@@ -231,15 +231,14 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int[] currentReplicaSet,
       int databaseRegionSum,
       int regionSum) {
-    if (databaseRegionSum > optimalDatabaseRegionSum) {
+    if (regionSum > optimalRegionSum) {
       // Pruning: no needs for further searching when the first key
       // is bigger than the historical optimal result
       return;
     }
-    if (databaseRegionSum == optimalDatabaseRegionSum && regionSum > optimalRegionSum) {
-      // Pruning: no needs for further searching when the first key is equal to the historical
-      // optimal result
-      // and the second key is bigger than the historical optimal result
+    if (regionSum == optimalRegionSum && databaseRegionSum > optimalDatabaseRegionSum) {
+      // Pruning: no needs for further searching when the second key
+      // is bigger than the historical optimal result
       return;
     }
 
@@ -251,14 +250,16 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           combinationSum += combinationCounter[currentReplicaSet[i]][currentReplicaSet[j]];
         }
       }
-      if (databaseRegionSum == optimalDatabaseRegionSum
-          && regionSum == optimalRegionSum
+      if ( regionSum == optimalRegionSum
+          && databaseRegionSum == optimalDatabaseRegionSum
           && combinationSum > optimalCombinationSum) {
+        // Pruning: no needs for further searching when the third key
+        // is bigger than the historical optimal result
         return;
       }
 
-      if (databaseRegionSum < optimalDatabaseRegionSum
-          || regionSum < optimalRegionSum
+      if ( regionSum < optimalRegionSum
+          || databaseRegionSum < optimalDatabaseRegionSum
           || combinationSum < optimalCombinationSum) {
         // Reset the optimal result when a better one is found
         optimalDatabaseRegionSum = databaseRegionSum;
