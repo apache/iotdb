@@ -158,7 +158,7 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
+  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof RecoverProgressIndex)) {
@@ -175,7 +175,7 @@ public class RecoverProgressIndex extends ProgressIndex {
                       (thisV == null
                           ? thatV
                           : (SimpleProgressIndex)
-                              thisV.updateToMinimumIsAfterProgressIndex(thatV))));
+                              thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
       return this;
     } finally {
       lock.writeLock().unlock();

@@ -20,7 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -465,12 +465,12 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    RpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
-    RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
+    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
+    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
 
     if (params.isUseSSL()) {
       transport =
-          RpcTransportFactory.INSTANCE.getTransport(
+          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               params.getHost(),
               params.getPort(),
               getNetworkTimeout(),
@@ -478,7 +478,7 @@ public class IoTDBConnection implements Connection {
               params.getTrustStorePwd());
     } else {
       transport =
-          RpcTransportFactory.INSTANCE.getTransport(
+          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               params.getHost(), params.getPort(), getNetworkTimeout());
     }
     if (!transport.isOpen()) {

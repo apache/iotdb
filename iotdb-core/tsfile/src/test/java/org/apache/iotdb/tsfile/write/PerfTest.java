@@ -228,7 +228,7 @@ public class PerfTest {
   }
 
   @Test
-  public void writeTest() throws IOException, InterruptedException, WriteProcessException {
+  public void writeTest() throws IOException, InterruptedException {
     write();
   }
 }

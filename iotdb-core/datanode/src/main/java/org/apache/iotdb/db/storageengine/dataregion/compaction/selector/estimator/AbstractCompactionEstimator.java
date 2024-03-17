@@ -64,6 +64,8 @@ public abstract class AbstractCompactionEstimator {
 
   protected abstract long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException;
 
+  protected abstract TsFileSequenceReader getReader(String filePath) throws IOException;
+
   protected boolean isAllSourceFileExist(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
       if (resource.getStatus() == TsFileResourceStatus.DELETED) {
@@ -95,8 +97,7 @@ public abstract class AbstractCompactionEstimator {
         return fileInfo;
       }
     }
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
+    try (TsFileSequenceReader reader = getReader(resource.getTsFilePath())) {
       FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
       fileInfoCache.put(resource, fileInfo);
       synchronized (globalFileInfoCacheForFailedCompaction) {

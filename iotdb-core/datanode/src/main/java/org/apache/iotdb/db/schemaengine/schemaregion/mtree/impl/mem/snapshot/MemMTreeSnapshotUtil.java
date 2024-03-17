@@ -70,7 +70,7 @@ public class MemMTreeSnapshotUtil {
 
   private static final byte VERSION = 0;
   private static final IMNodeFactory<IMemMNode> nodeFactory =
-      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
@@ -357,7 +357,7 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static class MNodeDeserializer {
+  public static class MNodeDeserializer {
 
     public IMemMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);

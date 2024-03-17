@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
@@ -29,6 +29,10 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -45,22 +49,25 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   /**
    * @param pipeName pipe name
    * @param creationTime pipe creation time
-   * @param pipeProcessorParameters used to create pipe processor
-   * @param dataRegionId data region id
-   * @param pipeExtractorInputEventSupplier used to input events from pipe extractor
-   * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
-   * @throws PipeException if failed to validate or customize
+   * @param pipeProcessorParameters used to create {@link PipeProcessor}
+   * @param regionId {@link DataRegion} id
+   * @param pipeExtractorInputEventSupplier used to input events from {@link PipeExtractor}
+   * @param pipeConnectorOutputPendingQueue used to output events to {@link PipeConnector}
+   * @throws PipeException if failed to {@link PipeProcessor#validate(PipeParameterValidator)} or
+   *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */
   public PipeTaskProcessorStage(
       String pipeName,
       long creationTime,
       PipeParameters pipeProcessorParameters,
-      TConsensusGroupId dataRegionId,
+      int regionId,
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       PipeProcessorSubtaskExecutor executor) {
     final PipeProcessor pipeProcessor =
-        PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters);
+        StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+            ? PipeAgent.plugin().dataRegion().reflectProcessor(pipeProcessorParameters)
+            : PipeAgent.plugin().schemaRegion().reflectProcessor(pipeProcessorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
@@ -71,8 +78,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskProcessorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId()));
+              new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, regionId));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
@@ -81,17 +87,17 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // Should add creation time in taskID, because subtasks are stored in the hashmap
     // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by
     // a timed thread. If a pipe is deleted and created again before its subtask is
-    // removed, the new subtask will have the same pipeName and dataRegionId as the
+    // removed, the new subtask will have the same pipeName and regionId as the
     // old one, so we need creationTime to make their hash code different in the map.
-    final String taskId = pipeName + "_" + dataRegionId.getId() + "_" + creationTime;
+    final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue, dataRegionId.getId());
+        new PipeEventCollector(pipeConnectorOutputPendingQueue, regionId);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
             creationTime,
             pipeName,
-            dataRegionId.getId(),
+            regionId,
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
