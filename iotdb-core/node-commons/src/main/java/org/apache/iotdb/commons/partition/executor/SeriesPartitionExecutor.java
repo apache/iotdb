@@ -20,9 +20,6 @@ package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
 /** All SeriesPartitionExecutors must be subclasses of SeriesPartitionExecutor */
 public abstract class SeriesPartitionExecutor {
 
@@ -49,19 +46,22 @@ public abstract class SeriesPartitionExecutor {
   private static synchronized void initStaticSeriesPartitionExecutor(
       String executorName, int seriesPartitionSlotNum) {
     if (EXECUTOR == null) {
-      try {
-        Class<?> executor = Class.forName(executorName);
-        Constructor<?> executorConstructor = executor.getConstructor(int.class);
-        EXECUTOR =
-            (SeriesPartitionExecutor) executorConstructor.newInstance(seriesPartitionSlotNum);
-      } catch (ClassNotFoundException
-          | NoSuchMethodException
-          | InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException e) {
-        throw new IllegalArgumentException(
-            String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
-      }
+      EXECUTOR = new SimpleExecutor(seriesPartitionSlotNum);
+      //      try {
+      //        Class<?> executor = Class.forName(executorName);
+      //        Constructor<?> executorConstructor = executor.getConstructor(int.class);
+      //        EXECUTOR =
+      //            (SeriesPartitionExecutor)
+      // executorConstructor.newInstance(seriesPartitionSlotNum);
+      //      } catch (ClassNotFoundException
+      //          | NoSuchMethodException
+      //          | InstantiationException
+      //          | IllegalAccessException
+      //          | InvocationTargetException e) {
+      //        throw new IllegalArgumentException(
+      //            String.format("Couldn't Constructor SeriesPartitionExecutor class: %s",
+      // executorName));
+      //      }
     }
   }
 }

@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -5,7 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.RandomLeaderBalancer;
@@ -20,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -38,7 +59,7 @@ public class RegionAllocatorManualTest {
   private static final int MIN_DATA_REGION_PER_DATA_NODE = 6;
   private static final int MAX_DATA_REGION_PER_DATA_NODE = 6;
   private static final int DATA_REPLICATION_FACTOR = 3;
-  private static final double EXAM_LOOP = 1000;
+  private static final double EXAM_LOOP = 100000;
   private static final String DATABASE = "root.db";
 
   private static final Map<Integer, TDataNodeConfiguration> AVAILABLE_DATA_NODE_MAP =
@@ -48,7 +69,7 @@ public class RegionAllocatorManualTest {
   // private static final IRegionGroupAllocator ALLOCATOR = new GreedyRegionGroupAllocator();
   private static final ILeaderBalancer BALANCER = new RandomLeaderBalancer();
 
-  private static class DataEntry {
+  public static class DataEntry {
     public final Integer countRange;
     public final Integer minScatterWidth;
     public final List<Double> disabledPercent;
@@ -70,43 +91,50 @@ public class RegionAllocatorManualTest {
       for (int dataRegionPerDataNode = MIN_DATA_REGION_PER_DATA_NODE;
           dataRegionPerDataNode <= MAX_DATA_REGION_PER_DATA_NODE;
           dataRegionPerDataNode++) {
+        ConfigNodeDescriptor.getInstance()
+            .getConf()
+            .setDataRegionPerDataNode(dataRegionPerDataNode);
+        ConfigNodeDescriptor.getInstance()
+            .getConf()
+            .setDefaultDataRegionGroupNumPerDatabase(
+                dataRegionPerDataNode * dataNodeNum * DATA_REPLICATION_FACTOR);
         testResult.add(test(dataNodeNum, dataRegionPerDataNode));
       }
       LOGGER.info("{}, finish", dataNodeNum);
     }
 
     final String path = "/Users/yongzaodan/Desktop/simulation/";
-    String allocatorPath = "Copyset";
-    // FileWriter countW = new FileWriter(path + "count/" + allocatorPath + ".txt");
-    FileWriter scatterW = new FileWriter(path + "scatter/" + allocatorPath);
-    // FileWriter percentW = new FileWriter(path + "percent/" + allocatorPath + ".txt");
-    // FileWriter leaderW = new FileWriter(path + "leader/" + BALANCER.getClass().getSimpleName() +
-    // ".txt");
+    String allocatorPath = "GCR";
+    //     FileWriter countW = new FileWriter(path + "gcr-simulate/r=2/" + allocatorPath + "-w");
+    //     FileWriter scatterW = new FileWriter(path + "gcr-simulate/r=2/" + allocatorPath + "-s");
+    //     FileWriter percentW = new FileWriter(path + "percent/" + allocatorPath);
+    FileWriter leaderW =
+        new FileWriter(path + "cdf-simulate/r=3/" + BALANCER.getClass().getSimpleName());
 
     for (DataEntry entry : testResult) {
-      //      countW.write(entry.countRange.toString()); countW.write("\n"); countW.flush();
-      scatterW.write(entry.minScatterWidth.toString());
-      scatterW.write("\n");
-      scatterW.flush();
-      //      for (Double percent : entry.disabledPercent) {
-      //        percentW.write(percent.toString());
-      //        percentW.write("\n");
-      //        percentW.flush();
-      //      }
-      //      leaderW.write(entry.leaderRange.toString());
-      //      leaderW.write("\n");
-      //      leaderW.flush();
+      //            countW.write(entry.countRange.toString());
+      //            countW.write("\n");
+      //            countW.flush();
+      //      scatterW.write(entry.minScatterWidth.toString());
+      //      scatterW.write("\n");
+      //      scatterW.flush();
+      //            for (Double percent : entry.disabledPercent) {
+      //              percentW.write(percent.toString());
+      //              percentW.write("\n");
+      //              percentW.flush();
+      //            }
+      leaderW.write(entry.leaderRange.toString());
+      leaderW.write("\n");
+      leaderW.flush();
     }
 
-    //    countW.close();
-    scatterW.close();
-    //    percentW.close();
-    //    leaderW.close();
+    //        countW.close();
+    //    scatterW.close();
+    //        percentW.close();
+    leaderW.close();
   }
 
   public DataEntry test(int TEST_DATA_NODE_NUM, int DATA_REGION_PER_DATA_NODE) {
-    IRegionGroupAllocator ALLOCATOR = new GreedyRegionGroupAllocator();
-
     // Construct TEST_DATA_NODE_NUM DataNodes
     Random random = new Random();
     AVAILABLE_DATA_NODE_MAP.clear();
@@ -125,6 +153,7 @@ public class RegionAllocatorManualTest {
     int[] hitList = new int[20];
     Arrays.fill(hitList, 0);
     for (int loop = 1; loop <= TEST_LOOP; loop++) {
+      IRegionGroupAllocator ALLOCATOR = new GreedyCopySetRegionGroupAllocator();
       /* Allocate RegionGroup */
       List<TRegionReplicaSet> allocateResult = new ArrayList<>();
       for (int index = 0; index < dataRegionGroupNum; index++) {
@@ -138,35 +167,28 @@ public class RegionAllocatorManualTest {
                 new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));
       }
 
-      for (int M = 1; M <= 0.1 * TEST_DATA_NODE_NUM; M++) {
-        for (int exam = 0; exam < EXAM_LOOP; exam++) {
-          Set<Integer> examSet = new TreeSet<>();
-          while (examSet.size() < DATA_REPLICATION_FACTOR) {
-            int id = random.nextInt(TEST_DATA_NODE_NUM) + 1;
-            while (examSet.contains(id)) {
-              id = random.nextInt(TEST_DATA_NODE_NUM) + 1;
-            }
-            examSet.add(id);
-          }
-          for (TRegionReplicaSet result : allocateResult) {
-            Set<Integer> scheme =
-                result.getDataNodeLocations().stream()
-                    .map(TDataNodeLocation::getDataNodeId)
-                    .collect(Collectors.toSet());
-            boolean isHit = true;
-            for (int id : examSet) {
-              if (!scheme.contains(id)) {
-                isHit = false;
-                break;
-              }
-            }
-            if (isHit) {
-              ++hitList[M];
-              break;
-            }
-          }
-        }
+      Set<List<Integer>> schemaHashSet = new HashSet<>();
+      for (TRegionReplicaSet result : allocateResult) {
+        schemaHashSet.add(
+            result.getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .sorted()
+                .collect(Collectors.toList()));
       }
+      //      for (int M = 1; M <= 0.1 * TEST_DATA_NODE_NUM; M++) {
+      //        for (int exam = 0; exam < EXAM_LOOP; exam++) {
+      //          Set<Integer> examSet = new TreeSet<>();
+      //          while (examSet.size() < DATA_REPLICATION_FACTOR) {
+      //            int id = random.nextInt(TEST_DATA_NODE_NUM) + 1;
+      //            while (examSet.contains(id)) {
+      //              id = random.nextInt(TEST_DATA_NODE_NUM) + 1;
+      //            }
+      //            examSet.add(id);
+      //          }
+      //          hitList[M] +=
+      // schemaHashSet.contains(examSet.stream().sorted().collect(Collectors.toList())) ? 1 : 0;
+      //        }
+      //      }
 
       /* Count Region in each DataNode */
       // Map<DataNodeId, RegionGroup Count>

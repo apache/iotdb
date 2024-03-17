@@ -108,7 +108,7 @@ public class ConfigNodeConfig {
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
-      RegionBalancer.RegionGroupAllocatePolicy.GREEDY_COPY_SET;
+      RegionBalancer.RegionGroupAllocatePolicy.TIERED_REPLICATION;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -296,6 +296,8 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  private int gcrMaxOptimalPlanNum = 100;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -339,6 +341,14 @@ public class ConfigNodeConfig {
         + "="
         + System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, "null")
         + ";";
+  }
+
+  public int getGcrMaxOptimalPlanNum() {
+    return gcrMaxOptimalPlanNum;
+  }
+
+  public void setGcrMaxOptimalPlanNum(int gcrMaxOptimalPlanNum) {
+    this.gcrMaxOptimalPlanNum = gcrMaxOptimalPlanNum;
   }
 
   public String getClusterName() {

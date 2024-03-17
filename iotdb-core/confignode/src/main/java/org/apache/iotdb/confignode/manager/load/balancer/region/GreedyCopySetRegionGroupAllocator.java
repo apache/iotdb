@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +40,8 @@ import static java.util.Map.Entry.comparingByValue;
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
   private static final Random RANDOM = new Random();
+  private static final int GCR_MAX_OPTIMAL_PLAN_NUM =
+      ConfigNodeDescriptor.getInstance().getConf().getGcrMaxOptimalPlanNum();
 
   private int replicationFactor;
   // Sorted available DataNodeIds
@@ -59,9 +62,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   // Third Key: the sum of overlapped 2-Region combination Regions with other allocated
   // RegionGroups is minimal
   int optimalCombinationSum;
-  int optimalIdXorSum;
   List<int[]> optimalReplicaSets;
-  private static final int MAX_OPTIMAL_PLAN_NUM = 1000;
 
   private static class DataNodeEntry {
 
@@ -224,7 +225,6 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     optimalDatabaseRegionSum = Integer.MAX_VALUE;
     optimalRegionSum = Integer.MAX_VALUE;
     optimalCombinationSum = Integer.MAX_VALUE;
-    optimalIdXorSum = Integer.MAX_VALUE;
     optimalReplicaSets = new ArrayList<>();
   }
 
@@ -272,38 +272,16 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
         return;
       }
 
-      if (maxDataNodeId < 160) {
-        if (databaseRegionSum < optimalDatabaseRegionSum
-            || regionSum < optimalRegionSum
-            || combinationSum < optimalCombinationSum) {
-          // Reset the optimal result when a better one is found
-          optimalDatabaseRegionSum = databaseRegionSum;
-          optimalRegionSum = regionSum;
-          optimalCombinationSum = combinationSum;
-          optimalReplicaSets.clear();
-        }
-        optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
-        return;
-      }
-
-      int idXorSum = 0;
-      for (int id : currentReplicaSet) {
-        idXorSum ^= id;
-      }
       if (databaseRegionSum < optimalDatabaseRegionSum
           || regionSum < optimalRegionSum
-          || combinationSum < optimalCombinationSum
-          || (optimalIdXorSum > 0 && idXorSum == 0)) {
+          || combinationSum < optimalCombinationSum) {
         // Reset the optimal result when a better one is found
         optimalDatabaseRegionSum = databaseRegionSum;
         optimalRegionSum = regionSum;
         optimalCombinationSum = combinationSum;
-        optimalIdXorSum = idXorSum;
         optimalReplicaSets.clear();
       }
-      if (idXorSum == 0 || (idXorSum > 0 && optimalIdXorSum > 0)) {
-        optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
-      }
+      optimalReplicaSets.add(Arrays.copyOf(currentReplicaSet, replicationFactor));
       return;
     }
 
@@ -316,7 +294,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           currentReplicaSet,
           databaseRegionSum + databaseRegionCounter[dataNodeIds[i]],
           regionSum + regionCounter[dataNodeIds[i]]);
-      if (optimalReplicaSets.size() == MAX_OPTIMAL_PLAN_NUM) {
+      if (optimalReplicaSets.size() == GCR_MAX_OPTIMAL_PLAN_NUM) {
         // Pruning: no needs for further searching when
         // the number of optimal plans reaches the limitation
         return;

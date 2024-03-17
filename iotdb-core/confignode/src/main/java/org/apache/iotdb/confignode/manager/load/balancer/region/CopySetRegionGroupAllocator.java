@@ -42,8 +42,11 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
   private void init(int dataNodeNum, int replicationFactor, int loadFactor) {
     this.dataNodeNum = dataNodeNum;
+    // sum of COPY_SETS value .size()
+    int p = COPY_SETS.values().stream().mapToInt(List::size).sum();
     BitSet bitSet = new BitSet(dataNodeNum + 1);
-    for (int p = 0; p < loadFactor || bitSet.cardinality() < dataNodeNum; p++) {
+    COPY_SETS.values().forEach(cps -> cps.forEach(cp -> cp.forEach(bitSet::set)));
+    while (p < loadFactor || bitSet.cardinality() < dataNodeNum) {
       List<Integer> permutation = new ArrayList<>();
       for (int i = 1; i <= dataNodeNum; i++) {
         permutation.add(i);
@@ -55,6 +58,7 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
         permutation.set(pos, tmp);
       }
       for (int i = 0; i + replicationFactor <= permutation.size(); i += replicationFactor) {
+        p += 1;
         List<Integer> copySet = new ArrayList<>();
         for (int j = 0; j < replicationFactor; j++) {
           int e = permutation.get(i + j);
@@ -76,7 +80,7 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
-    if (this.dataNodeNum == -1) {
+    if (this.dataNodeNum != availableDataNodeMap.size()) {
       init(
           availableDataNodeMap.size(),
           replicationFactor,

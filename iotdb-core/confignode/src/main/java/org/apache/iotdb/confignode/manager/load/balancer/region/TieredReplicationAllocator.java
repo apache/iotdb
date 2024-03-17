@@ -66,7 +66,8 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
     int targetScatterWidth = Math.min(loadFactor * (replicationFactor - 1), dataNodeNum - 1);
     while (existScatterWidthUnsatisfied(scatterWidthMap, targetScatterWidth)) {
       for (int firstRegion = 1; firstRegion <= dataNodeNum; firstRegion++) {
-        if (scatterWidthMap.get(firstRegion).cardinality() < targetScatterWidth) {
+        if (!COPY_SETS.containsKey(firstRegion)
+            || scatterWidthMap.get(firstRegion).cardinality() < targetScatterWidth) {
           List<Integer> copySet = new ArrayList<>();
           copySet.add(firstRegion);
           List<DataNodeEntry> otherDataNodes = new ArrayList<>();
@@ -120,6 +121,11 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
 
   private boolean existScatterWidthUnsatisfied(
       Map<Integer, BitSet> scatterWidthMap, int targetScatterWidth) {
+    for (int i = 1; i <= dataNodeNum; i++) {
+      if (!COPY_SETS.containsKey(i)) {
+        return true;
+      }
+    }
     AtomicBoolean result = new AtomicBoolean(false);
     scatterWidthMap.forEach(
         (k, v) -> {
@@ -138,7 +144,8 @@ public class TieredReplicationAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
-    if (this.dataNodeNum == -1) {
+
+    if (this.dataNodeNum != availableDataNodeMap.size()) {
       init(
           availableDataNodeMap.size(),
           replicationFactor,
