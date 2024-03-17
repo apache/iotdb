@@ -168,6 +168,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -3759,6 +3763,74 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitCreateTopic(IoTDBSqlParser.CreateTopicContext ctx) {
+    final CreateTopicStatement createTopicStatement = new CreateTopicStatement();
+
+    if (ctx.topicName != null) {
+      createTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in CREATE TOPIC, please enter topicName.");
+    }
+
+    if (ctx.topicAttributesClause() != null) {
+      createTopicStatement.setTopicAttributes(
+          parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+    } else {
+      createTopicStatement.setTopicAttributes(new HashMap<>());
+    }
+
+    return createTopicStatement;
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<IoTDBSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (IoTDBSqlParser.TopicAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          parseStringLiteral(context.topicKey.getText()),
+          parseStringLiteral(context.topicValue.getText()));
+    }
+    return collectorMap;
+  }
+
+  @Override
+  public Statement visitDropTopic(IoTDBSqlParser.DropTopicContext ctx) {
+    final DropTopicStatement dropTopicStatement = new DropTopicStatement();
+
+    if (ctx.topicName != null) {
+      dropTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP TOPIC, please enter topicName.");
+    }
+
+    return dropTopicStatement;
+  }
+
+  @Override
+  public Statement visitShowTopics(IoTDBSqlParser.ShowTopicsContext ctx) {
+    final ShowTopicsStatement showTopicsStatement = new ShowTopicsStatement();
+
+    if (ctx.topicName != null) {
+      showTopicsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showTopicsStatement;
+  }
+
+  @Override
+  public Statement visitShowSubscriptions(IoTDBSqlParser.ShowSubscriptionsContext ctx) {
+    final ShowSubscriptionsStatement showSubscriptionsStatement = new ShowSubscriptionsStatement();
+
+    if (ctx.topicName != null) {
+      showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showSubscriptionsStatement;
   }
 
   @Override

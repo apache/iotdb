@@ -185,18 +185,17 @@ public abstract class AbstractOperatePipeProcedureV2
    *     pipe without runtime exception)
    * @throws PipeException if validation for pipe parameters failed
    */
-  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeException;
+  public abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
   /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
-  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+  public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
    *
    * @throws PipeException if configNode consensus write failed
    */
-  protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  public abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
   /**
@@ -205,7 +204,7 @@ public abstract class AbstractOperatePipeProcedureV2
    * @throws PipeException if push pipe metas to dataNodes failed
    * @throws IOException Exception when Serializing to byte buffer
    */
-  protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  public abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
   @Override
@@ -344,13 +343,13 @@ public abstract class AbstractOperatePipeProcedureV2
     }
   }
 
-  protected abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  public abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws IOException;
 
   @Override
