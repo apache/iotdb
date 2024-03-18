@@ -301,6 +301,7 @@ public class IoTConsensus implements IConsensus {
 
       // step 2: take snapshot
       logger.info("[IoTConsensus] start to take snapshot...");
+      impl.checkAndLockSafeDeletedSearchIndex();
       impl.takeSnapshot();
 
       // step 3: transit snapshot
@@ -315,15 +316,13 @@ public class IoTConsensus implements IConsensus {
       logger.info("[IoTConsensus] activate new peer...");
       impl.activePeer(peer);
 
-      // step 6: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.checkAndLockSafeDeletedSearchIndex();
-      impl.notifyPeersToBuildSyncLogChannel(peer);
-
-      // step 7: spot clean
+      // step 6: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
 
+      // step 7: notify all the other Peers to build the sync connection to newPeer
+      logger.info("[IoTConsensus] notify current peers to build sync log...");
+      impl.notifyPeersToBuildSyncLogChannel(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     } finally {
