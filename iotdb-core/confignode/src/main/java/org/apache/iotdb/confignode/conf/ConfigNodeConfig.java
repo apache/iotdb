@@ -66,7 +66,7 @@ public class ConfigNodeConfig {
   private int schemaReplicationFactor = 1;
 
   /** Data region consensus protocol. */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /** Default number of DataRegion replicas. */
   private int dataReplicationFactor = 1;
