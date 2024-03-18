@@ -1096,10 +1096,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
     pageReaderMaxMemoryHistogram =
         metricService.getOrCreateHistogram(
-            Metric.SERIES_SCAN_COST.toString(),
+            Metric.MEMORY_USAGE_MONITOR.toString(),
             MetricLevel.IMPORTANT,
-            Tag.STAGE.toString(),
-            HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
             Tag.TYPE.toString(),
             PAGE_READER_MAX_USED_MEMORY_SIZE);
   }
@@ -1142,9 +1140,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
 
     metricService.remove(
         MetricType.HISTOGRAM,
-        Metric.SERIES_SCAN_COST.toString(),
-        Tag.STAGE.toString(),
-        HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER,
+        Metric.MEMORY_USAGE_MONITOR.toString(),
         Tag.TYPE.toString(),
         PAGE_READER_MAX_USED_MEMORY_SIZE);
   }
