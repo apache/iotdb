@@ -570,7 +570,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /** Called by the ProcedureExecutor to assign the ID to the newly created procedure. */
-  protected void setProcId(long procId) {
+  public void setProcId(long procId) {
     this.procId = procId;
   }
 

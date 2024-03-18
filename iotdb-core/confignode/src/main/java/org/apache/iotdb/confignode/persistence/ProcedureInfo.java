@@ -62,7 +62,7 @@ public class ProcedureInfo implements SnapshotProcessor {
 
   private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
 
-  private final Map<Long, Procedure> procedureMap = new HashMap<>();
+  private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap = new HashMap<>();
 
   private final AtomicLong lastProcId = new AtomicLong(-1);
 
@@ -87,13 +87,25 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
-    // TODO: seems nothing need to do
+    Procedure<ConfigNodeProcedureEnv> procedure = updateProcedurePlan.getProcedure();
+    procedureMap.put(procedure.getProcId(), procedure);
+    long current;
+    do {
+      current = lastProcId.get();
+      if (current >= procedure.getProcId()) {
+        break;
+      }
+    } while (!lastProcId.compareAndSet(current, procedure.getProcId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus deleteProcedure(DeleteProcedurePlan deleteProcedurePlan) {
-    // TODO: seems nothing need to do
+    procedureMap.remove(deleteProcedurePlan.getProcId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public long getNextProcId() {
+    return this.lastProcId.addAndGet(1);
   }
 
   @Override
@@ -113,7 +125,7 @@ public class ProcedureInfo implements SnapshotProcessor {
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
 
       ReadWriteIOUtils.write(procedureMap.size(), fileOutputStream);
-      for (Procedure procedure : procedureMap.values()) {
+      for (Procedure<ConfigNodeProcedureEnv> procedure : procedureMap.values()) {
         procedure.serialize(dataOutputStream);
       }
 

@@ -33,6 +33,14 @@ import java.io.IOException;
 /** This procedure will never finish. */
 @TestOnly
 public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
+  public NeverFinishProcedure() {
+
+  }
+
+  public NeverFinishProcedure(long procId) {
+    this.setProcId(procId);
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, Integer state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
