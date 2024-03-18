@@ -99,6 +99,12 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
       LocalExecutionPlanner.getInstance();
   private static final String LOCAL_EXECUTION_PLANNER = Metric.LOCAL_EXECUTION_PLANNER.toString();
   private static final String FREE_MEMORY_FOR_OPERATORS = "free_memory_for_operators";
+  private static final String ESTIMATED_MEMORY_SIZE = "estimated_memory_size";
+  private Histogram estimatedMemoryHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  public void updateEstimatedMemory(long memory) {
+    estimatedMemoryHistogram.update(memory);
+  }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -179,6 +185,12 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LocalExecutionPlanner::getFreeMemoryForOperators,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
+    estimatedMemoryHistogram =
+        metricService.getOrCreateHistogram(
+            LOCAL_EXECUTION_PLANNER,
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            ESTIMATED_MEMORY_SIZE);
   }
 
   @Override
@@ -231,6 +243,8 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         LOCAL_EXECUTION_PLANNER,
         Tag.NAME.toString(),
         FREE_MEMORY_FOR_OPERATORS);
+    metricService.remove(
+        MetricType.HISTOGRAM, LOCAL_EXECUTION_PLANNER, Tag.NAME.toString(), ESTIMATED_MEMORY_SIZE);
   }
 
   private QueryRelatedResourceMetricSet() {
