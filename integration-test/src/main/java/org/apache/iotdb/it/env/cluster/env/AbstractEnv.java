@@ -349,7 +349,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (AbstractNodeWrapper nodeWrapper :
         Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
             .collect(Collectors.toList())) {
-      nodeWrapper.stop();
+      nodeWrapper.stopForcibly();
       nodeWrapper.destroyDir();
       String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       if (!new File(lockPath).delete()) {

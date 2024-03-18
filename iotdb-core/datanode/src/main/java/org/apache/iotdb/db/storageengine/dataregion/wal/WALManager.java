@@ -44,7 +44,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -173,7 +175,12 @@ public class WALManager implements IService {
       return;
     }
     List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
-    walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
+    Map<WALNode, Long> walNode2DiskUsage = new HashMap<>();
+    for (WALNode walNode : walNodes) {
+      walNode2DiskUsage.put(walNode, walNode.getDiskUsage());
+    }
+    walNodes.sort(
+        (node1, node2) -> Long.compare(walNode2DiskUsage.get(node2), walNode2DiskUsage.get(node1)));
     for (WALNode walNode : walNodes) {
       walNode.deleteOutdatedFiles();
     }

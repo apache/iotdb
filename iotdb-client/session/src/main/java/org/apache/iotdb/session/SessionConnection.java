@@ -24,9 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -128,6 +128,8 @@ public class SessionConnection {
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+    } catch (StatementExecutionException e) {
+      throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -150,13 +152,13 @@ public class SessionConnection {
   }
 
   private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
-      throws IoTDBConnectionException {
-    RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
-    RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
+      throws IoTDBConnectionException, StatementExecutionException {
+    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
+    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
       if (useSSL) {
         transport =
-            RpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
@@ -164,7 +166,7 @@ public class SessionConnection {
                 trustStorePwd);
       } else {
         transport =
-            RpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       }
@@ -211,6 +213,9 @@ public class SessionConnection {
       sessionId = openResp.getSessionId();
       statementId = client.requestStatementId(sessionId);
 
+    } catch (StatementExecutionException e) {
+      transport.close();
+      throw e;
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
@@ -228,6 +233,8 @@ public class SessionConnection {
           logger.error("Cluster has no nodes to connect");
           throw new IoTDBConnectionException(logForReconnectionFailure());
         }
+      } catch (StatementExecutionException e) {
+        throw new IoTDBConnectionException(e.getMessage());
       }
       break;
     }
@@ -1386,8 +1393,10 @@ public class SessionConnection {
             init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
-            logger.warn("The current node may have been down {},try next node", endPoint);
+            logger.warn("The current node may have been down {}, try next node", endPoint);
             continue;
+          } catch (StatementExecutionException e) {
+            logger.warn("login in failed, because {}", e.getMessage());
           }
           break;
         }

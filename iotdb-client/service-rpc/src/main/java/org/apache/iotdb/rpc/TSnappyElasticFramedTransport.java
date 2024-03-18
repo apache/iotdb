@@ -29,30 +29,34 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
   public static class Factory extends TElasticFramedTransport.Factory {
 
     public Factory() {
-      this(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE);
+      this(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
     }
 
-    public Factory(int thriftDefaultBufferSize) {
-      this(thriftDefaultBufferSize, RpcUtils.THRIFT_FRAME_MAX_SIZE);
+    public Factory(int thriftDefaultBufferSize, boolean copyBinary) {
+      this(thriftDefaultBufferSize, RpcUtils.THRIFT_FRAME_MAX_SIZE, copyBinary);
     }
 
-    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
-      super(thriftDefaultBufferSize, thriftMaxFrameSize);
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
+      super(thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TSnappyElasticFramedTransport(trans, thriftDefaultBufferSize, thriftMaxFrameSize);
+      return new TSnappyElasticFramedTransport(
+          trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     }
   }
 
   public TSnappyElasticFramedTransport(TTransport underlying) {
-    this(underlying, RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE);
+    this(underlying, RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE, true);
   }
 
   public TSnappyElasticFramedTransport(
-      TTransport underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
-    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
   }
 
   @Override

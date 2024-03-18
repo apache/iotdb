@@ -84,7 +84,7 @@ public class StatisticsMergeUtil {
         first.getTotalExecutionTimeInNanos() + second.getTotalExecutionTimeInNanos());
     first.setNextCalledCount(first.getNextCalledCount() + second.getNextCalledCount());
     first.setHasNextCalledCount(first.getHasNextCalledCount() + second.getHasNextCalledCount());
-    first.setInputRows(first.getInputRows() + second.getInputRows());
+    first.setOutputRows(first.getOutputRows() + second.getOutputRows());
     first.setMemoryUsage(first.getMemoryUsage() + second.getMemoryUsage());
     first.setCount(first.getCount() + 1);
     first.setSpecifiedInfo(

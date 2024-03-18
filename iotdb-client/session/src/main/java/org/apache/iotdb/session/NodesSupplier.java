@@ -170,8 +170,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       }
     }
 
-    if (client != null && !updateDataNodeList()) {
-      destroyCurrentClient();
+    // make sure the following code block can run thread-safely with close() method.
+    synchronized (this) {
+      if (client != null && !updateDataNodeList()) {
+        destroyCurrentClient();
+      }
     }
   }
 

@@ -505,25 +505,6 @@ struct TGetDataNodeLocationsResp {
   2: required list<common.TDataNodeLocation> dataNodeLocationList
 }
 
-// Pipe Plugin
-struct TCreatePipePluginReq {
-  1: required string pluginName
-  2: required string className
-  3: required string jarName
-  4: required binary jarFile
-  5: required string jarMD5
-}
-
-struct TDropPipePluginReq {
-  1: required string pluginName
-}
-
-// Get PipePlugin table from config node
-struct TGetPipePluginTableResp {
-  1: required common.TSStatus status
-  2: required list<binary> allPipePluginMeta
-}
-
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -681,6 +662,25 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
+// Pipe Plugin
+struct TCreatePipePluginReq {
+  1: required string pluginName
+  2: required string className
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
+}
+
+struct TDropPipePluginReq {
+  1: required string pluginName
+}
+
+// Get PipePlugin table from config node
+struct TGetPipePluginTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allPipePluginMeta
+}
+
 // Pipe
 
 struct TShowPipeInfo {
@@ -758,6 +758,83 @@ struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
   3: optional bool isGeneratedByPipe
+}
+
+// Subscription topic
+struct TCreateTopicReq {
+    1: required string topicName
+    2: optional map<string, string> topicAttributes
+}
+
+struct TShowTopicReq {
+    1: optional string topicName
+}
+
+struct TShowTopicResp {
+    1: required common.TSStatus status
+    2: optional list<TShowTopicInfo> topicInfoList
+}
+
+struct TShowTopicInfo {
+    1: required string topicName
+    2: required i64 creationTime
+    3: optional string topicAttributes
+}
+
+struct TAlterTopicReq {
+    1: required string topicName
+    2: required map<string, string> topicAttributes
+    3: required set<string> subscribedConsumerGroupIds
+}
+
+struct TGetAllTopicInfoResp {
+    1: required common.TSStatus status
+    2: required list<binary> allTopicInfo
+}
+
+// Subscription consumer
+
+struct TCreateConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: optional map<string, string> consumerAttributes
+}
+
+struct TCloseConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+}
+
+struct TSubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TUnsubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TShowSubscriptionReq {
+    1: optional string topicName
+}
+
+struct TShowSubscriptionResp {
+    1: required common.TSStatus status
+    2: optional list<TShowSubscriptionInfo> subscriptionInfoList
+}
+
+struct TShowSubscriptionInfo {
+    1: required string topicName
+    2: required string consumerGroupId
+    3: required set<string> consumerIds
+}
+
+struct TGetAllSubscriptionInfoResp {
+    1: required common.TSStatus status
+    2: required list<binary> allSubscriptionInfo
 }
 
 // ====================================================
@@ -1386,6 +1463,45 @@ service IConfigNodeRPCService {
 
  /** Execute schema language from external pipes */
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+
+  // ======================================================
+  // Subscription Topic
+  // ======================================================
+  /** Create Topic */
+  common.TSStatus createTopic(TCreateTopicReq req)
+
+  /** Drop Topic */
+  common.TSStatus dropTopic(string topicName)
+
+  /** Show Topic by name, if name is empty, show all Topic */
+  TShowTopicResp showTopic(TShowTopicReq req)
+
+  /** Get all topic information. It is used for DataNode registration and restart*/
+  TGetAllTopicInfoResp getAllTopicInfo()
+
+  // ======================================================
+  // Subscription consumer
+  // ======================================================
+  /** Create consumer */
+  common.TSStatus createConsumer(TCreateConsumerReq req)
+
+  /** Close consumer */
+  common.TSStatus closeConsumer(TCloseConsumerReq req)
+
+  // ======================================================
+  // Subscription
+  // ======================================================
+  /** Create subscription */
+  common.TSStatus createSubscription(TSubscribeReq req)
+
+  /** Close subscription */
+  common.TSStatus dropSubscription(TUnsubscribeReq req)
+
+  /** Show Subscription on topic name, if name is empty, show all subscriptions */
+  TShowSubscriptionResp showSubscription(TShowSubscriptionReq req)
+
+  /** Get all subscription information. It is used for DataNode registration and restart */
+  TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
 
   // ======================================================
   // TestTools

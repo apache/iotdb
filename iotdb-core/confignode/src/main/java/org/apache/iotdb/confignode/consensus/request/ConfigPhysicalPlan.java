@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePlu
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -95,6 +97,10 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
@@ -430,6 +436,24 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeEnriched:
           plan = new PipeEnrichedPlan();
+          break;
+        case CreateTopic:
+          plan = new CreateTopicPlan();
+          break;
+        case DropTopic:
+          plan = new DropTopicPlan();
+          break;
+        case ShowTopic:
+          plan = new ShowTopicPlan();
+          break;
+        case AlterTopic:
+          plan = new AlterTopicPlan();
+          break;
+        case AlterConsumerGroup:
+          plan = new AlterConsumerGroupPlan();
+          break;
+        case ShowSubscription:
+          plan = new ShowSubscriptionPlan();
           break;
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();
