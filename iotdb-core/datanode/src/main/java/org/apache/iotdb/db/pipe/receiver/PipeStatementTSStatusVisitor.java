@@ -109,23 +109,23 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitCreateMultiTimeseries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, TSStatus context) {
-    return visitGeneralInternalCreateTimeseries(createMultiTimeSeriesStatement, context);
+    return visitGeneralCreateMultiTimeseries(createMultiTimeSeriesStatement, context);
   }
 
   @Override
   public TSStatus visitInternalCreateTimeseries(
       InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement, TSStatus context) {
-    return visitGeneralInternalCreateTimeseries(internalCreateTimeSeriesStatement, context);
+    return visitGeneralCreateMultiTimeseries(internalCreateTimeSeriesStatement, context);
   }
 
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
       InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
       TSStatus context) {
-    return visitGeneralInternalCreateTimeseries(internalCreateMultiTimeSeriesStatement, context);
+    return visitGeneralCreateMultiTimeseries(internalCreateMultiTimeSeriesStatement, context);
   }
 
-  private TSStatus visitGeneralInternalCreateTimeseries(
+  private TSStatus visitGeneralCreateMultiTimeseries(
       Statement internalCreateTimeSeriesStatement, TSStatus context) {
     if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (TSStatus status : context.getSubStatus()) {
