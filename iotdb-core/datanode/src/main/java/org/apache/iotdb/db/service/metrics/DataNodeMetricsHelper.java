@@ -53,7 +53,7 @@ import java.util.List;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
-  public static void bind() {
+  public static void bind(boolean enableOsMetrics) {
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
@@ -61,11 +61,14 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(FileMetrics.getInstance());
     MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    // Only enable OS-level metrics, if this is wanted.
+    if (enableOsMetrics) {
+      MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
+      MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    }
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
-    initSystemMetrics();
+    initSystemMetrics(enableOsMetrics);
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
     // bind query related metrics
@@ -91,16 +94,20 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(LoadTsFileMemMetricSet.getInstance());
   }
 
-  private static void initSystemMetrics() {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
-    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
-    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
-    SystemMetrics.getInstance().setDiskDirs(diskDirs);
-    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
+  private static void initSystemMetrics(boolean enableOsMetrics) {
+    // Only enable OS-level metrics, if this is wanted.
+    if (enableOsMetrics) {
+      ArrayList<String> diskDirs = new ArrayList<>();
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+      diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+      diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+      SystemMetrics systemMetrics = SystemMetrics.getInstance();
+      systemMetrics.setDiskDirs(diskDirs);
+      MetricService.getInstance().addMetricSet(systemMetrics);
+    }
   }
 
   private static void initCpuMetrics() {

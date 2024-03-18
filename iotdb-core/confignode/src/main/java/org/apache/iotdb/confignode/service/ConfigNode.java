@@ -263,8 +263,12 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    // Only enable OS-level metrics, if this is wanted.
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (commonConfig.isOsMetricsEnabled()) {
+      MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
+      MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    }
     MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
@@ -275,11 +279,16 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void initSystemMetrics() {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(CONF.getSystemDir());
-    diskDirs.add(CONF.getConsensusDir());
-    SystemMetrics.getInstance().setDiskDirs(diskDirs);
-    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
+    // Only enable OS-level metrics, if this is wanted.
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (commonConfig.isOsMetricsEnabled()) {
+      ArrayList<String> diskDirs = new ArrayList<>();
+      diskDirs.add(CONF.getSystemDir());
+      diskDirs.add(CONF.getConsensusDir());
+      SystemMetrics systemMetrics = SystemMetrics.getInstance();
+      systemMetrics.setDiskDirs(diskDirs);
+      MetricService.getInstance().addMetricSet(systemMetrics);
+    }
   }
 
   private void initCpuMetrics() {
