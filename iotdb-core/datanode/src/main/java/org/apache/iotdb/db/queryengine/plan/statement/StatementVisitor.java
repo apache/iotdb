@@ -82,6 +82,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -102,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -366,6 +371,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(explainStatement, context);
   }
 
+  public R visitExplainAnalyze(ExplainAnalyzeStatement explainAnalyzeStatement, C context) {
+    return visitStatement(explainAnalyzeStatement, context);
+  }
+
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
     return visitStatement(deleteDataStatement, context);
   }
@@ -489,6 +498,23 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopPipe(StopPipeStatement stopPipeStatement, C context) {
     return visitStatement(stopPipeStatement, context);
+  }
+
+  public R visitCreateTopic(CreateTopicStatement createTopicStatement, C context) {
+    return visitStatement(createTopicStatement, context);
+  }
+
+  public R visitDropTopic(DropTopicStatement dropTopicStatement, C context) {
+    return visitStatement(dropTopicStatement, context);
+  }
+
+  public R visitShowTopics(ShowTopicsStatement showTopicsStatement, C context) {
+    return visitStatement(showTopicsStatement, context);
+  }
+
+  public R visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, C context) {
+    return visitStatement(showSubscriptionsStatement, context);
   }
 
   public R visitGetRegionId(GetRegionIdStatement getRegionIdStatement, C context) {

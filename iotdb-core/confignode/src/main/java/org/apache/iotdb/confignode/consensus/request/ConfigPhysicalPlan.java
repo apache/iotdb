@@ -39,6 +39,8 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePlu
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -74,7 +76,11 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropFunction
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -91,6 +97,10 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
@@ -167,7 +177,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
       }
 
       ConfigPhysicalPlan plan;
@@ -426,6 +436,36 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeEnriched:
           plan = new PipeEnrichedPlan();
+          break;
+        case CreateTopic:
+          plan = new CreateTopicPlan();
+          break;
+        case DropTopic:
+          plan = new DropTopicPlan();
+          break;
+        case ShowTopic:
+          plan = new ShowTopicPlan();
+          break;
+        case AlterTopic:
+          plan = new AlterTopicPlan();
+          break;
+        case AlterConsumerGroup:
+          plan = new AlterConsumerGroupPlan();
+          break;
+        case ShowSubscription:
+          plan = new ShowSubscriptionPlan();
+          break;
+        case PipeUnsetTemplate:
+          plan = new PipeUnsetSchemaTemplatePlan();
+          break;
+        case PipeDeleteTimeSeries:
+          plan = new PipeDeleteTimeSeriesPlan();
+          break;
+        case PipeDeleteLogicalView:
+          plan = new PipeDeleteLogicalViewPlan();
+          break;
+        case PipeDeactivateTemplate:
+          plan = new PipeDeactivateTemplatePlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

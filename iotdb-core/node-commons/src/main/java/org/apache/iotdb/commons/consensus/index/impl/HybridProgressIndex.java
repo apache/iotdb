@@ -165,7 +165,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
+  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
       if (progressIndex == null || progressIndex instanceof MinimumProgressIndex) {
@@ -178,7 +178,7 @@ public class HybridProgressIndex extends ProgressIndex {
             (thisK, thisV) ->
                 (thisV == null
                     ? progressIndex
-                    : thisV.updateToMinimumIsAfterProgressIndex(progressIndex)));
+                    : thisV.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex)));
         return this;
       }
 
@@ -189,7 +189,9 @@ public class HybridProgressIndex extends ProgressIndex {
               thisHybridProgressIndex.type2Index.compute(
                   thatK,
                   (thisK, thisV) ->
-                      (thisV == null ? thatV : thisV.updateToMinimumIsAfterProgressIndex(thatV))));
+                      (thisV == null
+                          ? thatV
+                          : thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
       return this;
     } finally {
       lock.writeLock().unlock();

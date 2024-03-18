@@ -34,7 +34,8 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtract
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.DownSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,7 +53,9 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
-  DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
+  TUMBLING_TIME_SAMPLING_PROCESSOR(
+      "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
+  SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
   AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
 
   // Hidden-processors, which are plugins of the processors
@@ -114,7 +117,8 @@ public enum BuiltinPipePlugin {
                   // Sources
                   DO_NOTHING_SOURCE.getPipePluginName().toUpperCase(),
                   // Processors
-                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),

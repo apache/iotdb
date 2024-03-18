@@ -81,7 +81,7 @@ class ClusterSchemaFetchExecutor {
     if (context != null && context.getQueryType() == QueryType.READ) {
       sql += ", " + context.getQueryId() + " : " + context.getSql();
     }
-    return coordinator.execute(
+    return coordinator.executeForTreeModel(
         statement,
         queryId,
         context == null ? null : context.getSession(),
@@ -245,7 +245,7 @@ class ClusterSchemaFetchExecutor {
       t = throwable;
       throw throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, t);
+      coordinator.cleanupQueryExecution(queryId, null, t);
     }
   }
 

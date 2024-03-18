@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService.Processor;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +98,8 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MPPDataExchangeServiceThriftHandler(),
-              config.isRpcThriftCompressionEnable());
+              config.isRpcThriftCompressionEnable(),
+              DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

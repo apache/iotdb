@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
@@ -71,7 +72,7 @@ public class FragmentInstanceSerdeTest {
         new FragmentInstance(
             new PlanFragment(planFragmentId, constructPlanNodeTree()),
             planFragmentId.genFragmentInstanceId(),
-            ExpressionFactory.groupByTime(1, 2, 3, 4),
+            new TreeModelTimePredicate(ExpressionFactory.groupByTime(1, 2, 3, 4)),
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
             sessionInfo);

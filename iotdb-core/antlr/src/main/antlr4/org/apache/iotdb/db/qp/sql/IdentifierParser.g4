@@ -39,6 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
+    | ANALYZE
     | AND
     | ANY
     | APPEND
@@ -211,6 +212,7 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
     | TAGS
@@ -227,6 +229,8 @@ keyWords
     | TO
     | TOLERANCE
     | TOP
+    | TOPIC
+    | TOPICS
     | TRACING
     | TRIGGER
     | TRIGGERS

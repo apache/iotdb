@@ -25,9 +25,10 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothin
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.StandardStatisticsOperatorProcessor;
-import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
+import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
+import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
 
-public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
+class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
 
   PipeDataRegionProcessorConstructor(DataNodePipePluginMetaKeeper pipePluginMetaKeeper) {
     super(pipePluginMetaKeeper);
@@ -38,7 +39,11 @@ public class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName(), DoNothingProcessor::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.DOWN_SAMPLING_PROCESSOR.getPipePluginName(), DownSamplingProcessor::new);
+        BuiltinPipePlugin.TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName(),
+        TumblingTimeSamplingProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.SDT_SAMPLING_PROCESSOR.getPipePluginName(),
+        SwingingDoorTrendingSamplingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.AGGREGATE_PROCESSOR.getPipePluginName(), AggregateProcessor::new);
     pluginConstructors.put(

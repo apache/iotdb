@@ -36,6 +36,7 @@ public class ColumnHeaderConstant {
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
+  public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
   public static final String DATABASE = "Database";
@@ -109,6 +110,14 @@ public class ColumnHeaderConstant {
   public static final String PLUGIN_NAME = "PluginName";
   public static final String PLUGIN_TYPE = "PluginType";
   public static final String PLUGIN_JAR = "PluginJar";
+
+  // column names for show topics statement
+  public static final String TOPIC_NAME = "TopicName";
+  public static final String TOPIC_CONFIGS = "TopicConfigs";
+
+  // column names for show subscriptions statement
+  public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
+  public static final String SUBSCRIBED_CONSUMERS = "SubscribedConsumers";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -402,6 +411,17 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSubscriptionColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(CONSUMER_GROUP_NAME, TSDataType.TEXT),
+          new ColumnHeader(SUBSCRIBED_CONSUMERS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

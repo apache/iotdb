@@ -64,6 +64,11 @@ public class FilterNode extends TransformNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.FILTER;
+  }
+
+  @Override
   public PlanNode clone() {
     return new FilterNode(getPlanNodeId(), outputExpressions, predicate, keepNull, scanOrder);
   }

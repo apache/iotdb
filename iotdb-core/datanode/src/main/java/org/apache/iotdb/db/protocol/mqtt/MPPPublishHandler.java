@@ -162,7 +162,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
             long queryId = sessionManager.requestQueryId();
             ExecutionResult result =
                 Coordinator.getInstance()
-                    .execute(
+                    .executeForTreeModel(
                         statement,
                         queryId,
                         sessionManager.getSessionInfo(session),

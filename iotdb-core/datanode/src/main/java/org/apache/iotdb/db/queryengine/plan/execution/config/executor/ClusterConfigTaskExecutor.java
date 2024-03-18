@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -56,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
@@ -78,6 +80,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -88,7 +92,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -138,6 +146,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.S
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
@@ -166,6 +176,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -192,11 +206,15 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -1034,9 +1052,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         if (StorageEngine.getInstance().repairData()) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
         } else {
-          tsStatus =
-              RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+          if (CompactionScheduleTaskManager.getRepairTaskManagerInstance().getRepairTaskStatus()
+              == RepairTaskStatus.STOPPING) {
+            tsStatus =
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "previous repair task is still stopping");
+          } else {
+            tsStatus =
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, "already have a running repair task");
+          }
         }
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1803,17 +1828,106 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+  public SettableFuture<ConfigTaskResult> showSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus = configNodeClient.executeSyncCommand(configPhysicalPlanBinary);
+      final TShowSubscriptionReq showSubscriptionReq = new TShowSubscriptionReq();
+      if (showSubscriptionsStatement.getTopicName() != null) {
+        showSubscriptionReq.setTopicName(showSubscriptionsStatement.getTopicName());
+      }
+
+      final TShowSubscriptionResp showSubscriptionResp =
+          configNodeClient.showSubscription(showSubscriptionReq);
+      if (showSubscriptionResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showSubscriptionResp.getStatus().getMessage(),
+                showSubscriptionResp.getStatus().getCode()));
+        return future;
+      }
+
+      ShowSubscriptionTask.buildTSBlock(
+          showSubscriptionResp.isSetSubscriptionInfoList()
+              ? showSubscriptionResp.getSubscriptionInfoList()
+              : Collections.emptyList(),
+          future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCreateTopicReq req =
+          new TCreateTopicReq()
+              .setTopicName(createTopicStatement.getTopicName())
+              .setTopicAttributes(createTopicStatement.getTopicAttributes());
+      final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn("Failed to executeSyncCommand, status is {}.", tsStatus);
+        LOGGER.warn(
+            "Failed to create topic {} in config node, status is {}.",
+            createTopicStatement.getTopicName(),
+            tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = configNodeClient.dropTopic(dropTopicStatement.getTopicName());
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to drop topic {}, status is {}.", dropTopicStatement.getTopicName(), tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowTopicReq showTopicReq = new TShowTopicReq();
+      if (showTopicsStatement.getTopicName() != null) {
+        showTopicReq.setTopicName(showTopicsStatement.getTopicName());
+      }
+
+      final TShowTopicResp showTopicResp = configNodeClient.showTopic(showTopicReq);
+      if (showTopicResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                showTopicResp.getStatus().getMessage(), showTopicResp.getStatus().getCode()));
+        return future;
+      }
+
+      ShowTopicsTask.buildTSBlock(
+          showTopicResp.isSetTopicInfoList()
+              ? showTopicResp.getTopicInfoList()
+              : Collections.emptyList(),
+          future);
     } catch (Exception e) {
       future.setException(e);
     }
@@ -1942,7 +2056,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setViewExpressions(Collections.singletonList(viewExpression));
     ExecutionResult executionResult =
         Coordinator.getInstance()
-            .execute(
+            .executeForTreeModel(
                 createLogicalViewStatement,
                 0,
                 null,
@@ -2073,10 +2187,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
-      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
+  public TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode) {
     Map<PartialPath, ViewExpression> viewPathToSourceMap =
         alterLogicalViewNode.getViewPathToSourceMap();
 
@@ -2093,10 +2204,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     TAlterLogicalViewReq req =
         new TAlterLogicalViewReq(
-            context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
+                Coordinator.getInstance().createQueryId().getId(),
+                ByteBuffer.wrap(stream.toByteArray()))
+            .setIsGeneratedByPipe(true);
+    TSStatus tsStatus;
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
       do {
         try {
           tsStatus = client.alterLogicalView(req);
@@ -2117,20 +2230,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute alter view {} by pipe, status is {}.",
             viewPathToSourceMap,
             tsStatus);
-        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-          future.setException(
-              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
-        } else {
-          future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
-        }
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-      return future;
     } catch (ClientManagerException | TException e) {
-      future.setException(e);
-      return future;
+      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      tsStatus.setMessage(e.toString());
     }
+    return tsStatus;
   }
 
   @Override
@@ -2474,5 +2579,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.error(e.getMessage());
     }
     return spaceQuotaResp;
+  }
+
+  @Override
+  public TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
+    final TPipeConfigTransferReq configTransferReq =
+        new TPipeConfigTransferReq(
+            req.version, req.type, req.body, req instanceof AirGapPseudoTPipeTransferRequest);
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TPipeConfigTransferResp pipeConfigTransferResp =
+          configNodeClient.handleTransferConfigPlan(configTransferReq);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          != pipeConfigTransferResp.getStatus().getCode()) {
+        LOGGER.warn("Failed to handleTransferConfigPlan, status is {}.", pipeConfigTransferResp);
+      }
+      return new TPipeTransferResp(pipeConfigTransferResp.status)
+          .setBody(pipeConfigTransferResp.body);
+    } catch (Exception e) {
+      return new TPipeTransferResp(
+          new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+              .setMessage(e.toString()));
+    }
   }
 }

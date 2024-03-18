@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 public class ConfigProcedureStore implements IProcedureStore {
 
@@ -77,11 +78,8 @@ public class ConfigProcedureStore implements IProcedureStore {
 
   @Override
   public void update(Procedure procedure) {
-    UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
-    if (procedureType != null) {
-      updateProcedurePlan.setProcedure(procedure);
-    }
+    Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
+    final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
       getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.trigger;
 
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -47,12 +48,12 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   private String triggerName;
 
-  public DropTriggerProcedure() {
-    super();
+  public DropTriggerProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DropTriggerProcedure(String triggerName) {
-    super();
+  public DropTriggerProcedure(String triggerName, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.triggerName = triggerName;
   }
 
@@ -95,7 +96,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           LOG.info("Start to drop trigger [{}] on Config Nodes", triggerName);
           env.getConfigManager()
               .getConsensusManager()
-              .write(new DeleteTriggerInTablePlan(triggerName));
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(new DeleteTriggerInTablePlan(triggerName))
+                      : new DeleteTriggerInTablePlan(triggerName));
           setNextState(DropTriggerState.CONFIG_NODE_DROPPED);
           break;
 
@@ -155,7 +159,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DROP_TRIGGER_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE.getTypeCode()
+            : ProcedureType.DROP_TRIGGER_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(triggerName, stream);
   }
@@ -171,7 +178,9 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     if (that instanceof DropTriggerProcedure) {
       DropTriggerProcedure thatProc = (DropTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
+          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && thatProc.getCycles() == this.getCycles()
+          && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && (thatProc.triggerName).equals(this.triggerName);
     }
     return false;
@@ -179,6 +188,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), triggerName);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, triggerName);
   }
 }

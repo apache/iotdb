@@ -25,9 +25,6 @@ public class PipeProcessorConstant {
 
   public static final String PROCESSOR_KEY = "processor";
 
-  public static final String PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY =
-      "processor.down-sampling.interval-seconds";
-  public static final long PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE = 60;
   public static final String PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_KEY =
       "processor.down-sampling.split-file";
   public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;
@@ -53,6 +50,20 @@ public class PipeProcessorConstant {
   public static final long PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE = 120;
 
   public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
+
+  public static final String PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY =
+      "processor.tumbling-time.interval-seconds";
+  public static final long PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE = 60;
+
+  public static final String PROCESSOR_SDT_COMPRESSION_DEVIATION_KEY =
+      "processor.sdt.compression-deviation";
+  public static final double PROCESSOR_SDT_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_SDT_MIN_TIME_INTERVAL_KEY =
+      "processor.sdt.min-time-interval";
+  public static final long PROCESSOR_SDT_MIN_TIME_INTERVAL_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_SDT_MAX_TIME_INTERVAL_KEY =
+      "processor.sdt.max-time-interval";
+  public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
 
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
