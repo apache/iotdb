@@ -4,119 +4,166 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.subscription.meta.ConsumerGroupMeta;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionConsumerAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumerAgent.class);
 
-  // TODO: sync from node-commons
-  private final Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMeta =
-      new ConcurrentHashMap<>();
+  private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
+
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
+
+  public SubscriptionConsumerAgent() {
+    this.consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
+  }
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public void createConsumer(ConsumerConfig consumerConfig) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      // new consumer group
-      consumerGroupIDToConsumerGroupMeta.put(
-          consumerGroupID, new ConsumerGroupMeta(consumerConfig));
-      // create broker
-      SubscriptionAgent.broker().createSubscriptionBroker(consumerGroupID);
-    } else {
-      consumerGroupMeta.addConsumer(consumerConfig);
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      configNodeClient.createConsumer(
+          new TCreateConsumerReq(
+                  consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId())
+              .setConsumerAttributes(consumerConfig.getAttribute()));
+    } catch (ClientManagerException | TException e) {
+      LOGGER.warn("TODO");
     }
-    // TODO: call CN rpc
   }
 
   public void dropConsumer(ConsumerConfig consumerConfig) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    String consumerClientID = consumerConfig.getConsumerClientID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
-      return;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      configNodeClient.closeConsumer(
+          new TCloseConsumerReq(
+              consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId()));
+    } catch (ClientManagerException | TException e) {
+      LOGGER.warn("TODO");
     }
 
-    consumerGroupMeta.removeConsumer(consumerClientID);
-    if (consumerGroupMeta.isEmpty()) {
-      consumerGroupIDToConsumerGroupMeta.remove(consumerGroupID);
-      // TODO: broker TTL
-    }
-    // TODO: call CN rpc
+    // TODO: broker TTL if no consumer in consumer group
   }
 
-  public void subscribe(ConsumerConfig consumerConfig, List<String> topicNames) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    String consumerClientID = consumerConfig.getConsumerClientID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
-      return;
-    }
-
-    for (String topicName : topicNames) {
-      if (!SubscriptionAgent.topic().isTopicExisted(topicName)) {
-        LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
-      } else {
-        if (consumerGroupMeta.subscribe(consumerClientID, topicName)) {
-          SubscriptionAgent.topic().addSubscribedConsumerGroupID(topicName, consumerGroupID);
-        }
-        // TODO: call CN rpc
-      }
+  public void subscribe(ConsumerConfig consumerConfig, Set<String> topicNames) {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      configNodeClient.createSubscription(
+          new TSubscribeReq(
+              consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId(), topicNames));
+    } catch (ClientManagerException | TException e) {
+      LOGGER.warn("TODO");
     }
   }
 
-  public void unsubscribe(ConsumerConfig consumerConfig, List<String> topicNames) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    String consumerClientID = consumerConfig.getConsumerClientID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
-      return;
-    }
-
-    for (String topicName : topicNames) {
-      if (!SubscriptionAgent.topic().isTopicExisted(topicName)) {
-        LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
-      } else {
-        consumerGroupMeta.unsubscribe(consumerClientID, topicName);
-        // TODO: call CN rpc
-      }
+  public void unsubscribe(ConsumerConfig consumerConfig, Set<String> topicNames) {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      configNodeClient.dropSubscription(
+          new TUnsubscribeReq(
+              consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId(), topicNames));
+    } catch (ClientManagerException | TException e) {
+      LOGGER.warn("TODO");
     }
   }
 
-  public Set<String> subscribedTopic(ConsumerConfig consumerConfig) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    String consumerClientID = consumerConfig.getConsumerClientID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupID);
-      return Collections.emptySet();
-    }
-    return consumerGroupMeta.subscribedTopics(consumerClientID);
+  ////////////////////////// ConsumerGroupMeta Lock Control //////////////////////////
+
+  protected void acquireReadLock() {
+    consumerGroupMetaKeeper.acquireReadLock();
   }
 
-  public boolean isConsumerExisted(ConsumerConfig consumerConfig) {
-    String consumerGroupID = consumerConfig.getConsumerGroupID();
-    String consumerClientID = consumerConfig.getConsumerClientID();
-    ConsumerGroupMeta consumerGroupMeta = consumerGroupIDToConsumerGroupMeta.get(consumerGroupID);
-    if (Objects.isNull(consumerGroupMeta)) {
-      return false;
+  protected void releaseReadLock() {
+    consumerGroupMetaKeeper.releaseReadLock();
+  }
+
+  protected void acquireWriteLock() {
+    consumerGroupMetaKeeper.acquireWriteLock();
+  }
+
+  protected void releaseWriteLock() {
+    consumerGroupMetaKeeper.releaseWriteLock();
+  }
+
+  ////////////////////////// ConsumerGroupMeta Management Entry //////////////////////////
+
+  public TPushConsumerGroupRespExceptionMessage handleSingleConsumerGroupMetaChanges(
+      ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
+    acquireWriteLock();
+    try {
+      handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
+      return null;
+    } catch (Exception e) {
+      final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
+      final String errorMessage =
+          String.format(
+              "Failed to handle single consumer group meta changes for %s, because %s",
+              consumerGroupId, e.getMessage());
+      LOGGER.warn("Failed to handle single consumer group meta changes for {}", consumerGroupId, e);
+      return new TPushConsumerGroupRespExceptionMessage(
+          consumerGroupId, errorMessage, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
     }
-    return consumerGroupMeta.isConsumerExisted(consumerClientID);
+  }
+
+  private void handleSingleConsumerGroupMetaChangesInternal(
+      final ConsumerGroupMeta metaFromCoordinator) {
+    final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
+    consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+    consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+  }
+
+  public TPushConsumerGroupRespExceptionMessage handleDropConsumerGroup(String consumerGroupId) {
+    acquireWriteLock();
+    try {
+      handleDropConsumerGroupInternal(consumerGroupId);
+      return null;
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format(
+              "Failed to drop consumer group %s, because %s", consumerGroupId, e.getMessage());
+      LOGGER.warn("Failed to drop consumer group {}", consumerGroupId, e);
+      return new TPushConsumerGroupRespExceptionMessage(
+          consumerGroupId, errorMessage, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void handleDropConsumerGroupInternal(String consumerGroupId) {
+    consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+  }
+
+  public boolean isConsumerExisted(String consumerId, String consumerGroupId) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      return Objects.nonNull(consumerGroupMeta) && consumerGroupMeta.containsConsumer(consumerId);
+    } finally {
+      releaseReadLock();
+    }
   }
 }

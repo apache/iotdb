@@ -19,65 +19,95 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.subscription.meta.TopicMeta;
-import org.apache.iotdb.rpc.subscription.payload.request.TopicConfig;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubscriptionTopicAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
-  // TODO: sync from node-commons
-  // TODO: REMOVE INITIAL VALUE BEFORE LINKING WITH CN
-  private final Map<String, TopicMeta> topicNameToTopicMeta =
-      new ConcurrentHashMap<>(
-          Collections.singletonMap("topic1", new TopicMeta(new TopicConfig("topic1", "root.**"))));
+  private final TopicMetaKeeper topicMetaKeeper;
 
-  //////////////////////////// provided for subscription agent ////////////////////////////
-
-  public void createTopic(TopicConfig topicConfig) {
-    String topicName = topicConfig.getTopicName();
-    if (isTopicExisted(topicName)) {
-      LOGGER.warn("Subscription: topic [{}] has already existed", topicName);
-      return;
-    }
-    topicNameToTopicMeta.put(topicName, new TopicMeta(topicConfig));
-    // TODO: call CN rpc
+  public SubscriptionTopicAgent() {
+    this.topicMetaKeeper = new TopicMetaKeeper();
   }
 
-  public void dropTopic(String topicName) {
-    if (!topicNameToTopicMeta.containsKey(topicName)) {
-      LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
-      return;
-    }
-    TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
-    if (topicMeta.hasSubscribedConsumerGroup()) {
-      LOGGER.warn(
-          "Subscription: drop topic [{}] failed, some consumer groups have subscribed the topic",
-          topicName);
-      return;
-    }
-    topicNameToTopicMeta.remove(topicName);
-    // TODO: call CN rpc
+  ////////////////////////// TopicMeta Lock Control //////////////////////////
+
+  protected void acquireReadLock() {
+    topicMetaKeeper.acquireReadLock();
   }
 
-  public void addSubscribedConsumerGroupID(String topicName, String consumerGroupID) {
-    TopicMeta topicMeta = topicNameToTopicMeta.get(topicName);
-    if (Objects.isNull(topicMeta)) {
-      LOGGER.warn("Subscription: topic [{}] does not exist", topicName);
-      return;
+  protected void releaseReadLock() {
+    topicMetaKeeper.releaseReadLock();
+  }
+
+  protected void acquireWriteLock() {
+    topicMetaKeeper.acquireWriteLock();
+  }
+
+  protected void releaseWriteLock() {
+    topicMetaKeeper.releaseWriteLock();
+  }
+
+  ////////////////////////// Topic Management Entry //////////////////////////
+
+  public TPushTopicRespExceptionMessage handleSingleTopicMetaChanges(
+      TopicMeta topicMetaFromCoordinator) {
+    acquireWriteLock();
+    try {
+      handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
+      return null;
+    } catch (Exception e) {
+      final String topicName = topicMetaFromCoordinator.getTopicName();
+      final String errorMessage =
+          String.format(
+              "Failed to handle single topic meta changes for %s, because %s",
+              topicName, e.getMessage());
+      LOGGER.warn("Failed to handle single topic meta changes for {}", topicName, e);
+      return new TPushTopicRespExceptionMessage(
+          topicName, errorMessage, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
     }
-    topicMeta.addSubscribedConsumerGroupID(consumerGroupID);
+  }
+
+  private void handleSingleTopicMetaChangesInternal(final TopicMeta metaFromCoordinator) {
+    final String topicName = metaFromCoordinator.getTopicName();
+    topicMetaKeeper.removeTopicMeta(topicName);
+    topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+  }
+
+  public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
+    acquireWriteLock();
+    try {
+      handleDropTopicInternal(topicName);
+      return null;
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format("Failed to drop topic %s, because %s", topicName, e.getMessage());
+      LOGGER.warn("Failed to drop topic {}", topicName, e);
+      return new TPushTopicRespExceptionMessage(
+          topicName, errorMessage, System.currentTimeMillis());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void handleDropTopicInternal(String topicName) {
+    topicMetaKeeper.removeTopicMeta(topicName);
   }
 
   public boolean isTopicExisted(String topicName) {
-    return topicNameToTopicMeta.containsKey(topicName);
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
   }
 }

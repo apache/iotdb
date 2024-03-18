@@ -31,7 +31,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SubscriptionReceiverV1 implements SubscriptionReceiver {
@@ -204,7 +205,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // subscribe topics
-    List<String> topicNames = req.getTopicNames();
+    Set<String> topicNames = req.getTopicNames();
     SubscriptionAgent.consumer().subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -225,7 +226,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // unsubscribe topics
-    List<String> topicNames = req.getTopicNames();
+    Set<String> topicNames = req.getTopicNames();
     SubscriptionAgent.consumer().unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -245,7 +246,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // poll
-    List<String> topicNames = req.getTopicNames();
+    Set<String> topicNames = req.getTopicNames();
     List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsList =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames);
     List<ByteBuffer> serializedEnrichedTabletsList =

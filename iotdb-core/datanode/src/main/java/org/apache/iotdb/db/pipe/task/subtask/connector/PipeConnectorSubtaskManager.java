@@ -148,7 +148,7 @@ public class PipeConnectorSubtaskManager {
           // TODO: handle non-existence
           final String topicName =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_TOPIC_KEY);
-          final String consumerGroupID =
+          final String consumerGroupId =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
           final SubscriptionConnectorSubtask subtask =
               new SubscriptionConnectorSubtask(
@@ -161,7 +161,7 @@ public class PipeConnectorSubtaskManager {
                   pendingQueue,
                   pipeConnector,
                   topicName,
-                  consumerGroupID);
+                  consumerGroupId);
           final PipeAbstractConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
               new SubscriptionConnectorSubtaskLifeCycle(
                   PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor(),

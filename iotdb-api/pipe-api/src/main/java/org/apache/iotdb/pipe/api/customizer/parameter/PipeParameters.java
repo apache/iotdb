@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  */
 public class PipeParameters {
 
-  private final Map<String, String> attributes;
+  protected final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
     this.attributes = attributes == null ? new HashMap<>() : attributes;

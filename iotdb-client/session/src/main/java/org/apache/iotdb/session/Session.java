@@ -32,7 +32,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
@@ -90,6 +90,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -3682,17 +3683,17 @@ public class Session implements ISession {
   }
 
   @Override
-  public void subscribe(List<String> topicNames) throws Exception {
+  public void subscribe(Set<String> topicNames) throws Exception {
     defaultSessionConnection.subscribe(topicNames);
   }
 
   @Override
-  public void unsubscribe(List<String> topicNames) throws Exception {
+  public void unsubscribe(Set<String> topicNames) throws Exception {
     defaultSessionConnection.unsubscribe(topicNames);
   }
 
   @Override
-  public List<EnrichedTablets> poll(List<String> topicNames) throws Exception {
+  public List<EnrichedTablets> poll(Set<String> topicNames) throws Exception {
     return defaultSessionConnection.poll(topicNames);
   }
 

@@ -29,7 +29,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   private final String topicName;
 
-  private final String consumerGroupID;
+  private final String consumerGroupId;
 
   public SubscriptionConnectorSubtask(
       String taskID,
@@ -39,7 +39,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector,
       String topicName,
-      String consumerGroupID) {
+      String consumerGroupId) {
     super(
         taskID,
         creationTime,
@@ -48,7 +48,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
         inputPendingQueue,
         outputPipeConnector);
     this.topicName = topicName;
-    this.consumerGroupID = consumerGroupID;
+    this.consumerGroupId = consumerGroupId;
   }
 
   @Override
@@ -62,8 +62,8 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
     return topicName;
   }
 
-  public String getConsumerGroupID() {
-    return consumerGroupID;
+  public String getConsumerGroupId() {
+    return consumerGroupId;
   }
 
   public BoundedBlockingPendingQueue<Event> getInputPendingQueue() {

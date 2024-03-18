@@ -26,16 +26,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
 
-  // TODO: list -> set
-  private transient List<String> topicNames = new ArrayList<>();
+  private transient Set<String> topicNames = new HashSet<>();
 
-  public List<String> getTopicNames() {
+  public Set<String> getTopicNames() {
     return topicNames;
   }
 
@@ -45,7 +44,7 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeSubscribeReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeSubscribeReq toTPipeSubscribeReq(List<String> topicNames)
+  public static PipeSubscribeSubscribeReq toTPipeSubscribeReq(Set<String> topicNames)
       throws IOException {
     final PipeSubscribeSubscribeReq req = new PipeSubscribeSubscribeReq();
 
@@ -55,7 +54,7 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
     req.type = PipeSubscribeRequestType.SUBSCRIBE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeStringList(topicNames, outputStream);
+      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -67,7 +66,7 @@ public class PipeSubscribeSubscribeReq extends TPipeSubscribeReq {
     final PipeSubscribeSubscribeReq req = new PipeSubscribeSubscribeReq();
 
     if (Objects.nonNull(subscribeReq.body) && subscribeReq.body.hasRemaining()) {
-      req.topicNames = ReadWriteIOUtils.readStringList(subscribeReq.body);
+      req.topicNames = ReadWriteIOUtils.readObjectSet(subscribeReq.body);
     }
 
     req.version = subscribeReq.version;

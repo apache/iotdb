@@ -26,7 +26,7 @@ import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface ISession extends AutoCloseable {
 
@@ -550,11 +551,11 @@ public interface ISession extends AutoCloseable {
 
   void dropConsumer() throws Exception;
 
-  void subscribe(List<String> topicNames) throws Exception;
+  void subscribe(Set<String> topicNames) throws Exception;
 
-  void unsubscribe(List<String> topicNames) throws Exception;
+  void unsubscribe(Set<String> topicNames) throws Exception;
 
-  List<EnrichedTablets> poll(List<String> topicNames) throws Exception;
+  List<EnrichedTablets> poll(Set<String> topicNames) throws Exception;
 
   void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception;
 }

@@ -17,14 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.rpc.subscription.payload.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Map;
 
 public class ConsumerConfig extends PipeParameters {
+
+  public ConsumerConfig() {
+    super(Collections.emptyMap());
+  }
+
   public ConsumerConfig(Map<String, String> attributes) {
     super(attributes);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(attributes, stream);
+  }
+
+  public static ConsumerConfig deserialize(ByteBuffer buffer) {
+    return new ConsumerConfig(ReadWriteIOUtils.readMap(buffer));
+  }
+
+  public String getConsumerId() {
+    return getString(ConsumerConstant.CONSUMER_ID_KEY);
+  }
+
+  public String getConsumerGroupId() {
+    return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
   }
 }

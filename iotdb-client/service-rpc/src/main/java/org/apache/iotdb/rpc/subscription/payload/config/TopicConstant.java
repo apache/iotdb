@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.rpc.subscription.payload.config;
 
 public class TopicConstant {
 

@@ -23,7 +23,8 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -78,16 +79,17 @@ public class IoTDBSubscriptionSimpleIT {
 
     // subscription
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.createConsumer(new ConsumerConfig("cg1", "c1"));
-      session.subscribe(Collections.singletonList("topic1"));
-      // TODO: manually create pipe
-      session.executeNonQueryStatement(
-          "create pipe topic1_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='topic1', 'consumer-group'='cg1')");
+      Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+
+      session.createConsumer(new ConsumerConfig(consumerAttributes));
+      session.subscribe(Collections.singleton("topic1"));
 
       List<EnrichedTablets> enrichedTabletsList;
       while (true) {
         Thread.sleep(1000); // wait some time
-        enrichedTabletsList = session.poll(Collections.singletonList("topic1"));
+        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
         if (enrichedTabletsList.isEmpty()) {
           break;
         }
@@ -102,7 +104,7 @@ public class IoTDBSubscriptionSimpleIT {
         }
         session.commit(topicNameToSubscriptionCommitIds);
       }
-      session.unsubscribe(Collections.singletonList("topic1"));
+      session.unsubscribe(Collections.singleton("topic1"));
       session.dropConsumer();
     } catch (Exception e) {
       fail(e.getMessage());
@@ -138,18 +140,18 @@ public class IoTDBSubscriptionSimpleIT {
           new Thread(
               () -> {
                 try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                  session.createConsumer(new ConsumerConfig("cg1", String.format("c%s", idx)));
-                  session.subscribe(Collections.singletonList("topic1"));
-                  if (idx == 0) {
-                    // TODO: manually create pipe
-                    session.executeNonQueryStatement(
-                        "create pipe topic1_cg1 with source ('source'='iotdb-source', 'inclusion'='data', 'inclusion.exclusion'='deletion') with sink ('sink'='subscription-sink', 'topic'='topic1', 'consumer-group'='cg1')");
-                  }
+                  Map<String, String> consumerAttributes = new HashMap<>();
+                  consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                  consumerAttributes.put(
+                      ConsumerConstant.CONSUMER_ID_KEY, String.format("c%s", idx));
+
+                  session.createConsumer(new ConsumerConfig(consumerAttributes));
+                  session.subscribe(Collections.singleton("topic1"));
 
                   List<EnrichedTablets> enrichedTabletsList;
                   while (true) {
                     Thread.sleep(1000); // wait some time
-                    enrichedTabletsList = session.poll(Collections.singletonList("topic1"));
+                    enrichedTabletsList = session.poll(Collections.singleton("topic1"));
                     if (enrichedTabletsList.isEmpty()) {
                       break;
                     }
@@ -167,7 +169,7 @@ public class IoTDBSubscriptionSimpleIT {
                     }
                     session.commit(topicNameToSubscriptionCommitIds);
                   }
-                  session.unsubscribe(Collections.singletonList("topic1"));
+                  session.unsubscribe(Collections.singleton("topic1"));
                   session.dropConsumer();
                 } catch (Exception e) {
                   fail(e.getMessage());

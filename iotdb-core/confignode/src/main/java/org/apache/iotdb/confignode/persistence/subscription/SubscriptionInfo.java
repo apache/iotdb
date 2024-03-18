@@ -431,7 +431,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
-      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIDs()) {
+      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIds()) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());

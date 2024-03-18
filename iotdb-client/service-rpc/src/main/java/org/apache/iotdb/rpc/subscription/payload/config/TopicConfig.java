@@ -17,14 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.rpc.subscription.payload.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Map;
 
 public class TopicConfig extends PipeParameters {
+
+  public TopicConfig() {
+    super(Collections.emptyMap());
+  }
+
   public TopicConfig(Map<String, String> attributes) {
     super(attributes);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(attributes, stream);
+  }
+
+  public static TopicConfig deserialize(ByteBuffer buffer) {
+    return new TopicConfig(ReadWriteIOUtils.readMap(buffer));
   }
 }

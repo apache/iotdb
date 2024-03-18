@@ -30,7 +30,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.request.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -91,6 +91,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -1665,7 +1666,7 @@ public class SessionConnection {
     }
   }
 
-  public void subscribe(List<String> topicNames) throws Exception {
+  public void subscribe(Set<String> topicNames) throws Exception {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
@@ -1673,7 +1674,7 @@ public class SessionConnection {
     }
   }
 
-  public void unsubscribe(List<String> topicNames) throws Exception {
+  public void unsubscribe(Set<String> topicNames) throws Exception {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
@@ -1681,7 +1682,7 @@ public class SessionConnection {
     }
   }
 
-  public List<EnrichedTablets> poll(List<String> topicNames) throws Exception {
+  public List<EnrichedTablets> poll(Set<String> topicNames) throws Exception {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
