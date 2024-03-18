@@ -62,7 +62,7 @@ public class SessionPoolExample {
         new SessionPool.Builder()
             .nodeUrls(nodeUrls)
             .user("root")
-            .password("root")
+            .password("root1")
             .maxSize(3)
             .build();
   }
