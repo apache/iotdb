@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -75,6 +77,15 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     }
 
     super.start();
+  }
+
+  @Override
+  protected void triggerSnapshot() {
+    try {
+      SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId);
+    } catch (ConsensusException e) {
+      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+    }
   }
 
   // This method will return events only after schema region leader gets ready

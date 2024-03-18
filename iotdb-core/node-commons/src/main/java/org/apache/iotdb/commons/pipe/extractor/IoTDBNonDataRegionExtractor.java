@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.LinkedList;
@@ -61,17 +62,30 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   }
 
   private long getNextIndexAfterSnapshot() {
+    long nextIndex = findSnapshot();
+    if (nextIndex == Long.MIN_VALUE) {
+      triggerSnapshot();
+      nextIndex = findSnapshot();
+      if (nextIndex == Long.MIN_VALUE) {
+        throw new PipeException("Cannot get the newest snapshot after triggering one.");
+      }
+    }
+    return nextIndex;
+  }
+
+  private long findSnapshot() {
     final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2Snapshots =
         getListeningQueue().findAvailableSnapshots();
-    // TODO: Trigger snapshot if not exists
     final long nextIndex =
         Objects.nonNull(queueTailIndex2Snapshots.getLeft())
                 && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE
             ? queueTailIndex2Snapshots.getLeft() + 1
-            : 0;
+            : Long.MIN_VALUE;
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
     return nextIndex;
   }
+
+  protected abstract void triggerSnapshot();
 
   @Override
   public EnrichedEvent supply() throws Exception {

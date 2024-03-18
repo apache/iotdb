@@ -286,13 +286,13 @@ public class IoTDBDescriptor {
                 .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
                 .trim()));
 
-    double rejectProportion =
+    final double rejectProportion =
         Double.parseDouble(
             properties
                 .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
                 .trim());
 
-    double devicePathCacheProportion =
+    final double devicePathCacheProportion =
         Double.parseDouble(
             properties
                 .getProperty(
@@ -753,7 +753,7 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    // the default fill interval in LinearFill and PreviousFill
+    // The default fill interval in LinearFill and PreviousFill
     conf.setDefaultFillInterval(
         Integer.parseInt(
             properties.getProperty(
@@ -965,27 +965,27 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
-    // commons
+    // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
-    // timed flush memtable
+    // Timed flush memtable
     loadTimedService(properties);
 
-    // set tsfile-format config
+    // Set tsfile-format config
     loadTsFileProps(properties);
 
-    // make RPCTransportFactory taking effect.
+    // Make RPCTransportFactory taking effect.
     ZeroCopyRpcTransportFactory.reInit();
     DeepCopyRpcTransportFactory.reInit();
 
     // UDF
     loadUDFProps(properties);
 
-    // thrift ssl
+    // Thrift ssl
     initThriftSSL(properties);
 
-    // trigger
+    // Trigger
     loadTriggerProps(properties);
 
     // CQ
@@ -994,20 +994,20 @@ public class IoTDBDescriptor {
     // Pipe
     loadPipeProps(properties);
 
-    // cluster
+    // Cluster
     loadClusterProps(properties);
 
-    // shuffle
+    // Shuffle
     loadShuffleProps(properties);
 
-    // author cache
+    // Author cache
     loadAuthorCache(properties);
 
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
-    // the buffer for sort operator to calculate
+    // The buffer for sort operator to calculate
     conf.setSortBufferSize(
         Long.parseLong(
             properties

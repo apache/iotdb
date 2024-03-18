@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.client;
 
 import org.apache.iotdb.flink.sql.function.IoTDBCDCSourceFunction;

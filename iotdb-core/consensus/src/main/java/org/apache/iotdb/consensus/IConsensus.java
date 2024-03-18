@@ -143,7 +143,7 @@ public interface IConsensus {
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
-  // management API
+  // Management API
 
   /**
    * Transfer the leadership to other peer to meet some load balancing needs.
@@ -167,7 +167,7 @@ public interface IConsensus {
    * Determine if the current peer is the leader in the corresponding consensus group.
    *
    * @param groupId the consensus group
-   * @return true or false
+   * @return {@code true} or {@code false}
    */
   boolean isLeader(ConsensusGroupId groupId);
 
@@ -176,7 +176,7 @@ public interface IConsensus {
    * corresponding consensus group.
    *
    * @param groupId the consensus group
-   * @return true or false
+   * @return {@code true} or {@code false}
    */
   boolean isLeaderReady(ConsensusGroupId groupId);
 
