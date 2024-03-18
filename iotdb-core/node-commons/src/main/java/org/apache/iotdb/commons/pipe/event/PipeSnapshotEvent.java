@@ -24,10 +24,14 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public abstract class PipeSnapshotEvent extends EnrichedEvent implements SerializableEvent {
   protected final PipeSnapshotResourceManager resourceManager;
 
   protected ProgressIndex progressIndex;
+  protected Set<Short> transferredTypes;
 
   protected PipeSnapshotEvent(
       String pipeName,
@@ -56,5 +60,13 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  /////////////////////////////// Type parsing ///////////////////////////////
+
+  public String toSealTypeString() {
+    return String.join(
+        ",",
+        transferredTypes.stream().map(type -> Short.toString(type)).collect(Collectors.toSet()));
   }
 }

@@ -62,8 +62,6 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         PlanNodeType.CREATE_LOGICAL_VIEW.getNodeType(), StatementType.CREATE_LOGICAL_VIEW);
   }
 
-  private Set<Short> transferredTypes;
-
   public PipeSchemaRegionSnapshotEvent() {
     // Used for deserialization
     this(null, null, null);
@@ -103,7 +101,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       mTreeSnapshotPath = resourceManager.increaseSnapshotReference(mTreeSnapshotPath);
-      tLogPath = resourceManager.increaseSnapshotReference(tLogPath);
+      if (!tLogPath.isEmpty()) {
+        tLogPath = resourceManager.increaseSnapshotReference(tLogPath);
+      }
       return true;
     } catch (IOException e) {
       LOGGER.warn(
@@ -119,7 +119,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       resourceManager.decreaseSnapshotReference(mTreeSnapshotPath);
-      resourceManager.decreaseSnapshotReference(tLogPath);
+      if (!tLogPath.isEmpty()) {
+        resourceManager.decreaseSnapshotReference(tLogPath);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -167,17 +169,18 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   /////////////////////////////// Type parsing ///////////////////////////////
 
+  public static boolean needTransferSnapshot(Set<PlanNodeType> listenedTypeSet) {
+    final Set<Short> types = new HashSet<>(PLAN_NODE_2_STATEMENT_TYPE_MAP.keySet());
+    types.retainAll(
+        listenedTypeSet.stream().map(PlanNodeType::getNodeType).collect(Collectors.toSet()));
+    return !types.isEmpty();
+  }
+
   public void confineTransferredTypes(Set<PlanNodeType> listenedTypeSet) {
     final Set<Short> types = new HashSet<>(PLAN_NODE_2_STATEMENT_TYPE_MAP.keySet());
     types.retainAll(
         listenedTypeSet.stream().map(PlanNodeType::getNodeType).collect(Collectors.toSet()));
     transferredTypes = types;
-  }
-
-  public String toSealTypeString() {
-    return String.join(
-        ",",
-        transferredTypes.stream().map(type -> Short.toString(type)).collect(Collectors.toSet()));
   }
 
   public static Set<StatementType> getStatementTypeSet(String sealTypes) {

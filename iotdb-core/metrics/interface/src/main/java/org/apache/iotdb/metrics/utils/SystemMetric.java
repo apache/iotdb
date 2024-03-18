@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.utils;
 
-// universal metric related to system
+// Universal metric related to system
 public enum SystemMetric {
   // thread pool related
   THREAD_POOL_ACTIVE_THREAD_COUNT("thread_pool_active_thread_count"),

@@ -80,6 +80,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean needTransferSnapshot() {
+    return PipeSchemaRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
+  }
+
+  @Override
   protected void triggerSnapshot() {
     try {
       SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId);

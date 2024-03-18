@@ -85,13 +85,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
 
     this.resource = resource;
+    tsFile = resource.getTsFile();
 
     final ModificationFile modFile = resource.getModFile();
     this.isWithMod = isWithMod && modFile.exists();
-
-    // The tsFile and modFile will be set when the "internallyIncreaseResourceReferenceCount" is
-    // called. The tsFile will be a hardlink file, and the modFile will a copied modFile's reference
-    // iff the modFile exists and should be transferred
+    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -159,18 +157,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.tsfile().increaseFileReference(resource.getTsFile(), true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
       if (isWithMod) {
-        modFile =
-            PipeResourceManager.tsfile()
-                .increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false);
       }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for TsFile %s error. Holder Message: %s",
-              resource.getTsFile().getPath(), holderMessage),
+              "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
+              tsFile, modFile, holderMessage),
           e);
       return false;
     }

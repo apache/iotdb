@@ -77,6 +77,8 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
       events.forEach(
           event -> event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName()));
       queueTailIndex2SnapshotsCache.setRight(events);
+      LOGGER.info(
+          "Pipe listening queue snapshot cache is updated: {}", queueTailIndex2SnapshotsCache);
     }
   }
 

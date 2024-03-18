@@ -77,7 +77,7 @@ public class PipeTransferTsFileInsertionEventHandler
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
-    transferMod = Objects.nonNull(modFile) && connector.supportModsIfIsDataNodeReceiver();
+    transferMod = event.isWithMod() && connector.supportModsIfIsDataNodeReceiver();
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

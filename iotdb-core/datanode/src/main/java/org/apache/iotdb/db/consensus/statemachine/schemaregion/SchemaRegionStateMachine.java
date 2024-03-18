@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -56,7 +57,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void start() {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -87,29 +88,29 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    if (schemaRegion.createSnapshot(snapshotDir)
-        && PipeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .createSnapshot(snapshotDir)) {
+    if (schemaRegion.createSnapshot(snapshotDir)) {
       Pair<Path, Path> snapshotPaths =
           SchemaRegionSnapshotParser.getSnapshotPaths(
               Integer.toString(schemaRegion.getSchemaRegionId().getId()));
+      SchemaRegionListeningQueue listener =
+          PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
       if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
         logger.error(
             "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
             snapshotPaths);
+
         // Do not affect the normal operation of the state machine when pipe
         // snapshot listening failure is encountered
+        listener.createSnapshot(snapshotDir);
         return true;
       }
-      PipeAgent.runtime()
-          .schemaListener(schemaRegion.getSchemaRegionId())
-          .tryListenToSnapshot(
-              snapshotPaths.getLeft().toString(),
-              Objects.nonNull(snapshotPaths.getRight())
-                  ? snapshotPaths.getRight().toString()
-                  : null,
-              schemaRegion.getDatabaseFullPath());
+      listener.tryListenToSnapshot(
+          snapshotPaths.getLeft().toString(),
+          Objects.nonNull(snapshotPaths.getRight()) ? snapshotPaths.getRight().toString() : null,
+          schemaRegion.getDatabaseFullPath());
+      // We create listener snapshot after the latest snapshot is successfully listened
+      // to make the recorded snapshot after restart as fresh as possible
+      listener.createSnapshot(snapshotDir);
       return true;
     }
     return false;

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -32,11 +33,28 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigRegionSnapshotEvent.class);
   private String snapshotPath;
+  private static final Set<Short> CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
+                  ConfigPhysicalPlanType.CreateUser.getPlanType(),
+                  ConfigPhysicalPlanType.CreateRole.getPlanType(),
+                  ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
+                  ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType(),
+                  ConfigPhysicalPlanType.GrantUser.getPlanType(),
+                  ConfigPhysicalPlanType.GrantRole.getPlanType(),
+                  ConfigPhysicalPlanType.SetTTL.getPlanType())));
 
   public PipeConfigRegionSnapshotEvent() {
     // Used for deserialization
@@ -109,5 +127,34 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
     snapshotPath = ReadWriteIOUtils.readString(buffer);
+  }
+
+  /////////////////////////////// Type parsing ///////////////////////////////
+
+  public static boolean needTransferSnapshot(Set<ConfigPhysicalPlanType> listenedTypeSet) {
+    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
+    types.retainAll(
+        listenedTypeSet.stream()
+            .map(ConfigPhysicalPlanType::getPlanType)
+            .collect(Collectors.toSet()));
+    return !types.isEmpty();
+  }
+
+  public void confineTransferredTypes(Set<ConfigPhysicalPlanType> listenedTypeSet) {
+    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
+    types.retainAll(
+        listenedTypeSet.stream()
+            .map(ConfigPhysicalPlanType::getPlanType)
+            .collect(Collectors.toSet()));
+    transferredTypes = types;
+  }
+
+  public static Set<ConfigPhysicalPlanType> getConfigPhysicalPlanTypeSet(String sealTypes) {
+    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
+    types.retainAll(
+        Arrays.stream(sealTypes.split(",")).map(Short::valueOf).collect(Collectors.toSet()));
+    return types.stream()
+        .map(ConfigPhysicalPlanType::convertToConfigPhysicalPlanType)
+        .collect(Collectors.toSet());
   }
 }

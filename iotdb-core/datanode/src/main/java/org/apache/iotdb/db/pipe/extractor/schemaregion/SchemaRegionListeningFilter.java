@@ -44,8 +44,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
- * {@link SchemaRegionListeningFilter} is to classify the {@link PlanNode}s to help linkedList and
- * pipe to collect.
+ * {@link SchemaRegionListeningFilter} is to classify the {@link PlanNode}s to help {@link
+ * SchemaRegionListeningQueue} and pipe to collect.
  */
 public class SchemaRegionListeningFilter {
 

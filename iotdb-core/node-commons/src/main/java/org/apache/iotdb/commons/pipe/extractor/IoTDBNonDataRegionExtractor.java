@@ -62,13 +62,20 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   }
 
   private long getNextIndexAfterSnapshot() {
-    long nextIndex = findSnapshot();
-    if (nextIndex == Long.MIN_VALUE) {
-      triggerSnapshot();
+    long nextIndex;
+    if (needTransferSnapshot()) {
       nextIndex = findSnapshot();
       if (nextIndex == Long.MIN_VALUE) {
-        throw new PipeException("Cannot get the newest snapshot after triggering one.");
+        triggerSnapshot();
+        nextIndex = findSnapshot();
+        if (nextIndex == Long.MIN_VALUE) {
+          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+        }
       }
+    } else {
+      // This will listen to the newest element after the iterator is created
+      // Mainly used for alter/deletion sync
+      nextIndex = Long.MAX_VALUE;
     }
     return nextIndex;
   }
@@ -84,6 +91,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
     return nextIndex;
   }
+
+  protected abstract boolean needTransferSnapshot();
 
   protected abstract void triggerSnapshot();
 

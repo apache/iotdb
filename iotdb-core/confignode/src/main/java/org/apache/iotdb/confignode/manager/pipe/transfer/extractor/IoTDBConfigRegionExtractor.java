@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -48,7 +49,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected void triggerSnapshot() {}
+  protected boolean needTransferSnapshot() {
+    return PipeConfigRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
+  }
+
+  @Override
+  protected void triggerSnapshot() {
+    // TODO
+  }
 
   @Override
   protected boolean isTypeListened(Event event) {
