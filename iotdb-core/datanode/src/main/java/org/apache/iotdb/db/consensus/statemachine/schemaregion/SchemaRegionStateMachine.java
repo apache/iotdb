@@ -110,7 +110,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       }
       listener.tryListenToSnapshot(
           snapshotPaths.getLeft().toString(),
-          Objects.nonNull(snapshotPaths.getRight()) ? snapshotPaths.getRight().toString() : null,
+          // Transfer tLogSnapshot iff it exists and is non-empty
+          Objects.nonNull(snapshotPaths.getRight())
+                  && snapshotPaths.getRight().toFile().length() > 0
+              ? snapshotPaths.getRight().toString()
+              : null,
           schemaRegion.getDatabaseFullPath());
       // We create listener snapshot after the latest snapshot is successfully listened
       // to make the recorded snapshot after restart as fresh as possible

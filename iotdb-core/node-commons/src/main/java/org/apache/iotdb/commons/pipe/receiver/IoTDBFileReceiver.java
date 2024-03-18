@@ -437,6 +437,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         return new TPipeTransferResp(status);
       }
 
+      // Any of the transferred files cannot be empty, or else the receiver
+      // will not sense this file because no pieces are sent
       for (int i = 0; i < req.getFileNames().size(); ++i) {
         final TPipeTransferResp resp =
             i == req.getFileNames().size() - 1

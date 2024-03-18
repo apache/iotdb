@@ -320,7 +320,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Statement statement = generator.next();
       if (executionTypes.contains(statement.getType())) {
         // The statements do not contain AlterLogicalViewStatements
-        TSStatus status = executeStatementAndClassifyExceptions(generator.next());
+        TSStatus status = executeStatementAndClassifyExceptions(statement);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
