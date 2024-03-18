@@ -64,6 +64,12 @@ public class IoTDBSubscriptionSimpleIT {
 
   @Test
   public void basicSubscriptionTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic1");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
     // insert some history data
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -116,6 +122,12 @@ public class IoTDBSubscriptionSimpleIT {
   @Test
   public void multiConsumersSubscriptionTest() throws Exception {
     ConcurrentHashMap<Long, Long> timestamps = new ConcurrentHashMap<>();
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic1");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     List<Thread> threads = new ArrayList<>();
     Thread t =

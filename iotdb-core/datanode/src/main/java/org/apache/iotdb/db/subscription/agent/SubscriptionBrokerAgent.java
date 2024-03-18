@@ -28,11 +28,6 @@ public class SubscriptionBrokerAgent {
   private final Map<String, SubscriptionBroker> consumerGroupIdToSubscriptionBroker =
       new ConcurrentHashMap<>();
 
-  public void createSubscriptionBroker(String consumerGroupId) {
-    consumerGroupIdToSubscriptionBroker.put(
-        consumerGroupId, new SubscriptionBroker(consumerGroupId));
-  }
-
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<Pair<ByteBuffer, EnrichedTablets>> poll(
@@ -64,8 +59,9 @@ public class SubscriptionBrokerAgent {
     String consumerGroupId = subtask.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
-      return;
+      LOGGER.info("Subscription: create broker for consumer group [{}]", consumerGroupId);
+      broker = new SubscriptionBroker(consumerGroupId);
+      consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
     }
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }

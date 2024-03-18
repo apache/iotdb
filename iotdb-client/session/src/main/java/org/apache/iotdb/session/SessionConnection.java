@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -89,6 +90,7 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1698,6 +1700,38 @@ public class SessionConnection {
             PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
     if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.status.code) {
       throw new RuntimeException(resp.status.toString());
+    }
+  }
+
+  public void subscribeTest() {
+    try {
+      client.executeStatementV2(
+          new TSExecuteStatementReq(sessionId, "create topic demo", statementId));
+      Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+      client.pipeSubscribe(
+          PipeSubscribeHandshakeReq.toTPipeSubscribeReq(new ConsumerConfig(consumerAttributes)));
+      client.pipeSubscribe(
+          PipeSubscribeSubscribeReq.toTPipeSubscribeReq(Collections.singleton("demo")));
+      Thread.sleep(5000);
+      TPipeSubscribeResp resp =
+          client.pipeSubscribe(
+              PipeSubscribePollReq.toTPipeSubscribeReq(Collections.singleton("demo")));
+      PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+      for (EnrichedTablets enrichedTablets : pollResp.getEnrichedTabletsList()) {
+        System.out.println(enrichedTablets.getTopicName());
+        System.out.println(enrichedTablets.getTablets());
+        System.out.println(enrichedTablets.getSubscriptionCommitIds());
+        topicNameToSubscriptionCommitIds
+            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+            .addAll(enrichedTablets.getSubscriptionCommitIds());
+      }
+      client.pipeSubscribe(
+          PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

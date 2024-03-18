@@ -92,35 +92,36 @@ public class SessionExample {
     createMultiTimeseries();
     insertRecord();
     insertTablet();
-    //    insertTabletWithNullValues();
-    //    insertTablets();
-    //    insertRecords();
-    //    insertText();
-    //    selectInto();
-    //    createAndDropContinuousQueries();
-    //    nonQuery();
-    query();
-    //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
-    //    queryByIterator();
-    //    deleteData();
-    //    deleteTimeseries();
-    //    setTimeout();
-
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    fastLastDataQueryForOneDevice();
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+    session.subscribeTest();
+    //    //    insertTabletWithNullValues();
+    //    //    insertTablets();
+    //    //    insertRecords();
+    //    //    insertText();
+    //    //    selectInto();
+    //    //    createAndDropContinuousQueries();
+    //    //    nonQuery();
+    //    query();
+    //    //    queryWithTimeout();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
+    //    //    queryByIterator();
+    //    //    deleteData();
+    //    //    deleteTimeseries();
+    //    //    setTimeout();
+    //
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
+    //
+    //    // set session fetchSize
+    //    sessionEnableRedirect.setFetchSize(10000);
+    //
+    //    fastLastDataQueryForOneDevice();
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
     session.close();
   }
 

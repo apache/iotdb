@@ -3701,4 +3701,8 @@ public class Session implements ISession {
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
     defaultSessionConnection.commit(topicNameToSubscriptionCommitIds);
   }
+
+  public void subscribeTest() {
+    defaultSessionConnection.subscribeTest();
+  }
 }
