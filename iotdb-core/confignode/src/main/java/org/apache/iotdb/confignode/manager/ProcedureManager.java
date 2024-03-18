@@ -166,8 +166,8 @@ public class ProcedureManager {
       executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
       executor.startWorkers();
       executor.startCompletedCleaner(
-              CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
-              CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+          CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+          CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
       store.start();
       LOGGER.info("ProcedureManager is started successfully.");
     }

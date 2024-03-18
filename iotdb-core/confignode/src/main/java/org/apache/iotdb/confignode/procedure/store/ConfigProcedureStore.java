@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-public class ConfigProcedureStore implements IProcedureStore {
+public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedureEnv> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
@@ -72,12 +73,12 @@ public class ConfigProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<Procedure> procedureList) {
-    procedureInfo.load(procedureList);
+  public List<Procedure<ConfigNodeProcedureEnv>> load() {
+    return procedureInfo.load();
   }
 
   @Override
-  public void update(Procedure procedure) {
+  public void update(Procedure<ConfigNodeProcedureEnv> procedure) {
     Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {

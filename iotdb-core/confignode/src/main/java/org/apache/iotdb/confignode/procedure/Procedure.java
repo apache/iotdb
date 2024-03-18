@@ -40,7 +40,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -880,17 +879,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   protected synchronized int[] getStackIndexes() {
     return stackIndexes;
-  }
-
-  /** Helper to lookup the root Procedure ID given a specified procedure. */
-  protected static long getRootProcedureId(Map<Long, Procedure> procedures, Procedure proc) {
-    while (proc.hasParent()) {
-      proc = procedures.get(proc.getParentProcId());
-      if (proc == null) {
-        return NO_PROC_ID;
-      }
-    }
-    return proc.getProcId();
   }
 
   public void setRootProcedureId(long rootProcedureId) {

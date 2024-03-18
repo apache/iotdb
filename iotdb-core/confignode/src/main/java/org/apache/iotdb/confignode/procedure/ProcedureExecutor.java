@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.confignode.procedure.Procedure.NO_PROC_ID;
+
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
 
@@ -59,7 +61,7 @@ public class ProcedureExecutor<Env> {
   private final ConcurrentHashMap<Long, RootProcedureStack<Env>> rollbackStack =
       new ConcurrentHashMap<>();
 
-  private final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, Procedure<Env>> procedures = new ConcurrentHashMap<>();
 
   private ThreadGroup threadGroup;
 
@@ -79,10 +81,10 @@ public class ProcedureExecutor<Env> {
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final Env environment;
-  private final IProcedureStore store;
+  private final IProcedureStore<Env> store;
 
   public ProcedureExecutor(
-      final Env environment, final IProcedureStore store, final ProcedureScheduler scheduler) {
+      final Env environment, final IProcedureStore<Env> store, final ProcedureScheduler scheduler) {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
@@ -90,7 +92,7 @@ public class ProcedureExecutor<Env> {
   }
 
   @TestOnly
-  public ProcedureExecutor(final Env environment, final IProcedureStore store) {
+  public ProcedureExecutor(final Env environment, final IProcedureStore<Env> store) {
     this(environment, store, new SimpleProcedureScheduler());
   }
 
@@ -118,12 +120,11 @@ public class ProcedureExecutor<Env> {
 
   private void recover() {
     // 1.Build rollback stack
-    List<Procedure> procedureList = new ArrayList<>();
+    List<Procedure<Env>> procedureList = store.load();
     // Load procedure wal file
-    store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {
-        completed.putIfAbsent(proc.getProcId(), new CompletedProcedureContainer(proc));
+        completed.putIfAbsent(proc.getProcId(), new CompletedProcedureContainer<>(proc));
       } else {
         if (!proc.hasParent()) {
           rollbackStack.put(proc.getProcId(), new RootProcedureStack<>());
@@ -139,7 +140,7 @@ public class ProcedureExecutor<Env> {
       if (proc.isFinished() && !proc.hasParent()) {
         continue;
       }
-      long rootProcedureId = getRootProcId(proc);
+      long rootProcedureId = getRootProcedureId(proc);
       if (proc.hasParent()) {
         Procedure<Env> parent = procedures.get(proc.getParentProcId());
         if (parent != null && !proc.isFinished()) {
@@ -206,8 +207,19 @@ public class ProcedureExecutor<Env> {
     scheduler.signalAll();
   }
 
-  public long getRootProcId(Procedure proc) {
-    return Procedure.getRootProcedureId(procedures, proc);
+  /**
+   * Helper to look up the root Procedure ID.
+   *
+   * @param proc given a specified procedure.
+   */
+  Long getRootProcedureId(Procedure<Env> proc) {
+    while (proc.hasParent()) {
+      proc = procedures.get(proc.getParentProcId());
+      if (proc == null) {
+        return NO_PROC_ID;
+      }
+    }
+    return proc.getProcId();
   }
 
   private void releaseLock(Procedure<Env> procedure, boolean force) {
@@ -693,10 +705,6 @@ public class ProcedureExecutor<Env> {
     procedures.remove(proc.getProcId());
   }
 
-  private Long getRootProcedureId(Procedure<Env> proc) {
-    return Procedure.getRootProcedureId(procedures, proc);
-  }
-
   /**
    * Add a Procedure to executor.
    *
@@ -770,7 +778,7 @@ public class ProcedureExecutor<Env> {
     @Override
     public String toString() {
       Procedure<?> p = this.activeProcedure.get();
-      return getName() + "(pid=" + (p == null ? Procedure.NO_PROC_ID : p.getProcId() + ")");
+      return getName() + "(pid=" + (p == null ? NO_PROC_ID : p.getProcId() + ")");
     }
 
     /** @return the time since the current procedure is running */
@@ -901,7 +909,7 @@ public class ProcedureExecutor<Env> {
     return !procedures.containsKey(procId);
   }
 
-  public ConcurrentHashMap<Long, Procedure> getProcedures() {
+  public ConcurrentHashMap<Long, Procedure<Env>> getProcedures() {
     return procedures;
   }
 

@@ -23,17 +23,17 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.List;
 
-public interface IProcedureStore {
+public interface IProcedureStore<Env> {
 
   boolean isRunning();
 
   void setRunning(boolean running);
 
-  void load(List<Procedure> procedureList);
+  List<Procedure<Env>> load();
 
-  void update(Procedure procedure);
+  void update(Procedure<Env> procedure);
 
-  void update(Procedure[] subprocs);
+  void update(Procedure<Env>[] subprocs);
 
   void delete(long procId);
 

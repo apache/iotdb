@@ -20,22 +20,15 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.Optional;
 
 public class ProcedureWAL {
@@ -43,12 +36,9 @@ public class ProcedureWAL {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureWAL.class);
   private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
 
-  /**
-   * Load wal files into memory
-   *
-   */
+  /** Load wal files into memory */
   public static Optional<Procedure> load(Path walFilePath, IProcedureFactory procedureFactory) {
-      try (FileInputStream fis = new FileInputStream(walFilePath.toFile())) {
+    try (FileInputStream fis = new FileInputStream(walFilePath.toFile())) {
       return load(fis, procedureFactory);
     } catch (IOException e) {
       LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
@@ -59,7 +49,8 @@ public class ProcedureWAL {
     return Optional.empty();
   }
 
-  public static Optional<Procedure> load(FileInputStream fileInputStream, IProcedureFactory procedureFactory) throws IOException{
+  public static Optional<Procedure> load(
+      FileInputStream fileInputStream, IProcedureFactory procedureFactory) throws IOException {
     Procedure procedure = null;
     try (FileChannel channel = fileInputStream.getChannel()) {
       ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);

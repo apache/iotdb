@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
+import java.util.Collections;
 import java.util.List;
 
 @TestOnly
@@ -40,7 +41,9 @@ public class NoopProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<Procedure> procedureList) {}
+  public List<Procedure> load() {
+    return Collections.emptyList();
+  }
 
   @Override
   public void update(Procedure procedure) {}

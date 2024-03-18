@@ -25,11 +25,12 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureWAL;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -45,12 +46,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
@@ -70,7 +70,8 @@ public class ProcedureInfo implements SnapshotProcessor {
   private final String oldProcedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
 
-  public void load(List<Procedure> procedureList) {
+  public List<Procedure<ConfigNodeProcedureEnv>> load() {
+    List<Procedure<ConfigNodeProcedureEnv>> procedureList = new ArrayList<>();
     try (Stream<Path> s = Files.list(Paths.get(oldProcedureWalDir))) {
       s.filter(path -> path.getFileName().toString().endsWith(PROCEDURE_WAL_SUFFIX))
           .sorted(
@@ -82,6 +83,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     } catch (IOException e) {
       LOGGER.error("Load procedure wal failed.", e);
     }
+    return procedureList;
   }
 
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
@@ -99,16 +101,16 @@ public class ProcedureInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-              "Failed to take snapshot, because snapshot file [{}] is already exist.",
-              snapshotFile.getAbsolutePath());
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
       return false;
     }
 
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-         DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
-         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
+        DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
 
       ReadWriteIOUtils.write(procedureMap.size(), fileOutputStream);
       for (Procedure procedure : procedureMap.values()) {
@@ -129,21 +131,21 @@ public class ProcedureInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-              "Failed to load snapshot,snapshot file [{}] is not exist.",
-              snapshotFile.getAbsolutePath());
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
       return;
     }
 
     // TODO: lock ?
 
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       long proceduresNum = ReadWriteIOUtils.readLong(fileInputStream);
       for (int i = 0; i < proceduresNum; i++) {
         ProcedureWAL.load(fileInputStream, ProcedureFactory.getInstance())
-                .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
+            .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
       }
 
       ReadWriteIOUtils.readLong(fileInputStream);
