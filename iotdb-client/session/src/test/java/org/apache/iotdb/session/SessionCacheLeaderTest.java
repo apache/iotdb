@@ -728,16 +728,16 @@ public class SessionCacheLeaderTest {
 
     // set connection as broken, due to we enable the cache leader, when we called
     // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
-    // been changed to TEndPoint(ip:127.0.0.1, port:55562)
+    // been changed to TEndPoint(ip:127.0.0.1, port:55561)
     Assert.assertEquals(
-        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55562)}",
+        "MockSessionConnection{ endPoint=TEndPoint(ip:127.0.0.1, port:55561)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     try {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
-          "the session connection = TEndPoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
+          "the session connection = TEndPoint(ip:127.0.0.1, port:55561) is broken", e.getMessage());
     }
     assertEquals(3, session.deviceIdToEndpoint.size());
     for (Map.Entry<String, TEndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
