@@ -82,8 +82,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     public int compare(DataNodeEntry e) {
       return regionCount != e.regionCount
           ? Integer.compare(regionCount, e.regionCount)
-          :  databaseRegionCount != e.databaseRegionCount
-              ?  Integer.compare(databaseRegionCount, e.databaseRegionCount)
+          : databaseRegionCount != e.databaseRegionCount
+              ? Integer.compare(databaseRegionCount, e.databaseRegionCount)
               : scatterWidth != e.scatterWidth
                   ? Integer.compare(scatterWidth, e.scatterWidth)
                   : Integer.compare(randomWeight, e.randomWeight);
@@ -250,7 +250,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           combinationSum += combinationCounter[currentReplicaSet[i]][currentReplicaSet[j]];
         }
       }
-      if ( regionSum == optimalRegionSum
+      if (regionSum == optimalRegionSum
           && databaseRegionSum == optimalDatabaseRegionSum
           && combinationSum > optimalCombinationSum) {
         // Pruning: no needs for further searching when the third key
@@ -258,7 +258,7 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
         return;
       }
 
-      if ( regionSum < optimalRegionSum
+      if (regionSum < optimalRegionSum
           || databaseRegionSum < optimalDatabaseRegionSum
           || combinationSum < optimalCombinationSum) {
         // Reset the optimal result when a better one is found
