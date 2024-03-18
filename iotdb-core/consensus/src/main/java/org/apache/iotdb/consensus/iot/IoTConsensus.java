@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -94,10 +92,6 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
-
-  // Used for Interface idempotence
-  private Set<Pair<ConsensusGroupId, Peer>> addRemotePeerTaskSet;
-  private Set<Pair<ConsensusGroupId, Peer>> removeRemotePeerTaskSet;
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -286,11 +280,6 @@ public class IoTConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     // TODO：阻写？
-    Pair<ConsensusGroupId, Peer> addRemotePeerTask = Pair.of(groupId, peer);
-    if (addRemotePeerTaskSet.contains(addRemotePeerTask)) {
-      return;
-    }
-    addRemotePeerTaskSet.add(addRemotePeerTask);
     if (impl.getConfiguration().contains(peer)) {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
@@ -312,21 +301,35 @@ public class IoTConsensus implements IConsensus {
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
 
-      // step 5: active new Peer
+      // step 5: notify all the other Peers to build the sync connection to newPeer
+      logger.info("[IoTConsensus] notify current peers to build sync log...");
+      impl.notifyPeersToBuildSyncLogChannel(peer);
+
+      // step 6: active new Peer
       logger.info("[IoTConsensus] activate new peer...");
       impl.activePeer(peer);
 
-      // step 6: spot clean
+      // step 7: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
-
-      // step 7: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.notifyPeersToBuildSyncLogChannel(peer);
     } catch (ConsensusGroupModifyPeerException e) {
+      try {
+        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+
+        // step 1: clean up the remote snapshot
+        doSpotClean(peer, impl);
+
+        // step 2: clean up the local snapshot
+        impl.clearOldSnapshot();
+
+        // step 3: clean up the sync log channel
+        impl.notifyPeersToRemoveSyncLogChannel(peer);
+
+      } catch (ConsensusGroupModifyPeerException mpe) {
+        logger.error(
+            "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
+      }
       throw new ConsensusException(e.getMessage());
-    } finally {
-      addRemotePeerTaskSet.remove(addRemotePeerTask);
     }
   }
 
@@ -347,17 +350,10 @@ public class IoTConsensus implements IConsensus {
     if (!impl.getConfiguration().contains(peer)) {
       throw new PeerNotInConsensusGroupException(groupId, peer.toString());
     }
-    Pair<ConsensusGroupId, Peer> removeRemotePeerTask = Pair.of(groupId, peer);
-    if (removeRemotePeerTaskSet.contains(removeRemotePeerTask)) {
-      return;
-    }
-    removeRemotePeerTaskSet.add(removeRemotePeerTask);
-
     try {
       // let other peers remove the sync channel with target peer
       impl.notifyPeersToRemoveSyncLogChannel(peer);
     } catch (ConsensusGroupModifyPeerException e) {
-      removeRemotePeerTaskSet.remove(removeRemotePeerTask);
       throw new ConsensusException(e.getMessage());
     }
 
@@ -368,8 +364,6 @@ public class IoTConsensus implements IConsensus {
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
-    } finally {
-      removeRemotePeerTaskSet.remove(removeRemotePeerTask);
     }
   }
 
