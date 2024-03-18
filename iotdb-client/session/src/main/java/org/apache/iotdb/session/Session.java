@@ -2028,35 +2028,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    TSInsertRecordsOfOneDeviceReq request;
-    try {
-      request =
-          filterAndGenTSInsertRecordsOfOneDeviceReq(
-              deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
-      return;
-    }
-    try {
-      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
-    } catch (RedirectException e) {
-      handleRedirection(deviceId, e.getEndPoint());
-    } catch (IoTDBConnectionException e) {
-      if (enableRedirection
-          && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
-        deviceIdToEndpoint.remove(deviceId);
-
-        // reconnect with default connection
-        try {
-          defaultSessionConnection.insertRecordsOfOneDevice(request);
-        } catch (RedirectException ignored) {
-        }
-      } else {
-        throw e;
-      }
-    }
+    invertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
   }
 
   /**
@@ -2081,35 +2053,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    TSInsertStringRecordsOfOneDeviceReq req;
-    try {
-      req =
-          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
-              deviceId, times, measurementsList, valuesList, haveSorted, false);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
-      return;
-    }
-    try {
-      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
-    } catch (RedirectException e) {
-      handleRedirection(deviceId, e.getEndPoint());
-    } catch (IoTDBConnectionException e) {
-      if (enableRedirection
-          && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
-        deviceIdToEndpoint.remove(deviceId);
-
-        // reconnect with default connection
-        try {
-          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
-        } catch (RedirectException ignored) {
-        }
-      } else {
-        throw e;
-      }
-    }
+    invertToTabletAndInsert(deviceId, times, measurementsList, valuesList, false);
   }
 
   /**
@@ -2175,35 +2119,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    TSInsertRecordsOfOneDeviceReq request;
-    try {
-      request =
-          filterAndGenTSInsertRecordsOfOneDeviceReq(
-              deviceId, times, measurementsList, typesList, valuesList, haveSorted, true);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
-      return;
-    }
-    try {
-      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
-    } catch (RedirectException e) {
-      handleRedirection(deviceId, e.getEndPoint());
-    } catch (IoTDBConnectionException e) {
-      if (enableRedirection
-          && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
-        deviceIdToEndpoint.remove(deviceId);
-
-        // reconnect with default connection
-        try {
-          defaultSessionConnection.insertRecordsOfOneDevice(request);
-        } catch (RedirectException ignored) {
-        }
-      } else {
-        throw e;
-      }
-    }
+    invertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
   }
 
   /**
@@ -2228,35 +2144,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    TSInsertStringRecordsOfOneDeviceReq req;
-    try {
-      req =
-          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
-              deviceId, times, measurementsList, valuesList, haveSorted, true);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
-      return;
-    }
-    try {
-      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
-    } catch (RedirectException e) {
-      handleRedirection(deviceId, e.getEndPoint());
-    } catch (IoTDBConnectionException e) {
-      if (enableRedirection
-          && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
-        deviceIdToEndpoint.remove(deviceId);
-
-        // reconnect with default connection
-        try {
-          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
-        } catch (RedirectException ignored) {
-        }
-      } else {
-        throw e;
-      }
-    }
+    invertToTabletAndInsert(deviceId, times, measurementsList, valuesList, true);
   }
 
   /**
@@ -2759,6 +2647,78 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
+  // invert string records of one device to tablet and insert
+  public void invertToTabletAndInsert(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> allMeasurements =
+        measurementsList.stream().flatMap(List::stream).distinct().collect(Collectors.toList());
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    for (String measurement : allMeasurements) {
+      schemaList.add(new MeasurementSchema(measurement, TSDataType.TEXT));
+    }
+    Tablet tablet = new Tablet(deviceId, schemaList, times.size());
+    for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
+      int row = tablet.rowSize++;
+      tablet.addTimestamp(row, times.get(rowIndex));
+      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
+        tablet.addValue(
+            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
+      }
+    }
+    if (isAligned) {
+      insertAlignedTablet(tablet);
+    } else {
+      insertTablet(tablet);
+    }
+  }
+
+  // invert records of one device to tablet and insert
+  public void invertToTabletAndInsert(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Map<String, TSDataType> measurementType = new HashMap<>();
+    // build measurementType
+    for (int rowIndex = 0; rowIndex < measurementsList.size(); rowIndex++) {
+      List<String> measurements = measurementsList.get(rowIndex);
+      List<TSDataType> types = typesList.get(rowIndex);
+      for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
+        int finalColIndex = colIndex;
+        measurementType.computeIfAbsent(measurements.get(colIndex), k -> types.get(finalColIndex));
+      }
+    }
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    // use measurementType to build schemaList
+    for (Entry<String, TSDataType> entry : measurementType.entrySet()) {
+      schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue()));
+    }
+    // build tablet and insert
+    Tablet tablet = new Tablet(deviceId, schemaList, times.size());
+    for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
+      int row = tablet.rowSize++;
+      tablet.addTimestamp(row, times.get(rowIndex));
+      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
+        tablet.addValue(
+            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
+      }
+    }
+    if (isAligned) {
+      insertAlignedTablet(tablet);
+    } else {
+      insertTablet(tablet);
+    }
+  }
+
+  // invert records of multiple devices to tablets and insert
   public void invertToTabletsAndInsert(
       List<String> deviceIds,
       List<Long> times,
@@ -2767,16 +2727,11 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
-    // device -> tablet
-    Map<String, Tablet> tablets = new HashMap<>();
-    // device -> measurement
-    Map<String, List<String>> measurementMap = new HashMap<>();
-    // device -> {measurement -> type}
+    // device -> measurement -> type
     Map<String, Map<String, TSDataType>> measurementTypeMap = new HashMap<>();
     // device -> row count
     Map<String, Integer> rowMap = new HashMap<>();
-    // device -> schema
-    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>();
+    // first we should build measurementTypeMap and rowMap
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
       final Map<String, TSDataType> measurementType =
@@ -2789,52 +2744,35 @@ public class Session implements ISession {
       }
       rowMap.merge(device, 1, Integer::sum);
     }
+    // device -> schema
+    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>();
+    // use measurementTypeMap to build schemaMap
     for (Map.Entry<String, Map<String, TSDataType>> entry : measurementTypeMap.entrySet()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
-      List<String> measurementList = new ArrayList<>();
       for (Map.Entry<String, TSDataType> schemaEntry : entry.getValue().entrySet()) {
         schemaList.add(new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue()));
-        measurementList.add(schemaEntry.getKey());
       }
       schemaMap.put(entry.getKey(), schemaList);
-      measurementMap.put(entry.getKey(), measurementList);
     }
-
+    // device -> tablet
+    Map<String, Tablet> tablets = new HashMap<>();
+    // use schemaMap and rowMap to build tablets and insert
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
       Tablet tablet =
           tablets.computeIfAbsent(
               device, k -> new Tablet(device, schemaMap.get(device), rowMap.get(device)));
-      addRecordToTablet(
-          tablet,
-          times.get(rowIndex),
-          measurementsList.get(rowIndex),
-          valuesList.get(rowIndex),
-          measurementMap.get(device));
+      int row = tablet.rowSize++;
+      tablet.addTimestamp(row, times.get(rowIndex));
+      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
+        tablet.addValue(
+            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
+      }
     }
-
     if (isAligned) {
       insertAlignedTablets(tablets);
     } else {
       insertTablets(tablets);
-    }
-  }
-  // add one record to  tablet.
-  public void addRecordToTablet(
-      Tablet tablet,
-      Long timestamp,
-      List<String> measurements,
-      List<Object> values,
-      List<String> allMeasurements) {
-    int row = tablet.rowSize++;
-    tablet.addTimestamp(row, timestamp);
-    Map<String, Object> measurementValueMap = new HashMap<>();
-    for (int i = 0; i < measurements.size(); i++) {
-      measurementValueMap.put(measurements.get(i), values.get(i));
-    }
-    for (String measurement : allMeasurements) {
-      Object value = measurementValueMap.getOrDefault(measurement, null);
-      tablet.addValue(measurement, row, value);
     }
   }
 
