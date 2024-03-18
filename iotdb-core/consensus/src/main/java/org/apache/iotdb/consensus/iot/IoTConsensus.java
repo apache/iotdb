@@ -266,7 +266,7 @@ public class IoTConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteDirectory(new File(buildPeerDir(storageDir, groupId)));
+          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
           return null;
         });
     if (!exist.get()) {

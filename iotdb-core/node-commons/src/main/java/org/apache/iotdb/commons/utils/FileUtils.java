@@ -55,23 +55,23 @@ public class FileUtils {
     }
   }
 
-  public static void deleteDirectory(File folder) {
-    if (folder.isDirectory()) {
-      for (File file : folder.listFiles()) {
-        deleteDirectory(file);
+  public static void deleteFileOrDirectory(File file) {
+    if (file.isDirectory()) {
+      for (File subfile : file.listFiles()) {
+        deleteFileOrDirectory(subfile);
       }
     }
     try {
-      Files.delete(folder.toPath());
+      Files.delete(file.toPath());
     } catch (NoSuchFileException | DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), folder.getName(), e);
+      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
     }
   }
 
   public static void deleteDirectoryAndEmptyParent(File folder) {
-    deleteDirectory(folder);
+    deleteFileOrDirectory(folder);
     final File parentFolder = folder.getParentFile();
     if (parentFolder.isDirectory()
         && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {

@@ -41,7 +41,7 @@ public abstract class PipeSnapshotResourceManager {
 
   private final Set<String> pipeCopiedSnapshotDirs;
 
-  private final Map<String, AtomicLong> copiedSnapshotRoot2ReferenceCountMap = new HashMap<>();
+  private final Map<String, AtomicLong> copiedSnapshotPath2ReferenceCountMap = new HashMap<>();
 
   // locks copiedSnapshotRoot2PinCountMap
   private final ReentrantLock lock = new ReentrantLock();
@@ -60,23 +60,23 @@ public abstract class PipeSnapshotResourceManager {
    *
    * @throws IOException when copy file failed
    */
-  public String increaseSnapshotReference(String snapshotRoot) throws IOException {
+  public String increaseSnapshotReference(String snapshotPath) throws IOException {
     lock.lock();
     try {
       // If the snapshot root is already a copied snapshot, just increase and return it
-      if (increaseReferenceIfExists(snapshotRoot)) {
-        return snapshotRoot;
+      if (increaseReferenceIfExists(snapshotPath)) {
+        return snapshotPath;
       }
 
       // Else, check if there is a related copy in pipe dir. if so, increase and return it
-      final String copiedFilePath = getCopiedSnapshotRootInPipeDir(snapshotRoot);
+      final String copiedFilePath = getCopiedSnapshotPathInPipeDir(snapshotPath);
       if (increaseReferenceIfExists(copiedFilePath)) {
         return copiedFilePath;
       }
 
       // Otherwise, copy the snapshot to pipe dir
-      FileUtils.copyFile(new File(snapshotRoot), new File(copiedFilePath));
-      copiedSnapshotRoot2ReferenceCountMap.put(copiedFilePath, new AtomicLong(1));
+      FileUtils.copyFile(new File(snapshotPath), new File(copiedFilePath));
+      copiedSnapshotPath2ReferenceCountMap.put(copiedFilePath, new AtomicLong(1));
       return copiedFilePath;
     } finally {
       lock.unlock();
@@ -84,7 +84,7 @@ public abstract class PipeSnapshotResourceManager {
   }
 
   private boolean increaseReferenceIfExists(String copiedSnapshotRoot) {
-    final AtomicLong referenceCount = copiedSnapshotRoot2ReferenceCountMap.get(copiedSnapshotRoot);
+    final AtomicLong referenceCount = copiedSnapshotPath2ReferenceCountMap.get(copiedSnapshotRoot);
     if (referenceCount != null) {
       referenceCount.incrementAndGet();
       return true;
@@ -98,46 +98,49 @@ public abstract class PipeSnapshotResourceManager {
    * DataNode they will be in "consensus/pipe_snapshot", "data/pipe_snapshot",
    * "system/pipe_snapshot".
    *
-   * @param snapshotRoot Original snapshot path
+   * @param snapshotPath Original snapshot path
    * @return Target snapshot path in pipe dir
    */
-  private String getCopiedSnapshotRootInPipeDir(String snapshotRoot) throws IOException {
-    final File snapshotRootFile = new File(snapshotRoot);
-    File parentFile = snapshotRootFile;
-    // recursively find the parent path until meets the pipe snapshot dir
+  private String getCopiedSnapshotPathInPipeDir(String snapshotPath) throws IOException {
+    final File snapshotFile = new File(snapshotPath);
+    File parentFile = snapshotFile;
+    // Recursively find the parent path until meets the pipe snapshot dir
     while (!pipeCopiedSnapshotDirs.contains(parentFile.getName())) {
       if (parentFile.getParentFile() == null) {
-        LOGGER.warn("Cannot find correct target snapshot path in pipe dir for {}", snapshotRoot);
+        LOGGER.warn("Cannot find correct target snapshot path in pipe dir for {}", snapshotPath);
         throw new IOException(
-            "Cannot find correct target snapshot path in pipe dir for " + snapshotRoot);
+            "Cannot find correct target snapshot path in pipe dir for " + snapshotPath);
       }
       parentFile = parentFile.getParentFile();
     }
+    // Reserve the snapshot's parent file to distinguish different versions of snapshots
     return parentFile.getPath()
         + File.separator
         + PIPE_SNAPSHOT_DIR_NAME
         + File.separator
-        + snapshotRootFile.getName();
+        + snapshotFile.getParentFile().getName()
+        + File.separator
+        + snapshotFile.getName();
   }
 
   /**
    * Decrease the reference count of the snapshot. If the reference count is decreased to 0, delete
    * the snapshot.
    *
-   * @param snapshotRoot copied snapshot path to be decreased
+   * @param snapshotPath copied snapshot path to be decreased
    */
-  public void decreaseSnapshotReference(String snapshotRoot) {
+  public void decreaseSnapshotReference(String snapshotPath) {
     lock.lock();
     try {
-      final AtomicLong referenceCount = copiedSnapshotRoot2ReferenceCountMap.get(snapshotRoot);
+      final AtomicLong referenceCount = copiedSnapshotPath2ReferenceCountMap.get(snapshotPath);
       if (referenceCount == null) {
         return;
       }
 
       final long count = referenceCount.decrementAndGet();
       if (count == 0) {
-        copiedSnapshotRoot2ReferenceCountMap.remove(snapshotRoot);
-        FileUtils.deleteDirectory(new File(snapshotRoot));
+        copiedSnapshotPath2ReferenceCountMap.remove(snapshotPath);
+        FileUtils.deleteFileOrDirectory(new File(snapshotPath));
       }
     } finally {
       lock.unlock();
@@ -145,10 +148,10 @@ public abstract class PipeSnapshotResourceManager {
   }
 
   @TestOnly
-  public long getSnapshotReferenceCount(String snapshotRoot) {
+  public long getSnapshotReferenceCount(String snapshotPath) {
     lock.lock();
     try {
-      final AtomicLong count = copiedSnapshotRoot2ReferenceCountMap.get(snapshotRoot);
+      final AtomicLong count = copiedSnapshotPath2ReferenceCountMap.get(snapshotPath);
       return count != null ? count.get() : 0;
     } finally {
       lock.unlock();

@@ -98,7 +98,7 @@ public class PipeRealtimeExtractTest {
   public void tearDown() {
     writeService.shutdownNow();
     listenerService.shutdownNow();
-    FileUtils.deleteDirectory(tmpDir);
+    FileUtils.deleteFileOrDirectory(tmpDir);
   }
 
   @Test
