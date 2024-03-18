@@ -47,7 +47,7 @@ public class IoTDBNullValueFillIT {
    * 3, 3, null, 3.0, null, false, null<br>
    * 4, null, 4, null, 4.0, null, t4<br>
    * 5, 5, 5, 5.0, 5.0, false, t5<br>
-   * 6, null, 6, null, null, false, null<br>
+   * 6, null, 6, null, 6.0, false, null<br>
    * 7, null, null, null, null, null, null<br>
    * 8, 8, 8, 8.0, 8.0, true, t8<br>
    * 9, 9, null, 9.0, null, true, null
@@ -217,7 +217,7 @@ public class IoTDBNullValueFillIT {
           "3,3,3,3.0,3.0,false,null,",
           "4,4,4,4.0,4.0,null,t4,",
           "5,5,5,5.0,5.0,false,t5,",
-          "6,6,6,6.5,6.0,null,t6,",
+          "6,6,6,6.0,6.0,null,t6,",
           "8,8,8,8.0,8.0,true,t8,",
           "9,9,null,9.0,null,true,null,"
         };
