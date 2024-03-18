@@ -70,14 +70,14 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
-    final File tLogFile = snapshotEvent.getTLogFile();
+    final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
     transferFilePieces(mTreeSnapshotFile, clientAndStatus, true);
-    if (Objects.nonNull(tLogFile)) {
-      transferFilePieces(tLogFile, clientAndStatus, true);
+    if (Objects.nonNull(tagLogSnapshotFile)) {
+      transferFilePieces(tagLogSnapshotFile, clientAndStatus, true);
     }
     // 2. Transfer file seal signal, which means the snapshot is transferred completely
     try {
@@ -88,8 +88,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                   PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
                       mTreeSnapshotFile.getName(),
                       mTreeSnapshotFile.length(),
-                      Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
-                      Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
+                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
                       snapshotEvent.getDatabaseName(),
                       snapshotEvent.toSealTypeString()));
     } catch (Exception e) {
@@ -97,7 +97,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       throw new PipeConnectionException(
           String.format(
               "Network error when seal snapshot file %s and %s, because %s.",
-              mTreeSnapshotFile, tLogFile, e.getMessage()),
+              mTreeSnapshotFile, tagLogSnapshotFile, e.getMessage()),
           e);
     }
 
@@ -105,9 +105,9 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
         resp.getStatus(),
         String.format(
             "Seal file %s and %s error, result status %s.",
-            mTreeSnapshotFile, tLogFile, resp.getStatus()),
+            mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
         snapshotEvent.toString());
 
-    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tLogFile);
+    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
   }
 }

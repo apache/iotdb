@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -30,8 +31,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -116,7 +119,7 @@ public class FileUtils {
             FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
             BufferedOutputStream out = new BufferedOutputStream(fileOutputStream)) {
           byte[] bytes = new byte[BUFFER_SIZE];
-          int size = 0;
+          int size;
           while ((size = in.read(bytes)) > 0) {
             out.write(bytes, 0, size);
           }
@@ -222,7 +225,7 @@ public class FileUtils {
         "unfinished target file which was created last time has been deleted: {}",
         unfinishedTarget.getAbsolutePath());
 
-    // copy
+    // Copy
     try {
       if (source.isDirectory()) {
         if (!copyDir(source, unfinishedTarget)) {
@@ -237,13 +240,13 @@ public class FileUtils {
       return false;
     }
 
-    // rename
+    // Rename
     if (!unfinishedTarget.renameTo(target)) {
       LOGGER.error("file rename fail");
       return false;
     }
 
-    // delete old file
+    // Delete old file
     try {
       if (source.isDirectory()) {
         recursiveDeleteFolder(source.getAbsolutePath());
@@ -256,5 +259,31 @@ public class FileUtils {
 
     LOGGER.info("move file success, {}", fromTo);
     return true;
+  }
+
+  public static File createHardLink(File sourceFile, File hardlink) throws IOException {
+    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to create hardlink %s for file %s: failed to create parent dir %s",
+              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+    }
+
+    final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
+    final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
+    Files.createLink(linkPath, sourcePath);
+    return hardlink;
+  }
+
+  public static File copyFile(File sourceFile, File targetFile) throws IOException {
+    if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to copy file %s to %s: failed to create parent dir %s",
+              sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
+    }
+
+    Files.copy(sourceFile.toPath(), targetFile.toPath());
+    return targetFile;
   }
 }

@@ -128,7 +128,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
     }
 
-    // create a new receiver file dir
+    // Create a new receiver file dir
     final File newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
     if (!newReceiverDir.exists()) {
       if (newReceiverDir.mkdirs()) {

@@ -54,9 +54,9 @@ public abstract class PipeSnapshotResourceManager {
    * Given a snapshot path, copy it to pipe dir, maintain a reference count for the copied snapshot,
    * and return the copied snapshot root path.
    *
-   * <p>if the given file is already a copied snapshot, increase its reference count and return it.
+   * <p>If the given file is already a copied snapshot, increase its reference count and return it.
    *
-   * <p>otherwise, copy the snapshot to pipe dir, increase its reference count and return it.
+   * <p>Otherwise, copy the snapshot to pipe dir, increase its reference count and return it.
    *
    * @throws IOException when copy file failed
    */
@@ -75,10 +75,7 @@ public abstract class PipeSnapshotResourceManager {
       }
 
       // Otherwise, copy the snapshot to pipe dir
-      if (!FileUtils.copyDir(new File(snapshotRoot), new File(copiedFilePath))) {
-        throw new IOException(
-            "Failed to copy snapshot from " + snapshotRoot + " to " + copiedFilePath);
-      }
+      FileUtils.copyFile(new File(snapshotRoot), new File(copiedFilePath));
       copiedSnapshotRoot2ReferenceCountMap.put(copiedFilePath, new AtomicLong(1));
       return copiedFilePath;
     } finally {

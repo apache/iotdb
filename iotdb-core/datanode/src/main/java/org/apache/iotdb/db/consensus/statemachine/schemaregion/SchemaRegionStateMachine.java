@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -91,7 +92,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     if (schemaRegion.createSnapshot(snapshotDir)) {
       Pair<Path, Path> snapshotPaths =
           SchemaRegionSnapshotParser.getSnapshotPaths(
-              Integer.toString(schemaRegion.getSchemaRegionId().getId()));
+              Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
+                  .getUuid()
+                  .toString(),
+              true);
       SchemaRegionListeningQueue listener =
           PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
       if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {

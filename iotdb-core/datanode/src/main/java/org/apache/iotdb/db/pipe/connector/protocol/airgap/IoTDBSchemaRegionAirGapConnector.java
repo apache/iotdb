@@ -72,31 +72,34 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   private void doTransfer(
       Socket socket, PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
-    final File mlogFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
-    final File tLogFile = pipeSchemaRegionSnapshotEvent.getTLogFile();
+    final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
+    final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(mlogFile, socket, true);
-    if (Objects.nonNull(tLogFile)) {
-      transferFilePieces(tLogFile, socket, true);
+    transferFilePieces(mtreeSnapshotFile, socket, true);
+    if (Objects.nonNull(tagLogSnapshotFile)) {
+      transferFilePieces(tagLogSnapshotFile, socket, true);
     }
 
     // 2. Transfer file seal signal, which means the file is transferred completely
     if (!send(
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
-            mlogFile.getName(),
-            mlogFile.length(),
-            Objects.nonNull(tLogFile) ? tLogFile.getName() : null,
-            Objects.nonNull(tLogFile) ? tLogFile.length() : 0,
+            mtreeSnapshotFile.getName(),
+            mtreeSnapshotFile.length(),
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
             pipeSchemaRegionSnapshotEvent.getDatabaseName(),
             pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
       throw new PipeException(
           String.format(
               "Seal schema region snapshot file %s and %s error. Socket %s.",
-              mlogFile, tLogFile, socket));
+              mtreeSnapshotFile, tagLogSnapshotFile, socket));
     } else {
-      LOGGER.info("Successfully transferred schema region snapshot {} and {}.", mlogFile, tLogFile);
+      LOGGER.info(
+          "Successfully transferred schema region snapshot {} and {}.",
+          mtreeSnapshotFile,
+          tagLogSnapshotFile);
     }
   }
 }
