@@ -73,7 +73,6 @@ public class ProcedureExecutor<Env> {
   private int maxPoolSize;
 
   private final ProcedureScheduler scheduler;
-
   private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
@@ -195,7 +194,14 @@ public class ProcedureExecutor<Env> {
 
     waitingList.forEach(
         procedure -> {
-          if (procedure.hasChildren()) {
+          if (!procedure.hasChildren()) {
+            // Normally, WAITING procedures should be wakened by its children.
+            // But, there is a case that, all the children are successful, and before
+            // they can wake up their parent procedure, the master was killed.
+            // So, during recovering the procedures from ProcedureWal, its children
+            // are not loaded because of their SUCCESS state.
+            // So we need to continue to run this WAITING procedure. Before
+            // executing, we need to set its state to RUNNABLE.
             procedure.setState(ProcedureState.RUNNABLE);
             runnableList.add(procedure);
           } else {
@@ -485,7 +491,7 @@ public class ProcedureExecutor<Env> {
   }
 
   /**
-   * Serve as a countdown latch to check whether all children has completed.
+   * Serve as a countdown latch to check whether all children have already completed.
    *
    * @param rootProcStack root procedure stack
    * @param proc proc
@@ -929,9 +935,8 @@ public class ProcedureExecutor<Env> {
     Preconditions.checkArgument(lastProcId.get() >= 0);
     Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
     Preconditions.checkArgument(!procedure.hasParent(), "Unexpected parent", procedure);
-    final long currentProcId = nextProcId();
     // Initialize the procedure
-    procedure.setProcId(currentProcId);
+    procedure.setProcId(nextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
     store.update(procedure);

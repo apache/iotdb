@@ -174,9 +174,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage(
-          "can't connect to node {}, please reset longer dn_connection_timeout_ms "
-              + "in iotdb-common.properties and restart iotdb."
-              + endPoint);
+          "can't connect to node "
+              + endPoint
+              + ", please reset longer dn_connection_timeout_ms "
+              + "in iotdb-datanode.properties and restart iotdb.");
       throw new FragmentInstanceDispatchException(status);
     }
   }

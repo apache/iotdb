@@ -94,7 +94,9 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
-    clientManager.close();
+    if (clientManager != null) {
+      clientManager.close();
+    }
     clusterConfig = new RemoteClusterConfig();
   }
 
@@ -117,7 +119,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
-    Connection connection = null;
+    Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
@@ -131,6 +133,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return getConnection(username, password);
@@ -139,7 +147,7 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
-    Connection connection = null;
+    Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
@@ -233,6 +241,11 @@ public class RemoteServerEnv implements BaseEnv {
             SessionConfig.DEFAULT_VERSION);
     session.open();
     return session;
+  }
+
+  @Override
+  public int getFirstLeaderSchemaRegionDataNodeIndex() {
+    return -1;
   }
 
   @Override

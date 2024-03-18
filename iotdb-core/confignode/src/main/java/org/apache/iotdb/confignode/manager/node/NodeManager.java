@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -257,8 +257,21 @@ public class NodeManager {
    *     TSStatusCode#SUCCESS_STATUS} when register success.
    */
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
-    int dataNodeId = nodeInfo.generateNextNodeId();
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    if (clusterId == null) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+              .setMessage("clusterId has not generated, please try again later"));
+      return resp;
+    }
 
+    int dataNodeId = nodeInfo.generateNextNodeId();
     RegisterDataNodePlan registerDataNodePlan =
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
@@ -292,17 +305,28 @@ public class NodeManager {
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();
 
-    DataNodeRegisterResp resp = new DataNodeRegisterResp();
-
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
-    resp.setConfigNodeList(getRegisteredConfigNodes());
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }
 
   public TDataNodeRestartResp updateDataNodeIfNecessary(TDataNodeRestartReq req) {
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    TDataNodeRestartResp resp = new TDataNodeRestartResp();
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    if (clusterId == null) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+              .setMessage("clusterId has not generated"));
+      return resp;
+    }
+
     int nodeId = req.getDataNodeConfiguration().getLocation().getDataNodeId();
     TDataNodeConfiguration dataNodeConfiguration = getRegisteredDataNode(nodeId);
     if (!req.getDataNodeConfiguration().equals(dataNodeConfiguration)) {
@@ -327,10 +351,8 @@ public class NodeManager {
       }
     }
 
-    TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setConfigNodeList(getRegisteredConfigNodes());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }
 
@@ -344,10 +366,8 @@ public class NodeManager {
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    DataNodeRemoveHandler dataNodeRemoveHandler =
-        new DataNodeRemoveHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus =
-        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
+    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "The remove DataNode request check failed. req: {}, check result: {}",
@@ -697,11 +717,20 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> repairData() {
+  public List<TSStatus> startRpairData() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.REPAIR_DATA, dataNodeLocationMap);
+        new AsyncClientHandler<>(DataNodeRequestType.START_REPAIR_DATA, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> stopRepairData() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

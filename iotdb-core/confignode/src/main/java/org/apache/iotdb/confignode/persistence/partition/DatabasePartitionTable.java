@@ -519,19 +519,6 @@ public class DatabasePartitionTable {
       return schemaPartitionTable.getSeriesSlotList();
     }
   }
-  /**
-   * update region location.
-   *
-   * @param regionId regionId
-   * @param oldNode old location, will remove it
-   * @param newNode new location, will add it
-   */
-  @Deprecated
-  public void updateRegionLocation(
-      TConsensusGroupId regionId, TDataNodeLocation oldNode, TDataNodeLocation newNode) {
-    addRegionNewLocation(regionId, newNode);
-    removeRegionLocation(regionId, oldNode);
-  }
 
   void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);

@@ -147,8 +147,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${cli.test.skip}</skipTests>
-                    <skipITs>${cli.it.skip}</skipITs>
+                    <skipTests>${cli.ut.skip}</skipTests>
                     <reuseForks>false</reuseForks>
                     <runOrder>random</runOrder>
                 </configuration>

@@ -26,10 +26,14 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RegionRouteCache {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionRouteCache.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
@@ -116,6 +120,7 @@ public class RegionRouteCache {
    * @param leaderId Leader DataNodeId
    */
   public void forceUpdateRegionLeader(int leaderId) {
+    cacheLeaderSample(new Pair<>(System.currentTimeMillis(), leaderId));
     this.leaderId.set(leaderId);
   }
 

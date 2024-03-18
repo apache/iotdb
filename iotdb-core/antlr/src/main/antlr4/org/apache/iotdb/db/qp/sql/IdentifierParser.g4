@@ -39,6 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
+    | ANALYZE
     | AND
     | ANY
     | APPEND
@@ -256,4 +257,5 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | CURRENT_TIMESTAMP
     ;

@@ -168,11 +168,13 @@ class SimpleConsensus implements IConsensus {
                     return null;
                   }
 
-                  SimpleConsensusServerImpl impl =
-                      new SimpleConsensusServerImpl(peers.get(0), registry.apply(groupId));
-                  impl.start();
-                  return impl;
+                  return new SimpleConsensusServerImpl(peers.get(0), registry.apply(groupId));
                 }))
+        .map(
+            impl -> {
+              impl.start();
+              return impl;
+            })
         .orElseThrow(
             () ->
                 new ConsensusException(

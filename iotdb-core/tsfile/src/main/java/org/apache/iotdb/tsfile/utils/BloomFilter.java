@@ -20,18 +20,17 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
-import org.openjdk.jol.info.ClassLayout;
-
 import java.util.BitSet;
 import java.util.Objects;
 
-import static io.airlift.slice.SizeOf.sizeOfLongArray;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfLongArray;
 
 public class BloomFilter {
 
   private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(BloomFilter.class).instanceSize()
-          + ClassLayout.parseClass(BitSet.class).instanceSize();
+      (int)
+          (RamUsageEstimator.shallowSizeOfInstance(BloomFilter.class)
+              + RamUsageEstimator.shallowSizeOfInstance(BitSet.class));
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;

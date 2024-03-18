@@ -482,7 +482,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error. %s", e);
+      logger.error("Waiting node to shutdown error.", e);
     }
   }
 
@@ -492,11 +492,10 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return;
     }
     try {
-      this.instance.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
-      logger.info("Node {} has been successfully forcibly stopped", nodePort);
+      this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error. %s", e);
+      logger.error("Waiting node to shutdown error.", e);
     }
   }
 

@@ -123,12 +123,13 @@ public class PartitionBalancer {
 
       // Filter available DataRegionGroups and
       // sort them by the number of allocated DataPartitions
-      BalanceTreeMap<TConsensusGroupId, Integer> counter = new BalanceTreeMap<>();
+      BalanceTreeMap<TConsensusGroupId, Integer> availableDataRegionGroupCounter =
+          new BalanceTreeMap<>();
       List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
           getPartitionManager()
               .getSortedRegionGroupSlotsCounter(database, TConsensusGroupType.DataRegion);
       for (Pair<Long, TConsensusGroupId> pair : regionSlotsCounter) {
-        counter.put(pair.getRight(), pair.getLeft().intValue());
+        availableDataRegionGroupCounter.put(pair.getRight(), pair.getLeft().intValue());
       }
 
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
@@ -152,18 +153,20 @@ public class PartitionBalancer {
             TConsensusGroupId successor =
                 getPartitionManager()
                     .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
-            if (successor != null && counter.containsKey(successor)) {
+            if (successor != null && availableDataRegionGroupCounter.containsKey(successor)) {
               seriesPartitionTable.putDataPartition(timePartitionSlot, successor);
-              counter.put(successor, counter.get(successor) + 1);
+              availableDataRegionGroupCounter.put(
+                  successor, availableDataRegionGroupCounter.get(successor) + 1);
               continue;
             }
 
             // 2. Assign DataPartition base on the DataAllotTable
             TConsensusGroupId allotGroupId =
                 allotTable.getRegionGroupIdOrActivateIfNecessary(seriesPartitionSlot);
-            if (counter.containsKey(allotGroupId)) {
+            if (availableDataRegionGroupCounter.containsKey(allotGroupId)) {
               seriesPartitionTable.putDataPartition(timePartitionSlot, allotGroupId);
-              counter.put(allotGroupId, counter.get(allotGroupId) + 1);
+              availableDataRegionGroupCounter.put(
+                  allotGroupId, availableDataRegionGroupCounter.get(allotGroupId) + 1);
               continue;
             }
 
@@ -172,17 +175,25 @@ public class PartitionBalancer {
             TConsensusGroupId predecessor =
                 getPartitionManager()
                     .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
-            if (predecessor != null && counter.containsKey(predecessor)) {
+            if (predecessor != null && availableDataRegionGroupCounter.containsKey(predecessor)) {
               seriesPartitionTable.putDataPartition(timePartitionSlot, predecessor);
-              counter.put(predecessor, counter.get(predecessor) + 1);
+              availableDataRegionGroupCounter.put(
+                  predecessor, availableDataRegionGroupCounter.get(predecessor) + 1);
               continue;
             }
 
             // 4. Assign the DataPartition to DataRegionGroup with the least DataPartitions
             // If the above DataRegionGroups are unavailable
-            TConsensusGroupId greedyGroupId = counter.getKeyWithMinValue();
+            TConsensusGroupId greedyGroupId = availableDataRegionGroupCounter.getKeyWithMinValue();
             seriesPartitionTable.putDataPartition(timePartitionSlot, greedyGroupId);
-            counter.put(greedyGroupId, counter.get(greedyGroupId) + 1);
+            availableDataRegionGroupCounter.put(
+                greedyGroupId, availableDataRegionGroupCounter.get(greedyGroupId) + 1);
+            LOGGER.warn(
+                "[PartitionBalancer] The SeriesSlot: {} in TimeSlot: {} will be allocated to DataRegionGroup: {}, because the original target: {} is currently unavailable.",
+                seriesPartitionSlot,
+                timePartitionSlot,
+                greedyGroupId,
+                allotGroupId);
           }
 
           dataPartitionTable

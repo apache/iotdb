@@ -97,7 +97,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               statement,
               queryId,
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
@@ -151,7 +151,7 @@ public class RestApiServiceImpl extends RestApiService {
       queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               statement,
               queryId,
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
@@ -211,7 +211,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               insertTabletStatement,
               queryId,
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),

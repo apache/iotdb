@@ -54,6 +54,8 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -104,14 +106,14 @@ public class ConfigNodeProcedureEnv {
 
   private final ProcedureScheduler scheduler;
 
-  private final DataNodeRemoveHandler dataNodeRemoveHandler;
+  private final RegionMaintainHandler regionMaintainHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
+    this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -120,14 +122,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo.
+   * Delete ConfigNode cache, includes {@link ClusterSchemaInfo} and {@link PartitionInfo}.
    *
    * @param name database name
+   * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name) {
+  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
+    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
   }
 
   /**
@@ -204,7 +207,7 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
+  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
     final int runningOrReadOnlyDataNodeNum =
         getNodeManager()
             .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
@@ -578,6 +581,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // force balance region leader to skip waiting for leader election
+    getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
     getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
@@ -728,15 +733,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   public LockQueue getRegionMigrateLock() {
-    return dataNodeRemoveHandler.getRegionMigrateLock();
+    return regionMaintainHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
-  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
-    return dataNodeRemoveHandler;
+  public RegionMaintainHandler getRegionMaintainHandler() {
+    return regionMaintainHandler;
   }
 
   private ConsensusManager getConsensusManager() {

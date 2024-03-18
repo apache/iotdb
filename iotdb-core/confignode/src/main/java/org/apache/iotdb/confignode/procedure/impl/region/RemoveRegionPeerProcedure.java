@@ -1,0 +1,188 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.procedure.impl.region;
+
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
+import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
+import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
+
+public class RemoveRegionPeerProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveRegionPeerState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionPeerProcedure.class);
+  private TConsensusGroupId consensusGroupId;
+  private TDataNodeLocation coordinator;
+  private TDataNodeLocation targetDataNode;
+
+  public RemoveRegionPeerProcedure() {
+    super();
+  }
+
+  public RemoveRegionPeerProcedure(
+      TConsensusGroupId consensusGroupId,
+      TDataNodeLocation coordinator,
+      TDataNodeLocation targetDataNode) {
+    super();
+    this.consensusGroupId = consensusGroupId;
+    this.coordinator = coordinator;
+    this.targetDataNode = targetDataNode;
+  }
+
+  @Override
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveRegionPeerState state)
+      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+    if (consensusGroupId == null) {
+      return Flow.NO_MORE_STATE;
+    }
+    TSStatus tsStatus;
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
+    try {
+      switch (state) {
+        case REMOVE_REGION_PEER:
+          tsStatus =
+              handler.removeRegionPeer(
+                  this.getProcId(), targetDataNode, consensusGroupId, coordinator);
+          if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+          }
+          TRegionMigrateResult removeRegionPeerResult =
+              handler.waitTaskFinish(this.getProcId(), coordinator);
+          if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
+            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+          }
+          setNextState(DELETE_OLD_REGION_PEER);
+          break;
+        case DELETE_OLD_REGION_PEER:
+          tsStatus =
+              handler.deleteOldRegionPeer(this.getProcId(), targetDataNode, consensusGroupId);
+          if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
+          }
+          TRegionMigrateResult deleteOldRegionPeerResult =
+              handler.waitTaskFinish(this.getProcId(), targetDataNode);
+          if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
+            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
+          }
+          setNextState(REMOVE_REGION_LOCATION_CACHE);
+          break;
+        case REMOVE_REGION_LOCATION_CACHE:
+          handler.removeRegionLocation(consensusGroupId, targetDataNode);
+          LOGGER.info("RemoveRegionPeer state {} success", state);
+          LOGGER.info(
+              "RemoveRegionPeerProcedure success, region {} has been removed from DataNode {}",
+              consensusGroupId.getId(),
+              targetDataNode.getDataNodeId());
+          return Flow.NO_MORE_STATE;
+        default:
+          throw new ProcedureException("Unsupported state: " + state.name());
+      }
+    } catch (Exception e) {
+      LOGGER.error("RemoveRegionPeer state {} failed", state, e);
+      return Flow.NO_MORE_STATE;
+    }
+    LOGGER.info("RemoveRegionPeer state {} success", state);
+    return Flow.HAS_MORE_STATE;
+  }
+
+  @Override
+  protected void rollbackState(ConfigNodeProcedureEnv env, RemoveRegionPeerState state)
+      throws IOException, InterruptedException, ProcedureException {}
+
+  @Override
+  protected RemoveRegionPeerState getState(int stateId) {
+    return RemoveRegionPeerState.values()[stateId];
+  }
+
+  @Override
+  protected int getStateId(RemoveRegionPeerState RemoveRegionPeerState) {
+    return RemoveRegionPeerState.ordinal();
+  }
+
+  @Override
+  protected RemoveRegionPeerState getInitialState() {
+    return RemoveRegionPeerState.REMOVE_REGION_PEER;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.REMOVE_REGION_PEER_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinator, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    try {
+      consensusGroupId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
+      targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+      coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+    } catch (ThriftSerDeException e) {
+      LOGGER.error("Error in deserialize {}", this.getClass(), e);
+    }
+  }
+
+  public TConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
+  }
+
+  public TDataNodeLocation getCoordinator() {
+    return coordinator;
+  }
+
+  public TDataNodeLocation getTargetDataNode() {
+    return targetDataNode;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof RemoveRegionPeerProcedure)) {
+      return false;
+    }
+    RemoveRegionPeerProcedure procedure = (RemoveRegionPeerProcedure) obj;
+    return this.consensusGroupId.equals(procedure.consensusGroupId)
+        && this.targetDataNode.equals(procedure.targetDataNode)
+        && this.coordinator.equals(procedure.coordinator);
+  }
+}
