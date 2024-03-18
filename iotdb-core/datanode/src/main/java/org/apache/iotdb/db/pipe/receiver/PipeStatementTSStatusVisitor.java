@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMul
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -103,6 +104,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
           .setMessage(context.getMessage());
     }
     return visitStatement(statement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateMultiTimeseries(
+      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, TSStatus context) {
+    return visitGeneralInternalCreateTimeseries(createMultiTimeSeriesStatement, context);
   }
 
   @Override
