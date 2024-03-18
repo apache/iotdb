@@ -254,7 +254,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initMLog() throws IOException {
-    int lineNumber = initFromLog();
+    initFromLog();
 
     logWriter =
         new SchemaLogWriter<>(
@@ -776,8 +776,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           plan.getViewPathToSourceExpressionMap();
       for (PartialPath path : pathList) {
         // create one logical view
-        IMeasurementMNode<IMemMNode> leafMNode =
-            mtree.createLogicalView(path, viewPathToSourceMap.get(path));
+        mtree.createLogicalView(path, viewPathToSourceMap.get(path));
       }
       // write log
       if (!isRecovering) {

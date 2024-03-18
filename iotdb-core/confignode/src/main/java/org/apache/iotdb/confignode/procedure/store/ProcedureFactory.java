@@ -43,6 +43,14 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -198,6 +206,30 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(true);
         break;
+      case CREATE_TOPIC_PROCEDURE:
+        procedure = new CreateTopicProcedure();
+        break;
+      case DROP_TOPIC_PROCEDURE:
+        procedure = new DropTopicProcedure();
+        break;
+      case ALTER_TOPIC_PROCEDURE:
+        procedure = new AlterTopicProcedure();
+        break;
+      case CREATE_SUBSCRIPTION_PROCEDURE:
+        procedure = new CreateSubscriptionProcedure();
+        break;
+      case DROP_SUBSCRIPTION_PROCEDURE:
+        procedure = new DropSubscriptionProcedure();
+        break;
+      case CREATE_CONSUMER_PROCEDURE:
+        procedure = new CreateConsumerProcedure();
+        break;
+      case DROP_CONSUMER_PROCEDURE:
+        procedure = new DropConsumerProcedure();
+        break;
+      case ALTER_CONSUMER_GROUP_PROCEDURE:
+        procedure = new AlterConsumerGroupProcedure();
+        break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
         break;
@@ -270,6 +302,22 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.PIPE_META_SYNC_PROCEDURE;
     } else if (procedure instanceof PipeHandleMetaChangeProcedure) {
       return ProcedureType.PIPE_HANDLE_META_CHANGE_PROCEDURE;
+    } else if (procedure instanceof CreateTopicProcedure) {
+      return ProcedureType.CREATE_TOPIC_PROCEDURE;
+    } else if (procedure instanceof DropTopicProcedure) {
+      return ProcedureType.DROP_TOPIC_PROCEDURE;
+    } else if (procedure instanceof AlterTopicProcedure) {
+      return ProcedureType.ALTER_TOPIC_PROCEDURE;
+    } else if (procedure instanceof CreateSubscriptionProcedure) {
+      return ProcedureType.CREATE_SUBSCRIPTION_PROCEDURE;
+    } else if (procedure instanceof DropSubscriptionProcedure) {
+      return ProcedureType.DROP_SUBSCRIPTION_PROCEDURE;
+    } else if (procedure instanceof CreateConsumerProcedure) {
+      return ProcedureType.CREATE_CONSUMER_PROCEDURE;
+    } else if (procedure instanceof DropConsumerProcedure) {
+      return ProcedureType.DROP_CONSUMER_PROCEDURE;
+    } else if (procedure instanceof AlterConsumerGroupProcedure) {
+      return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

@@ -27,7 +27,8 @@ public enum PipeTaskOperation {
   ALTER_PIPE("alterPipe"),
   HANDLE_LEADER_CHANGE("handleLeaderChange"),
   SYNC_PIPE_META("syncPipeMeta"),
-  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange");
+  HANDLE_PIPE_META_CHANGE("handlePipeMetaChange"),
+  ;
 
   private final String name;
 
