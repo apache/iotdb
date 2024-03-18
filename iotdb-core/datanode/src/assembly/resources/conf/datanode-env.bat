@@ -125,12 +125,15 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseAdaptiveSizePolicy
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xss512k
 @REM options below try to optimize safepoint stw time.
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UnlockDiagnosticVMOptions
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseCountedLoopSafepoints
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:GuaranteedSafepointInterval=0
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:-UseBiasedLocking
 @REM these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
+
+@REM option below tries to optimize safepoint stw time for large counted loop.
+@REM NOTE: it may have an impact on JIT's black-box optimization.
+@REM set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseCountedLoopSafepoints
 
 @REM When the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
 @REM for /F "tokens=2 delims==" %%I in ('wmic cpu get NumberOfCores /value') do (
