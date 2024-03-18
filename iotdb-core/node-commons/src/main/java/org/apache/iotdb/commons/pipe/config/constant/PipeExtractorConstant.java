@@ -26,18 +26,22 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
-  public static final String EXTRACTOR_INCLUSION_DATA_VALUE = "data";
-  public static final String EXTRACTOR_INCLUSION_SCHEMA_VALUE = "schema";
-  public static final String EXTRACTOR_INCLUSION_TTL_VALUE = "ttl";
-  public static final String EXTRACTOR_INCLUSION_FUNCTION_VALUE = "function";
-  public static final String EXTRACTOR_INCLUSION_TRIGGER_VALUE = "trigger";
-  public static final String EXTRACTOR_INCLUSION_MODEL_VALUE = "model";
-  public static final String EXTRACTOR_INCLUSION_AUTHORITY_VALUE = "authority";
-  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data, schema";
+  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "all";
+
+  public static final String EXTRACTOR_EXCLUSION_KEY = "extractor.inclusion.exclusion";
+  public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
+  public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "";
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
-  public static final String EXTRACTOR_PATTERN_DEFAULT_VALUE = "root";
+  public static final String EXTRACTOR_PATH_KEY = "extractor.path";
+  public static final String SOURCE_PATH_KEY = "source.path";
+  public static final String EXTRACTOR_PATTERN_FORMAT_KEY = "extractor.pattern.format";
+  public static final String SOURCE_PATTERN_FORMAT_KEY = "source.pattern.format";
+  public static final String EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE = "prefix";
+  public static final String EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE = "iotdb";
+  public static final String EXTRACTOR_PATTERN_PREFIX_DEFAULT_VALUE = "root";
+  public static final String EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE = "root.**";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";

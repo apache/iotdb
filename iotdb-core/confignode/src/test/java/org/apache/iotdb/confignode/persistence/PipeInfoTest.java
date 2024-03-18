@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -46,8 +45,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class PipeInfoTest {
@@ -87,8 +87,8 @@ public class PipeInfoTest {
     connectorAttributes.put("port", "6667");
 
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
@@ -122,8 +122,8 @@ public class PipeInfoTest {
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);

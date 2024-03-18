@@ -39,6 +39,8 @@ public enum ServiceType {
   SYNC_SERVICE("Sync Service", "SyncService"),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
+  COMPACTION_SCHEDULE_SERVICE("Compaction Schedule Manager", "Compaction Schedule Manger"),
+  REPAIR_DATA_SERVICE("Repair Manager", "Repair Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", "UdfClassLoader"),
@@ -76,7 +78,8 @@ public enum ServiceType {
   IOT_CONSENSUS_SERVICE("IoTConsensus Service", "IoTConsensusRPCService"),
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
-  PIPE_RUNTIME_AGENT("Pipe Runtime Agent", "PipeRuntimeAgent"),
+  PIPE_RUNTIME_DATA_NODE_AGENT("Pipe Runtime Data Node Agent", "PipeRuntimeDataNodeAgent"),
+  PIPE_RUNTIME_CONFIG_NODE_AGENT("Pipe Runtime Config Node Agent", "PipeRuntimeConfigNodeAgent"),
   SESSION_MANAGER("Session Manager", "RpcSession"),
   CONFIG_NODE("Config Node", "ConfigNode"),
   DATA_NODE("Data Node", "DataNode");

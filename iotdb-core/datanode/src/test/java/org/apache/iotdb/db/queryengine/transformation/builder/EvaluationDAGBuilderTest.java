@@ -54,7 +54,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.time.ZonedDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -97,7 +96,7 @@ public class EvaluationDAGBuilderTest {
       Analyzer analyzer =
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
       Analysis analysis = analyzer.analyze(statement);
-      LogicalPlanner logicalPlanner = new LogicalPlanner(context, Collections.emptyList());
+      LogicalPlanner logicalPlanner = new LogicalPlanner(context);
       LogicalQueryPlan logicalPlan = logicalPlanner.plan(analysis);
       DistributionPlanner distributionPlanner = new DistributionPlanner(analysis, logicalPlan);
       FragmentInstance instance = distributionPlanner.planFragments().getInstances().get(0);

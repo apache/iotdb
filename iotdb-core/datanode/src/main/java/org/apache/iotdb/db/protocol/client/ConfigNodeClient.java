@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -50,10 +51,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -76,7 +79,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -98,6 +103,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -118,15 +125,22 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.PooledObject;
@@ -137,7 +151,6 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -184,24 +197,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     this.configNodes = configNodes;
     this.property = property;
     this.clientManager = clientManager;
+    // Set the first configNode as configLeader for a tentative connection
+    this.configLeader = this.configNodes.get(0);
 
-    init();
-  }
-
-  public void init() throws TException {
-    try {
-      tryToConnect();
-    } catch (TException e) {
-      // Can not connect to each config node
-      syncLatestConfigNodeList();
-      tryToConnect();
-    }
+    connectAndSync();
   }
 
   public void connect(TEndPoint endpoint) throws TException {
     try {
       transport =
-          RpcTransportFactory.INSTANCE.getTransport(
+          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               // As there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs());
       if (!transport.isOpen()) {
@@ -215,16 +220,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     client = new IConfigNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
-  private void waitAndReconnect() throws TException {
-    try {
-      // Wait to start the next try
-      Thread.sleep(RETRY_INTERVAL_MS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new TException(
-          "Unexpected interruption when waiting to retry to connect to ConfigNode");
-    }
-
+  private void connectAndSync() throws TException {
     try {
       tryToConnect();
     } catch (TException e) {
@@ -242,6 +238,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       } catch (TException e) {
         logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
+      }
+    } else {
+      try {
+        // Wait to start the next try
+        Thread.sleep(RETRY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
     }
 
@@ -338,7 +342,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
-      waitAndReconnect();
+      connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -386,7 +390,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
-      waitAndReconnect();
+      connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -472,9 +476,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus createManyDatabases() throws TException {
+  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createManyDatabases(), status -> !updateConfigNodeLeader(status));
+        () -> client.callSpecialProcedure(operation), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -636,9 +640,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus repairData() throws TException {
+  public TSStatus startRepairData() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.repairData(), status -> !updateConfigNodeLeader(status));
+        () -> client.startRepairData(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopRepairData(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -907,10 +917,70 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) throws TException {
+  public TSStatus createTopic(TCreateTopicReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.executeSyncCommand(configPhysicalPlanBinary),
-        status -> !updateConfigNodeLeader(status));
+        () -> client.createTopic(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropTopic(String topicName) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropTopic(topicName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowTopicResp showTopic(TShowTopicReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTopic(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetAllTopicInfoResp getAllTopicInfo() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getAllTopicInfo(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus createConsumer(TCreateConsumerReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createConsumer(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus closeConsumer(TCloseConsumerReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.closeConsumer(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus createSubscription(TSubscribeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.createSubscription(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropSubscription(TUnsubscribeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropSubscription(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showSubscription(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getAllSubscriptionInfo(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.handleTransferConfigPlan(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

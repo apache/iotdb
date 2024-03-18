@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -80,7 +81,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
@@ -127,6 +128,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
+      // Release the container's memory.
+      dataContainer = null;
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -145,7 +148,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         progressIndex,
@@ -164,7 +171,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
       InsertNode insertNode = getInsertNode();
       if (insertNode instanceof InsertRowNode) {
@@ -199,7 +206,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -212,7 +219,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -230,7 +237,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
@@ -244,7 +251,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean shouldParsePattern() {
     final InsertNode node = getInsertNodeViaCacheIfPossible();
     return super.shouldParsePattern()
-        && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
+        && Objects.nonNull(pipePattern)
+        && (Objects.isNull(node) || !pipePattern.coversDevice(node.getDevicePath().getFullPath()));
   }
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {

@@ -151,6 +151,14 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showPipeColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowTopicHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTopicColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowSubscriptionHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSubscriptionColumnHeaders, true);
+  }
+
   public static DatasetHeader getGetRegionIdHeader() {
     return new DatasetHeader(ColumnHeaderConstant.getRegionIdColumnHeaders, true);
   }
@@ -191,5 +199,9 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowLogicalViewHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showLogicalViewColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCurrentTimestampHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCurrentTimestampColumnHeaders, true);
   }
 }

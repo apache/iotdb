@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteStorageGroupState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -65,12 +65,12 @@ public class DeleteDatabaseProcedure
 
   private TDatabaseSchema deleteDatabaseSchema;
 
-  public DeleteDatabaseProcedure() {
-    super();
+  public DeleteDatabaseProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DeleteDatabaseProcedure(TDatabaseSchema deleteDatabaseSchema) {
-    super();
+  public DeleteDatabaseProcedure(TDatabaseSchema deleteDatabaseSchema, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.deleteDatabaseSchema = deleteDatabaseSchema;
   }
 
@@ -151,7 +151,7 @@ public class DeleteDatabaseProcedure
 
           // Delete DatabasePartitionTable
           final TSStatus deleteConfigResult =
-              env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
+              env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
 
           // Delete Database metrics
           PartitionMetrics.unbindDatabaseRelatedMetricsWhenUpdate(
@@ -282,7 +282,10 @@ public class DeleteDatabaseProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_DATABASE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(deleteDatabaseSchema, stream);
   }
@@ -302,7 +305,9 @@ public class DeleteDatabaseProcedure
     if (that instanceof DeleteDatabaseProcedure) {
       DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getState() == this.getState()
+          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && thatProc.getCycles() == this.getCycles()
+          && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && thatProc.deleteDatabaseSchema.equals(this.getDeleteDatabaseSchema());
     }
     return false;
@@ -310,6 +315,7 @@ public class DeleteDatabaseProcedure
 
   @Override
   public int hashCode() {
-    return Objects.hash(deleteDatabaseSchema);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, deleteDatabaseSchema);
   }
 }

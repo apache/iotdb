@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -51,6 +52,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -68,10 +73,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
-
-import java.nio.ByteBuffer;
 
 public interface IConfigTaskExecutor {
 
@@ -107,7 +112,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> repairData(boolean onCluster);
+  SettableFuture<ConfigTaskResult> startRepairData(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> stopRepairData(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
@@ -172,7 +179,14 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
 
-  SettableFuture<ConfigTaskResult> executeSyncCommand(ByteBuffer configPhysicalPlanBinary);
+  SettableFuture<ConfigTaskResult> showSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement);
+
+  SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement);
+
+  SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
+
+  SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
@@ -186,8 +200,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
-  SettableFuture<ConfigTaskResult> alterLogicalViewByPipe(
-      AlterLogicalViewNode alterLogicalViewNode, MPPQueryContext context);
+  TSStatus alterLogicalViewByPipe(AlterLogicalViewNode alterLogicalViewNode);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 
@@ -222,4 +235,6 @@ public interface IConfigTaskExecutor {
       ShowThrottleQuotaStatement showThrottleQuotaStatement);
 
   TThrottleQuotaResp getThrottleQuota();
+
+  TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req);
 }

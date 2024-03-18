@@ -35,8 +35,9 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, iotdb]
+#      group: self-hosted
+#      labels: iotdb
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java }}
@@ -44,16 +45,6 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
-      - name: Adjust Linux kernel somaxconn
-        if: ${{ runner.os == 'Linux' }}
-        shell: bash
-        run: sudo sysctl -w net.core.somaxconn=65535
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -62,6 +53,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
           -am -PClusterIT
       - name: Upload Artifact
