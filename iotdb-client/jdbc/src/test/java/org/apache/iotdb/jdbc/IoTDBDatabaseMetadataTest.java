@@ -61,8 +61,11 @@ public class IoTDBDatabaseMetadataTest {
   @Mock private DatabaseMetaData databaseMetaData;
   @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   @Mock private ServerProperties properties;
+  @Mock private TSExecuteStatementResp execResp;
 
   private ZoneId zoneID = ZoneId.systemDefault();
+
+  private IoTDBDatabaseMetadata metadata;
 
   @Before
   public void before() throws Exception {
@@ -75,6 +78,7 @@ public class IoTDBDatabaseMetadataTest {
     when(client.getProperties()).thenReturn(properties);
     when(execStatementResp.getStatus()).thenReturn(successStatus);
     when(execStatementResp.getQueryId()).thenReturn(queryId);
+    metadata = new IoTDBDatabaseMetadata(connection, client, 1);
   }
 
   @Test
@@ -155,5 +159,218 @@ public class IoTDBDatabaseMetadataTest {
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     Assert.assertEquals("TABLE_CAT", resultSet.getMetaData().getColumnName(2));
     Assert.assertEquals("TABLE_SCHEM", resultSet.getMetaData().getColumnName(3));
+  }
+
+  @Test(expected = SQLException.class)
+  public void isWrapperFor() throws SQLException {
+    metadata.isWrapperFor(String.class);
+  }
+
+  @Test(expected = SQLException.class)
+  public void unwrap() throws SQLException {
+    metadata.unwrap(String.class);
+  }
+
+  @Test
+  public void allProceduresAreCallable() {
+
+    assertEquals(false, metadata.allProceduresAreCallable());
+  }
+
+  @Test
+  public void allTablesAreSelectable() {
+    assertEquals(true, metadata.allTablesAreSelectable());
+  }
+
+  @Test
+  public void autoCommitFailureClosesAllResultSets() {
+    assertEquals(false, metadata.autoCommitFailureClosesAllResultSets());
+  }
+
+  @Test
+  public void dataDefinitionCausesTransactionCommit() {
+    assertEquals(false, metadata.dataDefinitionCausesTransactionCommit());
+  }
+
+  @Test
+  public void dataDefinitionIgnoredInTransactions() {
+    assertEquals(false, metadata.dataDefinitionIgnoredInTransactions());
+  }
+
+  @Test
+  public void deletesAreDetected() {
+    assertEquals(true, metadata.deletesAreDetected(1));
+  }
+
+  @Test
+  public void doesMaxRowSizeIncludeBlobs() {
+    assertEquals(false, metadata.doesMaxRowSizeIncludeBlobs());
+  }
+
+  @Test
+  public void generatedKeyAlwaysReturned() {
+    assertEquals(true, metadata.generatedKeyAlwaysReturned());
+  }
+
+  @Test
+  public void getMaxLogicalLobSize() {
+    assertEquals(Long.MAX_VALUE, metadata.getMaxLogicalLobSize());
+  }
+
+  @Test
+  public void supportsRefCursors() {
+    assertEquals(false, metadata.supportsRefCursors());
+  }
+
+  @Test
+  public void getAttributes() throws SQLException {
+    ResultSet functionColumns = metadata.getAttributes("", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getClientInfoProperties() throws SQLException, TException {
+    when(client.executeQueryStatementV2(any())).thenReturn(execResp);
+    when(execResp.getQueryId()).thenReturn(1L);
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    when(execResp.getStatus()).thenReturn(successStatus);
+    when(execResp.getDataTypeList()).thenReturn(new ArrayList<>());
+    execResp.columnNameIndexMap = new HashMap<>();
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    ResultSet functionColumns = metadata.getClientInfoProperties();
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getColumnPrivileges() throws SQLException, TException {
+    when(client.executeQueryStatementV2(any())).thenReturn(execResp);
+    when(execResp.getQueryId()).thenReturn(1L);
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    when(execResp.getStatus()).thenReturn(successStatus);
+    when(execResp.getDataTypeList()).thenReturn(new ArrayList<>());
+    execResp.columnNameIndexMap = new HashMap<>();
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    ResultSet functionColumns = metadata.getColumnPrivileges("", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getConnection() {
+    assertEquals(metadata.getConnection(), connection);
+  }
+
+  @Test
+  public void getCrossReference() throws SQLException {
+    ResultSet functionColumns = metadata.getCrossReference("", "", "", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getDatabaseMajorVersion() throws TException {
+    when(client.getProperties()).thenReturn(properties);
+    when(properties.getVersion()).thenReturn("a.b.c.d");
+    assertEquals(0, metadata.getDatabaseMajorVersion());
+  }
+
+  @Test
+  public void getDatabaseMinorVersion() throws TException {
+    when(client.getProperties()).thenReturn(properties);
+    when(properties.getVersion()).thenReturn("a.b.c.d");
+    assertEquals(0, metadata.getDatabaseMinorVersion());
+  }
+
+  @Test
+  public void getDatabaseProductName() {
+    assertEquals(Constant.GLOBAL_DB_NAME, metadata.getDatabaseProductName());
+  }
+
+  @Test
+  public void getDatabaseProductVersion() {
+    assertEquals("UNKNOWN", metadata.getDatabaseProductVersion());
+  }
+
+  @Test
+  public void getDefaultTransactionIsolation() {
+    assertEquals(0, metadata.getDefaultTransactionIsolation());
+  }
+
+  @Test
+  public void getDriverMajorVersion() {
+    assertEquals(4, metadata.getDriverMajorVersion());
+  }
+
+  @Test
+  public void getDriverMinorVersion() {
+    assertEquals(3, metadata.getDriverMinorVersion());
+  }
+
+  @Test
+  public void getDriverName() {
+    assertEquals(org.apache.iotdb.jdbc.IoTDBDriver.class.getName(), metadata.getDriverName());
+  }
+
+  @Test
+  public void getDriverVersion() {
+    assertEquals("UNKNOWN", metadata.getDriverVersion());
+  }
+
+  @Test
+  public void getExtraNameCharacters() {
+    assertEquals("", metadata.getExtraNameCharacters());
+  }
+
+  @Test
+  public void getFunctionColumns() throws SQLException, TException {
+    when(client.executeQueryStatementV2(any())).thenReturn(execResp);
+    when(execResp.getQueryId()).thenReturn(1L);
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    when(execResp.getStatus()).thenReturn(successStatus);
+    when(execResp.getDataTypeList()).thenReturn(new ArrayList<>());
+    execResp.columnNameIndexMap = new HashMap<>();
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    ResultSet functionColumns = metadata.getFunctionColumns("", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getFunctions() throws SQLException, TException {
+    when(client.executeQueryStatementV2(any())).thenReturn(execResp);
+    when(execResp.getQueryId()).thenReturn(1L);
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    when(execResp.getStatus()).thenReturn(successStatus);
+    when(execResp.getDataTypeList()).thenReturn(new ArrayList<>());
+    execResp.columnNameIndexMap = new HashMap<>();
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    ResultSet functionColumns = metadata.getFunctions("", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getNumericFunctions() {
+    assertEquals("", metadata.getNumericFunctions());
+  }
+
+  @Test
+  public void getPrimaryKeys() throws SQLException {
+    ResultSet functionColumns = metadata.getPrimaryKeys("", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getProcedureColumns() throws SQLException {
+    ResultSet functionColumns = metadata.getProcedureColumns("", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getProcedures() throws SQLException {
+    ResultSet functionColumns = metadata.getProcedures("", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
+  }
+
+  @Test
+  public void getPseudoColumns() throws SQLException {
+    ResultSet functionColumns = metadata.getPseudoColumns("", "", "", "");
+    assertEquals(functionColumns.getClass().getName(), IoTDBJDBCResultSet.class.getName());
   }
 }
