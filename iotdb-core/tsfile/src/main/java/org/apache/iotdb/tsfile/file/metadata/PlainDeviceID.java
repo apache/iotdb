@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -33,6 +34,7 @@ public class PlainDeviceID implements IDeviceID {
   public PlainDeviceID(String deviceID) {
     if (deviceID == null) {
       new RuntimeException().printStackTrace();
+      throw new RuntimeException();
     }
     this.deviceID = deviceID;
   }
@@ -87,7 +89,7 @@ public class PlainDeviceID implements IDeviceID {
 
   @Override
   public int memorySize() {
-    return deviceID.length();
+    return (int) RamUsageEstimator.sizeOf(deviceID);
   }
 
   @Override

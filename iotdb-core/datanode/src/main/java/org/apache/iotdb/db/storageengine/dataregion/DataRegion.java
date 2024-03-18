@@ -1874,7 +1874,11 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          new PlainDeviceID(singleDeviceId), globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
+          globalTimeFilter,
+          isSeq,
+          dataTTL,
+          context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();

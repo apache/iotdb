@@ -60,8 +60,6 @@ public class TsFileResourceManager {
    */
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     if (!sealedTsFileResources.contains(tsFileResource)) {
-      System.out.println(tsFileResource);
-      System.out.println(tsFileResource.calculateRamSize());
       sealedTsFileResources.add(tsFileResource);
       totalTimeIndexMemCost += tsFileResource.calculateRamSize();
       chooseTsFileResourceToDegrade();
