@@ -266,6 +266,9 @@ public class WALManager implements IService {
   }
 
   public void syncDeleteOutdatedFilesInWALNodes() {
+    if (config.getWalMode() == WALMode.DISABLE || walDeleteThread == null) {
+      return;
+    }
     Future<?> future = walDeleteThread.submit(this::deleteOutdatedFilesInWALNodes);
     try {
       future.get();
