@@ -59,16 +59,13 @@ public class WalDeleteOutdatedNewTest {
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
-  private boolean prevIsClusterMode;
   private WALNode walNode1;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory1);
     prevMode = config.getWalMode();
-    prevIsClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
-    config.setClusterMode(true);
     walNode1 = new WALNode(identifier1, logDirectory1);
   }
 
@@ -76,7 +73,6 @@ public class WalDeleteOutdatedNewTest {
   public void tearDown() throws Exception {
     walNode1.close();
     config.setWalMode(prevMode);
-    config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
 
     WALInsertNodeCache.getInstance(1).clear();

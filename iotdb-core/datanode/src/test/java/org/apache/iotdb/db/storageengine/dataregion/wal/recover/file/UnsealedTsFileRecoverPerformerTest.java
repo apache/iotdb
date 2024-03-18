@@ -73,14 +73,10 @@ public class UnsealedTsFileRecoverPerformerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
 
-  private boolean isClusterMode;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.envSetUp();
-    isClusterMode = config.isClusterMode();
-    config.setClusterMode(true);
   }
 
   @After
@@ -88,7 +84,6 @@ public class UnsealedTsFileRecoverPerformerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
-    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.cleanEnv();
   }

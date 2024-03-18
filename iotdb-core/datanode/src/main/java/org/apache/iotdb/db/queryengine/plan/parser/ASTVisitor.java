@@ -3166,9 +3166,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-    }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
@@ -3185,9 +3182,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
-    }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
@@ -3198,10 +3192,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStartRepairData(IoTDBSqlParser.StartRepairDataContext ctx) {
     StartRepairDataStatement startRepairDataStatement =
         new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "START REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return startRepairDataStatement;
   }
@@ -3212,10 +3202,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStopRepairData(IoTDBSqlParser.StopRepairDataContext ctx) {
     StopRepairDataStatement stopRepairDataStatement =
         new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "STOP REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     stopRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return stopRepairDataStatement;
   }
@@ -3226,10 +3212,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
     LoadConfigurationStatement loadConfigurationStatement =
         new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
-    }
     loadConfigurationStatement.setOnCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
   }
@@ -3239,10 +3221,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
     SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
-    }
     setSystemStatusStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.RUNNING() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
