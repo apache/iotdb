@@ -166,6 +166,33 @@ public class TopicMeta {
     return topicMeta;
   }
 
+  /////////////////////////////// utilities ///////////////////////////////
+
+  public Map<String, String> generateExtractorAttributes() {
+    Map<String, String> extractorAttributes = new HashMap<>();
+    // disable meta sync
+    extractorAttributes.put("source", "iotdb-source");
+    extractorAttributes.put("inclusion", "data");
+    extractorAttributes.put("inclusion.exclusion", "deletion");
+    // path
+    extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
+    // time
+    extractorAttributes.putAll(config.getAttributesWithTimeRange(creationTime));
+    return extractorAttributes;
+  }
+
+  public Map<String, String> generateProcessorAttributes() {
+    return config.getAttributesWithProcessorPrefix();
+  }
+
+  public Map<String, String> generateConnectorAttributes(String consumerGroupId) {
+    Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put("sink", "subscription-sink");
+    connectorAttributes.put("topic", topicName);
+    connectorAttributes.put("consumer-group", consumerGroupId);
+    return connectorAttributes;
+  }
+
   ////////////////////////////////////// Object ////////////////////////////////
 
   @Override

@@ -43,8 +43,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -105,24 +103,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
-                    // TODO: put attributes correctly.
-                    .setExtractorAttributes(
-                        new HashMap<String, String>() {
-                          {
-                            put("source", "iotdb-source");
-                            put("inclusion", "data");
-                            put("inclusion.exclusion", "deletion");
-                          }
-                        })
-                    .setProcessorAttributes(Collections.emptyMap())
+                    .setExtractorAttributes(updatedTopicMeta.generateExtractorAttributes())
+                    .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(
-                        new HashMap<String, String>() {
-                          {
-                            put("sink", "subscription-sink");
-                            put("topic", topic);
-                            put("consumer-group", subscribeReq.getConsumerGroupId());
-                          }
-                        })));
+                        updatedTopicMeta.generateConnectorAttributes(
+                            subscribeReq.getConsumerGroupId()))));
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
       }

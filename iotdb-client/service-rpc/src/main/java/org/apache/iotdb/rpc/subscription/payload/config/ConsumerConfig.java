@@ -38,6 +38,8 @@ public class ConsumerConfig extends PipeParameters {
     super(attributes);
   }
 
+  /////////////////////////////// de/ser ///////////////////////////////
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(attributes, stream);
   }
@@ -45,6 +47,8 @@ public class ConsumerConfig extends PipeParameters {
   public static ConsumerConfig deserialize(ByteBuffer buffer) {
     return new ConsumerConfig(ReadWriteIOUtils.readMap(buffer));
   }
+
+  /////////////////////////////// utilities ///////////////////////////////
 
   public String getConsumerId() {
     return getString(ConsumerConstant.CONSUMER_ID_KEY);

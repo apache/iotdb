@@ -116,7 +116,7 @@ public class IoTDBSubscriptionSimpleIT {
       fail(e.getMessage());
     }
 
-    Assert.assertEquals(count, 100);
+    Assert.assertEquals(100, count);
   }
 
   @Test
@@ -195,6 +195,137 @@ public class IoTDBSubscriptionSimpleIT {
       thread.join();
     }
 
-    Assert.assertEquals(timestamps.size(), 100);
+    Assert.assertEquals(100, timestamps.size());
+  }
+
+  @Test
+  public void topicPathSubscriptionTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic1 with ('path'='root.db.*.s')");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    // insert some history data
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s) values (%s, 1)", i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d3(time, t) values (%s, 1)", i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.t1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    int count = 0;
+
+    // subscription
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+
+      session.createConsumer(new ConsumerConfig(consumerAttributes));
+      session.subscribe(Collections.singleton("topic1"));
+
+      List<EnrichedTablets> enrichedTabletsList;
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
+        if (enrichedTabletsList.isEmpty()) {
+          break;
+        }
+        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+          for (Tablet tablet : enrichedTablets.getTablets()) {
+            count += tablet.rowSize;
+          }
+          topicNameToSubscriptionCommitIds
+              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+              .addAll(enrichedTablets.getSubscriptionCommitIds());
+        }
+        session.commit(topicNameToSubscriptionCommitIds);
+      }
+      session.unsubscribe(Collections.singleton("topic1"));
+      session.dropConsumer();
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    Assert.assertEquals(200, count);
+  }
+
+  @Test
+  public void topicTimeSubscriptionTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    // insert some history data
+    long currentTime = System.currentTimeMillis();
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+      }
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    int count = 0;
+
+    // subscription
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+
+      session.createConsumer(new ConsumerConfig(consumerAttributes));
+      session.subscribe(Collections.singleton("topic1"));
+
+      List<EnrichedTablets> enrichedTabletsList;
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
+        if (enrichedTabletsList.isEmpty()) {
+          break;
+        }
+        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+          for (Tablet tablet : enrichedTablets.getTablets()) {
+            count += tablet.rowSize;
+          }
+          topicNameToSubscriptionCommitIds
+              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+              .addAll(enrichedTablets.getSubscriptionCommitIds());
+        }
+        session.commit(topicNameToSubscriptionCommitIds);
+      }
+      session.unsubscribe(Collections.singleton("topic1"));
+      session.dropConsumer();
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    Assert.assertEquals(100, count);
   }
 }

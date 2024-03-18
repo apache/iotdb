@@ -26,6 +26,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class TopicConfig extends PipeParameters {
@@ -38,11 +39,56 @@ public class TopicConfig extends PipeParameters {
     super(attributes);
   }
 
+  /////////////////////////////// de/ser ///////////////////////////////
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(attributes, stream);
   }
 
   public static TopicConfig deserialize(ByteBuffer buffer) {
     return new TopicConfig(ReadWriteIOUtils.readMap(buffer));
+  }
+
+  /////////////////////////////// utilities ///////////////////////////////
+
+  public Map<String, String> getAttributesWithSourcePathOrPattern() {
+    if (attributes.containsKey(TopicConstant.PATTERN_KEY)) {
+      return Collections.singletonMap(
+          TopicConstant.PATTERN_KEY, attributes.get(TopicConstant.PATTERN_KEY));
+    }
+
+    return Collections.singletonMap(
+        TopicConstant.PATH_KEY,
+        attributes.getOrDefault(TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE));
+  }
+
+  public Map<String, String> getAttributesWithTimeRange(long creationTime) {
+    Map<String, String> attributesWithTimeRange = new HashMap<>();
+    String startTime =
+        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
+    if (TopicConstant.NOW_TIME_VALUE.equals(startTime)) {
+      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, String.valueOf(creationTime));
+    } else {
+      attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, startTime);
+    }
+    String endTime =
+        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
+    if (TopicConstant.NOW_TIME_VALUE.equals(endTime)) {
+      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, String.valueOf(creationTime));
+    } else {
+      attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
+    }
+    return attributesWithTimeRange;
+  }
+
+  public Map<String, String> getAttributesWithProcessorPrefix() {
+    Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.startsWith("processor")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
   }
 }

@@ -59,18 +59,6 @@ public class EnrichedTablets {
     this.subscriptionCommitIds = subscriptionCommitIds;
   }
 
-  public static EnrichedTablets blendEnrichedTablets(EnrichedTablets left, EnrichedTablets right) {
-    if (!Objects.equals(left.topicName, right.topicName)) {
-      // TODO: logger warn
-      return null;
-    }
-    List<Tablet> tablets = new ArrayList<>(left.tablets);
-    List<String> subscriptionCommitIds = new ArrayList<>(left.subscriptionCommitIds);
-    tablets.addAll(right.tablets);
-    subscriptionCommitIds.addAll(right.subscriptionCommitIds);
-    return new EnrichedTablets(left.topicName, tablets, subscriptionCommitIds);
-  }
-
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(tablets.size(), stream);
