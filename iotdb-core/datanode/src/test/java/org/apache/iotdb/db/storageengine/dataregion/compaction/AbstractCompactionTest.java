@@ -635,7 +635,7 @@ public class AbstractCompactionTest {
                   "Target file "
                       + targetResource.getTsFile().getPath()
                       + " contains empty chunk group "
-                      + deviceID);
+                      + ((PlainDeviceID) deviceID).toStringID());
             }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:

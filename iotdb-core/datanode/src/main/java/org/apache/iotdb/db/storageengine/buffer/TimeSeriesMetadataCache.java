@@ -336,7 +336,7 @@ public class TimeSeriesMetadataCache {
           + ", compactionVersion="
           + compactionVersion
           + ", device='"
-          + device
+          + ((PlainDeviceID) device).toStringID()
           + '\''
           + ", measurement='"
           + measurement

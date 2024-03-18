@@ -123,7 +123,7 @@ public class ChunkGroupHeader {
   public String toString() {
     return "ChunkGroupHeader{"
         + "deviceID='"
-        + deviceID
+        + ((PlainDeviceID) deviceID).toStringID()
         + '\''
         + ", serializedSize="
         + serializedSize

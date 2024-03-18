@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -283,7 +284,7 @@ public class TsFileSketchTool {
             pw,
             splitStr
                 + " [Chunk Group] of "
-                + chunkGroupMetadata.getDevice()
+                + ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID()
                 + ", num of Chunks:"
                 + chunkGroupMetadata.getChunkMetadataList().size());
         // chunkGroupHeader begins
@@ -292,7 +293,10 @@ public class TsFileSketchTool {
             reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
         printlnBoth(
-            pw, String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
+            pw,
+            String.format("%20s", "")
+                + "|\t\t[deviceID] "
+                + ((PlainDeviceID) chunkGroupHeader.getDeviceID()).toStringID());
         // chunk begins
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
@@ -372,7 +376,12 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+        printlnBoth(
+            pw,
+            splitStr
+                + " [Chunk Group] of "
+                + ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID()
+                + " ends");
       }
     } catch (IOException e) {
       e.printStackTrace();

@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -177,7 +178,8 @@ public class TsFileSequenceRead {
             System.out.println("[Chunk Group]");
             System.out.println("Chunk Group Header position: " + reader.position());
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            System.out.println("device: " + chunkGroupHeader.getDeviceID());
+            System.out.println(
+                "device: " + ((PlainDeviceID) chunkGroupHeader.getDeviceID()).toStringID());
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -77,7 +78,7 @@ public class TsFileResourcePrinter {
     for (IDeviceID device : resource.getDevices()) {
       System.out.printf(
           "device %s, start time %d (%s), end time %d (%s)%n",
-          device,
+          ((PlainDeviceID) device).toStringID(),
           resource.getStartTime(device),
           DateTimeUtils.convertLongToDate(resource.getStartTime(device)),
           resource.getEndTime(device),
