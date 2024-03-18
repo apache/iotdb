@@ -343,7 +343,7 @@ public class Tablet {
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-          if(binaries[rowIndex]!=null) {
+          if (binaries[rowIndex] != null) {
             valueOccupation += binaries[rowIndex].getLength();
           }
         }
