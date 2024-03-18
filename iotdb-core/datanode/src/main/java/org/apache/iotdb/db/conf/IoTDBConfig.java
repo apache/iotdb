@@ -1544,6 +1544,7 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
+    confirmMultiDirStrategy();
     for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
       // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
       if (multiDirStrategyClassName.equals(multiDirStrategy)
