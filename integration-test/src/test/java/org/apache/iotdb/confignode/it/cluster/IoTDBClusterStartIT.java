@@ -38,6 +38,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
@@ -47,7 +51,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 public class IoTDBClusterStartIT {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBClusterStartIT.class);
 
-  private static final int testConfigNodeNum = 3, testDataNodeNum = 0;
+  private static final int testConfigNodeNum = 3, testDataNodeNum = 1;
 
   @Before
   public void setUp() {
@@ -67,27 +71,39 @@ public class IoTDBClusterStartIT {
   }
 
   @Test
-  public void clusterIdTest() throws ClientManagerException, IOException, InterruptedException {
+  public void clusterIdTest()
+      throws ClientManagerException, IOException, InterruptedException, SQLException {
     final long maxTestTime = TimeUnit.SECONDS.toMillis(30);
     final long testInterval = TimeUnit.SECONDS.toMillis(1);
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+        Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       long startTime = System.currentTimeMillis();
+      boolean testPass = false;
+      String clusterIdFromConfigNode = null;
       while (System.currentTimeMillis() - startTime < maxTestTime) {
         try {
           TGetClusterIdResp resp = client.getClusterId();
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
             Assert.assertNotNull(resp.getClusterId());
             Assert.assertNotEquals("", resp.getClusterId());
-            return;
+            clusterIdFromConfigNode = resp.getClusterId();
+            testPass = true;
+            break;
           }
         } catch (TException e) {
           logger.error("TException:", e);
         }
         Thread.sleep(testInterval);
       }
-      String errorMessage = String.format("Cluster ID failed to generate in %d ms.", maxTestTime);
-      Assert.fail(errorMessage);
+      if (!testPass) {
+        String errorMessage = String.format("Cluster ID failed to generate in %d ms.", maxTestTime);
+        Assert.fail(errorMessage);
+      }
+      ResultSet resultSet = statement.executeQuery("show clusterid");
+      resultSet.next();
+      Assert.assertEquals(clusterIdFromConfigNode, resultSet.getString(1));
     }
   }
 }

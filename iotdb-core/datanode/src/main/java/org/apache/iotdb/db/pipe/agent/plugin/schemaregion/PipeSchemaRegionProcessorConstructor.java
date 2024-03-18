@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 
-public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstructor {
+class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstructor {
 
   @Override
   protected void initConstructors() {
@@ -34,7 +34,7 @@ public class PipeSchemaRegionProcessorConstructor extends PipeProcessorConstruct
 
   @Override
   protected PipeProcessor reflectPluginByKey(String pluginKey) {
-    // TODO: support constructing plugin by reflection
+    // TODO: Support constructing plugin by reflection
     return (PipeProcessor)
         pluginConstructors.getOrDefault(pluginKey, DoNothingProcessor::new).get();
   }

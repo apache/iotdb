@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -266,10 +267,20 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void reset() {
+    checkOldRoleDir(SystemFileFactory.INSTANCE.getFile(roleDirPath));
     if (SystemFileFactory.INSTANCE.getFile(roleDirPath).mkdirs()) {
       LOGGER.info("role info dir {} is created", roleDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(roleDirPath).exists()) {
       LOGGER.error("role info dir {} can not be created", roleDirPath);
+    }
+  }
+
+  private void checkOldRoleDir(File newDir) {
+    File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldRoleFolder());
+    if (oldDir.exists()) {
+      if (!FileUtils.moveFileSafe(oldDir, newDir)) {
+        LOGGER.error("move old role dir fail: {}", oldDir.getAbsolutePath());
+      }
     }
   }
 

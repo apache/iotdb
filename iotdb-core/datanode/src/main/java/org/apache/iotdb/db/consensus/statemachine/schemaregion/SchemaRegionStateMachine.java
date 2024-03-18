@@ -21,9 +21,12 @@ package org.apache.iotdb.db.consensus.statemachine.schemaregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -54,7 +57,23 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {
-    // do nothing
+    // Stop leader related service for schema pipe
+    PipeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+  }
+
+  @Override
+  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    if (schemaRegion.getSchemaRegionId().equals(groupId)
+        && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
+      // Shutdown leader related service for schema pipe
+      PipeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+    }
+  }
+
+  @Override
+  public void notifyLeaderReady() {
+    // Activate leader related service for schema pipe
+    PipeAgent.runtime().notifySchemaLeaderReady(schemaRegion.getSchemaRegionId());
   }
 
   @Override
@@ -64,18 +83,30 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return schemaRegion.createSnapshot(snapshotDir);
+    return schemaRegion.createSnapshot(snapshotDir)
+        && PipeAgent.runtime()
+            .schemaListener(schemaRegion.getSchemaRegionId())
+            .createSnapshot(snapshotDir);
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
+    PipeAgent.runtime()
+        .schemaListener(schemaRegion.getSchemaRegionId())
+        .loadSnapshot(latestSnapshotRootDir);
   }
 
   @Override
   public TSStatus write(IConsensusRequest request) {
     try {
-      return ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        PipeAgent.runtime()
+            .schemaListener(schemaRegion.getSchemaRegionId())
+            .tryListenToNode((PlanNode) request);
+      }
+      return result;
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

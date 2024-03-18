@@ -48,7 +48,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.size();
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.warn("Error happened while getting {} size", filePath);
       throw e;
     }
   }
@@ -58,7 +58,7 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       return channel.position();
     } catch (IOException e) {
-      logger.error("Error happened while getting {} current position", filePath);
+      logger.warn("Error happened while getting {} current position", filePath);
       throw e;
     }
   }
@@ -69,7 +69,7 @@ public class LocalTsFileInput implements TsFileInput {
       channel.position(newPosition);
       return this;
     } catch (IOException e) {
-      logger.error("Error happened while changing {} position to {}", filePath, newPosition);
+      logger.warn("Error happened while changing {} position to {}", filePath, newPosition);
       throw e;
     }
   }

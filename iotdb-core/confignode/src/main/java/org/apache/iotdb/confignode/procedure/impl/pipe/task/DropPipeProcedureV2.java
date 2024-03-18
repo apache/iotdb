@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -58,7 +59,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
     pipeTaskInfo.get().checkBeforeDropPipe(pipeName);
@@ -67,14 +68,13 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
     TSStatus response;
@@ -91,7 +91,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
@@ -105,25 +105,25 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
     // Do nothing
   }
@@ -150,11 +150,14 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     DropPipeProcedureV2 that = (DropPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName);
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
   }
 }

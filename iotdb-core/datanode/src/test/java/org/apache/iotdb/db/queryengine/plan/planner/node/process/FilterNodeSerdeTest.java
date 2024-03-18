@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 
@@ -53,7 +52,6 @@ public class FilterNodeSerdeTest {
                 new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                 new ConstantOperand(TSDataType.INT64, "100")),
             false,
-            ZoneId.systemDefault(),
             Ordering.ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);

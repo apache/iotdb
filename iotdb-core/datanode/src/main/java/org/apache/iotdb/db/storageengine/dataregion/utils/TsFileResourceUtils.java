@@ -274,7 +274,7 @@ public class TsFileResourceUtils {
         }
       }
 
-    } catch (Exception e) {
+    } catch (IOException | NegativeArraySizeException | IllegalArgumentException e) {
       logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
       return false;
     }

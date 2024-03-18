@@ -33,14 +33,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * size, the element with max priority will be kick out.
  */
 public class FixedPriorityBlockingQueue<T> {
-  private int maxSize;
-  private Comparator<T> comparator;
-  private MinMaxPriorityQueue<T> queue;
+  protected int maxSize;
+  protected Comparator<T> comparator;
+  protected MinMaxPriorityQueue<T> queue;
 
-  private ReentrantLock lock = new ReentrantLock();
-  private Condition notEmpty = lock.newCondition();
+  protected ReentrantLock lock = new ReentrantLock();
+  protected Condition notEmpty = lock.newCondition();
 
-  private List<PollLastHook> pollLastHookList = new CopyOnWriteArrayList<>();
+  protected List<PollLastHook> pollLastHookList = new CopyOnWriteArrayList<>();
 
   public FixedPriorityBlockingQueue(int maxSize, Comparator<T> comparator) {
     this.maxSize = maxSize;

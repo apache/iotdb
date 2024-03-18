@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpochManager;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochManager;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
@@ -53,6 +55,11 @@ public class PipeRealtimeEventFactory {
       String dataRegionId, boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
+  }
+
+  public static PipeRealtimeEvent createRealtimeEvent(DeleteDataNode node) {
+    return new PipeRealtimeEvent(
+        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,8 +43,6 @@ public class ShowQueriesStatement extends ShowStatement {
 
   private long rowLimit;
   private long rowOffset;
-
-  private ZoneId zoneId;
 
   public ShowQueriesStatement() {
     this.statementType = StatementType.SHOW_QUERIES;
@@ -109,13 +106,5 @@ public class ShowQueriesStatement extends ShowStatement {
 
   public long getRowOffset() {
     return rowOffset;
-  }
-
-  public ZoneId getZoneId() {
-    return zoneId;
-  }
-
-  public void setZoneId(ZoneId zoneId) {
-    this.zoneId = zoneId;
   }
 }

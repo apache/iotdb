@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
@@ -152,7 +153,13 @@ public class TestUtils {
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
     resultSetEqualTest(
-        sql, expectedHeader, expectedRetArray, null, "root", "root", TimeUnit.MILLISECONDS);
+        sql,
+        expectedHeader,
+        expectedRetArray,
+        null,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -176,7 +183,13 @@ public class TestUtils {
       header.append(s).append(",");
     }
     resultSetEqualTest(
-        sql, header.toString(), expectedRetArray, df, "root", "root", TimeUnit.MILLISECONDS);
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -189,7 +202,14 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root", currPrecision);
+    resultSetEqualTest(
+        sql,
+        header.toString(),
+        expectedRetArray,
+        df,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        currPrecision);
   }
 
   public static void resultSetEqualTest(
@@ -255,7 +275,7 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg) {
-    assertTestFail(sql, errMsg, "root", "root");
+    assertTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertTestFail(String sql, String errMsg, String userName, String password) {
@@ -274,7 +294,7 @@ public class TestUtils {
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
-    assertNonQueryTestFail(sql, errMsg, "root", "root");
+    assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void assertNonQueryTestFail(
@@ -366,7 +386,7 @@ public class TestUtils {
   }
 
   public static void executeNonQuery(String sql) {
-    executeNonQuery(sql, "root", "root");
+    executeNonQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeNonQuery(String sql, String userName, String password) {
@@ -400,7 +420,8 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
-    return tryExecuteNonQueryWithRetry(env, sql, "root", "root");
+    return tryExecuteNonQueryWithRetry(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static boolean tryExecuteNonQueryWithRetry(
@@ -409,11 +430,12 @@ public class TestUtils {
   }
 
   public static boolean tryExecuteNonQueriesWithRetry(BaseEnv env, List<String> sqlList) {
-    return tryExecuteNonQueriesWithRetry(env, sqlList, "root", "root");
+    return tryExecuteNonQueriesWithRetry(
+        env, sqlList, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueriesWithRetry(
       BaseEnv env, List<String> sqlList, String userName, String password) {
     int lastIndex = 0;
@@ -421,8 +443,8 @@ public class TestUtils {
       try (Connection connection = env.getConnection(userName, password);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
-          statement.execute(sqlList.get(i));
           lastIndex = i;
+          statement.execute(sqlList.get(i));
         }
         return true;
       } catch (SQLException e) {
@@ -443,7 +465,7 @@ public class TestUtils {
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
         break;
@@ -462,7 +484,7 @@ public class TestUtils {
   }
 
   // This method will not throw failure given that a failure is encountered.
-  // Instead, it return a flag to indicate the result of the execution.
+  // Instead, it returns a flag to indicate the result of the execution.
   public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     return tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -473,7 +495,7 @@ public class TestUtils {
       BaseEnv env, DataNodeWrapper wrapper, List<String> sqlList) {
     int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+      try (Connection connection = env.getWriteOnlyConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           statement.execute(sqlList.get(i));
@@ -496,7 +518,7 @@ public class TestUtils {
   }
 
   public static void executeQuery(String sql) {
-    executeQuery(sql, "root", "root");
+    executeQuery(sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
   public static void executeQuery(String sql, String userName, String password) {
@@ -639,13 +661,22 @@ public class TestUtils {
     ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
   }
 
-  public static void assertDataOnEnv(
+  public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failure
+      // Keep retrying if there are execution failures
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 try {
@@ -657,7 +688,38 @@ public class TestUtils {
               });
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      fail();
+    }
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long consistentSeconds) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .atMost(consistentSeconds, TimeUnit.SECONDS)
+          .failFast(
+              () -> {
+                try {
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 }

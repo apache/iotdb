@@ -484,7 +484,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Get the specific DatabaseSchema
+   * Only leader use this interface. Get the specific {@link TDatabaseSchema}
    *
    * @param database DatabaseName
    * @return The specific DatabaseSchema
@@ -524,6 +524,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               path.getFullPath(),
               mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
         }
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn(ERROR_NAME, e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
+  }
+
+  /**
+   * Only leader use this interface. Get the matched DatabaseSchemas.
+   *
+   * @param prefix prefix path such as root.a
+   * @return All DatabaseSchemas that matches to the prefix path such as root.a.db1, root.a.db2
+   */
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(PartialPath prefix) {
+    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+    databaseReadWriteLock.readLock().lock();
+    try {
+      List<PartialPath> matchedPaths = mTree.getMatchedDatabases(prefix, ALL_MATCH_SCOPE, true);
+      for (PartialPath path : matchedPaths) {
+        schemaMap.put(
+            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
       }
     } catch (MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
@@ -726,6 +749,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return result;
+  }
+
+  public Template getTemplate(int id) throws MetadataException {
+    return templateTable.getTemplate(id);
   }
 
   public synchronized TemplateInfoResp checkTemplateSettable(

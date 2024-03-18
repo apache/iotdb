@@ -90,7 +90,7 @@ public abstract class Statistics<T extends Serializable> {
     }
   }
 
-  public static int getSizeByType(TSDataType type) {
+  public static long getSizeByType(TSDataType type) {
     switch (type) {
       case INT32:
         return IntegerStatistics.INSTANCE_SIZE;
