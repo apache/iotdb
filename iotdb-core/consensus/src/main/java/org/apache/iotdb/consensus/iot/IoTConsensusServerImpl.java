@@ -354,7 +354,7 @@ public class IoTConsensusServerImpl {
     return snapShotIndex;
   }
 
-  private void clearOldSnapshot() {
+  public void clearOldSnapshot() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
     if (versionFiles == null || versionFiles.length == 0) {
