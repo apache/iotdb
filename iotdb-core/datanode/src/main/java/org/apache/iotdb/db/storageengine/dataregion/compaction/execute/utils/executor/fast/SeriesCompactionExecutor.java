@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -34,9 +32,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -49,7 +48,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -79,7 +77,8 @@ public abstract class SeriesCompactionExecutor {
 
   protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  private final Map<TsFileResource, List<Modification>> modificationCacheMap;
+  private final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      modificationCacheMap;
 
   private final PointPriorityReader pointPriorityReader;
 
@@ -101,7 +100,8 @@ public abstract class SeriesCompactionExecutor {
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+          modificationCacheMap,
       String deviceId,
       boolean isAligned,
       int subTaskId,
@@ -502,26 +502,12 @@ public abstract class SeriesCompactionExecutor {
    */
   protected List<Modification> getModificationsFromCache(
       TsFileResource tsFileResource, PartialPath path) {
-    // copy from TsFileResource so queries are not affected
-    List<Modification> modifications =
-        modificationCacheMap.computeIfAbsent(tsFileResource, x -> Collections.emptyList());
-    List<Modification> pathModifications = new ArrayList<>();
-    Iterator<Modification> modificationIterator = modifications.iterator();
-    while (modificationIterator.hasNext()) {
-      Modification modification = modificationIterator.next();
-      if (modification.getPath().matchFullPath(path)) {
-        pathModifications.add(modification);
-      }
+    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> allModifications =
+        modificationCacheMap.get(tsFileResource.getTsFile().getName());
+    if (allModifications == null) {
+      return Collections.emptyList();
     }
-    long timeLowerBound =
-        CommonDateTimeUtils.currentTime() - DataNodeTTLCache.getInstance().getTTL(path.getDevice());
-    pathModifications.add(
-        new Deletion(
-            path.getDevicePath().concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
-            Long.MAX_VALUE,
-            Long.MIN_VALUE,
-            timeLowerBound));
-    return pathModifications;
+    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   @SuppressWarnings("squid:S3776")

@@ -110,7 +110,12 @@ public class ReadPointCompactionPerformer
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
+      int finishedDeviceNum = 0;
       while (deviceIterator.hasNextDevice()) {
+        if (finishedDeviceNum % 100 == 0) {
+          logger.info("Finished Device num is " + finishedDeviceNum);
+        }
+        finishedDeviceNum++;
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;

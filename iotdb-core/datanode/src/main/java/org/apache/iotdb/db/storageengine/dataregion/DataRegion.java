@@ -2351,9 +2351,9 @@ public class DataRegion implements IDataRegionForQuery {
       CompactionScheduleSummary summary = new CompactionScheduleSummary();
 
       // schedule settle compaction for ttl check
-      if (scheduleCount % ttlCheckInterval == 0) {
-        trySubmitCount += executeTTLCheck(timePartitions, summary);
-      }
+      //      if (scheduleCount % ttlCheckInterval == 0) {
+      //        trySubmitCount += executeTTLCheck(timePartitions, summary);
+      //      }
 
       // schedule insert compaction
       if (trySubmitCount == 0) {

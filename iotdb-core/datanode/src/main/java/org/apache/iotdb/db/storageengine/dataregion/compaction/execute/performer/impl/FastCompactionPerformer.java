@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -80,7 +82,9 @@ public class FastCompactionPerformer
 
   private List<TsFileResource> targetFiles;
 
-  private Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
+  // tsFile name -> modifications
+  private Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
 
@@ -112,8 +116,14 @@ public class FastCompactionPerformer
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
-      readModification();
+      readModification(seqFiles);
+      readModification(unseqFiles);
+      int finishedDeviceNum = 0;
       while (deviceIterator.hasNextDevice()) {
+        if (finishedDeviceNum % 100 == 0) {
+          logger.info("Finished Device num is " + finishedDeviceNum);
+        }
+        finishedDeviceNum++;
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
@@ -307,10 +317,18 @@ public class FastCompactionPerformer
     this.seqFiles = unseqFiles;
   }
 
-  private void readModification() {
-    seqFiles.forEach(
-        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
-    unseqFiles.forEach(
-        x -> modificationCache.put(x, (List<Modification>) x.getModFile().getModifications()));
+  private void readModification(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
+      if (resource.getModFile() == null || !resource.getModFile().exists()) {
+        continue;
+      }
+      // read mods
+      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
+          PatternTreeMapFactory.getModsPatternTreeMap();
+      for (Modification modification : resource.getModFile().getModificationsIter()) {
+        modifications.append(modification.getPath(), modification);
+      }
+      modificationCache.put(resource.getTsFile().getName(), modifications);
+    }
   }
 }

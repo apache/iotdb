@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
@@ -276,7 +276,7 @@ public class SettleSelectorImpl implements ISettleSelector {
                 allDirtyResource.getResources(),
                 partialDirtyResourceList.get(i).getResources(),
                 isSeq,
-                new FastCompactionPerformer(false),
+                createCompactionPerformer(),
                 tsFileManager.getNextCompactionTaskId()));
       } else {
         if (partialDirtyResourceList.get(i).getResources().isEmpty()) {
@@ -289,11 +289,23 @@ public class SettleSelectorImpl implements ISettleSelector {
                 Collections.emptyList(),
                 partialDirtyResourceList.get(i).getResources(),
                 isSeq,
-                new FastCompactionPerformer(false),
+                createCompactionPerformer(),
                 tsFileManager.getNextCompactionTaskId()));
       }
     }
     return tasks;
+  }
+
+  private ICompactionPerformer createCompactionPerformer() {
+    return isSeq
+        ? IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerSeqCompactionPerformer()
+            .createInstance()
+        : IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerUnseqCompactionPerformer()
+            .createInstance();
   }
 
   enum DirtyStatus {
