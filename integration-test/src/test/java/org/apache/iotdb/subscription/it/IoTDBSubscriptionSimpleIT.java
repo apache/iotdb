@@ -328,4 +328,58 @@ public class IoTDBSubscriptionSimpleIT {
 
     Assert.assertEquals(100, count);
   }
+
+  @Test
+  public void topicProcessorSubscriptionTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic1 with ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true')");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    // insert some history data
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    int count = 0;
+
+    // subscription
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+
+      session.createConsumer(new ConsumerConfig(consumerAttributes));
+      session.subscribe(Collections.singleton("topic1"));
+
+      List<EnrichedTablets> enrichedTabletsList;
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
+        if (enrichedTabletsList.isEmpty()) {
+          break;
+        }
+        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+          for (Tablet tablet : enrichedTablets.getTablets()) {
+            count += tablet.rowSize;
+          }
+          topicNameToSubscriptionCommitIds
+              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
+              .addAll(enrichedTablets.getSubscriptionCommitIds());
+        }
+        session.commit(topicNameToSubscriptionCommitIds);
+      }
+      session.unsubscribe(Collections.singleton("topic1"));
+      session.dropConsumer();
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    Assert.assertEquals(3, count);
+  }
 }
