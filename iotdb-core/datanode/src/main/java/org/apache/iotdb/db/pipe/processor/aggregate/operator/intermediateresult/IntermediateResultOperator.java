@@ -1,0 +1,92 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+/**
+ * The class that define the calculation and ser/de logic of an intermediate result. There shall be
+ * a one-to-one match between an intermediate result's operator and its name.
+ *
+ * <p>The operator's update function is called once per point, thus it shall implement update
+ * functions with primitive type input and shall handle the intermediate value itself in order to
+ * better optimize the calculation and save resource.
+ *
+ * <p>Note that an operator can preserve and update its own variables in all the functions below,
+ * but their purpose shall be better in calculating the result. Although they can be ser/de as well,
+ * but the deserialized variables of themselves are not preserved.
+ *
+ * <p>Besides, the variables can also be passed in by the instantiating function, to help
+ * customizing calculation.
+ */
+public interface IntermediateResultOperator {
+  /**
+   * The operator may init its value and set the output intermediate value type by the input data
+   * type, and return its type as well. The output value type is arbitrary, such as a List, a Map,
+   * or any type that is needed in aggregation value calculation. You can even hold all the points
+   * in the output value and hand it to the aggregation function.
+   *
+   * @param initialInput the initial data
+   * @return the type of the intermediate result, {@code null} if the input type is unsupported.
+   */
+  Class<?> initAndGetReturnValueType(boolean initialInput, long initialTimestamp);
+
+  Class<?> initAndGetReturnValueType(int initialInput, long initialTimestamp);
+
+  Class<?> initAndGetReturnValueType(long initialInput, long initialTimestamp);
+
+  Class<?> initAndGetReturnValueType(float initialInput, long initialTimestamp);
+
+  Class<?> initAndGetReturnValueType(double initialInput, long initialTimestamp);
+
+  Class<?> initAndGetReturnValueType(String initialInput, long initialTimestamp);
+
+  /**
+   * Use the input to update the intermediate result. The input is all raw types instead of Object
+   * to avoid the boxing and unboxing operations' resource occupation.
+   *
+   * @param input the inputs
+   */
+  void updateValue(boolean input, long timestamp);
+
+  void updateValue(int input, long timestamp);
+
+  void updateValue(long input, long timestamp);
+
+  void updateValue(float input, long timestamp);
+
+  void updateValue(double input, long timestamp);
+
+  void updateValue(String input, long timestamp);
+
+  /** Get the result to calculate the aggregated value. */
+  Object getResult();
+
+  /**
+   * Serialize its intermediate result to the outputStream to allow shutdown restart. The operator
+   * may as well serialize its own status.
+   */
+  void serialize(DataOutputStream outputStream) throws IOException;
+
+  /** Deserialize the object from byteBuffer to allow shutdown restart */
+  void deserialize(ByteBuffer byteBuffer) throws IOException;
+}

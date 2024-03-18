@@ -23,12 +23,12 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.aggregator.AggregatorRuntimeAttributes;
-import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.aggregator.AggregatorStaticAttributes;
-import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.intermediate.IntermediateResultAttributes;
-import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.timeseries.TimeSeriesAttributes;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.window.TimeSeriesWindowState;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.AbstractOperatorProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatorRuntimeAttributes;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
+import org.apache.iotdb.db.pipe.processor.aggregate.windowing.AbstractWindowingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -38,9 +38,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,85 +51,68 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_AGGREGATORS_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_AGGREGATORS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OPERATORS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OPERATORS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MEASUREMENTS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_WINDOWING_STRATEGY_KEY;
 
-/** {@link AggregateProcessor} is the parent class of all the aggregate functions' implementors. */
+/**
+ * {@link AggregateProcessor} is a {@link PipeProcessor} that can adopt different implementations of
+ * {@link AbstractWindowingProcessor} as windowing strategy and use calculation methods from all the
+ * {@link AbstractOperatorProcessor}s to calculate the given operators. Both the {@link
+ * AbstractWindowingProcessor} and {@link AbstractOperatorProcessor} can be implemented by user and
+ * loaded as a normal {@link PipeProcessor}
+ */
 public class AggregateProcessor implements PipeProcessor {
-
-  private String pipeName;
-
+  String pipeName;
   private long outputMaxDelayMilliseconds;
 
   private String outputDatabase;
 
-  private long slidingBoundaryTime;
-
-  private long slidingInterval;
-
-  private final Map<String, AggregatorRuntimeAttributes> aggregator2RuntimeAttributesMap =
+  private final Map<String, AggregatorRuntimeAttributes> operator2RuntimeAttributesMap =
       new HashMap<>();
-  private final Map<String, IntermediateResultAttributes> intermediateResult2AttributesMap =
+  private final Map<String, IntermediateResultOperator> intermediateResult2AttributesMap =
       new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
-  private static final Map<String, Map<String, TimeSeriesAttributes>>
-      pipeName2timeSeries2TimeSeriesAttributesMap = new ConcurrentHashMap<>();
+  private static final Map<
+          String, Map<String, AtomicReference<Pair<Long, List<TimeSeriesWindowState>>>>>
+      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap = new ConcurrentHashMap<>();
 
-  private final List<PipeProcessor> childProcessors = new ArrayList<>();
+  private AbstractWindowingProcessor windowingProcessor;
+  private final List<AbstractOperatorProcessor> operatorProcessors = new ArrayList<>();
 
   private static final AtomicLong lastValueReceiveTime = new AtomicLong(0);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Do nothing if is called by child classes
-    if (this.getClass() != AggregateProcessor.class) {
-      return;
-    }
     final PipeParameters parameters = validator.getParameters();
     validator
         .validate(
-            args -> (long) args == -1 || (long) args > 0,
-            String.format(
-                "The parameter %s must be equals to -1 or greater than 0",
-                PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY),
-            parameters.getLongOrDefault(
-                PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY,
-                PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE))
-        .validate(
-            args -> (long) args > 0,
-            String.format("The parameter %s must be greater than 0", PROCESSOR_SLIDING_SECONDS_KEY),
-            parameters.getLongOrDefault(
-                PROCESSOR_SLIDING_SECONDS_KEY, PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE))
+            args -> !((String) args).isEmpty(),
+            String.format("The parameter %s must not be empty", PROCESSOR_OPERATORS_KEY),
+            parameters.getStringOrDefault(
+                PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
             args -> !((String) args).isEmpty(),
-            String.format("The parameter %s must not be empty", PROCESSOR_AGGREGATORS_KEY),
+            String.format("The parameter %s must not be empty", PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
-                PROCESSOR_AGGREGATORS_KEY, PROCESSOR_AGGREGATORS_DEFAULT_VALUE));
+                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    // Do nothing if is called by child classes
-    if (this.getClass() != AggregateProcessor.class) {
-      return;
-    }
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
@@ -139,26 +122,15 @@ public class AggregateProcessor implements PipeProcessor {
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY,
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE);
     outputMaxDelayMilliseconds =
-        outputMaxDelaySeconds == -1 ? Long.MAX_VALUE : outputMaxDelaySeconds * 1000;
+        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : outputMaxDelaySeconds * 1000;
     outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
-    slidingBoundaryTime =
-        parameters.hasAnyAttributes(PROCESSOR_SLIDING_BOUNDARY_TIME_KEY)
-            ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                parameters.getString(PROCESSOR_SLIDING_BOUNDARY_TIME_KEY))
-            : PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
-    slidingInterval =
-        TimestampPrecisionUtils.convertToCurrPrecision(
-            parameters.getLongOrDefault(
-                PROCESSOR_SLIDING_SECONDS_KEY, PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE),
-            TimeUnit.SECONDS);
 
-    List<String> aggregatorNameList =
+    List<String> operatorNameList =
         Arrays.stream(
                 parameters
-                    .getStringOrDefault(
-                        PROCESSOR_AGGREGATORS_KEY, PROCESSOR_AGGREGATORS_DEFAULT_VALUE)
+                    .getStringOrDefault(PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)
                     .replace(" ", "")
                     .split(","))
             .collect(Collectors.toList());
@@ -171,64 +143,70 @@ public class AggregateProcessor implements PipeProcessor {
                     .replace(" ", "")
                     .split(","))
             .collect(Collectors.toList());
-    Map<String, String> aggregator2outputMeasurementNameMap = new HashMap<>();
-    for (int i = 0; i < aggregatorNameList.size(); ++i) {
+    Map<String, String> operator2outputMeasurementNameMap = new HashMap<>();
+    for (int i = 0; i < operatorNameList.size(); ++i) {
       if (i < outputMeasurementNameList.size()) {
-        aggregator2outputMeasurementNameMap.put(
-            aggregatorNameList.get(i).toLowerCase(), outputMeasurementNameList.get(i));
+        operator2outputMeasurementNameMap.put(
+            operatorNameList.get(i).toLowerCase(), outputMeasurementNameList.get(i));
       } else {
-        aggregator2outputMeasurementNameMap.put(
-            aggregatorNameList.get(i).toLowerCase(), aggregatorNameList.get(i));
+        operator2outputMeasurementNameMap.put(
+            operatorNameList.get(i).toLowerCase(), operatorNameList.get(i));
       }
     }
 
     // Load the useful aggregators' and their corresponding intermediate results' computational
     // logic.
-    Set<String> aggregatorNameSet =
-        aggregatorNameList.stream().map(String::toLowerCase).collect(Collectors.toSet());
+    Set<String> operatorNameSet =
+        operatorNameList.stream().map(String::toLowerCase).collect(Collectors.toSet());
     Set<String> declaredIntermediateResultSet = new HashSet<>();
     PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
     for (String pipePluginName :
-        agent.getSubPluginNamesWithSpecifiedParent(AggregateProcessor.class)) {
+        agent.getSubPluginNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
-      PipeProcessor childProcessor =
-          agent.getConfiguredProcessor(pipePluginName, parameters, configuration);
-      Map<String, AggregatorStaticAttributes> aggregatorName2StaticAttributesMap =
-          ((AggregateProcessor) childProcessor).getAggregatorName2StaticAttributesMap();
-      for (Map.Entry<String, AggregatorStaticAttributes> entry :
-          aggregatorName2StaticAttributesMap.entrySet()) {
+      AbstractOperatorProcessor operatorProcessor =
+          (AbstractOperatorProcessor)
+              agent.getConfiguredProcessor(pipePluginName, parameters, configuration);
+      Map<String, AggregatedResultOperator> operatorName2StaticAttributesMap =
+          operatorProcessor.getAggregatorName2StaticAttributesMap();
+      for (Map.Entry<String, AggregatedResultOperator> entry :
+          operatorName2StaticAttributesMap.entrySet()) {
         String lowerCaseAggregatorName = entry.getKey().toLowerCase();
-        AggregatorStaticAttributes aggregatorStaticAttributes = entry.getValue();
-        if (!aggregatorNameSet.contains(lowerCaseAggregatorName)) {
+        AggregatedResultOperator aggregatedResultOperator = entry.getValue();
+        if (!operatorNameSet.contains(lowerCaseAggregatorName)) {
           continue;
         }
-        aggregatorNameSet.remove(lowerCaseAggregatorName);
-        aggregator2RuntimeAttributesMap.put(
+        operatorNameSet.remove(lowerCaseAggregatorName);
+        operator2RuntimeAttributesMap.put(
             lowerCaseAggregatorName,
             new AggregatorRuntimeAttributes(
-                aggregator2outputMeasurementNameMap.get(lowerCaseAggregatorName),
-                aggregatorStaticAttributes.getTerminateWindowFunction(),
-                aggregatorStaticAttributes.getOutputDataType()));
+                operator2outputMeasurementNameMap.get(lowerCaseAggregatorName),
+                aggregatedResultOperator.getTerminateWindowFunction(),
+                aggregatedResultOperator.getOutputDataType()));
         declaredIntermediateResultSet.addAll(
-            aggregatorStaticAttributes.getDeclaredIntermediateValueNames());
+            aggregatedResultOperator.getDeclaredIntermediateValueNames());
       }
       intermediateResult2AttributesMap.putAll(
-          ((AggregateProcessor) childProcessor).getIntermediateResultName2AttributesMap());
-      childProcessors.add(childProcessor);
+          operatorProcessor.getIntermediateResultName2AttributesMap());
+      operatorProcessors.add(operatorProcessor);
     }
-    if (!aggregatorNameSet.isEmpty()) {
-      throw new PipeException(
-          String.format("The attribute keys %s are invalid.", aggregatorNameSet));
+    if (!operatorNameSet.isEmpty()) {
+      throw new PipeException(String.format("The attribute keys %s are invalid.", operatorNameSet));
     }
     intermediateResult2AttributesMap
         .keySet()
         .removeIf(key -> !declaredIntermediateResultSet.contains(key));
+    declaredIntermediateResultSet.removeAll(intermediateResult2AttributesMap.keySet());
+    if (!declaredIntermediateResultSet.isEmpty()) {
+      throw new PipeException(
+          String.format(
+              "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+    }
   }
 
   @Override
-  public final void process(
-      TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) throws Exception {
+  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+      throws Exception {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       eventCollector.collect(tabletInsertionEvent);
@@ -265,21 +243,16 @@ public class AggregateProcessor implements PipeProcessor {
       final String timeSeries =
           row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
       long timeStamp = row.getTime();
-      final TimeSeriesAttributes timeSeriesAttributes =
-          pipeName2timeSeries2TimeSeriesAttributesMap.get(pipeName).get(timeSeries);
+      final List<TimeSeriesWindowState> timeSeriesWindowState =
+          pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap
+              .get(pipeName)
+              .get(timeSeries)
+              .get();
 
       // Initiate the slidingBoundaryTime on the first incoming value
-      if (timeSeriesAttributes.getCurrentBoundaryTime() == Long.MIN_VALUE) {
-        if (timeStamp <= slidingBoundaryTime) {
-          timeSeriesAttributes.setCurrentBoundaryTime(slidingBoundaryTime);
-        } else {
-          timeSeriesAttributes.setCurrentBoundaryTime(
-              ((timeStamp - slidingBoundaryTime - 1) / slidingInterval + 1) * slidingInterval
-                  + slidingBoundaryTime);
-        }
-      }
+      timeSeriesWindowState.tryInitBoundaryTime(timeStamp, slidingBoundaryTime, slidingInterval);
 
-      long boundaryTime = timeSeriesAttributes.getCurrentBoundaryTime();
+      long boundaryTime = timeSeriesWindowState.getCurrentBoundaryTime();
       // Ignore the value if the timestamp is sooner than the window left bound
       if (timeStamp < boundaryTime) {
         return;
@@ -296,29 +269,10 @@ public class AggregateProcessor implements PipeProcessor {
     }
   }
 
-  /**
-   * This equals to the default implementation of the interface. Here we add "final" to prevent
-   * child classes from rewriting it.
-   *
-   * @param tsFileInsertionEvent {@link TsFileInsertionEvent} to be processed * @param
-   *     eventCollector used to collect result events after processing * @throws Exception the user
-   *     can throw errors if necessary
-   */
   @Override
-  public final void process(
-      TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector) throws Exception {
-    try {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          tsFileInsertionEvent.toTabletInsertionEvents()) {
-        process(tabletInsertionEvent, eventCollector);
-      }
-    } finally {
-      tsFileInsertionEvent.close();
-    }
-  }
+  public void process(Event event, EventCollector eventCollector) throws Exception {
+    if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {}
 
-  @Override
-  public final void process(Event event, EventCollector eventCollector) throws Exception {
     eventCollector.collect(event);
   }
 
@@ -327,35 +281,14 @@ public class AggregateProcessor implements PipeProcessor {
     if (pipeName2referenceCountMap.compute(
             pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
         == 0) {
-      pipeName2timeSeries2TimeSeriesAttributesMap.get(pipeName).clear();
-      pipeName2timeSeries2TimeSeriesAttributesMap.remove(pipeName);
+      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap.get(pipeName).clear();
+      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap.remove(pipeName);
     }
-    for (PipeProcessor childProcessor : childProcessors) {
-      childProcessor.close();
+    if (Objects.nonNull(windowingProcessor)) {
+      windowingProcessor.close();
     }
-  }
-
-  /////////////////////////////// Child classes logic ///////////////////////////////
-
-  // Child classes must override these logics to be functional.
-  /**
-   * Get the supported aggregators and its corresponding {@link AggregatorStaticAttributes}.
-   *
-   * @return Map {@literal <}AggregatorName, {@link AggregatorStaticAttributes}{@literal >}
-   */
-  protected Map<String, AggregatorStaticAttributes> getAggregatorName2StaticAttributesMap() {
-    throw new UnsupportedOperationException(
-        "The aggregate processor does not support getAggregatorName2StaticAttributesMap");
-  }
-
-  /**
-   * Get the supported intermediate results and its corresponding {@link
-   * IntermediateResultAttributes}.
-   *
-   * @return Map {@literal <}AggregatorName, {@link IntermediateResultAttributes}{@literal >}
-   */
-  protected Map<String, IntermediateResultAttributes> getIntermediateResultName2AttributesMap() {
-    throw new UnsupportedOperationException(
-        "The aggregate processor does not support getIntermediateResultName2StaticAttributesMap");
+    for (PipeProcessor operatorProcessor : operatorProcessors) {
+      operatorProcessor.close();
+    }
   }
 }

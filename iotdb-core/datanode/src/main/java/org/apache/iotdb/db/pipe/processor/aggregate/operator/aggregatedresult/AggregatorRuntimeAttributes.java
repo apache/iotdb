@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.datastructure.aggregator;
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 

@@ -17,27 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.datastructure.timeseries;
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
-import java.util.Map;
-
-public class TimeSeriesAttributes {
-  private long currentBoundaryTime = Long.MIN_VALUE;
-  private Map<String, Object> intermediateResultName2ValueMap;
-
-  public long getCurrentBoundaryTime() {
-    return currentBoundaryTime;
+public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
+  @Override
+  public void updateValue(int input, long timestamp) {
+    intValue = Math.max(intValue, Math.abs(input));
   }
 
-  public void setCurrentBoundaryTime(long currentBoundaryTime) {
-    this.currentBoundaryTime = currentBoundaryTime;
+  @Override
+  public void updateValue(long input, long timestamp) {
+    longValue = Math.max(longValue, Math.abs(input));
   }
 
-  public Map<String, Object> getIntermediateResultName2ValueMap() {
-    return intermediateResultName2ValueMap;
+  @Override
+  public void updateValue(float input, long timestamp) {
+    floatValue = Math.max(floatValue, Math.abs(input));
   }
 
-  public void updateIntermediateResult(String name, Object value) {
-    intermediateResultName2ValueMap.put(name, value);
+  @Override
+  public void updateValue(double input, long timestamp) {
+    doubleValue = Math.max(doubleValue, Math.abs(input));
   }
 }

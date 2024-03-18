@@ -17,8 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.aggregator;
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
-import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
+public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator {
+  private final transient int power;
 
-public class StandardStatisticsProcessor extends AggregateProcessor {}
+  public IntegralPoweredSumOperator(int power) {
+    this.power = power;
+  }
+
+  @Override
+  public void updateValue(int input, long timestamp) {
+    intValue += (int) Math.pow(input, power);
+  }
+
+  @Override
+  public void updateValue(long input, long timestamp) {
+    longValue += (long) Math.pow(input, power);
+  }
+
+  @Override
+  public void updateValue(float input, long timestamp) {
+    floatValue += (float) Math.pow(input, power);
+  }
+
+  @Override
+  public void updateValue(double input, long timestamp) {
+    doubleValue += Math.pow(input, power);
+  }
+}

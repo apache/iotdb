@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.datastructure.aggregator;
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -29,9 +29,7 @@ import java.util.function.Function;
  * The static attributes of an aggregator. There shall be a one-to-one match between an aggregator's
  * static attributes and its name.
  */
-public class AggregatorStaticAttributes {
-  private final String aggregatorName;
-
+public class AggregatedResultOperator {
   /**
    * The terminateWindowFunction receives a Map to get intermediate results by its names, and
    * produce a characteristic value of this window.
@@ -43,19 +41,13 @@ public class AggregatorStaticAttributes {
   /** The needed intermediate value names */
   private final Set<String> declaredIntermediateValueNames;
 
-  public AggregatorStaticAttributes(
-      String aggregatorName,
+  public AggregatedResultOperator(
       Function<Map<String, Object>, Object> terminateWindowFunction,
       TSDataType outputDataType,
       Set<String> declaredIntermediateValueNames) {
-    this.aggregatorName = aggregatorName;
     this.terminateWindowFunction = terminateWindowFunction;
     this.outputDataType = outputDataType;
     this.declaredIntermediateValueNames = declaredIntermediateValueNames;
-  }
-
-  public String getAggregatorName() {
-    return aggregatorName;
   }
 
   public Function<Map<String, Object>, Object> getTerminateWindowFunction() {
