@@ -85,4 +85,9 @@ public class MeasurementMetadataIndexEntry implements IMetadataIndexEntry {
     long offset = ReadWriteIOUtils.readLong(inputStream);
     return new MeasurementMetadataIndexEntry(name, offset);
   }
+
+  @Override
+  public String toString() {
+    return "<" + name + "," + offset + ">";
+  }
 }

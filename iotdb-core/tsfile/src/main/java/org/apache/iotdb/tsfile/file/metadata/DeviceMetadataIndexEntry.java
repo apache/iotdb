@@ -84,4 +84,9 @@ public class DeviceMetadataIndexEntry implements IMetadataIndexEntry {
     long offset = ReadWriteIOUtils.readLong(inputStream);
     return new DeviceMetadataIndexEntry(device, offset);
   }
+
+  @Override
+  public String toString() {
+    return "<" + ((PlainDeviceID) deviceID).toStringID() + "," + offset + ">";
+  }
 }
