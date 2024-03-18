@@ -332,14 +332,16 @@ public class IoTDBSubscriptionSimpleIT {
   @Test
   public void topicProcessorSubscriptionTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1 with ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true')");
+      session.executeNonQueryStatement(
+          "create topic topic1 with ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true')");
     } catch (Exception e) {
       fail(e.getMessage());
     }
 
     // insert some history data
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
+      session.executeNonQueryStatement(
+          "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
       fail(e.getMessage());
