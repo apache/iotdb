@@ -41,6 +41,7 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
+        <module>integration-test</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
@@ -126,7 +127,7 @@
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.17</moquette.version>
         <netty.version>4.1.97.Final</netty.version>
-        <nimbus-jose-jwt.version>9.34</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
@@ -183,7 +184,7 @@
     -->
         <thrift.version>0.14.1</thrift.version>
         <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.83</tomcat.version>
+        <tomcat.version>9.0.86</tomcat.version>
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.10.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
