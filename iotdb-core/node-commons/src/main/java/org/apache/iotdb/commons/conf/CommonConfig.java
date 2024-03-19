@@ -977,12 +977,12 @@ public class CommonConfig {
     this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionLaunchRetryIntervalMs() {
+  public long getSubscriptionLaunchRetryIntervalMs() {
     return subscriptionLaunchRetryIntervalMs;
   }
 
-  public void setSubscriptionLaunchRetryIntervalMs(long subscriptionSerializeMaxBlockingTimeMs) {
-    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  public void setSubscriptionLaunchRetryIntervalMs(long subscriptionLaunchRetryIntervalMs) {
+    this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
   }
 
   public String getSchemaEngineMode() {
