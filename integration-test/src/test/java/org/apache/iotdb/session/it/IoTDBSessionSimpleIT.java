@@ -1219,10 +1219,7 @@ public class IoTDBSessionSimpleIT {
             e.getMessage()
                 .contains(
                     String.format(
-                        msg,
-                        TSStatusCode.ILLEGAL_PATH,
-                        OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
-                        deviceId)));
+                        msg, TSStatusCode.ILLEGAL_PATH, OperationType.INSERT_TABLET, deviceId)));
       }
 
       try {
