@@ -892,7 +892,9 @@ public class SessionConnection {
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
         }
+        // succeed or don't need to retry
         RpcUtils.verifySuccess(status);
+        return;
       } catch (TException e) {
         // all network exception need retry until reaching maxRetryCount
         lastTException = e;

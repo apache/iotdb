@@ -2434,12 +2434,11 @@ public class Session implements ISession {
       }
       insertByGroup(recordsGroup, SessionConnection::insertRecords);
     } else {
-      logger.info("Insert using insertRecordsV2");
       Map<SessionConnection, InsertRecordsRequest> requestMap = new HashMap<>();
       for (int i = 0; i < deviceIds.size(); ++i) {
         final SessionConnection connection = getSessionConnection(deviceIds.get(i));
         InsertRecordsRequest request =
-            requestMap.getOrDefault(connection, new InsertRecordsRequest());
+            requestMap.computeIfAbsent(connection, x -> new InsertRecordsRequest());
         request.getDeviceIds().add(deviceIds.get(i));
         request.getTimestamps().add(times.get(i));
         request.getDataTypesList().add(typesList.get(i));

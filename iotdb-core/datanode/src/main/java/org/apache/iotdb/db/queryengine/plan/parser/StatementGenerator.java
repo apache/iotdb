@@ -88,6 +88,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.req.InsertRecordsRequest;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -405,6 +406,30 @@ public class StatementGenerator {
     insertStatement.setInsertRowStatementList(insertRowStatementList);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
+  }
+
+  public static InsertRowsStatement createStatement(InsertRecordsRequest req)
+      throws IllegalPathException {
+    final long startTime = System.nanoTime();
+    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    for (int i = 0, size = req.getTimestamps().size(); i < size; ++i) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getDeviceIds().get(i)));
+      statement.setMeasurements(req.getMeasurementsIdsList().get(i).toArray(new String[0]));
+      TimestampPrecisionUtils.checkTimestampPrecision(req.getTimestamps().get(i));
+      statement.setTime(req.getTimestamps().get(i));
+      statement.setValuesAndTypes(
+          req.getValuesList().get(i).toArray(),
+          req.getDataTypesList().get(i).toArray(new TSDataType[0]));
+      if (statement.isEmpty()) {
+        continue;
+      }
+      insertRowStatementList.add(statement);
+    }
+    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    return insertRowsStatement;
   }
 
   public static InsertRowsStatement createStatement(TSInsertStringRecordsReq req)

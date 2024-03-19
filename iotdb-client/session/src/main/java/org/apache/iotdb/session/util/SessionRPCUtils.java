@@ -39,7 +39,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -53,6 +54,8 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SessionRPCUtils {
+  private static final Logger logger = LoggerFactory.getLogger(SessionRPCUtils.class);
+
   public static ByteBuffer[] serializeInsertRecordsReq(
       List<String> deviceIds,
       List<List<String>> measurementIdsList,
@@ -73,7 +76,7 @@ public class SessionRPCUtils {
     PublicBAOS schemaBufferOS = new PublicBAOS();
     serializeDictionary(dictionary, schemaBufferOS);
     dictionaryEncoding(dictionary, deviceIds, measurementIdsList, schemaBufferOS);
-    ByteBuffer schemaBuffer = null;
+    ByteBuffer schemaBuffer;
     if (SessionConfig.enableRPCCompression) {
       ICompressor compressor = ICompressor.getCompressor(SessionConfig.rpcCompressionType);
       byte[] compressedData =
@@ -101,9 +104,9 @@ public class SessionRPCUtils {
     if (compressed) {
       int uncompressedLength = ReadWriteIOUtils.readInt(schemaBuffer);
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(SessionConfig.rpcCompressionType);
-      byte[] uncompressed = new byte[uncompressedLength];
-      unCompressor.uncompress(schemaBuffer.array(), 5, schemaBuffer.limit() - 5, uncompressed, 0);
-      buffer = ByteBuffer.wrap(uncompressed);
+      buffer = ByteBuffer.allocate(uncompressedLength);
+      unCompressor.uncompress(schemaBuffer, buffer);
+      buffer.flip();
     }
 
     String[] dictionary = getDictionary(buffer);
@@ -411,10 +414,10 @@ public class SessionRPCUtils {
     ByteBuffer dataBuffer = buffer;
     if (compressed) {
       int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
-      byte[] uncompressed = new byte[uncompressedSize];
+      dataBuffer = ByteBuffer.allocate(uncompressedSize);
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(SessionConfig.rpcCompressionType);
-      unCompressor.uncompress(buffer.array(), 5, buffer.limit() - 5, uncompressed, 0);
-      dataBuffer = ByteBuffer.wrap(uncompressed);
+      unCompressor.uncompress(buffer, dataBuffer);
+      dataBuffer.flip();
     }
     deserializeTime(dataBuffer, outputTimestamps);
     deserializeTypesAndValues(dataBuffer, outputTypesList, outputValuesList);
@@ -440,7 +443,7 @@ public class SessionRPCUtils {
     float[] floatArray = deserializeFloatList(buffer);
     double[] doubleArray = deserializeDoubleList(buffer);
     boolean[] booleanArray = deserializeBooleanList(buffer);
-    String[] stringArray = deserializeStringList(buffer);
+    Binary[] stringArray = deserializeStringList(buffer);
     int[] indexes = new int[6];
     for (int i = 0; i < recordCount; ++i) {
       List<TSDataType> types = new ArrayList<>(recordSizeArray[i]);
@@ -548,15 +551,15 @@ public class SessionRPCUtils {
     return booleanArray;
   }
 
-  private static String[] deserializeStringList(ByteBuffer buffer) throws IOException {
+  private static Binary[] deserializeStringList(ByteBuffer buffer) throws IOException {
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size == 0) {
-      return new String[0];
+      return new Binary[0];
     }
-    String[] stringArray = new String[size];
+    Binary[] stringArray = new Binary[size];
     Decoder decoder = Decoder.getDecoderByType(TSEncoding.DICTIONARY, TSDataType.TEXT);
     for (int i = 0; i < size; ++i) {
-      stringArray[i] = decoder.readBinary(buffer).toString();
+      stringArray[i] = decoder.readBinary(buffer);
     }
     return stringArray;
   }

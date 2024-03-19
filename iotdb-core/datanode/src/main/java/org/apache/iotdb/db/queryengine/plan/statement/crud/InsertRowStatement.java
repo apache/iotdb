@@ -153,6 +153,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
   }
 
+  public void setValuesAndTypes(Object[] values, TSDataType[] types) {
+    this.values = values;
+    this.dataTypes = types;
+  }
+
   public TTimePartitionSlot getTimePartitionSlot() {
     return TimePartitionUtils.getTimePartitionSlot(time);
   }

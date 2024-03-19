@@ -1709,13 +1709,44 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus insertRecordsV2(TSInsertRecordsReqV2 req) {
     try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        return getNotLoggedInStatus();
+      }
       InsertRecordsRequest request =
           SessionRPCUtils.deserializeInsertRecordsReq(req.schemaBuffer, req.valueBuffer, null);
+      req.auxiliaryBuffer = null;
+      req.valueBuffer = null;
+      req.schemaBuffer = null;
 
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      request.setMeasurementsIdsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(request.getMeasurementsIdsList()));
+      InsertRowsStatement statement = StatementGenerator.createStatement(request);
+      if (statement.isEmpty()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+
+      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      long queryId = SESSION_MANAGER.requestQueryId();
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              "",
+              partitionFetcher,
+              schemaFetcher);
+
+      return result.status;
     } catch (IOException e) {
       return onNpeOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR);
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.INSERT_RECORDS, e.getErrorCode());
     }
   }
 
