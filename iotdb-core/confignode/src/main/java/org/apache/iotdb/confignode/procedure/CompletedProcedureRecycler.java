@@ -62,7 +62,7 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
     final long now = System.currentTimeMillis();
     final Iterator<Map.Entry<Long, CompletedProcedureContainer<Env>>> it =
         completed.entrySet().iterator();
-    while (it.hasNext() && store.isRunning()) {
+    while (it.hasNext()) {
       final Map.Entry<Long, CompletedProcedureContainer<Env>> entry = it.next();
       final CompletedProcedureContainer<Env> retainer = entry.getValue();
       final Procedure<?> proc = retainer.getProcedure();
