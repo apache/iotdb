@@ -331,15 +331,15 @@ public class IoTDBSessionInsertNullIT {
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(true, 101), Arrays.asList(false, 201)));
       session.insertAlignedStringRecordsOfOneDevice(
-              deviceId1,
-              Arrays.asList(200L, 201L),
-              Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-              Arrays.asList(Arrays.asList("false", "101"), Arrays.asList("true", "201")));
+          deviceId1,
+          Arrays.asList(200L, 201L),
+          Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
+          Arrays.asList(Arrays.asList("false", "101"), Arrays.asList("true", "201")));
       session.insertAlignedStringRecordsOfOneDevice(
-              deviceId1,
-              Arrays.asList(400L, 401L),
-              Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-              Arrays.asList(Arrays.asList(null, "102"), Arrays.asList("false", "202")));
+          deviceId1,
+          Arrays.asList(400L, 401L),
+          Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
+          Arrays.asList(Arrays.asList(null, "102"), Arrays.asList("false", "202")));
       session.insertAlignedRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(500L, 501L),
