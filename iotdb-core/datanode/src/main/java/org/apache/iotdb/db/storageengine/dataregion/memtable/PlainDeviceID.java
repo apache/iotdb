@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
+
 /** Using device id path as id. */
 public class PlainDeviceID implements IDeviceID {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PlainDeviceID.class)
+          + RamUsageEstimator.shallowSizeOfInstance(String.class);
   String deviceID;
 
   public PlainDeviceID(String deviceID) {
@@ -62,6 +69,10 @@ public class PlainDeviceID implements IDeviceID {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(deviceID, byteBuffer);
+  }
+
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }
 
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
