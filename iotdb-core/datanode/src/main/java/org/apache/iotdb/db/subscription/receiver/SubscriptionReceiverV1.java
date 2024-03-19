@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -60,6 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -126,6 +128,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq req) {
+    try {
+      return handlePipeSubscribeHandshakeInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when handshaking: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeHandshakeInternal(PipeSubscribeHandshakeReq req)
+      throws SubscriptionException {
     // set consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     final boolean isConsumerExisted;
@@ -138,7 +155,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             "Subscription: Detect stale consumer config when handshaking, stale consumer config {} will be cleared, consumer config will set to the incoming consumer config {}.",
             consumerConfig,
             req.getConsumerConfig());
-        // clear stale consumer
+        // drop stale consumer
         SubscriptionAgent.consumer().dropConsumer(consumerConfig);
         consumerConfigThreadLocal.set(req.getConsumerConfig());
         isConsumerExisted = false;
@@ -150,7 +167,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       }
     }
 
-    // create consumer (group)
+    // create consumer
     if (!isConsumerExisted) {
       SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
     }
@@ -159,27 +176,54 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // TODO: cache result and listen changes
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TDataNodeConfigurationResp dataNodeConfigurationResp =
-          configNodeClient.getDataNodeConfiguration(-1);
+      TDataNodeConfigurationResp resp = configNodeClient.getDataNodeConfiguration(-1);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to get data node configuration in config node, status is %s.",
+                resp.getStatus());
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+
       Map<Integer, TEndPoint> endPoints =
-          dataNodeConfigurationResp.dataNodeConfigurationMap.entrySet().stream()
-              .collect(
-                  Collectors.toMap(
-                      Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
+          Objects.isNull(resp.dataNodeConfigurationMap)
+              ? Collections.emptyMap()
+              : resp.dataNodeConfigurationMap.entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
 
       LOGGER.info(
-          "Subscription: consumer handshake successfully, consumer config: {}, DN endPoints: {}",
+          "Subscription: consumer {} handshake successfully, get DN endPoints: {}",
           req.getConsumerConfig(),
           endPoints);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, endPoints);
     } catch (ClientManagerException | TException e) {
-      LOGGER.warn("Subscription: something unexpected happened when handshaking", e);
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage()));
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to get data node configuration in config node, exception is %s.",
+              e.getMessage());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
     }
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
+    try {
+      return handlePipeSubscribeHeartbeatInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when heartbeat: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeHeartbeatInternal(PipeSubscribeHeartbeatReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -190,12 +234,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // TODO: do something
 
-    LOGGER.info(
-        "Subscription: consumer heartbeat successfully, consumer config: {}", consumerConfig);
+    LOGGER.info("Subscription: consumer {} heartbeat successfully", consumerConfig);
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq req) {
+    try {
+      return handlePipeSubscribeSubscribeInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when subscribing: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeSubscribeInternal(PipeSubscribeSubscribeReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -208,14 +265,26 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     Set<String> topicNames = req.getTopicNames();
     SubscriptionAgent.consumer().subscribe(consumerConfig, topicNames);
 
-    LOGGER.info(
-        "Subscription: consumer subscribe {} successfully, consumer config: {}",
-        topicNames,
-        consumerConfig);
+    LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
     return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(PipeSubscribeUnsubscribeReq req) {
+    try {
+      return handlePipeSubscribeUnsubscribeInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when unsubscribing: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeUnsubscribeInternal(
+      PipeSubscribeUnsubscribeReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -230,13 +299,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     SubscriptionAgent.consumer().unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
-        "Subscription: consumer unsubscribe {} successfully, consumer config: {}",
-        topicNames,
-        consumerConfig);
+        "Subscription: consumer {} unsubscribe {} successfully", consumerConfig, topicNames);
     return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(PipeSubscribePollReq req) {
+    try {
+      return handlePipeSubscribePollInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when polling: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribePollInternal(PipeSubscribePollReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -257,15 +338,29 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .collect(Collectors.toList());
 
     LOGGER.info(
-        "Subscription: consumer poll topics {} successfully, consumer config: {}, commit ids: {}",
-        topicNames,
+        "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
         consumerConfig,
+        topicNames,
         subscriptionCommitIdsList);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, serializedEnrichedTabletsList);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
+    try {
+      return handlePipeSubscribeCommit(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when committing: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeCommitInternal(PipeSubscribeCommitReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -280,13 +375,27 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     SubscriptionAgent.broker().commit(consumerConfig, topicNameToSubscriptionCommitIds);
 
     LOGGER.info(
-        "Subscription: consumer commit {} successfully, consumer config: {}",
-        topicNameToSubscriptionCommitIds,
-        consumerConfig);
+        "Subscription: consumer commit {} successfully, commit ids: {}",
+        consumerConfig,
+        topicNameToSubscriptionCommitIds);
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeClose(PipeSubscribeCloseReq req) {
+    try {
+      return handlePipeSubscribeCloseInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when closing: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeCloseInternal(PipeSubscribeCloseReq req) {
     // check consumer config thread local
     ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -295,10 +404,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    // drop consumer (group)
+    // drop consumer
     SubscriptionAgent.consumer().dropConsumer(consumerConfig);
 
-    LOGGER.info("Subscription: consumer close successfully, consumer config: {}", consumerConfig);
+    LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 }
