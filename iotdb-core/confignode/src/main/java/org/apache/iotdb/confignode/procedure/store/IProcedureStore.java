@@ -31,6 +31,8 @@ public interface IProcedureStore<Env> {
 
   List<Procedure<Env>> load();
 
+  List<Procedure<Env>> getProcedures();
+
   void update(Procedure<Env> procedure);
 
   void update(Procedure<Env>[] subprocs);
@@ -42,6 +44,10 @@ public interface IProcedureStore<Env> {
   void delete(long[] batchIds, int startIndex, int batchCount);
 
   void cleanup();
+
+  default boolean isOldVersionProcedureStore() {
+    return false;
+  }
 
   void stop();
 

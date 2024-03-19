@@ -46,6 +46,11 @@ public class NoopProcedureStore implements IProcedureStore {
   }
 
   @Override
+  public List<Procedure> getProcedures() {
+    return Collections.emptyList();
+  }
+
+  @Override
   public void update(Procedure procedure) {}
 
   @Override

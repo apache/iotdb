@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -58,10 +57,6 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     }
   }
 
-  public ConsensusManager getConsensusManager() {
-    return configManager.getConsensusManager();
-  }
-
   @Override
   public boolean isRunning() {
     return isRunning;
@@ -78,11 +73,16 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   }
 
   @Override
+  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
+    return procedureInfo.getProcedures();
+  }
+
+  @Override
   public void update(Procedure<ConfigNodeProcedureEnv> procedure) {
     Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
-      getConsensusManager().write(updateProcedurePlan);
+      configManager.getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
@@ -100,7 +100,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     DeleteProcedurePlan deleteProcedurePlan = new DeleteProcedurePlan();
     deleteProcedurePlan.setProcId(procId);
     try {
-      getConsensusManager().write(deleteProcedurePlan);
+      configManager.getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
@@ -156,5 +156,10 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     if (oldDir.exists()) {
       FileUtils.moveFileSafe(oldDir, newDir);
     }
+  }
+
+  @Override
+  public boolean isOldVersionProcedureStore() {
+    return procedureInfo.isOldVersion();
   }
 }

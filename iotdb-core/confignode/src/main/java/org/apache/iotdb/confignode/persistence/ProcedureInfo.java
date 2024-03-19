@@ -70,6 +70,10 @@ public class ProcedureInfo implements SnapshotProcessor {
   private final String oldProcedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
 
+  public boolean isOldVersion() {
+    return new File(oldProcedureWalDir).exists();
+  }
+
   public List<Procedure<ConfigNodeProcedureEnv>> load() {
     List<Procedure<ConfigNodeProcedureEnv>> procedureList = new ArrayList<>();
     try (Stream<Path> s = Files.list(Paths.get(oldProcedureWalDir))) {
@@ -83,6 +87,10 @@ public class ProcedureInfo implements SnapshotProcessor {
     } catch (IOException e) {
       LOGGER.error("Load procedure wal failed.", e);
     }
+    procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
+    procedureList.forEach(
+        procedure -> lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId())));
+    // TODO: 这里需要手动触发快照，怎么做？然后删除procedureWAL目录
     return procedureList;
   }
 
@@ -102,6 +110,10 @@ public class ProcedureInfo implements SnapshotProcessor {
   public TSStatus deleteProcedure(DeleteProcedurePlan deleteProcedurePlan) {
     procedureMap.remove(deleteProcedurePlan.getProcId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
+    return new ArrayList<>(procedureMap.values());
   }
 
   public long getNextProcId() {

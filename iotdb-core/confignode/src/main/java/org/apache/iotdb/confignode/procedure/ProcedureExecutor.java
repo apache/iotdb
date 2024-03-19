@@ -88,7 +88,6 @@ public class ProcedureExecutor<Env> {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
-    this.lastProcId.incrementAndGet();
   }
 
   @TestOnly
@@ -120,7 +119,7 @@ public class ProcedureExecutor<Env> {
 
   private void recover() {
     // 1.Build rollback stack
-    List<Procedure<Env>> procedureList = store.load();
+    List<Procedure<Env>> procedureList = getProcedureListFromDifferentVersion();
     // Load procedure wal file
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {
@@ -205,6 +204,14 @@ public class ProcedureExecutor<Env> {
           scheduler.addBack(procedure);
         });
     scheduler.signalAll();
+  }
+
+  private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
+    if (store.isOldVersionProcedureStore()) {
+      return store.load();
+    } else {
+      return store.getProcedures();
+    }
   }
 
   /**
