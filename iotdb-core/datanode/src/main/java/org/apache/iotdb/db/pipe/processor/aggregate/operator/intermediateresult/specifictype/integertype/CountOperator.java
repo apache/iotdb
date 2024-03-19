@@ -17,52 +17,65 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.integertype;
+package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.integertype;
 
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class CountOperator implements IntermediateResultOperator {
   private int count;
 
   @Override
-  public Class<?> initAndGetReturnValueType(boolean initialInput, long initialTimestamp) {
-    count = 1;
-    return int.class;
+  public String getName() {
+    return "count";
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(int initialInput, long initialTimestamp) {
-    count = 1;
-    return int.class;
+  public void configureSystemParameters(Map<String, String> systemParams) {
+    // Do nothing
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(long initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(boolean initialInput, long initialTimestamp) {
     count = 1;
-    return int.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(float initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(int initialInput, long initialTimestamp) {
     count = 1;
-    return int.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(double initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(long initialInput, long initialTimestamp) {
     count = 1;
-    return int.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(String initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(float initialInput, long initialTimestamp) {
     count = 1;
-    return int.class;
+    return true;
+  }
+
+  @Override
+  public boolean initAndGetReturnValueType(double initialInput, long initialTimestamp) {
+    count = 1;
+    return true;
+  }
+
+  @Override
+  public boolean initAndGetReturnValueType(String initialInput, long initialTimestamp) {
+    count = 1;
+    return true;
   }
 
   @Override
@@ -96,8 +109,8 @@ public class CountOperator implements IntermediateResultOperator {
   }
 
   @Override
-  public Object getResult() {
-    return count;
+  public Pair<TSDataType, Object> getResult() {
+    return new Pair<>(TSDataType.INT32, count);
   }
 
   @Override

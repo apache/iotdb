@@ -19,46 +19,40 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult;
 
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.CustomizedReadableIntermediateResults;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
- * The static attributes of an aggregator. There shall be a one-to-one match between an aggregator's
- * static attributes and its name.
+ * The operator to calculate an aggregator. There shall be a one-to-one match between an
+ * aggregator's static attributes and its name.
+ *
+ * <p>Note that there will only be one operator used for calculation and the operator itself is
+ * stateless, and therefore doesn't need any ser/de functions.
  */
-public class AggregatedResultOperator {
+public interface AggregatedResultOperator {
+
+  /** @return the name of the operator */
+  String getName();
+
   /**
-   * The terminateWindowFunction receives a Map to get intermediate results by its names, and
-   * produce a characteristic value of this window.
+   * The system will pass in some parameters (e.g. timestamp precision) to help the inner function
+   * correctly operate. This will be called at the very first of the operator's lifecycle.
+   *
+   * @param systemParams the system parameters
    */
-  private final Function<Map<String, Object>, Object> terminateWindowFunction;
+  void configureSystemParameters(Map<String, String> systemParams);
 
-  private final TSDataType outputDataType;
+  /** Get the needed intermediate value names of this aggregate result. */
+  Set<String> getDeclaredIntermediateValueNames();
 
-  /** The needed intermediate value names */
-  private final Set<String> declaredIntermediateValueNames;
-
-  public AggregatedResultOperator(
-      Function<Map<String, Object>, Object> terminateWindowFunction,
-      TSDataType outputDataType,
-      Set<String> declaredIntermediateValueNames) {
-    this.terminateWindowFunction = terminateWindowFunction;
-    this.outputDataType = outputDataType;
-    this.declaredIntermediateValueNames = declaredIntermediateValueNames;
-  }
-
-  public Function<Map<String, Object>, Object> getTerminateWindowFunction() {
-    return terminateWindowFunction;
-  }
-
-  public TSDataType getOutputDataType() {
-    return outputDataType;
-  }
-
-  public Set<String> getDeclaredIntermediateValueNames() {
-    return declaredIntermediateValueNames;
-  }
+  /**
+   * terminateWindow receives a Map to get intermediate results by its names, and produce a
+   * characteristic value of this window.
+   */
+  Pair<TSDataType, Object> terminateWindow(
+      TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults);
 }

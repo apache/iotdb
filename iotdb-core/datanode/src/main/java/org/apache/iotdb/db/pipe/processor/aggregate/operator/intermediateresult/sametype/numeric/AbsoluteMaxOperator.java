@@ -21,6 +21,11 @@ package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult
 
 public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
   @Override
+  public String getName() {
+    return "max_abs";
+  }
+
+  @Override
   public void updateValue(int input, long timestamp) {
     intValue = Math.max(intValue, Math.abs(input));
   }

@@ -36,6 +36,7 @@ import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -64,19 +65,23 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       PipeProcessorSubtaskExecutor executor) {
-  final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(
-                  new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, regionId));
+    final PipeProcessorRuntimeConfiguration runtimeConfiguration =
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, regionId));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-            ? PipeAgent.plugin().dataRegion().getConfiguredProcessor(
-              pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
-              pipeProcessorParameters,
-              runtimeConfiguration)
-            : PipeAgent.plugin().schemaRegion().getConfiguredProcessor(
-                pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
-                pipeProcessorParameters,
-                runtimeConfiguration);
+            ? PipeAgent.plugin()
+                .dataRegion()
+                .getConfiguredProcessor(
+                    pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
+                    pipeProcessorParameters,
+                    runtimeConfiguration)
+            : PipeAgent.plugin()
+                .schemaRegion()
+                .getConfiguredProcessor(
+                    pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
+                    pipeProcessorParameters,
+                    runtimeConfiguration);
 
     // Should add creation time in taskID, because subtasks are stored in the hashmap
     // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by

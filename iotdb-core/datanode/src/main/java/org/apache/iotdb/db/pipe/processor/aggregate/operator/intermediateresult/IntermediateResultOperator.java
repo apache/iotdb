@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 /**
  * The class that define the calculation and ser/de logic of an intermediate result. There shall be
@@ -39,26 +43,40 @@ import java.nio.ByteBuffer;
  * customizing calculation.
  */
 public interface IntermediateResultOperator {
+
+  /** @return the name of the operator */
+  String getName();
+
   /**
-   * The operator may init its value and set the output intermediate value type by the input data
-   * type, and return its type as well. The output value type is arbitrary, such as a List, a Map,
-   * or any type that is needed in aggregation value calculation. You can even hold all the points
-   * in the output value and hand it to the aggregation function.
+   * The system will pass in some parameters (e.g. timestamp precision) to help the inner function
+   * correctly operate. This will be called at the very first of the operator's lifecycle.
+   *
+   * @param systemParams the system parameters
+   */
+  void configureSystemParameters(Map<String, String> systemParams);
+
+  /**
+   * The operator may init its value and typically set the output intermediate value type by the
+   * input data type. The output value type is arbitrary, such as a List, a Map, or any type that is
+   * needed in aggregation value calculation. You can even hold all the points in the output value
+   * and hand it to the aggregation function.
+   *
+   * <p>If the input type is unsupported, return {@code false}
    *
    * @param initialInput the initial data
-   * @return the type of the intermediate result, {@code null} if the input type is unsupported.
+   * @return if the input type is supported
    */
-  Class<?> initAndGetReturnValueType(boolean initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(boolean initialInput, long initialTimestamp);
 
-  Class<?> initAndGetReturnValueType(int initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(int initialInput, long initialTimestamp);
 
-  Class<?> initAndGetReturnValueType(long initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(long initialInput, long initialTimestamp);
 
-  Class<?> initAndGetReturnValueType(float initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(float initialInput, long initialTimestamp);
 
-  Class<?> initAndGetReturnValueType(double initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(double initialInput, long initialTimestamp);
 
-  Class<?> initAndGetReturnValueType(String initialInput, long initialTimestamp);
+  boolean initAndGetReturnValueType(String initialInput, long initialTimestamp);
 
   /**
    * Use the input to update the intermediate result. The input is all raw types instead of Object
@@ -78,8 +96,11 @@ public interface IntermediateResultOperator {
 
   void updateValue(String input, long timestamp);
 
-  /** Get the result to calculate the aggregated value. */
-  Object getResult();
+  /**
+   * Get the result and its type to calculate the aggregated value. If the type is List, Map or
+   * other non-included types please use {@link TSDataType#UNKNOWN}.
+   */
+  Pair<TSDataType, Object> getResult();
 
   /**
    * Serialize its intermediate result to the outputStream to allow shutdown restart. The operator

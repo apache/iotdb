@@ -27,6 +27,11 @@ public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator 
   }
 
   @Override
+  public String getName() {
+    return "sum_x" + power;
+  }
+
+  @Override
   public void updateValue(int input, long timestamp) {
     intValue += (int) Math.pow(input, power);
   }

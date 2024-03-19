@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult
 
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 /**
  * {@link AbstractSameTypeNumericOperator} is the parent class of all the operators where there
@@ -40,41 +42,46 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
   protected double doubleValue;
 
   @Override
-  public Class<?> initAndGetReturnValueType(boolean initialInput, long initialTimestamp) {
-    return null;
+  public void configureSystemParameters(Map<String, String> systemParams) {
+    // Do nothing
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(int initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(boolean initialInput, long initialTimestamp) {
+    return false;
+  }
+
+  @Override
+  public boolean initAndGetReturnValueType(int initialInput, long initialTimestamp) {
     intValue = initialInput;
     outPutDataType = TSDataType.INT32;
-    return int.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(long initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(long initialInput, long initialTimestamp) {
     longValue = initialInput;
     outPutDataType = TSDataType.INT64;
-    return long.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(float initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(float initialInput, long initialTimestamp) {
     floatValue = initialInput;
     outPutDataType = TSDataType.FLOAT;
-    return float.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(double initialInput, long initialTimestamp) {
+  public boolean initAndGetReturnValueType(double initialInput, long initialTimestamp) {
     doubleValue = initialInput;
     outPutDataType = TSDataType.DOUBLE;
-    return double.class;
+    return true;
   }
 
   @Override
-  public Class<?> initAndGetReturnValueType(String initialInput, long initialTimestamp) {
-    return null;
+  public boolean initAndGetReturnValueType(String initialInput, long initialTimestamp) {
+    return false;
   }
 
   @Override
@@ -90,16 +97,16 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
   }
 
   @Override
-  public Object getResult() {
+  public Pair<TSDataType, Object> getResult() {
     switch (outPutDataType) {
       case INT32:
-        return intValue;
+        return new Pair<>(TSDataType.INT32, intValue);
       case INT64:
-        return longValue;
+        return new Pair<>(TSDataType.INT64, longValue);
       case FLOAT:
-        return floatValue;
+        return new Pair<>(TSDataType.FLOAT, floatValue);
       case DOUBLE:
-        return doubleValue;
+        return new Pair<>(TSDataType.DOUBLE, doubleValue);
       default:
         return null;
     }

@@ -53,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OPERATORS_DEFAULT_VALUE;
@@ -79,9 +80,9 @@ public class AggregateProcessor implements PipeProcessor {
 
   private String outputDatabase;
 
-  private final Map<String, AggregatorRuntimeAttributes> operator2RuntimeAttributesMap =
+  private final Map<String, AggregatedResultOperator> operator2RuntimeAttributesMap =
       new HashMap<>();
-  private final Map<String, IntermediateResultOperator> intermediateResult2AttributesMap =
+  private final Map<String, Supplier<IntermediateResultOperator>> intermediateResult2AttributesMap =
       new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
