@@ -280,7 +280,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());
         stmt.setEncoding(node.getAsMeasurementMNode().getSchema().getEncodingType());
-        if (node.getOffset() != 0) {
+        if (node.getOffset() >= 0) {
           if (tagFileChannel != null) {
             try {
               ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
