@@ -93,6 +93,8 @@ public enum ProgressIndexType {
         return RecoverProgressIndex.deserializeFrom(stream);
       case 5:
         return HybridProgressIndex.deserializeFrom(stream);
+      case 6:
+        return MetaProgressIndex.deserializeFrom(stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
