@@ -2053,7 +2053,35 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    invertToTabletAndInsert(deviceId, times, measurementsList, valuesList, false);
+    TSInsertStringRecordsOfOneDeviceReq req;
+    try {
+      req =
+          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, valuesList, haveSorted, false);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
+      return;
+    }
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   /**
@@ -2144,7 +2172,35 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    invertToTabletAndInsert(deviceId, times, measurementsList, valuesList, true);
+    TSInsertStringRecordsOfOneDeviceReq req;
+    try {
+      req =
+          filterAndGenTSInsertStringRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, valuesList, haveSorted, true);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
+      return;
+    }
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertStringRecordsOfOneDevice(req);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   /**
@@ -2645,36 +2701,6 @@ public class Session implements ISession {
     request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
     request.addToValuesList(SessionUtils.getValueBuffer(tablet));
     request.addToSizeList(tablet.rowSize);
-  }
-
-  // invert string records of one device to tablet and insert
-  public void invertToTabletAndInsert(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList,
-      boolean isAligned)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<String> allMeasurements =
-        measurementsList.stream().flatMap(List::stream).distinct().collect(Collectors.toList());
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    for (String measurement : allMeasurements) {
-      schemaList.add(new MeasurementSchema(measurement, TSDataType.TEXT));
-    }
-    Tablet tablet = new Tablet(deviceId, schemaList, times.size());
-    for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
-      addRecordToTablet(
-          tablet,
-          times.get(rowIndex),
-          measurementsList.get(rowIndex),
-          new ArrayList<>(valuesList.get(rowIndex)),
-          allMeasurements);
-    }
-    if (isAligned) {
-      insertAlignedTablet(tablet);
-    } else {
-      insertTablet(tablet);
-    }
   }
 
   // invert records of one device to tablet and insert
