@@ -348,7 +348,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
     try {
-      return handlePipeSubscribeCommit(req);
+      return handlePipeSubscribeCommitInternal(req);
     } catch (SubscriptionException e) {
       final String exceptionMessage =
           String.format(

@@ -130,6 +130,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     // DO NOTHING HERE!
     // No matter whether the topic exists, we allow the drop operation
     // executed on all nodes to ensure the consistency.
+    // TODO: check whether the topic is subscribed to by any consumer group
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
@@ -422,7 +423,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return new SubscriptionTableResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), getAllSubscriptionMeta());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          getAllSubscriptionMeta(),
+          getAllConsumerGroupMeta());
     } finally {
       releaseReadLock();
     }
@@ -443,6 +446,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
       }
     }
     return allSubscriptions;
+  }
+
+  private List<ConsumerGroupMeta> getAllConsumerGroupMeta() {
+    return StreamSupport.stream(
+            consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
+        .collect(Collectors.toList());
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

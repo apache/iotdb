@@ -70,6 +70,10 @@ public class ConsumerGroupMetaKeeper {
     return consumerGroupIdToConsumerGroupMetaMap.get(consumerGroupId);
   }
 
+  public Iterable<ConsumerGroupMeta> getAllConsumerGroupMeta() {
+    return consumerGroupIdToConsumerGroupMetaMap.values();
+  }
+
   /**
    * Get the consumers subscribing the given topic in the given consumer group.
    *

@@ -211,6 +211,7 @@ public class SubscriptionCoordinator {
       return new SubscriptionTableResp(
               new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
+              Collections.emptyList(),
               Collections.emptyList())
           .convertToTShowSubscriptionResp();
     }

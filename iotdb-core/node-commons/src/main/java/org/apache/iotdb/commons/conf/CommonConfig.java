@@ -230,6 +230,7 @@ public class CommonConfig {
   private int subscriptionMaxTabletsPerPrefetching = 16;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private long subscriptionLaunchRetryIntervalMs = 1000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -973,6 +974,14 @@ public class CommonConfig {
 
   public void setSubscriptionSerializeMaxBlockingTimeMs(
       int subscriptionSerializeMaxBlockingTimeMs) {
+    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public int getSubscriptionLaunchRetryIntervalMs() {
+    return subscriptionLaunchRetryIntervalMs;
+  }
+
+  public void setSubscriptionLaunchRetryIntervalMs(long subscriptionSerializeMaxBlockingTimeMs) {
     this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
   }
 

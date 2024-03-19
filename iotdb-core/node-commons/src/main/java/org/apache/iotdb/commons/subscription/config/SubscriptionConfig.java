@@ -47,6 +47,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
   }
 
+  public long getSubscriptionLaunchRetryIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -60,6 +64,7 @@ public class SubscriptionConfig {
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
