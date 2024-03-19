@@ -104,10 +104,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(
-                        PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX
-                            + topic
-                            + "_"
-                            + subscribeReq.getConsumerGroupId())
+                        PipeStaticMeta.generateSubscriptionPipeName(
+                            topic, subscribeReq.getConsumerGroupId()))
                     .setExtractorAttributes(updatedTopicMeta.generateExtractorAttributes())
                     .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(

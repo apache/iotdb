@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -104,7 +105,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
         dropPipeProcedures.add(
-            new DropPipeProcedureV2(topic + "_" + unsubscribeReq.getConsumerGroupId()));
+            new DropPipeProcedureV2(
+                PipeStaticMeta.generateSubscriptionPipeName(
+                    topic, unsubscribeReq.getConsumerGroupId())));
       }
     }
 

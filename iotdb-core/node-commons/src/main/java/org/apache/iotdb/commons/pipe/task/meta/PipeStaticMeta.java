@@ -35,7 +35,11 @@ import java.util.Objects;
 public class PipeStaticMeta {
 
   public static final String SYSTEM_PIPE_PREFIX = "__";
-  public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
+  private static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
+
+  public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
+    return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
+  }
 
   private String pipeName;
   private long creationTime;
