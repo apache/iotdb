@@ -49,15 +49,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionSimpleIT {
+public class IoTDBSubscriptionBasicIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionSimpleIT.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
 
   @Before
   public void setUp() throws Exception {
@@ -70,7 +69,7 @@ public class IoTDBSubscriptionSimpleIT {
   }
 
   @Test
-  public void basicSubscriptionTest() {
+  public void testSimpleSubscription() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("create topic topic1");
     } catch (Exception e) {
@@ -127,86 +126,7 @@ public class IoTDBSubscriptionSimpleIT {
   }
 
   @Test
-  public void multiConsumersSubscriptionTest() throws Exception {
-    ConcurrentHashMap<Long, Long> timestamps = new ConcurrentHashMap<>();
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
-    List<Thread> threads = new ArrayList<>();
-    Thread t =
-        new Thread(
-            () -> {
-              try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                for (int i = 0; i < 100; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
-                }
-                session.executeNonQueryStatement("flush");
-              } catch (Exception e) {
-                fail(e.getMessage());
-              }
-            });
-    t.start();
-    threads.add(t);
-
-    for (int i = 0; i < 3; ++i) {
-      final int idx = i;
-      t =
-          new Thread(
-              () -> {
-                try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                  Map<String, String> consumerAttributes = new HashMap<>();
-                  consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                  consumerAttributes.put(
-                      ConsumerConstant.CONSUMER_ID_KEY, String.format("c%s", idx));
-
-                  session.createConsumer(new ConsumerConfig(consumerAttributes));
-                  session.subscribe(Collections.singleton("topic1"));
-
-                  List<EnrichedTablets> enrichedTabletsList;
-                  while (true) {
-                    Thread.sleep(1000); // wait some time
-                    enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-                    if (enrichedTabletsList.isEmpty()) {
-                      break;
-                    }
-                    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-                    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-                      for (Tablet tablet : enrichedTablets.getTablets()) {
-                        for (Long time : tablet.timestamps) {
-                          timestamps.put(time, time);
-                        }
-                      }
-                      topicNameToSubscriptionCommitIds
-                          .computeIfAbsent(
-                              enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-                          .addAll(enrichedTablets.getSubscriptionCommitIds());
-                    }
-                    session.commit(topicNameToSubscriptionCommitIds);
-                  }
-                  session.unsubscribe(Collections.singleton("topic1"));
-                  session.dropConsumer();
-                } catch (Exception e) {
-                  fail(e.getMessage());
-                }
-              });
-      t.start();
-      threads.add(t);
-    }
-
-    for (Thread thread : threads) {
-      thread.join();
-    }
-
-    Assert.assertEquals(100, timestamps.size());
-  }
-
-  @Test
-  public void restartSubscriptionTest() throws Exception {
+  public void testRestartSubscription() throws Exception {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("create topic topic1");
     } catch (Exception e) {

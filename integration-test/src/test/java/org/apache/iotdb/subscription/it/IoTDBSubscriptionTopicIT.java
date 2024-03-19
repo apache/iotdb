@@ -28,7 +28,9 @@ import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,8 +51,18 @@ public class IoTDBSubscriptionTopicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
 
+  @Before
+  public void setUp() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
   @Test
-  public void topicPathSubscriptionTest() {
+  public void testTopicPathSubscription() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("create topic topic1 with ('path'='root.db.*.s')");
     } catch (Exception e) {
@@ -119,7 +131,7 @@ public class IoTDBSubscriptionTopicIT {
   }
 
   @Test
-  public void topicTimeSubscriptionTest() {
+  public void testTopicTimeSubscription() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
     } catch (Exception e) {
@@ -181,7 +193,7 @@ public class IoTDBSubscriptionTopicIT {
   }
 
   @Test
-  public void topicProcessorSubscriptionTest() {
+  public void testTopicProcessorSubscription() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement(
           "create topic topic1 with ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true')");
