@@ -199,6 +199,9 @@ public class SubscriptionConsumerAgent {
   private void handleSingleConsumerGroupMetaChangesInternal(
       final ConsumerGroupMeta metaFromCoordinator) {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
+    if (!SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
+      SubscriptionAgent.broker().createBroker(consumerGroupId);
+    }
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
   }

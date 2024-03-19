@@ -53,15 +53,25 @@ public class SubscriptionBrokerAgent {
     broker.commit(topicNameToSubscriptionCommitIds);
   }
 
+  /////////////////////////////// broker ///////////////////////////////
+
+  public boolean isBrokerExist(String consumerGroupId) {
+    return consumerGroupIdToSubscriptionBroker.containsKey(consumerGroupId);
+  }
+
+  public void createBroker(String consumerGroupId) {
+    SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
+    consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+  }
+
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(SubscriptionConnectorSubtask subtask) {
     String consumerGroupId = subtask.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.info("Subscription: create broker for consumer group [{}]", consumerGroupId);
-      broker = new SubscriptionBroker(consumerGroupId);
-      consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      return;
     }
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }

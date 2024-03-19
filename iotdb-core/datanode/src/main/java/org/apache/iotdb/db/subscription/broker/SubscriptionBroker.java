@@ -39,12 +39,12 @@ public class SubscriptionBroker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
 
-  private final String brokerID; // consumer group ID
+  private final String brokerId; // consumer group ID
 
   private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
-  public SubscriptionBroker(String brokerID) {
-    this.brokerID = brokerID;
+  public SubscriptionBroker(String brokerId) {
+    this.brokerId = brokerId;
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
 
@@ -88,7 +88,7 @@ public class SubscriptionBroker {
       return;
     }
     topicNameToPrefetchingQueue.put(
-        topicName, new SubscriptionPrefetchingQueue(brokerID, topicName, inputPendingQueue));
+        topicName, new SubscriptionPrefetchingQueue(brokerId, topicName, inputPendingQueue));
   }
 
   public void unbindPrefetchingQueue(String topicName) {

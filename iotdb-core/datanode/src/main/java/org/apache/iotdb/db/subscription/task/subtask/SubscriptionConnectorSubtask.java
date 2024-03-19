@@ -53,6 +53,10 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   protected boolean executeOnce() {
+    if (isClosed.get()) {
+      return false;
+    }
+
     SubscriptionAgent.broker().executePrefetch(this);
     // always return true
     return true;

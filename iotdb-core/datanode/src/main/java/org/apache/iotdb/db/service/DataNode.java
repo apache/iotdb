@@ -611,8 +611,9 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(CompactionTaskManager.getInstance());
 
-    registerManager.register(PipeAgent.runtime());
+    // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
+    registerManager.register(PipeAgent.runtime());
   }
 
   /** Set up RPC and protocols after DataNode is available */

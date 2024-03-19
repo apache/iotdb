@@ -90,8 +90,8 @@ public class SubscriptionSessionExample {
       }
       session.commit(topicNameToSubscriptionCommitIds);
     }
-    session.unsubscribe(Collections.singleton("topic1"));
-    session.dropConsumer();
+    // session.unsubscribe(Collections.singleton("topic1"));
+    // session.dropConsumer();
     session.close();
 
     System.out.println(count);

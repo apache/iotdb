@@ -144,32 +144,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TPipeSubscribeResp handlePipeSubscribeHandshakeInternal(PipeSubscribeHandshakeReq req)
       throws SubscriptionException {
     // set consumer config thread local
-    ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
-    final boolean isConsumerExisted;
-    if (Objects.isNull(consumerConfig)) {
-      consumerConfigThreadLocal.set(req.getConsumerConfig());
-      isConsumerExisted = false;
+    ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
+    ConsumerConfig consumerConfig = req.getConsumerConfig();
+
+    if (Objects.isNull(existedConsumerConfig)) {
+      consumerConfigThreadLocal.set(consumerConfig);
     } else {
-      if (!consumerConfig.equals(req.getConsumerConfig())) {
+      if (!existedConsumerConfig.equals(consumerConfig)) {
         LOGGER.warn(
             "Subscription: Detect stale consumer config when handshaking, stale consumer config {} will be cleared, consumer config will set to the incoming consumer config {}.",
-            consumerConfig,
-            req.getConsumerConfig());
-        // drop stale consumer
-        SubscriptionAgent.consumer().dropConsumer(consumerConfig);
-        consumerConfigThreadLocal.set(req.getConsumerConfig());
-        isConsumerExisted = false;
-      } else {
-        LOGGER.info(
-            "Subscription: Detect the same consumer config {} when handshaking, skip the creation of consumer.",
+            existedConsumerConfig,
             consumerConfig);
-        isConsumerExisted = true;
+        // drop stale consumer
+        SubscriptionAgent.consumer().dropConsumer(existedConsumerConfig);
+        consumerConfigThreadLocal.set(consumerConfig);
       }
     }
 
-    // create consumer
-    if (!isConsumerExisted) {
-      SubscriptionAgent.consumer().createConsumer(req.getConsumerConfig());
+    // create consumer if not existed
+    if (!SubscriptionAgent.consumer()
+        .isConsumerExisted(consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId())) {
+      SubscriptionAgent.consumer().createConsumer(consumerConfig);
+    } else {
+      LOGGER.info(
+          "Subscription: Detect the same consumer {} when handshaking, skip the creation of consumer.",
+          consumerConfig);
     }
 
     // fetch DN endPoints by CN
