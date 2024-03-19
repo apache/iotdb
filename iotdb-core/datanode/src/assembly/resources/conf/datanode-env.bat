@@ -159,10 +159,16 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
 IF "%1" equ "printgc" (
 	IF "%JAVA_VERSION%" == "8" (
 	    md %IOTDB_HOME%\logs
-		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+		@REM For more detailed GC information, you can uncomment option below.
+        @REM NOTE: more detailed GC information may bring larger GC log files.
+        @REM set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:+PrintTenuringDistribution -XX:+PrintHeapAtGC -XX:+PrintReferenceGC -XX:+PrintSafepointStatistics -XX:PrintSafepointStatisticsCount=1 -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
 	) ELSE (
 		md %IOTDB_HOME%\logs
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
+		@REM For more detailed GC information, you can uncomment option below.
+        @REM NOTE: more detailed GC information may bring larger GC log files.
+        @REM set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Xlog:gc*=debug,heap*=debug,age*=trace,metaspace*=info,safepoint*=debug,promotion*=info:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level,tags:filecount=10,filesize=100M
 	)
 )
 
