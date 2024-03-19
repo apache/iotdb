@@ -38,8 +38,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 class SubscriptionAgentLauncher {
 
@@ -68,15 +68,22 @@ class SubscriptionAgentLauncher {
           throw new SubscriptionException(exceptionMessage);
         }
 
-        for (ByteBuffer byteBuffer : getAllTopicInfoResp.getAllTopicInfo()) {
-          final TopicMeta topicMeta = TopicMeta.deserialize(byteBuffer);
-          LOGGER.info("Pulled topic meta from config node: {}, recovering ...", topicMeta);
-          final TPushTopicRespExceptionMessage exceptionMessage =
-              SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
-          if (Objects.nonNull(exceptionMessage)) {
-            LOGGER.warn(exceptionMessage.getMessage());
-            throw new SubscriptionException(exceptionMessage.getMessage());
-          }
+        final TPushTopicRespExceptionMessage exceptionMessage =
+            SubscriptionAgent.topic()
+                .handleTopicMetaChanges(
+                    getAllTopicInfoResp.getAllTopicInfo().stream()
+                        .map(
+                            byteBuffer -> {
+                              final TopicMeta topicMeta = TopicMeta.deserialize(byteBuffer);
+                              LOGGER.info(
+                                  "Pulled topic meta from config node: {}, recovering ...",
+                                  topicMeta);
+                              return topicMeta;
+                            })
+                        .collect(Collectors.toList()));
+        if (Objects.nonNull(exceptionMessage)) {
+          LOGGER.warn(exceptionMessage.getMessage());
+          throw new SubscriptionException(exceptionMessage.getMessage());
         }
 
         return;
@@ -119,16 +126,23 @@ class SubscriptionAgentLauncher {
           throw new SubscriptionException(exceptionMessage);
         }
 
-        for (ByteBuffer byteBuffer : getAllSubscriptionInfoResp.getAllSubscriptionInfo()) {
-          final ConsumerGroupMeta consumerGroupMeta = ConsumerGroupMeta.deserialize(byteBuffer);
-          LOGGER.info(
-              "Pulled consumer group meta from config node: {}, recovering ...", consumerGroupMeta);
-          final TPushConsumerGroupRespExceptionMessage exceptionMessage =
-              SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta);
-          if (Objects.nonNull(exceptionMessage)) {
-            LOGGER.warn(exceptionMessage.getMessage());
-            throw new SubscriptionException(exceptionMessage.getMessage());
-          }
+        final TPushConsumerGroupRespExceptionMessage exceptionMessage =
+            SubscriptionAgent.consumer()
+                .handleConsumerGroupMetaChanges(
+                    getAllSubscriptionInfoResp.getAllSubscriptionInfo().stream()
+                        .map(
+                            byteBuffer -> {
+                              final ConsumerGroupMeta consumerGroupMeta =
+                                  ConsumerGroupMeta.deserialize(byteBuffer);
+                              LOGGER.info(
+                                  "Pulled consumer group meta from config node: {}, recovering ...",
+                                  consumerGroupMeta);
+                              return consumerGroupMeta;
+                            })
+                        .collect(Collectors.toList()));
+        if (Objects.nonNull(exceptionMessage)) {
+          LOGGER.warn(exceptionMessage.getMessage());
+          throw new SubscriptionException(exceptionMessage.getMessage());
         }
 
         return;

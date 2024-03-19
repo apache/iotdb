@@ -26,6 +26,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -200,6 +201,31 @@ public class SubscriptionConsumerAgent {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+  }
+
+  public TPushConsumerGroupRespExceptionMessage handleConsumerGroupMetaChanges(
+      List<ConsumerGroupMeta> consumerGroupMetasFromCoordinator) {
+    acquireWriteLock();
+    try {
+      for (ConsumerGroupMeta consumerGroupMetaFromCoordinator : consumerGroupMetasFromCoordinator) {
+        try {
+          handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
+          return null;
+        } catch (Exception e) {
+          final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
+          final String exceptionMessage =
+              String.format(
+                  "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
+                  consumerGroupId, e.getMessage());
+          LOGGER.warn(exceptionMessage);
+          return new TPushConsumerGroupRespExceptionMessage(
+              consumerGroupId, exceptionMessage, System.currentTimeMillis());
+        }
+      }
+      return null;
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   public TPushConsumerGroupRespExceptionMessage handleDropConsumerGroup(String consumerGroupId) {

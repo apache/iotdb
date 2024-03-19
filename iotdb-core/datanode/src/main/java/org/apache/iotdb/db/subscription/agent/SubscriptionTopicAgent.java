@@ -26,6 +26,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 public class SubscriptionTopicAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
@@ -80,6 +82,30 @@ public class SubscriptionTopicAgent {
     final String topicName = metaFromCoordinator.getTopicName();
     topicMetaKeeper.removeTopicMeta(topicName);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+  }
+
+  public TPushTopicRespExceptionMessage handleTopicMetaChanges(
+      List<TopicMeta> topicMetasFromCoordinator) {
+    acquireWriteLock();
+    try {
+      for (TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
+        try {
+          handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
+        } catch (Exception e) {
+          final String topicName = topicMetaFromCoordinator.getTopicName();
+          final String exceptionMessage =
+              String.format(
+                  "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
+                  topicName, e.getMessage());
+          LOGGER.warn(exceptionMessage);
+          return new TPushTopicRespExceptionMessage(
+              topicName, exceptionMessage, System.currentTimeMillis());
+        }
+      }
+      return null;
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
