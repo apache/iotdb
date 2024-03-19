@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -45,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.SUBSCRIPTION_SINK;
@@ -145,11 +147,17 @@ public class PipeConnectorSubtaskManager {
               new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
           pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
         } else {
-          // TODO: handle non-existence
           final String topicName =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_TOPIC_KEY);
           final String consumerGroupId =
               pipeConnectorParameters.getString(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY);
+          if (Objects.isNull(topicName) || Objects.isNull(consumerGroupId)) {
+            throw new SubscriptionException(
+                String.format(
+                    "Failed to construct subscription connector, because of %s or %s does not exist in pipe connector parameters",
+                    PipeConnectorConstant.SINK_TOPIC_KEY,
+                    PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY));
+          }
           final SubscriptionConnectorSubtask subtask =
               new SubscriptionConnectorSubtask(
                   String.format(

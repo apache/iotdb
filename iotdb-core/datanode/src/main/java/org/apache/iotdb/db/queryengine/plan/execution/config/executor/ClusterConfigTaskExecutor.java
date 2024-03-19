@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -1666,7 +1667,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Validate before creation
+    // Validate pipe name
+    if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+      String exceptionMessage =
+          String.format(
+              "Failed to create pipe %s in config node, pipe name starting with \"%s\" are not allowed to be created",
+              createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    // Validate pipe plugin before creation
     try {
       PipeAgent.plugin()
           .validate(
@@ -1709,7 +1722,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterPipe(AlterPipeStatement alterPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Validate before alteration - only validate replace mode
+    // Validate pipe name
+    if (alterPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+      String exceptionMessage =
+          String.format(
+              "Failed to alter pipe %s in config node, pipe name starting with \"%s\" are not allowed to be altered",
+              alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    // Validate pipe plugin before alteration - only validate replace mode
     final String pipeName = alterPipeStatement.getPipeName();
     try {
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()
@@ -1752,6 +1777,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Validate pipe name
+    if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+      String exceptionMessage =
+          String.format(
+              "Failed to start pipe %s in config node, pipe name starting with \"%s\" are not allowed to be started",
+              startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
@@ -1771,6 +1809,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Validate pipe name
+    if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+      String exceptionMessage =
+          String.format(
+              "Failed to drop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be dropped",
+              dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = configNodeClient.dropPipe(dropPipeStatement.getPipeName());
@@ -1790,6 +1841,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // Validate pipe name
+    if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+      String exceptionMessage =
+          String.format(
+              "Failed to stop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be stopped",
+              stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus = configNodeClient.stopPipe(stopPipeStatement.getPipeName());

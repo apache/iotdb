@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.rpc.subscription.payload.config.TopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -188,8 +189,8 @@ public class TopicMeta {
   public Map<String, String> generateConnectorAttributes(String consumerGroupId) {
     Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("sink", "subscription-sink");
-    connectorAttributes.put("topic", topicName);
-    connectorAttributes.put("consumer-group", consumerGroupId);
+    connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
+    connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     return connectorAttributes;
   }
 

@@ -81,32 +81,25 @@ public class IoTDBSubscriptionConsumerGroupIT {
       fail(e.getMessage());
     }
 
-    List<Thread> threads = new ArrayList<>();
-    Thread t =
-        new Thread(
-            () -> {
-              long currentTime = System.currentTimeMillis();
-              try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                for (int i = 0; i < BASE; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-                }
-                for (int i = 0; i < BASE; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format(
-                          "insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
-                }
-                session.executeNonQueryStatement("flush");
-                session.executeNonQueryStatement("flush");
-              } catch (Exception e) {
-                fail(e.getMessage());
-              }
-            });
-    t.start();
-    threads.add(t);
+    long currentTime = System.currentTimeMillis();
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < BASE; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+      }
+      for (int i = 0; i < BASE; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+      }
+      session.executeNonQueryStatement("flush");
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
+    List<Thread> threads = new ArrayList<>();
     for (Pair<ConsumerConfig, Set<String>> consumerConfig : consumerConfigs) {
-      t =
+      Thread t =
           new Thread(
               () -> {
                 try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
