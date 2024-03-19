@@ -2663,12 +2663,12 @@ public class Session implements ISession {
     }
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
     for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
-      int row = tablet.rowSize++;
-      tablet.addTimestamp(row, times.get(rowIndex));
-      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
-        tablet.addValue(
-            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
-      }
+        addRecordToTablet(
+                tablet,
+                times.get(rowIndex),
+                measurementsList.get(rowIndex),
+                new ArrayList<>(valuesList.get(rowIndex)),
+                allMeasurements);
     }
     if (isAligned) {
       insertAlignedTablet(tablet);
@@ -2697,19 +2697,21 @@ public class Session implements ISession {
       }
     }
     List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<String> measurementList = new ArrayList<>();
     // use measurementType to build schemaList
     for (Entry<String, TSDataType> entry : measurementType.entrySet()) {
       schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue()));
+      measurementList.add(entry.getKey());
     }
     // build tablet and insert
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
     for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
-      int row = tablet.rowSize++;
-      tablet.addTimestamp(row, times.get(rowIndex));
-      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
-        tablet.addValue(
-            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
-      }
+        addRecordToTablet(
+                tablet,
+                times.get(rowIndex),
+                measurementsList.get(rowIndex),
+                valuesList.get(rowIndex),
+                measurementList);
     }
     if (isAligned) {
       insertAlignedTablet(tablet);
@@ -2746,13 +2748,18 @@ public class Session implements ISession {
     }
     // device -> schema
     Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>();
-    // use measurementTypeMap to build schemaMap
+    // device -> measurement
+    Map<String, List<String>> measurementMap = new HashMap<>();
+    // use measurementTypeMap to build schemaMap and measurementMap
     for (Map.Entry<String, Map<String, TSDataType>> entry : measurementTypeMap.entrySet()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<String> measurementList = new ArrayList<>();
       for (Map.Entry<String, TSDataType> schemaEntry : entry.getValue().entrySet()) {
         schemaList.add(new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue()));
+        measurementList.add(schemaEntry.getKey());
       }
       schemaMap.put(entry.getKey(), schemaList);
+      measurementMap.put(entry.getKey(), measurementList);
     }
     // device -> tablet
     Map<String, Tablet> tablets = new HashMap<>();
@@ -2762,17 +2769,36 @@ public class Session implements ISession {
       Tablet tablet =
           tablets.computeIfAbsent(
               device, k -> new Tablet(device, schemaMap.get(device), rowMap.get(device)));
-      int row = tablet.rowSize++;
-      tablet.addTimestamp(row, times.get(rowIndex));
-      for (int colIndex = 0; colIndex < measurementsList.get(rowIndex).size(); colIndex++) {
-        tablet.addValue(
-            measurementsList.get(rowIndex).get(colIndex), row, valuesList.get(row).get(colIndex));
-      }
+      addRecordToTablet(
+              tablet,
+              times.get(rowIndex),
+              measurementsList.get(rowIndex),
+              valuesList.get(rowIndex),
+              measurementMap.get(device));
     }
     if (isAligned) {
       insertAlignedTablets(tablets);
     } else {
       insertTablets(tablets);
+    }
+  }
+
+  // add one record to  tablet.
+  public void addRecordToTablet(
+          Tablet tablet,
+          Long timestamp,
+          List<String> measurements,
+          List<Object> values,
+          List<String> allMeasurements) {
+    int row = tablet.rowSize++;
+    tablet.addTimestamp(row, timestamp);
+    Map<String, Object> measurementValueMap = new HashMap<>();
+    for (int i = 0; i < measurements.size(); i++) {
+      measurementValueMap.put(measurements.get(i), values.get(i));
+    }
+    for (String measurement : allMeasurements) {
+      Object value = measurementValueMap.getOrDefault(measurement, null);
+      tablet.addValue(measurement, row, value);
     }
   }
 

@@ -239,13 +239,8 @@ public class SessionUtils {
       case TEXT:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (binaryValues[index] != null) {
             valueBuffer.putInt(binaryValues[index].getLength());
             valueBuffer.put(binaryValues[index].getValues());
-          } else {
-            valueBuffer.putInt(0);
-            valueBuffer.put(new byte[0]);
-          }
         }
         break;
       default:
