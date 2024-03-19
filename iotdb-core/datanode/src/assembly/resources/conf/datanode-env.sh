@@ -287,25 +287,25 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 
 # option below tries to optimize safepoint stw time for large counted loop.
 # NOTE: it may have an impact on JIT's black-box optimization.
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseCountedLoopSafepoints"
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseCountedLoopSafepoints"
 
 # when the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
 # for Linux:
-#CPU_PROCESSOR_NUM=$(nproc)
+# CPU_PROCESSOR_NUM=$(nproc)
 # for MacOS:
-#CPU_PROCESSOR_NUM=$(sysctl -n hw.ncpu)
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}"
+# CPU_PROCESSOR_NUM=$(sysctl -n hw.ncpu)
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}"
 
 # if there are much of stw time of reference process in GC log, you can turn on option below.
 # NOTE: it may have an impact on application's throughput.
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ParallelRefProcEnabled"
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ParallelRefProcEnabled"
 
 # this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation.
 # NOTE: it may reduce memory utilization and trigger OOM killer when memory is tight.
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+AlwaysPreTouch"
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+AlwaysPreTouch"
 
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/datanode_heapdump.hprof"
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/datanode_heapdump.hprof"
 
 
 echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
