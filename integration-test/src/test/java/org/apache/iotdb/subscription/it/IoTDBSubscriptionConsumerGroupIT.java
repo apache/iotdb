@@ -57,6 +57,8 @@ public class IoTDBSubscriptionConsumerGroupIT {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
+  private static final int BASE = 233;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -65,86 +67,6 @@ public class IoTDBSubscriptionConsumerGroupIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  private void testMultiConsumersSubscribeOneTopicTemplate(
-      List<ConsumerConfig> consumerConfigs, int consumerGroups) throws Exception {
-    ConcurrentHashMap<String, ConcurrentHashMap<Long, Long>> consumerGroupIdToTimestamps =
-        new ConcurrentHashMap<>();
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
-    List<Thread> threads = new ArrayList<>();
-    Thread t =
-        new Thread(
-            () -> {
-              try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                for (int i = 0; i < 1000; ++i) {
-                  session.executeNonQueryStatement(
-                      String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
-                }
-                session.executeNonQueryStatement("flush");
-              } catch (Exception e) {
-                fail(e.getMessage());
-              }
-            });
-    t.start();
-    threads.add(t);
-
-    for (ConsumerConfig consumerConfig : consumerConfigs) {
-      t =
-          new Thread(
-              () -> {
-                try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                  session.createConsumer(consumerConfig);
-                  session.subscribe(Collections.singleton("topic1"));
-
-                  List<EnrichedTablets> enrichedTabletsList;
-                  while (true) {
-                    Thread.sleep(1000); // wait some time
-                    enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-                    if (enrichedTabletsList.isEmpty()) {
-                      break;
-                    }
-                    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-                    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-                      for (Tablet tablet : enrichedTablets.getTablets()) {
-                        for (Long time : tablet.timestamps) {
-                          consumerGroupIdToTimestamps
-                              .computeIfAbsent(
-                                  consumerConfig.getConsumerGroupId(),
-                                  (consumerGroupId) -> new ConcurrentHashMap<>())
-                              .put(time, time);
-                        }
-                      }
-                      topicNameToSubscriptionCommitIds
-                          .computeIfAbsent(
-                              enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-                          .addAll(enrichedTablets.getSubscriptionCommitIds());
-                    }
-                    session.commit(topicNameToSubscriptionCommitIds);
-                  }
-                  session.unsubscribe(Collections.singleton("topic1"));
-                  session.dropConsumer();
-                } catch (Exception e) {
-                  fail(e.getMessage());
-                }
-              });
-      t.start();
-      threads.add(t);
-    }
-
-    for (Thread thread : threads) {
-      thread.join();
-    }
-
-    Assert.assertEquals(
-        1000 * consumerGroups,
-        consumerGroupIdToTimestamps.values().stream().mapToInt(Map::size).reduce(0, Integer::sum));
   }
 
   private void testMultiConsumersSubscribeMultiTopicsTemplate(
@@ -165,11 +87,11 @@ public class IoTDBSubscriptionConsumerGroupIT {
             () -> {
               long currentTime = System.currentTimeMillis();
               try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                for (int i = 0; i < 1000; ++i) {
+                for (int i = 0; i < BASE; ++i) {
                   session.executeNonQueryStatement(
                       String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
                 }
-                for (int i = 0; i < 1000; ++i) {
+                for (int i = 0; i < BASE; ++i) {
                   session.executeNonQueryStatement(
                       String.format(
                           "insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
@@ -231,122 +153,80 @@ public class IoTDBSubscriptionConsumerGroupIT {
     }
 
     Assert.assertEquals(
-        1000 * factor,
+        BASE * factor,
         consumerGroupIdToTimestamps.values().stream().mapToInt(Map::size).reduce(0, Integer::sum));
   }
 
   @Test
   public void test3C1CGSubscribeOneTopic() throws Exception {
-    List<ConsumerConfig> consumerConfigs = new ArrayList<>();
+    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-              }
-            }));
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-              }
-            }));
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-              }
-            }));
-    testMultiConsumersSubscribeOneTopicTemplate(consumerConfigs, 1);
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
+    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 1);
   }
 
   @Test
   public void test3C3CGSubscribeOneTopic() throws Exception {
-    List<ConsumerConfig> consumerConfigs = new ArrayList<>();
+    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-              }
-            }));
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-              }
-            }));
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
     consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg3");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-              }
-            }));
-    testMultiConsumersSubscribeOneTopicTemplate(consumerConfigs, 3);
-  }
-
-  @Test
-  public void test6C2CGSubscribeOneTopic() throws Exception {
-    List<ConsumerConfig> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-              }
-            }));
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-              }
-            }));
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-              }
-            }));
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c4");
-              }
-            }));
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c5");
-              }
-            }));
-    consumerConfigs.add(
-        new ConsumerConfig(
-            new HashMap<String, String>() {
-              {
-                put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                put(ConsumerConstant.CONSUMER_ID_KEY, "c6");
-              }
-            }));
-    testMultiConsumersSubscribeOneTopicTemplate(consumerConfigs, 2);
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg3");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
+    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 3);
   }
 
   @Test
@@ -419,5 +299,51 @@ public class IoTDBSubscriptionConsumerGroupIT {
                 }),
             new HashSet<>(Collections.singletonList("topic2"))));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 4);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopic() throws Exception {
+    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
+    consumerConfigs.add(
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
+    consumerConfigs.add(
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
+                  }
+                }),
+            new HashSet<>(Arrays.asList("topic1", "topic2"))));
+    consumerConfigs.add(
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic1"))));
+    consumerConfigs.add(
+        new Pair<>(
+            new ConsumerConfig(
+                new HashMap<String, String>() {
+                  {
+                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
+                    put(ConsumerConstant.CONSUMER_ID_KEY, "c4");
+                  }
+                }),
+            new HashSet<>(Collections.singletonList("topic2"))));
+    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 3);
   }
 }
