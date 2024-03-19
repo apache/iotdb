@@ -17,14 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.windowing;
+package org.apache.iotdb.db.pipe.processor.aggregate.window.processor;
 
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
@@ -32,9 +37,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_KEY;
 
-public class TumblingWindowingProcessor extends AbstractWindowingProcessor {
+// TODO: Support sliding window in this processor
+public class SlidingWindowingProcessor extends AbstractSimpleTimeWindowingProcessor {
   private long slidingBoundaryTime;
-
   private long slidingInterval;
 
   @Override
@@ -60,5 +65,39 @@ public class TumblingWindowingProcessor extends AbstractWindowingProcessor {
             parameters.getLongOrDefault(
                 PROCESSOR_SLIDING_SECONDS_KEY, PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE),
             TimeUnit.SECONDS);
+  }
+
+  @Override
+  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
+    if (windowList.isEmpty()) {
+      TimeSeriesWindow window = new TimeSeriesWindow(this, null);
+      window.setTimestamp(
+          timeStamp <= slidingBoundaryTime
+              ? slidingBoundaryTime
+              : ((timeStamp - slidingBoundaryTime - 1) / slidingInterval + 1) * slidingInterval
+                  + slidingBoundaryTime);
+      windowList.add(window);
+    } else if (timeStamp
+        >= windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval) {
+      TimeSeriesWindow window = new TimeSeriesWindow(this, null);
+      window.setTimestamp(windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval);
+      windowList.add(window);
+    }
+  }
+
+  @Override
+  public Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
+      TimeSeriesWindow window, long timeStamp) {
+    if (timeStamp < window.getTimestamp()) {
+      return new Pair<>(WindowState.IGNORE_DATA, null);
+    }
+    if (timeStamp >= window.getTimestamp() + slidingInterval) {
+      return new Pair<>(
+          WindowState.EMIT_AND_PURGE,
+          new WindowOutput()
+              .setTimeStamp(window.getTimestamp())
+              .setProgressTime(window.getTimestamp() + slidingInterval));
+    }
+    return new Pair<>(WindowState.NORMAL, null);
   }
 }

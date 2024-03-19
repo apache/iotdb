@@ -17,50 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.windowing;
+package org.apache.iotdb.db.pipe.processor.formal;
 
-import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 /**
- * {@link AbstractWindowingProcessor} is the processor defining the windows adoptable for {@link
- * AggregateProcessor}. This is only a formal {@link PipeProcessor} which acts as a {@link
- * PipePlugin} for {@link AggregateProcessor}, and thereby has no need to implement the {@link
- * Event} collection methods.However, the implementors can still use {@link
- * PipeProcessor#validate(PipeParameterValidator)}, {@link PipeProcessor#customize(PipeParameters,
- * PipeProcessorRuntimeConfiguration)} and {@link PipeProcessor#close()} as a normal processor to
- * configure its own logics, which will be called in the corresponding functions in {@link
- * AggregateProcessor}.
+ * {@link AbstractFormalProcessor} is a formal {@link PipeProcessor} that does not support data
+ * processing. It is mainly used as a configurable plugin for other {@link PipePlugin}s that can be
+ * dynamically loaded into IoTDB.
  */
-public abstract class AbstractWindowingProcessor implements PipeProcessor {
+public abstract class AbstractFormalProcessor implements PipeProcessor {
   @Override
   public final void process(
       TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract windowing processor does not support process events");
+        "The abstract formal processor does not support process events");
   }
 
   @Override
   public final void process(
       TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector) throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract windowing processor does not support process events");
+        "The abstract formal processor does not support process events");
   }
 
   @Override
   public final void process(Event event, EventCollector eventCollector) throws Exception {
     throw new UnsupportedOperationException(
-        "The abstract windowing processor does not support process events");
+        "The abstract formal processor does not support process events");
   }
-
-  @Override
-  public void close() throws Exception {}
 }

@@ -17,22 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.aggregate.datastructure.serializable;
+package org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure;
 
-import java.nio.ByteBuffer;
+public enum WindowState {
+  NORMAL,
+  IGNORE_DATA,
+  EMIT,
+  PURGE,
+  EMIT_AND_PURGE;
 
-public abstract class CustomizedSerializableObject {
-  private Object object;
-
-  public Object getObject() {
-    return object;
+  public boolean isEmit() {
+    return this == EMIT || this == EMIT_AND_PURGE;
   }
 
-  public void setObject(Object object) {
-    this.object = object;
+  public boolean isPurge() {
+    return this == PURGE || this == EMIT_AND_PURGE;
   }
-
-  public abstract ByteBuffer serialize();
-
-  public abstract void deserialize(ByteBuffer byteBuffer);
 }

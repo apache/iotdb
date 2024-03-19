@@ -44,7 +44,7 @@ public class VarianceOperator implements AggregatedResultOperator {
 
   @Override
   public Set<String> getDeclaredIntermediateValueNames() {
-    return Collections.unmodifiableSet(new HashSet<>(Arrays.asList("sum_x1", "sum_x2", "count")));
+    return Collections.unmodifiableSet(new HashSet<>(Arrays.asList("sum_x2", "sum_x1", "count")));
   }
 
   @Override

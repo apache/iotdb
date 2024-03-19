@@ -66,17 +66,17 @@ public interface IntermediateResultOperator {
    * @param initialInput the initial data
    * @return if the input type is supported
    */
-  boolean initAndGetReturnValueType(boolean initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(boolean initialInput, long initialTimestamp);
 
-  boolean initAndGetReturnValueType(int initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(int initialInput, long initialTimestamp);
 
-  boolean initAndGetReturnValueType(long initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(long initialInput, long initialTimestamp);
 
-  boolean initAndGetReturnValueType(float initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(float initialInput, long initialTimestamp);
 
-  boolean initAndGetReturnValueType(double initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(double initialInput, long initialTimestamp);
 
-  boolean initAndGetReturnValueType(String initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(String initialInput, long initialTimestamp);
 
   /**
    * Use the input to update the intermediate result. The input is all raw types instead of Object

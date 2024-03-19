@@ -23,12 +23,12 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.processor.aggregate.datastructure.window.TimeSeriesWindowState;
-import org.apache.iotdb.db.pipe.processor.aggregate.operator.AbstractOperatorProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatorRuntimeAttributes;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
-import org.apache.iotdb.db.pipe.processor.aggregate.windowing.AbstractWindowingProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractOperatorProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -82,12 +82,11 @@ public class AggregateProcessor implements PipeProcessor {
 
   private final Map<String, AggregatedResultOperator> operator2RuntimeAttributesMap =
       new HashMap<>();
-  private final Map<String, Supplier<IntermediateResultOperator>> intermediateResult2AttributesMap =
-      new HashMap<>();
+  private final Map<String, Supplier<IntermediateResultOperator>>
+      intermediateResult2OperatorSupplierMap = new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
-  private static final Map<
-          String, Map<String, AtomicReference<Pair<Long, List<TimeSeriesWindowState>>>>>
+  private static final Map<String, Map<String, AtomicReference<Pair<Long, List<TimeSeriesWindow>>>>>
       pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap = new ConcurrentHashMap<>();
 
   private AbstractWindowingProcessor windowingProcessor;
@@ -169,7 +168,7 @@ public class AggregateProcessor implements PipeProcessor {
           (AbstractOperatorProcessor)
               agent.getConfiguredProcessor(pipePluginName, parameters, configuration);
       Map<String, AggregatedResultOperator> operatorName2StaticAttributesMap =
-          operatorProcessor.getAggregatorName2StaticAttributesMap();
+          operatorProcessor.getAggregatorOperatorSet();
       for (Map.Entry<String, AggregatedResultOperator> entry :
           operatorName2StaticAttributesMap.entrySet()) {
         String lowerCaseAggregatorName = entry.getKey().toLowerCase();
@@ -187,17 +186,17 @@ public class AggregateProcessor implements PipeProcessor {
         declaredIntermediateResultSet.addAll(
             aggregatedResultOperator.getDeclaredIntermediateValueNames());
       }
-      intermediateResult2AttributesMap.putAll(
-          operatorProcessor.getIntermediateResultName2AttributesMap());
+      intermediateResult2OperatorSupplierMap.putAll(
+          operatorProcessor.getIntermediateResultOperatorSupplierSet());
       operatorProcessors.add(operatorProcessor);
     }
     if (!operatorNameSet.isEmpty()) {
       throw new PipeException(String.format("The attribute keys %s are invalid.", operatorNameSet));
     }
-    intermediateResult2AttributesMap
+    intermediateResult2OperatorSupplierMap
         .keySet()
         .removeIf(key -> !declaredIntermediateResultSet.contains(key));
-    declaredIntermediateResultSet.removeAll(intermediateResult2AttributesMap.keySet());
+    declaredIntermediateResultSet.removeAll(intermediateResult2OperatorSupplierMap.keySet());
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
@@ -244,16 +243,16 @@ public class AggregateProcessor implements PipeProcessor {
       final String timeSeries =
           row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
       long timeStamp = row.getTime();
-      final List<TimeSeriesWindowState> timeSeriesWindowState =
+      final List<TimeSeriesWindow> timeSeriesWindow =
           pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap
               .get(pipeName)
               .get(timeSeries)
               .get();
 
       // Initiate the slidingBoundaryTime on the first incoming value
-      timeSeriesWindowState.tryInitBoundaryTime(timeStamp, slidingBoundaryTime, slidingInterval);
+      timeSeriesWindow.tryInitBoundaryTime(timeStamp, slidingBoundaryTime, slidingInterval);
 
-      long boundaryTime = timeSeriesWindowState.getCurrentBoundaryTime();
+      long boundaryTime = timeSeriesWindow.getCurrentBoundaryTime();
       // Ignore the value if the timestamp is sooner than the window left bound
       if (timeStamp < boundaryTime) {
         return;
