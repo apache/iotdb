@@ -2663,12 +2663,12 @@ public class Session implements ISession {
     }
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
     for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
-        addRecordToTablet(
-                tablet,
-                times.get(rowIndex),
-                measurementsList.get(rowIndex),
-                new ArrayList<>(valuesList.get(rowIndex)),
-                allMeasurements);
+      addRecordToTablet(
+          tablet,
+          times.get(rowIndex),
+          measurementsList.get(rowIndex),
+          new ArrayList<>(valuesList.get(rowIndex)),
+          allMeasurements);
     }
     if (isAligned) {
       insertAlignedTablet(tablet);
@@ -2706,12 +2706,12 @@ public class Session implements ISession {
     // build tablet and insert
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
     for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
-        addRecordToTablet(
-                tablet,
-                times.get(rowIndex),
-                measurementsList.get(rowIndex),
-                valuesList.get(rowIndex),
-                measurementList);
+      addRecordToTablet(
+          tablet,
+          times.get(rowIndex),
+          measurementsList.get(rowIndex),
+          valuesList.get(rowIndex),
+          measurementList);
     }
     if (isAligned) {
       insertAlignedTablet(tablet);
@@ -2770,11 +2770,11 @@ public class Session implements ISession {
           tablets.computeIfAbsent(
               device, k -> new Tablet(device, schemaMap.get(device), rowMap.get(device)));
       addRecordToTablet(
-              tablet,
-              times.get(rowIndex),
-              measurementsList.get(rowIndex),
-              valuesList.get(rowIndex),
-              measurementMap.get(device));
+          tablet,
+          times.get(rowIndex),
+          measurementsList.get(rowIndex),
+          valuesList.get(rowIndex),
+          measurementMap.get(device));
     }
     if (isAligned) {
       insertAlignedTablets(tablets);
@@ -2785,11 +2785,11 @@ public class Session implements ISession {
 
   // add one record to  tablet.
   public void addRecordToTablet(
-          Tablet tablet,
-          Long timestamp,
-          List<String> measurements,
-          List<Object> values,
-          List<String> allMeasurements) {
+      Tablet tablet,
+      Long timestamp,
+      List<String> measurements,
+      List<Object> values,
+      List<String> allMeasurements) {
     int row = tablet.rowSize++;
     tablet.addTimestamp(row, timestamp);
     Map<String, Object> measurementValueMap = new HashMap<>();

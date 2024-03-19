@@ -295,17 +295,17 @@ public class IoTDBSessionInsertNullIT {
           deviceId1,
           Arrays.asList(200L, 201L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-            Arrays.asList(
-                    Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-                    Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
+          Arrays.asList(
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(false, 101), Arrays.asList(true, 201)));
       session.insertRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(400L, 401L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-              Arrays.asList(
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
+          Arrays.asList(
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(null, 102), Arrays.asList(false, 202)));
       session.insertRecordsOfOneDevice(
           deviceId1,
@@ -340,17 +340,17 @@ public class IoTDBSessionInsertNullIT {
           deviceId1,
           Arrays.asList(200L, 201L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-              Arrays.asList(
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
+          Arrays.asList(
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(false, 101), Arrays.asList(true, 201)));
       session.insertAlignedRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(400L, 401L),
           Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")),
-              Arrays.asList(
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
-                      Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
+          Arrays.asList(
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
+              Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(null, 102), Arrays.asList(false, 202)));
       session.insertAlignedRecordsOfOneDevice(
           deviceId1,
