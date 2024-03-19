@@ -235,7 +235,8 @@ public class ColumnTransformerVisitor
           context.cache.put(
               functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
-          ColumnTransformer[] inputColumnTransformers = new ColumnTransformer[expressions.size() + 1];
+          ColumnTransformer[] inputColumnTransformers =
+              new ColumnTransformer[expressions.size() + 1];
           for (int i = 0; i < expressions.size(); i++) {
             inputColumnTransformers[i] = this.process(expressions.get(i), context);
           }
@@ -251,7 +252,6 @@ public class ColumnTransformerVisitor
                   });
           columnTransformer.addReferenceCount();
           inputColumnTransformers[expressions.size()] = columnTransformer;
-
 
           UDTFExecutor executor =
               context.udtfContext.getExecutorByFunctionExpression(functionExpression);
