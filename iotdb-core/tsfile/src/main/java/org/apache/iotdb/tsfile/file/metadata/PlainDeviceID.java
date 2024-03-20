@@ -32,10 +32,6 @@ public class PlainDeviceID implements IDeviceID {
   String deviceID;
 
   public PlainDeviceID(String deviceID) {
-    if (deviceID == null) {
-      new RuntimeException().printStackTrace();
-      throw new RuntimeException();
-    }
     this.deviceID = deviceID;
   }
 
@@ -45,9 +41,6 @@ public class PlainDeviceID implements IDeviceID {
       return true;
     }
     if (!(o instanceof PlainDeviceID)) {
-      if (o != null) {
-        new RuntimeException().printStackTrace();
-      }
       return false;
     }
     PlainDeviceID that = (PlainDeviceID) o;
@@ -60,10 +53,6 @@ public class PlainDeviceID implements IDeviceID {
   }
 
   public String toString() {
-    if (true) {
-      new RuntimeException().printStackTrace();
-      throw new RuntimeException();
-    }
     return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
   }
 

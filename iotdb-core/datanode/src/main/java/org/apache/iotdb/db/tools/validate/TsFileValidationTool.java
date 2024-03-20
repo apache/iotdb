@@ -493,7 +493,7 @@ public class TsFileValidationTool {
                   if (printDetails) {
                     printBoth(
                         "---- Device "
-                            + ((PlainDeviceID) deviceID).toStringID()
+                            + deviceID
                             + " overlap between files, with previous file "
                             + deviceEndTime.get(deviceID).left);
                   }

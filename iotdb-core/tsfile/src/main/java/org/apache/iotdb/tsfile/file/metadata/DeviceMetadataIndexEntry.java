@@ -87,6 +87,6 @@ public class DeviceMetadataIndexEntry implements IMetadataIndexEntry {
 
   @Override
   public String toString() {
-    return "<" + ((PlainDeviceID) deviceID).toStringID() + "," + offset + ">";
+    return "<" + deviceID + "," + offset + ">";
   }
 }
