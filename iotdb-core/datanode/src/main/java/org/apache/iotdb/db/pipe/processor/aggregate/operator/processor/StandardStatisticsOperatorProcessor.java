@@ -67,10 +67,10 @@ public class StandardStatisticsOperatorProcessor extends AbstractOperatorProcess
             Arrays.asList(
                 AbsoluteMaxOperator::new,
                 CountOperator::new,
+                () -> new FractionPoweredSumOperator(0.5),
                 () -> new IntegralPoweredSumOperator(1),
                 () -> new IntegralPoweredSumOperator(2),
                 () -> new IntegralPoweredSumOperator(3),
-                () -> new IntegralPoweredSumOperator(4),
-                () -> new FractionPoweredSumOperator(0.5))));
+                () -> new IntegralPoweredSumOperator(4))));
   }
 }

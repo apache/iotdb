@@ -39,8 +39,8 @@ public class PipeRowCollector implements RowCollector {
   private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
   private Tablet tablet = null;
   private boolean isAligned = false;
-  private final PipeTaskMeta pipeTaskMeta; // used to report progress
-  private final EnrichedEvent sourceEvent; // used to report progress
+  private final PipeTaskMeta pipeTaskMeta; // Used to report progress
+  private final EnrichedEvent sourceEvent; // Used to report progress
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
