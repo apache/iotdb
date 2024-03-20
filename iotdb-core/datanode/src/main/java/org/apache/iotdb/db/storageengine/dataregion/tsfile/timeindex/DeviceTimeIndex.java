@@ -231,7 +231,7 @@ public class DeviceTimeIndex implements ITimeIndex {
         sizeOfEntry = RamUsageEstimator.shallowSizeOf(entry);
       }
       size += sizeOfEntry;
-      size += entry.getKey().memorySize();
+      size += entry.getKey().getRetainedSizeInBytes();
       size += RamUsageEstimator.sizeOfObject(entry.getValue(), defSize);
     }
     return RamUsageEstimator.alignObjectSize(size);

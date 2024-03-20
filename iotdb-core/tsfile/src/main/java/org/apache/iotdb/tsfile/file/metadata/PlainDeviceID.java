@@ -82,15 +82,11 @@ public class PlainDeviceID implements IDeviceID {
   }
 
   @Override
-  public int memorySize() {
-    return (int) RamUsageEstimator.sizeOf(deviceID);
-  }
-
-  @Override
   public boolean isEmpty() {
     return deviceID.isEmpty();
   }
 
+  @Override
   public long getRetainedSizeInBytes() {
     return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }

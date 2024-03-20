@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
@@ -32,9 +31,7 @@ public class PipeMemoryWeighUtil {
   public static long memoryOfIDeviceId2Bool(Map<IDeviceID, Boolean> map) {
     long usageInBytes = 0L;
     for (Map.Entry<IDeviceID, Boolean> entry : map.entrySet()) {
-      // TODO
-      usageInBytes =
-          usageInBytes + MemUtils.getStringMem(((PlainDeviceID) entry.getKey()).toStringID()) + 1L;
+      usageInBytes = usageInBytes + entry.getKey().getRetainedSizeInBytes() + 1L;
     }
     return usageInBytes + 16L; // add the overhead of map
   }
@@ -52,7 +49,7 @@ public class PipeMemoryWeighUtil {
   public static long memoryOfIDeviceID2StrList(Map<IDeviceID, List<String>> map) {
     long usageInBytes = 0L;
     for (Map.Entry<IDeviceID, List<String>> entry : map.entrySet()) {
-      usageInBytes += MemUtils.getStringMem(((PlainDeviceID) entry.getKey()).toStringID());
+      usageInBytes += entry.getKey().getRetainedSizeInBytes();
       for (String str : entry.getValue()) {
         usageInBytes += MemUtils.getStringMem(str);
       }

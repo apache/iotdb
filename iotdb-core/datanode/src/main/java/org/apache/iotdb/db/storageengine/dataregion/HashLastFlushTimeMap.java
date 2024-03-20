@@ -31,22 +31,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
 
-  /**
-   * String basic total, 40B
-   *
-   * <ul>
-   *   <li>Object header: Mark Word + Classic Pointer, 12B
-   *   <li>char[] reference 4B
-   *   <li>hash code, 4B
-   *   <li>padding 4B
-   *   <li>char[] header + length 16B
-   * </ul>
-   */
-  long STRING_BASE_SIZE = 40;
-
   long LONG_SIZE = 24;
 
-  long HASHMAP_NODE_BASIC_SIZE = 14 + STRING_BASE_SIZE + LONG_SIZE;
+  long HASHMAP_NODE_BASIC_SIZE = 14 + LONG_SIZE;
 
   /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
@@ -81,7 +68,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
             timePartitionId, id -> new DeviceLastFlushTime());
     long lastFlushTime = flushTimeMapForPartition.getLastFlushTime(deviceId);
     if (lastFlushTime == Long.MIN_VALUE) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * deviceId.memorySize();
+      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.getRetainedSizeInBytes();
       memCostForEachPartition.compute(
           timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
     }
@@ -99,7 +86,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     long memIncr = 0;
     for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
-        memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().memorySize();
+        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().getRetainedSizeInBytes();
       }
       flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
     }

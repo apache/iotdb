@@ -35,7 +35,7 @@ public interface IDeviceID extends Comparable<IDeviceID> {
 
   byte[] getBytes();
 
-  int memorySize();
+  long getRetainedSizeInBytes();
 
   boolean isEmpty();
 
