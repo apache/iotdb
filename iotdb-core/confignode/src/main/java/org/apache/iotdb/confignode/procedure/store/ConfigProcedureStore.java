@@ -122,16 +122,6 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   private void checkProcWalDir(String procedureWalDir) throws IOException {
     File dir = new File(procedureWalDir);
     checkOldProcWalDir(dir);
-    if (!dir.exists()) {
-      if (dir.mkdirs()) {
-        LOG.info("Make procedure wal dir: {}", dir);
-      } else {
-        throw new IOException(
-            String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
-                dir.getAbsolutePath()));
-      }
-    }
   }
 
   private void checkOldProcWalDir(File newDir) {
