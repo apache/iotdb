@@ -98,6 +98,10 @@ public class SubscriptionConsumerAgent {
     }
 
     // TODO: broker TTL if no consumer in consumer group
+    // Currently, even if there are no consumers left in a consumer group on the CN side, the
+    // corresponding ConsumerGroupMeta is still retained. Correspondingly, on the DN side, the
+    // SubscriptionBroker is also retained, but there are no SubscriptionPrefetchingQueues left
+    // within it.
   }
 
   public void subscribe(ConsumerConfig consumerConfig, Set<String> topicNames)

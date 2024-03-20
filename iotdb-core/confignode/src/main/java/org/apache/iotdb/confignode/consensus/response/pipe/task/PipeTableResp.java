@@ -137,7 +137,7 @@ public class PipeTableResp implements DataSet {
     }
 
     // sorted by pipe name
-    showPipeInfoList.sort(Comparator.comparing(lhs -> lhs.id));
+    showPipeInfoList.sort(Comparator.comparing(pipeInfo -> pipeInfo.id));
     return new TShowPipeResp().setStatus(status).setPipeInfoList(showPipeInfoList);
   }
 }
