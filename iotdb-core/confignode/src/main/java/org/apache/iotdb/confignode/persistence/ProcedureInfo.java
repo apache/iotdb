@@ -70,8 +70,9 @@ public class ProcedureInfo implements SnapshotProcessor {
   private static final String PROCEDURE_SNAPSHOT_DIR = "procedures";
   private static final String PROCEDURE_SNAPSHOT_FILE_SUFFIX = ".bin";
   private static final int PROCEDURE_LOAD_BUFFER_SIZE = 8 * 1024 * 1024;
-
   private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
+  private final String OLD_PROCEDURE_WAL_DIR =
+          CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
 
   private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
@@ -79,8 +80,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   private final AtomicLong lastProcId = new AtomicLong(-1);
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
-  private final String oldProcedureWalDir =
-      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
+
   private final Map<Long, ProcedureWAL> procWALMap = new HashMap<>();
 
   private final ConfigManager configManager;
@@ -90,12 +90,12 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   public boolean isOldVersion() {
-    return new File(oldProcedureWalDir).exists();
+    return new File(OLD_PROCEDURE_WAL_DIR).exists();
   }
 
   public List<Procedure<ConfigNodeProcedureEnv>> oldLoad() {
     List<Procedure<ConfigNodeProcedureEnv>> procedureList = new ArrayList<>();
-    try (Stream<Path> s = Files.list(Paths.get(oldProcedureWalDir))) {
+    try (Stream<Path> s = Files.list(Paths.get(OLD_PROCEDURE_WAL_DIR))) {
       s.filter(path -> path.getFileName().toString().endsWith(PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
@@ -116,12 +116,12 @@ public class ProcedureInfo implements SnapshotProcessor {
       throw new RuntimeException(e);
     }
     try {
-      FileUtils.recursiveDeleteFolder(oldProcedureWalDir);
+      FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
     } catch (IOException e) {
       LOGGER.error("Delete useless procedure wal dir fail.", e);
       LOGGER.error(
           "You should manually delete the procedure wal dir before ConfigNode restart. {}",
-          oldProcedureWalDir);
+              OLD_PROCEDURE_WAL_DIR);
     }
     LOGGER.info(
         "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
@@ -145,7 +145,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   public TSStatus oldUpdateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure procedure = updateProcedurePlan.getProcedure();
     long procId = procedure.getProcId();
-    Path path = Paths.get(oldProcedureWalDir, procId + PROCEDURE_WAL_SUFFIX);
+    Path path = Paths.get(OLD_PROCEDURE_WAL_DIR, procId + PROCEDURE_WAL_SUFFIX);
     ProcedureWAL procedureWAL =
         procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
     try {

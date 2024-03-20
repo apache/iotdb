@@ -75,12 +75,10 @@ public class ConsensusManager {
 
   private final IManager configManager;
   private IConsensus consensusImpl;
-  private final ConfigRegionStateMachine stateMachine;
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
-    this.stateMachine = stateMachine;
   }
 
   public void start() throws IOException {
