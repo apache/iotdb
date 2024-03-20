@@ -38,11 +38,13 @@ public class SerializedEnrichedEvent {
   private final EnrichedTablets enrichedTablets;
   private final List<EnrichedEvent> enrichedEvents;
   private ByteBuffer byteBuffer; // serialized EnrichedTablets
+  private final long creationTime;
 
   public SerializedEnrichedEvent(
       EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {
     this.enrichedTablets = enrichedTablets;
     this.enrichedEvents = enrichedEvents;
+    this.creationTime = System.currentTimeMillis();
   }
 
   /** @return true -> byte buffer is not null */
@@ -74,5 +76,9 @@ public class SerializedEnrichedEvent {
     for (EnrichedEvent enrichedEvent : enrichedEvents) {
       enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
     }
+  }
+
+  public boolean maybeExpired() {
+    return System.currentTimeMillis() - creationTime > 300;
   }
 }

@@ -231,6 +231,8 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
+  private int subscriptionMaxEventsPerRecycling = 8;
+  private int subscriptionEventRecycleIntervalSeconds = 300;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -983,6 +985,23 @@ public class CommonConfig {
 
   public void setSubscriptionLaunchRetryIntervalMs(long subscriptionLaunchRetryIntervalMs) {
     this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
+  }
+
+  public int getSubscriptionMaxEventsPerRecycling() {
+    return subscriptionMaxEventsPerRecycling;
+  }
+
+  public void setSubscriptionMaxEventsPerRecycling(int subscriptionMaxEventsPerRecycling) {
+    this.subscriptionMaxEventsPerRecycling = subscriptionMaxEventsPerRecycling;
+  }
+
+  public int getSubscriptionEventRecycleIntervalSeconds() {
+    return subscriptionEventRecycleIntervalSeconds;
+  }
+
+  public void setSubscriptionEventRecycleIntervalSeconds(
+      int subscriptionEventRecycleIntervalSeconds) {
+    this.subscriptionEventRecycleIntervalSeconds = subscriptionEventRecycleIntervalSeconds;
   }
 
   public String getSchemaEngineMode() {

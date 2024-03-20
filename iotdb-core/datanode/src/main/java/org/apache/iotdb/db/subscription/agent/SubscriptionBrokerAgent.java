@@ -107,4 +107,12 @@ public class SubscriptionBrokerAgent {
     }
     broker.executePrefetch(subtask.getTopicName());
   }
+
+  /////////////////////////////// recycle ///////////////////////////////
+
+  public void recycleUncommittedEvents() {
+    consumerGroupIdToSubscriptionBroker
+        .values()
+        .forEach(SubscriptionBroker::recycleUncommittedEvents);
+  }
 }

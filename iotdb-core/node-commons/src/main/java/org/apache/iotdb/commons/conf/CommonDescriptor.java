@@ -538,10 +538,20 @@ public class CommonDescriptor {
                 "subscription_serialize_max_blocking_time_ms",
                 String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
     config.setSubscriptionLaunchRetryIntervalMs(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "subscription_launch_retry_interval_ms",
                 String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
+    config.setSubscriptionMaxEventsPerRecycling(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_events_per_recycling",
+                String.valueOf(config.getSubscriptionMaxEventsPerRecycling()))));
+    config.setSubscriptionEventRecycleIntervalSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_event_recycle_interval_seconds",
+                String.valueOf(config.getSubscriptionEventRecycleIntervalSeconds()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

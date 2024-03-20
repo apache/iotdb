@@ -106,4 +106,12 @@ public class SubscriptionBroker {
     }
     prefetchingQueue.executePrefetch();
   }
+
+  /////////////////////////////// recycle ///////////////////////////////
+
+  public void recycleUncommittedEvents() {
+    topicNameToPrefetchingQueue
+        .values()
+        .forEach(SubscriptionPrefetchingQueue::recycleUncommittedEvents);
+  }
 }

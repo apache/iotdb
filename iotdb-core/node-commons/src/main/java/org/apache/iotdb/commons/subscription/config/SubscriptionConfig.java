@@ -51,6 +51,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
   }
 
+  public int getSubscriptionMaxEventsPerRecycling() {
+    return COMMON_CONFIG.getSubscriptionMaxEventsPerRecycling();
+  }
+
+  public int getSubscriptionEventRecycleIntervalSeconds() {
+    return COMMON_CONFIG.getSubscriptionEventRecycleIntervalSeconds();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -65,6 +73,10 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
+    LOGGER.info("SubscriptionMaxEventsPerRecycling: {}", getSubscriptionMaxEventsPerRecycling());
+    LOGGER.info(
+        "SubscriptionEventRecycleIntervalSeconds: {}",
+        getSubscriptionEventRecycleIntervalSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
