@@ -58,7 +58,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  boolean tryLock() {
+  public boolean tryLock() {
     try {
       final long id = idGenerator.incrementAndGet();
       LOGGER.info(
@@ -87,7 +87,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  void unlock() {
+  public void unlock() {
     final Long id = deque.poll();
     if (id == null) {
       LOGGER.error(
@@ -101,7 +101,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  boolean isLocked() {
+  public boolean isLocked() {
     return !deque.isEmpty();
   }
 }

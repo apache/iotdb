@@ -65,7 +65,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       return plan;
     }
 
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+    QueryStatement queryStatement = analysis.getQueryStatement();
     if (queryStatement.isLastQuery() || !queryStatement.hasLimit()) {
       return plan;
     }
