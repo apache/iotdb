@@ -791,6 +791,10 @@ public class SeriesScanUtil {
                         firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                     firstPageReader.version,
                     orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
+                context
+                    .getQueryStatistics()
+                    .pageReaderMaxUsedMemorySize
+                    .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
                 currentPageEndPointTime =
                     updateEndPointTime(currentPageEndPointTime, firstPageReader);
                 firstPageReader = null;
@@ -815,6 +819,10 @@ public class SeriesScanUtil {
                     getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                     pageReader.version,
                     orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
+                context
+                    .getQueryStatistics()
+                    .pageReaderMaxUsedMemorySize
+                    .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
                 currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
               }
             }
@@ -987,6 +995,10 @@ public class SeriesScanUtil {
         getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
+    context
+        .getQueryStatistics()
+        .pageReaderMaxUsedMemorySize
+        .updateAndGet(v -> Math.max(v, mergeReader.getUsedMemorySize()));
   }
 
   private TsBlock nextOverlappedPage() throws IOException {

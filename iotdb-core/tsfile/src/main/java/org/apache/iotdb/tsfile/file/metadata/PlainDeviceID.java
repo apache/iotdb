@@ -27,8 +27,14 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
+
 /** Using device id path as id. */
 public class PlainDeviceID implements IDeviceID {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PlainDeviceID.class)
+          + RamUsageEstimator.shallowSizeOfInstance(String.class);
   String deviceID;
 
   public PlainDeviceID(String deviceID) {
@@ -83,6 +89,10 @@ public class PlainDeviceID implements IDeviceID {
   @Override
   public boolean isEmpty() {
     return deviceID.isEmpty();
+  }
+
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }
 
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
