@@ -55,8 +55,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxEventsPerRecycling();
   }
 
-  public int getSubscriptionEventRecycleIntervalSeconds() {
-    return COMMON_CONFIG.getSubscriptionEventRecycleIntervalSeconds();
+  public int getSubscriptionUncommittedEventRecycleIntervalSeconds() {
+    return COMMON_CONFIG.getSubscriptionUncommittedEventRecycleIntervalSeconds();
+  }
+
+  public int getSubscriptionUncommittedEventExpireSeconds() {
+    return COMMON_CONFIG.getSubscriptionUncommittedEventExpireSeconds();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -75,8 +79,11 @@ public class SubscriptionConfig {
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info("SubscriptionMaxEventsPerRecycling: {}", getSubscriptionMaxEventsPerRecycling());
     LOGGER.info(
-        "SubscriptionEventRecycleIntervalSeconds: {}",
-        getSubscriptionEventRecycleIntervalSeconds());
+        "SubscriptionUncommittedEventRecycleIntervalSeconds: {}",
+        getSubscriptionUncommittedEventRecycleIntervalSeconds());
+    LOGGER.info(
+        "SubscriptionUncommittedEventExpireSeconds: {}",
+        getSubscriptionUncommittedEventExpireSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

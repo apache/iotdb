@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 
@@ -79,6 +80,7 @@ public class SerializedEnrichedEvent {
   }
 
   public boolean maybeExpired() {
-    return System.currentTimeMillis() - creationTime > 300;
+    return System.currentTimeMillis() - creationTime
+        > SubscriptionConfig.getInstance().getSubscriptionUncommittedEventExpireSeconds();
   }
 }

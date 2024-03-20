@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import java.util.NavigableMap;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -43,10 +37,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SubscriptionPrefetchingQueue {
 
@@ -178,17 +173,16 @@ public class SubscriptionPrefetchingQueue {
     }
 
     if (!tablets.isEmpty()) {
-        String subscriptionCommitId = generateSubscriptionCommitId();
-        SerializedEnrichedEvent enrichedEvent = new SerializedEnrichedEvent(
-            new EnrichedTablets(topicName, tablets, subscriptionCommitId),
-            enrichedEvents);
+      String subscriptionCommitId = generateSubscriptionCommitId();
+      SerializedEnrichedEvent enrichedEvent =
+          new SerializedEnrichedEvent(
+              new EnrichedTablets(topicName, tablets, subscriptionCommitId), enrichedEvents);
 
-        prefetchingQueue.add(enrichedEvent);
+      prefetchingQueue.add(enrichedEvent);
 
-        uncommittedEventsLock.writeLock().lock();
-        uncommittedEvents.put(subscriptionCommitId, enrichedEvent);
-        uncommittedEventsLock.writeLock().unlock();
-      }
+      uncommittedEventsLock.writeLock().lock();
+      uncommittedEvents.put(subscriptionCommitId, enrichedEvent);
+      uncommittedEventsLock.writeLock().unlock();
     }
   }
 
@@ -209,24 +203,32 @@ public class SubscriptionPrefetchingQueue {
   /////////////////////////////// recycle ///////////////////////////////
 
   public void recycleUncommittedEvents() {
+    uncommittedEventsLock.writeLock().lock();
     try {
-      uncommittedEventsLock.writeLock().lock();
-      for (int i = 0; i < SubscriptionConfig.getInstance().getSubscriptionMaxEventsPerRecycling();
-          ++i) {
-        if (uncommittedEvents.isEmpty()) {
-          break;
-        }
-        String subscriptionCommitId = uncommittedEvents.firstKey();
-        SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
-        if (Objects.nonNull(event) && event.maybeExpired()) {
-          LOGGER.info("Subscription: recycle the event with subscriptionCommitId {}",
-              subscriptionCommitId);
-          prefetchingQueue.add(event);
-          uncommittedEvents.remove(subscriptionCommitId);
-        }
-      }
+      recycleUncommittedEventsInternal();
     } finally {
       uncommittedEventsLock.writeLock().unlock();
+    }
+  }
+
+  private void recycleUncommittedEventsInternal() {
+    int count = 0;
+    while (true) {
+      if (count >= SubscriptionConfig.getInstance().getSubscriptionMaxEventsPerRecycling()) {
+        break;
+      }
+      if (uncommittedEvents.isEmpty()) {
+        break;
+      }
+      String subscriptionCommitId = uncommittedEvents.firstKey();
+      SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
+      if (Objects.nonNull(event) && event.maybeExpired()) {
+        LOGGER.info(
+            "Subscription: recycle the event with subscriptionCommitId {}", subscriptionCommitId);
+        prefetchingQueue.add(event);
+        uncommittedEvents.remove(subscriptionCommitId);
+        count++;
+      }
     }
   }
 
