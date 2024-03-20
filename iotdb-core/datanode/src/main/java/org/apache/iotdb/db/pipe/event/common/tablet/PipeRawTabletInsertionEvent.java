@@ -47,6 +47,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private TabletInsertionDataContainer dataContainer;
 
+  private ProgressIndex progressIndex;
+
   private PipeRawTabletInsertionEvent(
       Tablet tablet,
       boolean isAligned,
@@ -122,7 +124,18 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    if (Objects.nonNull(progressIndex)) {
+      markAsNeedToReport();
+    }
+    this.progressIndex = progressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
+    if (Objects.nonNull(progressIndex)) {
+      return progressIndex;
+    }
     return sourceEvent != null ? sourceEvent.getProgressIndex() : MinimumProgressIndex.INSTANCE;
   }
 

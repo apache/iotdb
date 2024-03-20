@@ -156,11 +156,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
-  }
-
-  @Override
   public ProgressIndex getProgressIndex() {
     if (Objects.nonNull(progressIndex)) {
       return progressIndex;

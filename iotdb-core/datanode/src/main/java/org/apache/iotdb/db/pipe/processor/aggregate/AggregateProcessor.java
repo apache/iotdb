@@ -68,7 +68,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -315,30 +314,35 @@ public class AggregateProcessor implements PipeProcessor {
 
     lastValueReceiveTime.set(System.currentTimeMillis());
     final AtomicReference<Exception> exception = new AtomicReference<>();
-    final AtomicBoolean needReport = new AtomicBoolean(false);
+    final TimeProgressIndex progressIndex = new TimeProgressIndex(new ConcurrentHashMap<>());
 
-    tabletInsertionEvent
-        .processRowByRow((row, rowCollector) -> processRow(row, rowCollector, exception))
-        .forEach(
-            event -> {
-              try {
-                eventCollector.collect(event);
-              } catch (Exception e) {
-                exception.set(e);
-              }
-            });
+    Iterable<TabletInsertionEvent> outputEvents =
+        tabletInsertionEvent.processRowByRow(
+            (row, rowCollector) ->
+                progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                    new TimeProgressIndex(processRow(row, rowCollector, exception))));
+
+    // Must reset progressIndex before collection
+    ((EnrichedEvent) tabletInsertionEvent).bindProgressIndex(progressIndex);
+
+    outputEvents.forEach(
+        event -> {
+          try {
+            eventCollector.collect(event);
+          } catch (Exception e) {
+            exception.set(e);
+          }
+        });
 
     if (exception.get() != null) {
       throw exception.get();
     }
-
-    if (!needReport.get()) {
-      ((EnrichedEvent) tabletInsertionEvent).skipReport();
-    }
   }
 
-  private void processRow(
+  private Map<String, Pair<Long, ByteBuffer>> processRow(
       Row row, RowCollector rowCollector, AtomicReference<Exception> exception) {
+    final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
+
     final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
       // Do not calculate null values
@@ -402,12 +406,14 @@ public class AggregateProcessor implements PipeProcessor {
           }
           if (!Objects.isNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
+            resultMap.put(timeSeries, result.getRight());
           }
         } catch (IOException | UnsupportedOperationException e) {
           exception.set(e);
         }
       }
     }
+    return resultMap;
   }
 
   @Override
@@ -440,7 +446,7 @@ public class AggregateProcessor implements PipeProcessor {
                 AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  // This is only a formal tablet insertion event an is invisible to the framework.
+                  // This is only a formal tablet insertion event to collect all the results
                   PipeRawTabletInsertionEvent tabletInsertionEvent =
                       new PipeRawTabletInsertionEvent(
                           null, false, pipeName, pipeTaskMeta, null, false);
