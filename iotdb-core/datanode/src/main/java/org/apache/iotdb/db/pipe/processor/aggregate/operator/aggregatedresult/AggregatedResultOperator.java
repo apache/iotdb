@@ -35,7 +35,11 @@ import java.util.Set;
  */
 public interface AggregatedResultOperator {
 
-  /** @return the name of the operator */
+  /**
+   * Return the name of the operator, the name shall be in lower case
+   *
+   * @return the name of the operator
+   */
   String getName();
 
   /**

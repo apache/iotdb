@@ -85,7 +85,8 @@ public class PipeDataNodeTaskBuilder {
             regionId,
             extractorStage.getEventSupplier(),
             connectorStage.getPipeConnectorPendingQueue(),
-            processorExecutor);
+            processorExecutor,
+            pipeTaskMeta);
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);

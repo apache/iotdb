@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Set;
 
 /**
  * {@link AbstractWindowingProcessor} is the formal processor defining the windows adoptable for
@@ -41,20 +42,25 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
    * into the end of the list. The window will soon be configured by the {@link AggregateProcessor}.
    * Typically only the timestamp is needed, however the window can use the windowList and value to
    * help judging.
+   *
+   * @return The added windows
    */
-  public abstract void mayAddWindow(
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
       List<TimeSeriesWindow> windowList, long timeStamp, boolean value);
 
-  public abstract void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, int value);
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, int value);
 
-  public abstract void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, long value);
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, long value);
 
-  public abstract void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, float value);
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, float value);
 
-  public abstract void mayAddWindow(
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
       List<TimeSeriesWindow> windowList, long timeStamp, double value);
 
-  public abstract void mayAddWindow(
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
       List<TimeSeriesWindow> windowList, long timeStamp, String value);
 
   /**
@@ -80,6 +86,8 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
       TimeSeriesWindow window, long timeStamp, String value);
+
+  public abstract WindowOutput forceOutput(TimeSeriesWindow window);
 
   /**
    * Serialize the customized attributes in a window to an output stream

@@ -27,9 +27,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,12 +42,13 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class TimeSeriesWindow {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeSeriesWindow.class);
 
   // A window is typically with a timestamp. We define it here to avoid
   // boxing/unboxing and simplify the logics.
   private long timestamp = 0;
-  private Map<String, AggregatedResultOperator> aggregatedResultOperatorMap;
-  private final Map<String, Pair<Boolean, IntermediateResultOperator>>
+  private Map<String, AggregatedResultOperator> aggregatedOutputName2OperatorMap;
+  private final Map<String, Pair<TSDataType, IntermediateResultOperator>>
       intermediateResultName2InitializedAndOperatorMap = new HashMap<>();
 
   // WARNING: Using the customized runtime value may cause performance loss
@@ -82,10 +87,10 @@ public class TimeSeriesWindow {
     for (Map.Entry<String, Supplier<IntermediateResultOperator>> entry :
         intermediateResult2OperatorSupplierMap.entrySet()) {
       intermediateResultName2InitializedAndOperatorMap.put(
-          entry.getKey(), new Pair<>(false, entry.getValue().get()));
+          entry.getKey(), new Pair<>(TSDataType.UNKNOWN, entry.getValue().get()));
     }
     // Deep copy because some unsupported aggregated results may be removed
-    this.aggregatedResultOperatorMap = new HashMap<>(aggregatedResultOperatorMap);
+    this.aggregatedOutputName2OperatorMap = new HashMap<>(aggregatedResultOperatorMap);
   }
 
   // Return the output and state of the window.
@@ -98,24 +103,24 @@ public class TimeSeriesWindow {
     if (state == WindowState.IGNORE_DATA) {
       return null;
     }
-    if (state.isEmit()) {
+    if (state == WindowState.EMIT_AND_PURGE) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.BOOLEAN));
       return stateOutputPair;
     }
 
     // If not purge, continue to calculate even if the output is emitted.
     if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
       while (iterator.hasNext()) {
         entry = iterator.next();
         final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
           if (!operator.initAndGetIsSupport(value, timeStamp)) {
             // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
+            aggregatedOutputName2OperatorMap
                 .entrySet()
                 .removeIf(
                     entry1 ->
@@ -124,14 +129,20 @@ public class TimeSeriesWindow {
                             .getDeclaredIntermediateValueNames()
                             .contains(operator.getName()));
             // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
               return new Pair<>(WindowState.PURGE, null);
             }
             // Remove unsupported intermediate values
             iterator.remove();
             continue;
           }
-          entry.getValue().setLeft(true);
+          entry.getValue().setLeft(TSDataType.BOOLEAN);
+        } else if (entry.getValue().getLeft() != TSDataType.BOOLEAN) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.BOOLEAN);
+          return new Pair<>(WindowState.PURGE, null);
         } else {
           operator.updateValue(value, timeStamp);
         }
@@ -152,24 +163,24 @@ public class TimeSeriesWindow {
     if (state == WindowState.IGNORE_DATA) {
       return null;
     }
-    if (state.isEmit()) {
+    if (state == WindowState.EMIT_AND_PURGE) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.INT32));
       return stateOutputPair;
     }
 
     // If not purge, continue to calculate even if the output is emitted.
     if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
       while (iterator.hasNext()) {
         entry = iterator.next();
         final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
           if (!operator.initAndGetIsSupport(value, timeStamp)) {
             // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
+            aggregatedOutputName2OperatorMap
                 .entrySet()
                 .removeIf(
                     entry1 ->
@@ -178,14 +189,20 @@ public class TimeSeriesWindow {
                             .getDeclaredIntermediateValueNames()
                             .contains(operator.getName()));
             // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
               return new Pair<>(WindowState.PURGE, null);
             }
             // Remove unsupported intermediate values
             iterator.remove();
             continue;
           }
-          entry.getValue().setLeft(true);
+          entry.getValue().setLeft(TSDataType.INT32);
+        } else if (entry.getValue().getLeft() != TSDataType.INT32) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.INT32);
+          return new Pair<>(WindowState.PURGE, null);
         } else {
           operator.updateValue(value, timeStamp);
         }
@@ -205,24 +222,24 @@ public class TimeSeriesWindow {
     if (state == WindowState.IGNORE_DATA) {
       return null;
     }
-    if (state.isEmit()) {
+    if (state == WindowState.EMIT_AND_PURGE) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.INT64));
       return stateOutputPair;
     }
 
     // If not purge, continue to calculate even if the output is emitted.
     if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
       while (iterator.hasNext()) {
         entry = iterator.next();
         final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
           if (!operator.initAndGetIsSupport(value, timeStamp)) {
             // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
+            aggregatedOutputName2OperatorMap
                 .entrySet()
                 .removeIf(
                     entry1 ->
@@ -231,14 +248,20 @@ public class TimeSeriesWindow {
                             .getDeclaredIntermediateValueNames()
                             .contains(operator.getName()));
             // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
               return new Pair<>(WindowState.PURGE, null);
             }
             // Remove unsupported intermediate values
             iterator.remove();
             continue;
           }
-          entry.getValue().setLeft(true);
+          entry.getValue().setLeft(TSDataType.INT64);
+        } else if (entry.getValue().getLeft() != TSDataType.INT64) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.INT64);
+          return new Pair<>(WindowState.PURGE, null);
         } else {
           operator.updateValue(value, timeStamp);
         }
@@ -258,24 +281,24 @@ public class TimeSeriesWindow {
     if (state == WindowState.IGNORE_DATA) {
       return null;
     }
-    if (state.isEmit()) {
+    if (state == WindowState.EMIT_AND_PURGE) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.FLOAT));
       return stateOutputPair;
     }
 
     // If not purge, continue to calculate even if the output is emitted.
     if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
       while (iterator.hasNext()) {
         entry = iterator.next();
         final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
           if (!operator.initAndGetIsSupport(value, timeStamp)) {
             // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
+            aggregatedOutputName2OperatorMap
                 .entrySet()
                 .removeIf(
                     entry1 ->
@@ -284,67 +307,20 @@ public class TimeSeriesWindow {
                             .getDeclaredIntermediateValueNames()
                             .contains(operator.getName()));
             // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
               return new Pair<>(WindowState.PURGE, null);
             }
             // Remove unsupported intermediate values
             iterator.remove();
             continue;
           }
-          entry.getValue().setLeft(true);
-        } else {
-          operator.updateValue(value, timeStamp);
-        }
-      }
-    }
-    if (state.isEmit()) {
-      return stateOutputPair;
-    }
-    return null;
-  }
-
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timeStamp, String value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
-        processor.updateAndMaySetWindowState(this, timeStamp, value);
-    WindowState state = stateOutputPair.getLeft();
-
-    if (state == WindowState.IGNORE_DATA) {
-      return null;
-    }
-    if (state.isEmit()) {
-      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.TEXT));
-      return stateOutputPair;
-    }
-
-    // If not purge, continue to calculate even if the output is emitted.
-    if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
-          intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
-
-      while (iterator.hasNext()) {
-        entry = iterator.next();
-        final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
-          if (!operator.initAndGetIsSupport(value, timeStamp)) {
-            // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
-                .entrySet()
-                .removeIf(
-                    entry1 ->
-                        entry1
-                            .getValue()
-                            .getDeclaredIntermediateValueNames()
-                            .contains(operator.getName()));
-            // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
-              return new Pair<>(WindowState.PURGE, null);
-            }
-            // Remove unsupported intermediate values
-            iterator.remove();
-            continue;
-          }
-          entry.getValue().setLeft(true);
+          entry.getValue().setLeft(TSDataType.FLOAT);
+        } else if (entry.getValue().getLeft() != TSDataType.FLOAT) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.FLOAT);
+          return new Pair<>(WindowState.PURGE, null);
         } else {
           operator.updateValue(value, timeStamp);
         }
@@ -364,24 +340,24 @@ public class TimeSeriesWindow {
     if (state == WindowState.IGNORE_DATA) {
       return null;
     }
-    if (state.isEmit()) {
+    if (state == WindowState.EMIT_AND_PURGE) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.DOUBLE));
       return stateOutputPair;
     }
 
     // If not purge, continue to calculate even if the output is emitted.
     if (!state.isPurge()) {
-      Iterator<Map.Entry<String, Pair<Boolean, IntermediateResultOperator>>> iterator =
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
-      Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry;
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
       while (iterator.hasNext()) {
         entry = iterator.next();
         final IntermediateResultOperator operator = entry.getValue().getRight();
-        if (!entry.getValue().getLeft()) {
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
           if (!operator.initAndGetIsSupport(value, timeStamp)) {
             // Remove unsupported aggregated results
-            aggregatedResultOperatorMap
+            aggregatedOutputName2OperatorMap
                 .entrySet()
                 .removeIf(
                     entry1 ->
@@ -390,14 +366,20 @@ public class TimeSeriesWindow {
                             .getDeclaredIntermediateValueNames()
                             .contains(operator.getName()));
             // If no aggregated values can be calculated, purge the window
-            if (aggregatedResultOperatorMap.isEmpty()) {
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
               return new Pair<>(WindowState.PURGE, null);
             }
             // Remove unsupported intermediate values
             iterator.remove();
             continue;
           }
-          entry.getValue().setLeft(true);
+          entry.getValue().setLeft(TSDataType.DOUBLE);
+        } else if (entry.getValue().getLeft() != TSDataType.DOUBLE) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.DOUBLE);
+          return new Pair<>(WindowState.PURGE, null);
         } else {
           operator.updateValue(value, timeStamp);
         }
@@ -409,14 +391,87 @@ public class TimeSeriesWindow {
     return null;
   }
 
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timeStamp, String value) {
+    Pair<WindowState, WindowOutput> stateOutputPair =
+        processor.updateAndMaySetWindowState(this, timeStamp, value);
+    WindowState state = stateOutputPair.getLeft();
+
+    if (state == WindowState.IGNORE_DATA) {
+      return null;
+    }
+    if (state == WindowState.EMIT_AND_PURGE) {
+      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.TEXT));
+      return stateOutputPair;
+    }
+
+    // If not purge, continue to calculate even if the output is emitted.
+    if (!state.isPurge()) {
+      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+          intermediateResultName2InitializedAndOperatorMap.entrySet().iterator();
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
+
+      while (iterator.hasNext()) {
+        entry = iterator.next();
+        final IntermediateResultOperator operator = entry.getValue().getRight();
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
+          if (!operator.initAndGetIsSupport(value, timeStamp)) {
+            // Remove unsupported aggregated results
+            aggregatedOutputName2OperatorMap
+                .entrySet()
+                .removeIf(
+                    entry1 ->
+                        entry1
+                            .getValue()
+                            .getDeclaredIntermediateValueNames()
+                            .contains(operator.getName()));
+            // If no aggregated values can be calculated, purge the window
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
+              return new Pair<>(WindowState.PURGE, null);
+            }
+            // Remove unsupported intermediate values
+            iterator.remove();
+            continue;
+          }
+          entry.getValue().setLeft(TSDataType.TEXT);
+        } else if (entry.getValue().getLeft() != TSDataType.TEXT) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.TEXT);
+          return new Pair<>(WindowState.PURGE, null);
+        } else {
+          operator.updateValue(value, timeStamp);
+        }
+      }
+    }
+    if (state.isEmit()) {
+      return stateOutputPair;
+    }
+    return null;
+  }
+
+  public WindowOutput forceOutput() {
+    return processor
+        .forceOutput(this)
+        .setAggregatedResults(
+            getAggregatedResults(
+                intermediateResultName2InitializedAndOperatorMap.values().stream()
+                    .findFirst()
+                    .map(Pair::getLeft)
+                    .orElse(TSDataType.UNKNOWN)));
+  }
+
   private Map<String, Pair<TSDataType, Object>> getAggregatedResults(TSDataType dataType) {
+    if (dataType == TSDataType.UNKNOWN) {
+      return Collections.emptyMap();
+    }
     CustomizedReadableIntermediateResults readableIntermediateResults =
         new CustomizedReadableIntermediateResults(
             intermediateResultName2InitializedAndOperatorMap.entrySet().stream()
                 .collect(
                     Collectors.toMap(
                         Map.Entry::getKey, entry -> entry.getValue().getRight().getResult())));
-    return aggregatedResultOperatorMap.entrySet().stream()
+    return aggregatedOutputName2OperatorMap.entrySet().stream()
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
@@ -428,9 +483,10 @@ public class TimeSeriesWindow {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(timestamp, outputStream);
     ReadWriteIOUtils.write(intermediateResultName2InitializedAndOperatorMap.size(), outputStream);
-    for (Map.Entry<String, Pair<Boolean, IntermediateResultOperator>> entry :
+    for (Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry :
         intermediateResultName2InitializedAndOperatorMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      entry.getValue().getLeft().serializeTo(outputStream);
       entry.getValue().getRight().serialize(outputStream);
     }
     processor.serializeCustomizedAttributes(this, outputStream);
@@ -439,18 +495,18 @@ public class TimeSeriesWindow {
   // Unlike normal deserialization method, the pipe may be altered before deserialization,
   // which means the operators may increase or decrease. Hence, we need to combine the
   // deserialized value and existing entries.
-  // WARNING: We do not support removing intermediate values(e.g. intermediate values are
-  // less after the aggregators decreased) in altering aggregate processor, only adding values
-  // is permitted.
+  // WARNING: We do not support removing intermediate values (e.g. intermediate values are
+  // less after the aggregators decreased) or altering windowing processor in altering aggregate
+  // processor, only adding intermediate values is permitted.
   public void deserialize(ByteBuffer byteBuffer) throws IOException {
     timestamp = ReadWriteIOUtils.readLong(byteBuffer);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
       final String intermediateResultName = ReadWriteIOUtils.readString(byteBuffer);
-      Pair<Boolean, IntermediateResultOperator> initializedAndOperatorPair =
+      Pair<TSDataType, IntermediateResultOperator> initializedAndOperatorPair =
           intermediateResultName2InitializedAndOperatorMap.get(intermediateResultName);
       if (Objects.nonNull(initializedAndOperatorPair)) {
-        initializedAndOperatorPair.setLeft(true);
+        initializedAndOperatorPair.setLeft(TSDataType.deserializeFrom(byteBuffer));
         initializedAndOperatorPair.getRight().deserialize(byteBuffer);
       }
     }

@@ -29,7 +29,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE;
@@ -37,8 +39,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_KEY;
 
-// TODO: Support sliding window in this processor
-public class SlidingWindowingProcessor extends AbstractSimpleTimeWindowingProcessor {
+public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProcessor {
   private long slidingBoundaryTime;
   private long slidingInterval;
 
@@ -68,7 +69,7 @@ public class SlidingWindowingProcessor extends AbstractSimpleTimeWindowingProces
   }
 
   @Override
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
+  public Set<TimeSeriesWindow> mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
     if (windowList.isEmpty()) {
       TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       window.setTimestamp(
@@ -77,12 +78,15 @@ public class SlidingWindowingProcessor extends AbstractSimpleTimeWindowingProces
               : ((timeStamp - slidingBoundaryTime - 1) / slidingInterval + 1) * slidingInterval
                   + slidingBoundaryTime);
       windowList.add(window);
+      return Collections.singleton(window);
     } else if (timeStamp
         >= windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval) {
       TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       window.setTimestamp(windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval);
       windowList.add(window);
+      return Collections.singleton(window);
     }
+    return Collections.emptySet();
   }
 
   @Override
@@ -99,5 +103,12 @@ public class SlidingWindowingProcessor extends AbstractSimpleTimeWindowingProces
               .setProgressTime(window.getTimestamp() + slidingInterval));
     }
     return new Pair<>(WindowState.NORMAL, null);
+  }
+
+  @Override
+  public WindowOutput forceOutput(TimeSeriesWindow window) {
+    return new WindowOutput()
+        .setTimeStamp(window.getTimestamp())
+        .setProgressTime(window.getTimestamp() + slidingInterval);
   }
 }

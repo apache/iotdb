@@ -51,7 +51,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private final ProgressIndex progressIndex;
+  private ProgressIndex progressIndex;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
@@ -139,6 +139,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
           e);
       return false;
     }
+  }
+
+  @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
   @Override

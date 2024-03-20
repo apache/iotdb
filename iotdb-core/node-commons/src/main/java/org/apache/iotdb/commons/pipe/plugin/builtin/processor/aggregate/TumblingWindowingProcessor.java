@@ -17,21 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.config.plugin.env;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
 
-public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
-
-  PipeTaskMeta pipeTaskMeta;
-
-  public PipeTaskProcessorRuntimeEnvironment(
-      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
-    super(pipeName, creationTime, regionId);
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the Standard Statistics
+ * processor. There is a real implementation in the server module but cannot be imported here. The
+ * pipe agent in the server module will replace this class with the real implementation when
+ * initializing the Standard Statistics processor.
+ */
+public class TumblingWindowingProcessor extends PlaceHolderProcessor {}

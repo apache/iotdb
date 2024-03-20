@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
@@ -52,8 +53,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param creationTime pipe creation time
    * @param pipeProcessorParameters used to create {@link PipeProcessor}
    * @param regionId {@link DataRegion} id
-   * @param pipeExtractorInputEventSupplier used to input events from {@link PipeExtractor}
-   * @param pipeConnectorOutputPendingQueue used to output events to {@link PipeConnector}
+   * @param pipeExtractorInputEventSupplier used to input {@link Event}s from {@link PipeExtractor}
+   * @param pipeConnectorOutputPendingQueue used to output {@link Event}s to {@link PipeConnector}
    * @throws PipeException if failed to {@link PipeProcessor#validate(PipeParameterValidator)} or
    *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */
@@ -64,10 +65,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       int regionId,
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
-      PipeProcessorSubtaskExecutor executor) {
+      PipeProcessorSubtaskExecutor executor,
+      PipeTaskMeta pipeTaskMeta) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskProcessorRuntimeEnvironment(pipeName, creationTime, regionId));
+            new PipeTaskProcessorRuntimeEnvironment(
+                pipeName, creationTime, regionId, pipeTaskMeta));
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
             ? PipeAgent.plugin()

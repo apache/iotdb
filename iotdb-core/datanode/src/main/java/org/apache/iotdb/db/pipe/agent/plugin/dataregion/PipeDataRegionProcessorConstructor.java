@@ -49,5 +49,8 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.STANDARD_STATISTICS_PROCESSOR.getPipePluginName(),
         StandardStatisticsOperatorProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.TUMBLING_WINDOWING_PROCESSOR.getPipePluginName(),
+        TumblingTimeSamplingProcessor::new);
   }
 }

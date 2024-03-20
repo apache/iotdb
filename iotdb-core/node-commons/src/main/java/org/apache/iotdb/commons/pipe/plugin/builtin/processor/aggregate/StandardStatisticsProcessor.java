@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
+
 /**
  * This class is a placeholder and should not be initialized. It represents the Standard Statistics
  * processor. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the Standard Statistics processor.
  */
-public class StandardStatisticsProcessor extends AggregateProcessor {}
+public class StandardStatisticsProcessor extends PlaceHolderProcessor {}

@@ -19,16 +19,25 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
-import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatorRuntimeAttributes;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractOperatorProcessor;
-import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -38,12 +47,19 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +67,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -64,6 +82,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MEASUREMENTS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_WINDOWING_STRATEGY_KEY;
 
@@ -75,24 +95,31 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
  * loaded as a normal {@link PipeProcessor}
  */
 public class AggregateProcessor implements PipeProcessor {
-  String pipeName;
-  private long outputMaxDelayMilliseconds;
+  private static final String WINDOWING_PROCESSOR_SUFFIX = "-windowing-processor";
 
+  private String pipeName;
+  private String database;
+  private PipeTaskMeta pipeTaskMeta;
+  private long outputMaxDelayMilliseconds;
+  private long outputMinReportIntervalMilliseconds;
   private String outputDatabase;
 
-  private final Map<String, AggregatedResultOperator> operator2RuntimeAttributesMap =
-      new HashMap<>();
+  private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
   private final Map<String, Supplier<IntermediateResultOperator>>
-      intermediateResult2OperatorSupplierMap = new HashMap<>();
+      intermediateResultName2OperatorSupplierMap = new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
-  private static final Map<String, Map<String, AtomicReference<Pair<Long, List<TimeSeriesWindow>>>>>
-      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap = new ConcurrentHashMap<>();
+  private static final ConcurrentMap<
+          String, ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>>
+      pipeName2timeSeries2TimeSeriesRuntimeStateMap = new ConcurrentHashMap<>();
 
   private AbstractWindowingProcessor windowingProcessor;
   private final List<AbstractOperatorProcessor> operatorProcessors = new ArrayList<>();
 
   private static final AtomicLong lastValueReceiveTime = new AtomicLong(0);
+
+  // Static values, calculated on initialization
+  private String[] columnNameStringList;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -116,17 +143,36 @@ public class AggregateProcessor implements PipeProcessor {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
+    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
 
+    database =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                new DataRegionId(
+                    ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
+                        .getRegionId()))
+            .getDatabaseName();
+    pipeTaskMeta =
+        ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
+            .getPipeTaskMeta();
+
+    // Load parameters
     long outputMaxDelaySeconds =
         parameters.getLongOrDefault(
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY,
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE);
     outputMaxDelayMilliseconds =
         outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : outputMaxDelaySeconds * 1000;
+    outputMinReportIntervalMilliseconds =
+        parameters.getLongOrDefault(
+                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
+                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
+            * 1000;
     outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
 
+    // Set output name
     List<String> operatorNameList =
         Arrays.stream(
                 parameters
@@ -143,21 +189,20 @@ public class AggregateProcessor implements PipeProcessor {
                     .replace(" ", "")
                     .split(","))
             .collect(Collectors.toList());
-    Map<String, String> operator2outputMeasurementNameMap = new HashMap<>();
+
+    Map<String, String> aggregatorName2OutputNameMap = new HashMap<>();
     for (int i = 0; i < operatorNameList.size(); ++i) {
       if (i < outputMeasurementNameList.size()) {
-        operator2outputMeasurementNameMap.put(
+        aggregatorName2OutputNameMap.put(
             operatorNameList.get(i).toLowerCase(), outputMeasurementNameList.get(i));
       } else {
-        operator2outputMeasurementNameMap.put(
+        aggregatorName2OutputNameMap.put(
             operatorNameList.get(i).toLowerCase(), operatorNameList.get(i));
       }
     }
 
     // Load the useful aggregators' and their corresponding intermediate results' computational
     // logic.
-    Set<String> operatorNameSet =
-        operatorNameList.stream().map(String::toLowerCase).collect(Collectors.toSet());
     Set<String> declaredIntermediateResultSet = new HashSet<>();
     PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
     for (String pipePluginName :
@@ -167,40 +212,95 @@ public class AggregateProcessor implements PipeProcessor {
       AbstractOperatorProcessor operatorProcessor =
           (AbstractOperatorProcessor)
               agent.getConfiguredProcessor(pipePluginName, parameters, configuration);
-      Map<String, AggregatedResultOperator> operatorName2StaticAttributesMap =
-          operatorProcessor.getAggregatorOperatorSet();
-      for (Map.Entry<String, AggregatedResultOperator> entry :
-          operatorName2StaticAttributesMap.entrySet()) {
-        String lowerCaseAggregatorName = entry.getKey().toLowerCase();
-        AggregatedResultOperator aggregatedResultOperator = entry.getValue();
-        if (!operatorNameSet.contains(lowerCaseAggregatorName)) {
-          continue;
-        }
-        operatorNameSet.remove(lowerCaseAggregatorName);
-        operator2RuntimeAttributesMap.put(
-            lowerCaseAggregatorName,
-            new AggregatorRuntimeAttributes(
-                operator2outputMeasurementNameMap.get(lowerCaseAggregatorName),
-                aggregatedResultOperator.getTerminateWindowFunction(),
-                aggregatedResultOperator.getOutputDataType()));
-        declaredIntermediateResultSet.addAll(
-            aggregatedResultOperator.getDeclaredIntermediateValueNames());
-      }
-      intermediateResult2OperatorSupplierMap.putAll(
-          operatorProcessor.getIntermediateResultOperatorSupplierSet());
+      operatorProcessor.getAggregatorOperatorSet().stream()
+          .filter(
+              operator ->
+                  aggregatorName2OutputNameMap.containsKey(operator.getName().toLowerCase()))
+          .forEach(
+              operator -> {
+                outputName2OperatorMap.put(
+                    aggregatorName2OutputNameMap.get(operator.getName().toLowerCase()), operator);
+                declaredIntermediateResultSet.addAll(operator.getDeclaredIntermediateValueNames());
+              });
+
+      operatorProcessor
+          .getIntermediateResultOperatorSupplierSet()
+          .forEach(
+              supplier ->
+                  intermediateResultName2OperatorSupplierMap.put(
+                      supplier.get().getName(), supplier));
       operatorProcessors.add(operatorProcessor);
     }
-    if (!operatorNameSet.isEmpty()) {
-      throw new PipeException(String.format("The attribute keys %s are invalid.", operatorNameSet));
+
+    aggregatorName2OutputNameMap
+        .entrySet()
+        .removeIf(entry -> outputName2OperatorMap.containsKey(entry.getValue()));
+    if (!aggregatorName2OutputNameMap.isEmpty()) {
+      throw new PipeException(
+          String.format(
+              "The aggregator and output name %s is invalid.", aggregatorName2OutputNameMap));
     }
-    intermediateResult2OperatorSupplierMap
-        .keySet()
-        .removeIf(key -> !declaredIntermediateResultSet.contains(key));
-    declaredIntermediateResultSet.removeAll(intermediateResult2OperatorSupplierMap.keySet());
+
+    intermediateResultName2OperatorSupplierMap.keySet().retainAll(declaredIntermediateResultSet);
+    declaredIntermediateResultSet.removeAll(intermediateResultName2OperatorSupplierMap.keySet());
     if (!declaredIntermediateResultSet.isEmpty()) {
       throw new PipeException(
           String.format(
               "The needed intermediate values %s are not defined.", declaredIntermediateResultSet));
+    }
+
+    // Set up column name strings
+    columnNameStringList = new String[outputName2OperatorMap.size()];
+    List<String> operatorNames = new ArrayList<>(outputName2OperatorMap.keySet());
+    for (int i = 0; i < outputName2OperatorMap.size(); ++i) {
+      columnNameStringList[i] = operatorNames.get(i);
+    }
+
+    // Get windowing processor
+    String processorName =
+        parameters.getStringOrDefault(
+                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE)
+            + WINDOWING_PROCESSOR_SUFFIX;
+    PipeProcessor windowProcessor =
+        agent.getConfiguredProcessor(processorName, parameters, configuration);
+    if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
+      throw new PipeException(
+          String.format("The processor %s is not a windowing processor.", processorName));
+    }
+    windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
+
+    // Restore window state
+    ProgressIndex index = pipeTaskMeta.getProgressIndex();
+    if (index == MinimumProgressIndex.INSTANCE) {
+      return;
+    }
+    if (!(index instanceof TimeProgressIndex)) {
+      throw new PipeException(
+          String.format(
+              "The aggregate processor does not support progressIndexType %s", index.getType()));
+    }
+
+    TimeProgressIndex timeProgressIndex = (TimeProgressIndex) index;
+    for (Map.Entry<String, Pair<Long, ByteBuffer>> entry :
+        timeProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
+      AtomicReference<TimeSeriesRuntimeState> stateReference =
+          pipeName2timeSeries2TimeSeriesRuntimeStateMap
+              .get(pipeName)
+              .computeIfAbsent(
+                  entry.getKey(),
+                  key ->
+                      new AtomicReference<>(
+                          new TimeSeriesRuntimeState(
+                              outputName2OperatorMap,
+                              intermediateResultName2OperatorSupplierMap,
+                              windowingProcessor)));
+      synchronized (stateReference) {
+        try {
+          stateReference.get().restoreTimestampAndWindows(entry.getValue());
+        } catch (IOException e) {
+          throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
+        }
+      }
     }
   }
 
@@ -215,6 +315,7 @@ public class AggregateProcessor implements PipeProcessor {
 
     lastValueReceiveTime.set(System.currentTimeMillis());
     final AtomicReference<Exception> exception = new AtomicReference<>();
+    final AtomicBoolean needReport = new AtomicBoolean(false);
 
     tabletInsertionEvent
         .processRowByRow((row, rowCollector) -> processRow(row, rowCollector, exception))
@@ -230,10 +331,15 @@ public class AggregateProcessor implements PipeProcessor {
     if (exception.get() != null) {
       throw exception.get();
     }
+
+    if (!needReport.get()) {
+      ((EnrichedEvent) tabletInsertionEvent).skipReport();
+    }
   }
 
   private void processRow(
       Row row, RowCollector rowCollector, AtomicReference<Exception> exception) {
+    final long timestamp = row.getTime();
     for (int index = 0, size = row.size(); index < size; ++index) {
       // Do not calculate null values
       if (row.isNull(index)) {
@@ -242,38 +348,266 @@ public class AggregateProcessor implements PipeProcessor {
 
       final String timeSeries =
           row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
-      long timeStamp = row.getTime();
-      final List<TimeSeriesWindow> timeSeriesWindow =
-          pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap
+
+      AtomicReference<TimeSeriesRuntimeState> stateReference =
+          pipeName2timeSeries2TimeSeriesRuntimeStateMap
               .get(pipeName)
-              .get(timeSeries)
-              .get();
+              .computeIfAbsent(
+                  timeSeries,
+                  key ->
+                      new AtomicReference<>(
+                          new TimeSeriesRuntimeState(
+                              outputName2OperatorMap,
+                              intermediateResultName2OperatorSupplierMap,
+                              windowingProcessor)));
 
-      // Initiate the slidingBoundaryTime on the first incoming value
-      timeSeriesWindow.tryInitBoundaryTime(timeStamp, slidingBoundaryTime, slidingInterval);
-
-      long boundaryTime = timeSeriesWindow.getCurrentBoundaryTime();
-      // Ignore the value if the timestamp is sooner than the window left bound
-      if (timeStamp < boundaryTime) {
-        return;
-      }
-      // Compute the value if the timestamp is in the current window
-      else if (timeStamp < boundaryTime + slidingInterval) {
-
-      }
-      // Terminate the window and emit the output if the timestamp is later than the window right
-      // bound
-      else {
-
+      Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> result;
+      synchronized (stateReference) {
+        TimeSeriesRuntimeState state = stateReference.get();
+        try {
+          switch (row.getDataType(index)) {
+            case BOOLEAN:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getBoolean(index), outputMinReportIntervalMilliseconds);
+              break;
+            case INT32:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getInt(index), outputMinReportIntervalMilliseconds);
+              break;
+            case INT64:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getLong(index), outputMinReportIntervalMilliseconds);
+              break;
+            case FLOAT:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getFloat(index), outputMinReportIntervalMilliseconds);
+              break;
+            case DOUBLE:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getDouble(index), outputMinReportIntervalMilliseconds);
+              break;
+            case TEXT:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
+              break;
+            default:
+              throw new UnsupportedOperationException(
+                  String.format("The type %s is not supported", row.getDataType(index)));
+          }
+          if (!Objects.isNull(result)) {
+            collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
+          }
+        } catch (IOException | UnsupportedOperationException e) {
+          exception.set(e);
+        }
       }
     }
   }
 
   @Override
+  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws Exception {
+    try {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        process(tabletInsertionEvent, eventCollector);
+      }
+    } finally {
+      tsFileInsertionEvent.close();
+    }
+    // The timeProgressIndex shall only be reported by the output events
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReport();
+    }
+  }
+
+  @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
-    if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {}
+    if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
+      final AtomicReference<Exception> exception = new AtomicReference<>();
+
+      pipeName2timeSeries2TimeSeriesRuntimeStateMap
+          .get(pipeName)
+          .keySet()
+          .forEach(
+              timeSeries -> {
+                AtomicReference<TimeSeriesRuntimeState> stateReference =
+                    pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
+                synchronized (stateReference) {
+                  // This is only a formal tablet insertion event an is invisible to the framework.
+                  PipeRawTabletInsertionEvent tabletInsertionEvent =
+                      new PipeRawTabletInsertionEvent(
+                          null, false, pipeName, pipeTaskMeta, null, false);
+                  tabletInsertionEvent
+                      .processRowByRow(
+                          (row, rowCollector) -> {
+                            try {
+                              collectWindowOutputs(
+                                  stateReference.get().forceOutput(), timeSeries, rowCollector);
+                            } catch (Exception e) {
+                              exception.set(e);
+                            }
+                          })
+                      .forEach(
+                          tabletEvent -> {
+                            try {
+                              eventCollector.collect(tabletEvent);
+                            } catch (Exception e) {
+                              exception.set(e);
+                            }
+                          });
+                }
+              });
+      if (exception.get() != null) {
+        throw exception.get();
+      }
+      // Forbidding emitting results until next data comes
+      lastValueReceiveTime.set(Long.MAX_VALUE);
+    }
 
     eventCollector.collect(event);
+  }
+
+  /**
+   * Collect {@link WindowOutput}s of a single timeSeries in one turn. The {@link TSDataType}s shall
+   * be the same because the {@link AggregatedResultOperator}s shall return the same value for the
+   * same timeSeries.
+   *
+   * @param outputs the {@link WindowOutput} output
+   * @param timeSeries the timeSeries‘ name
+   * @param collector {@link RowCollector}
+   */
+  public void collectWindowOutputs(
+      List<WindowOutput> outputs, String timeSeries, RowCollector collector) throws IOException {
+    if (Objects.isNull(outputs) || outputs.isEmpty()) {
+      return;
+    }
+    // Sort and same timestamps removal
+    outputs.sort(Comparator.comparingLong(WindowOutput::getTimeStamp));
+
+    final AtomicLong lastValue = new AtomicLong(Long.MIN_VALUE);
+    List<WindowOutput> distinctOutputs = new ArrayList<>();
+    outputs.forEach(
+        output -> {
+          long timeStamp = output.getTimeStamp();
+          if (timeStamp != lastValue.get()) {
+            lastValue.set(timeStamp);
+            distinctOutputs.add(output);
+          }
+        });
+
+    final MeasurementSchema[] measurementSchemaList =
+        new MeasurementSchema[columnNameStringList.length];
+    final TSDataType[] valueColumnTypes = new TSDataType[columnNameStringList.length];
+    final Object[] valueColumns = new Object[columnNameStringList.length];
+    final BitMap[] bitMaps = new BitMap[columnNameStringList.length];
+
+    // Setup timestamps
+    final long[] timestampColumn = new long[distinctOutputs.size()];
+    for (int i = 0; i < distinctOutputs.size(); ++i) {
+      timestampColumn[i] = distinctOutputs.get(i).getTimeStamp();
+    }
+
+    for (int columnIndex = 0; columnIndex < columnNameStringList.length; ++columnIndex) {
+      // Fill in measurements and init columns
+      valueColumnTypes[columnIndex] =
+          distinctOutputs
+              .get(0)
+              .getAggregatedResults()
+              .get(columnNameStringList[columnIndex])
+              .getLeft();
+      measurementSchemaList[columnIndex] =
+          new MeasurementSchema(columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
+      bitMaps[columnIndex] = new BitMap(distinctOutputs.size());
+      switch (valueColumnTypes[columnIndex]) {
+        case BOOLEAN:
+          valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
+          break;
+        case INT32:
+          valueColumns[columnIndex] = new int[distinctOutputs.size()];
+          break;
+        case INT64:
+          valueColumns[columnIndex] = new long[distinctOutputs.size()];
+          break;
+        case FLOAT:
+          valueColumns[columnIndex] = new float[distinctOutputs.size()];
+          break;
+        case DOUBLE:
+          valueColumns[columnIndex] = new double[distinctOutputs.size()];
+          break;
+        case TEXT:
+          valueColumns[columnIndex] = new String[distinctOutputs.size()];
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              String.format(
+                  "The output tablet does not support column type %s",
+                  valueColumnTypes[columnIndex]));
+      }
+
+      // Fill in values
+      for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
+        Map<String, Pair<TSDataType, Object>> aggregatedResults =
+            distinctOutputs.get(rowIndex).getAggregatedResults();
+
+        if (aggregatedResults.containsKey(columnNameStringList[columnIndex])) {
+          switch (valueColumnTypes[columnIndex]) {
+            case BOOLEAN:
+              ((boolean[]) valueColumns[columnIndex])[rowIndex] =
+                  (boolean) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            case INT32:
+              ((int[]) valueColumns[columnIndex])[rowIndex] =
+                  (int) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            case INT64:
+              ((long[]) valueColumns[columnIndex])[rowIndex] =
+                  (long) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            case FLOAT:
+              ((float[]) valueColumns[columnIndex])[rowIndex] =
+                  (float) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            case DOUBLE:
+              ((double[]) valueColumns[columnIndex])[rowIndex] =
+                  (double) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            case TEXT:
+              ((String[]) valueColumns[columnIndex])[rowIndex] =
+                  (String) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
+            default:
+              throw new UnsupportedOperationException(
+                  String.format(
+                      "The output tablet does not support column type %s",
+                      valueColumnTypes[rowIndex]));
+          }
+        } else {
+          bitMaps[columnIndex].mark(rowIndex);
+        }
+      }
+    }
+
+    // Collect rows
+    for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
+      collector.collectRow(
+          new PipeRow(
+              rowIndex,
+              timeSeries.replaceFirst(database, outputDatabase),
+              false,
+              measurementSchemaList,
+              timestampColumn,
+              valueColumnTypes,
+              valueColumns,
+              bitMaps,
+              columnNameStringList));
+    }
   }
 
   @Override
@@ -281,8 +615,8 @@ public class AggregateProcessor implements PipeProcessor {
     if (pipeName2referenceCountMap.compute(
             pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
         == 0) {
-      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap.get(pipeName).clear();
-      pipeName2timeSeries2LastReportTimeAndTimeSeriesWindowStateMap.remove(pipeName);
+      pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
+      pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {
       windowingProcessor.close();

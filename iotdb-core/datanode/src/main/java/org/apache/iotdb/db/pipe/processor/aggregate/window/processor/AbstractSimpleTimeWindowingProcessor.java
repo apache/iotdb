@@ -25,33 +25,41 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowS
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractSimpleTimeWindowingProcessor extends AbstractWindowingProcessor {
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, boolean value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, boolean value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, int value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, int value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, long value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, long value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, float value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, float value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, double value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, double value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp, String value) {
-    mayAddWindow(windowList, timeStamp);
+  public Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp, String value) {
+    return mayAddWindow(windowList, timeStamp);
   }
 
-  public abstract void mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp);
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      List<TimeSeriesWindow> windowList, long timeStamp);
 
   @Override
   public Pair<WindowState, WindowOutput> updateAndMaySetWindowState(

@@ -31,20 +31,20 @@ import java.util.Map;
  * The class that define the calculation and ser/de logic of an intermediate result. There shall be
  * a one-to-one match between an intermediate result's operator and its name.
  *
- * <p>The operator's update function is called once per point, thus it shall implement update
- * functions with primitive type input and shall handle the intermediate value itself in order to
- * better optimize the calculation and save resource.
- *
- * <p>Note that an operator can preserve and update its own variables in all the functions below,
- * but their purpose shall be better in calculating the result. Although they can be ser/de as well,
- * but the deserialized variables of themselves are not preserved.
+ * <p>The {@link IntermediateResultOperator}'s update function is called once per point, thus it
+ * shall implement update functions with primitive type input and shall handle the intermediate
+ * value itself in order to better optimize the calculation and save resource.
  *
  * <p>Besides, the variables can also be passed in by the instantiating function, to help
  * customizing calculation.
  */
 public interface IntermediateResultOperator {
 
-  /** @return the name of the operator */
+  /**
+   * Return the name of the operator, the name shall be in lower case
+   *
+   * @return the name of the operator
+   */
   String getName();
 
   /**

@@ -38,6 +38,9 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE = "";
   public static final String PROCESSOR_OUTPUT_MEASUREMENTS_KEY = "processor.output.measurements";
   public static final String PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE = "";
+  public static final String PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY =
+      "processor.output.min-report-interval-seconds";
+  public static final long PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE = 30;
   public static final String PROCESSOR_OPERATORS_KEY = "processor.operators";
   public static final String PROCESSOR_OPERATORS_DEFAULT_VALUE =
       "avg, peak, rms, var, skew, kurt, ff, cf, pf, mf";

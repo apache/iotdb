@@ -151,4 +151,8 @@ public class CustomizedReadableIntermediateResults {
   public Object getObject(String key) {
     return intermediateResults.get(key).getRight();
   }
+
+  public TSDataType getType(String key) {
+    return intermediateResults.get(key).getLeft();
+  }
 }
