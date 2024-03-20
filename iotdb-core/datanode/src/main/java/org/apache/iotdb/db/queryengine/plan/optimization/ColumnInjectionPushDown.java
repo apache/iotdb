@@ -60,7 +60,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     if (analysis.getStatement().getType() != StatementType.QUERY) {
       return plan;
     }
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+    QueryStatement queryStatement = analysis.getQueryStatement();
     if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
       // When the aggregation with GROUP BY TIME isn't rawDataQuery, there are AggregationNode and
       // SeriesAggregationNode,
