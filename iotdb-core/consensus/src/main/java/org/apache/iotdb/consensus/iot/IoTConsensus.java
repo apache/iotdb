@@ -279,7 +279,6 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    // TODO：阻写？
     if (impl.getConfiguration().contains(peer)) {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
@@ -312,6 +311,7 @@ public class IoTConsensus implements IConsensus {
       // step 7: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
+
     } catch (ConsensusGroupModifyPeerException e) {
       try {
         logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
@@ -350,6 +350,7 @@ public class IoTConsensus implements IConsensus {
     if (!impl.getConfiguration().contains(peer)) {
       throw new PeerNotInConsensusGroupException(groupId, peer.toString());
     }
+
     try {
       // let other peers remove the sync channel with target peer
       impl.notifyPeersToRemoveSyncLogChannel(peer);

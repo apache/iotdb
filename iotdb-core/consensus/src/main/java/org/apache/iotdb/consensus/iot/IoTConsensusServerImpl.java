@@ -656,22 +656,6 @@ public class IoTConsensusServerImpl {
   }
 
   private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {
-    //    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
-    //      stream.filter(Files::isRegularFile)
-    //              .filter(filePath ->
-    // filePath.getFileName().toString().contains(CONFIGURATION_FILE_NAME))
-    //              .filter(filePath ->
-    // !filePath.getFileName().toString().contains(CONFIGURATION_TMP_FILE_NAME))
-    //              .forEach(filePath -> {
-    //                try {
-    //                  Files.delete(filePath);
-    //                } catch (IOException e) {
-    //                    logger.error("Unexpected error occurs when deleting old configuration
-    // file", e);
-    //                }
-    //              }
-    //      );
-    //    }
     for (Peer peer : tmpPeerList) {
       Path tmpConfigurationPath =
           Paths.get(

@@ -61,7 +61,7 @@ public class RegionMigrateService implements IService {
 
   public static final String REGION_MIGRATE_PROCESS = "[REGION_MIGRATE_PROCESS]";
 
-  private static final int MAX_RETRY_NUM = 1;
+  private static final int MAX_RETRY_NUM = 5;
 
   private static final int SLEEP_MILLIS = 5000;
 
