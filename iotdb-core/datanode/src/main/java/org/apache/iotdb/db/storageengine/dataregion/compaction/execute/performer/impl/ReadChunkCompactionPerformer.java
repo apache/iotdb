@@ -183,12 +183,36 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
+      // remove the chunk metadata whose data type not match the data type of last chunk
+      readerAndChunkMetadataList =
+          filterDataTypeNotMatchedChunkMetadata(readerAndChunkMetadataList);
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
               p, readerAndChunkMetadataList, writer, targetResource, summary);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();
+  }
+
+  private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+      filterDataTypeNotMatchedChunkMetadata(
+          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList) {
+    if (readerAndChunkMetadataList.isEmpty()) {
+      return readerAndChunkMetadataList;
+    }
+    LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> result = new LinkedList<>();
+    List<ChunkMetadata> chunkMetadataListOfLastFile =
+        readerAndChunkMetadataList.getLast().getRight();
+    ChunkMetadata lastChunkMetadata = chunkMetadataListOfLastFile.get(0);
+    for (Pair<TsFileSequenceReader, List<ChunkMetadata>> tsFileSequenceReaderListPair :
+        readerAndChunkMetadataList) {
+      List<ChunkMetadata> currentFileChunkMetadataList = tsFileSequenceReaderListPair.getRight();
+      if (lastChunkMetadata.getDataType() != currentFileChunkMetadataList.get(0).getDataType()) {
+        continue;
+      }
+      result.add(tsFileSequenceReaderListPair);
+    }
+    return result;
   }
 
   @Override
