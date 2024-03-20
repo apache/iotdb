@@ -72,7 +72,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   private static final int PROCEDURE_LOAD_BUFFER_SIZE = 8 * 1024 * 1024;
   private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
   private final String OLD_PROCEDURE_WAL_DIR =
-          CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
 
   private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
@@ -121,7 +121,7 @@ public class ProcedureInfo implements SnapshotProcessor {
       LOGGER.error("Delete useless procedure wal dir fail.", e);
       LOGGER.error(
           "You should manually delete the procedure wal dir before ConfigNode restart. {}",
-              OLD_PROCEDURE_WAL_DIR);
+          OLD_PROCEDURE_WAL_DIR);
     }
     LOGGER.info(
         "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
