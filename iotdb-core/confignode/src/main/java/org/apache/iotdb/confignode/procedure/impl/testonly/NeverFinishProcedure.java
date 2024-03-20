@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /** This procedure will never finish. */
 @TestOnly
@@ -71,11 +70,6 @@ public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProced
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.NEVER_FINISH_PROCEDURE.getTypeCode());
     super.serialize(stream);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
   }
 
   @Override

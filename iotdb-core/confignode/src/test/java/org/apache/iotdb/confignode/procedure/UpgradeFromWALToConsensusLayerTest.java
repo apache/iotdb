@@ -101,7 +101,7 @@ public class UpgradeFromWALToConsensusLayerTest {
         procedure -> procedureInfo.oldUpdateProcedure(new UpdateProcedurePlan(procedure)));
 
     // take snapshot manually
-    procedureInfo.load();
+    procedureInfo.oldLoad();
     // check if wal files deleted
     Assert.assertFalse(procedureInfo.isOldVersion());
 

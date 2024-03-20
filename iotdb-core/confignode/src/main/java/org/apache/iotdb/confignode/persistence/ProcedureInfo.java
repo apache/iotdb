@@ -45,6 +45,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -54,6 +56,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,9 +66,10 @@ public class ProcedureInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureInfo.class);
 
-  private static final String SNAPSHOT_FILENAME = "procedure_info.bin";
+  private static final String MAIN_SNAPSHOT_FILENAME = "procedure_info.bin";
   private static final String PROCEDURE_SNAPSHOT_DIR = "procedures";
   private static final String PROCEDURE_SNAPSHOT_FILE_SUFFIX = ".bin";
+  private static final int PROCEDURE_LOAD_BUFFER_SIZE = 8 * 1024 * 1024;
 
   private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
 
@@ -89,7 +93,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     return new File(oldProcedureWalDir).exists();
   }
 
-  public List<Procedure<ConfigNodeProcedureEnv>> load() {
+  public List<Procedure<ConfigNodeProcedureEnv>> oldLoad() {
     List<Procedure<ConfigNodeProcedureEnv>> procedureList = new ArrayList<>();
     try (Stream<Path> s = Files.list(Paths.get(oldProcedureWalDir))) {
       s.filter(path -> path.getFileName().toString().endsWith(PROCEDURE_WAL_SUFFIX))
@@ -98,7 +102,7 @@ public class ProcedureInfo implements SnapshotProcessor {
                   Long.compareUnsigned(
                       Long.parseLong(p1.getFileName().toString().split("\\.")[0]),
                       Long.parseLong(p2.getFileName().toString().split("\\.")[0])))
-          .forEach(path -> ProcedureWAL.load(path, procedureFactory).ifPresent(procedureList::add));
+          .forEach(path -> loadProcedure(path).ifPresent(procedureList::add));
     } catch (IOException e) {
       LOGGER.error("Load procedure wal failed.", e);
     }
@@ -158,12 +162,25 @@ public class ProcedureInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
-    return new ArrayList<>(procedureMap.values());
-  }
-
-  public long getNextProcId() {
-    return this.lastProcId.addAndGet(1);
+  private static Optional<Procedure> loadProcedure(Path procedureFilePath) {
+    try (FileInputStream fis = new FileInputStream(procedureFilePath.toFile())) {
+      Procedure procedure = null;
+      try (FileChannel channel = fis.getChannel()) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_LOAD_BUFFER_SIZE);
+        if (channel.read(byteBuffer) > 0) {
+          byteBuffer.flip();
+          procedure = ProcedureFactory.getInstance().create(byteBuffer);
+          byteBuffer.clear();
+        }
+        return Optional.ofNullable(procedure);
+      }
+    } catch (IOException e) {
+      LOGGER.error("Load {} failed, it will be deleted.", procedureFilePath, e);
+      if (!procedureFilePath.toFile().delete()) {
+        LOGGER.error("{} delete failed; take appropriate action.", procedureFilePath, e);
+      }
+    }
+    return Optional.empty();
   }
 
   @Override
@@ -182,7 +199,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     }
 
     // save lastProcId
-    File mainFile = new File(tmpDir.getAbsolutePath() + File.separator + "procedure_info.bin");
+    File mainFile = new File(tmpDir.getAbsolutePath() + File.separator + MAIN_SNAPSHOT_FILENAME);
     try (FileOutputStream fileOutputStream = new FileOutputStream(mainFile);
         DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
@@ -224,7 +241,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     }
 
     File mainFile =
-        new File(procedureSnapshotDir.getAbsolutePath() + File.separator + "procedure_info.bin");
+        new File(procedureSnapshotDir.getAbsolutePath() + File.separator + MAIN_SNAPSHOT_FILENAME);
     try (FileInputStream fileInputStream = new FileInputStream(mainFile)) {
       lastProcId.set(ReadWriteIOUtils.readLong(fileInputStream));
     }
@@ -232,11 +249,19 @@ public class ProcedureInfo implements SnapshotProcessor {
     Arrays.stream(Objects.requireNonNull(procedureSnapshotDir.listFiles()))
         .forEach(
             procedureSnapshotFile -> {
-              if (!procedureSnapshotFile.getName().equals("procedure_info.bin")) {
-                ProcedureWAL.load(procedureSnapshotFile.toPath(), procedureFactory)
+              if (!procedureSnapshotFile.getName().equals(MAIN_SNAPSHOT_FILENAME)) {
+                loadProcedure(procedureSnapshotFile.toPath())
                     .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
               }
             });
+  }
+
+  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
+    return new ArrayList<>(procedureMap.values());
+  }
+
+  public long getNextProcId() {
+    return this.lastProcId.addAndGet(1);
   }
 
   @Override

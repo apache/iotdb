@@ -28,48 +28,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 
+/** Reserve this class for version upgrade test. */
+@TestOnly
 public class ProcedureWAL {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProcedureWAL.class);
-  private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
-
-  /** Load wal files into memory */
-  public static Optional<Procedure> load(Path walFilePath, IProcedureFactory procedureFactory) {
-    try (FileInputStream fis = new FileInputStream(walFilePath.toFile())) {
-      return load(fis, procedureFactory);
-    } catch (IOException e) {
-      LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
-      if (!walFilePath.toFile().delete()) {
-        LOG.error("{} delete failed; take appropriate action.", walFilePath, e);
-      }
-    }
-    return Optional.empty();
-  }
-
-  public static Optional<Procedure> load(
-      FileInputStream fileInputStream, IProcedureFactory procedureFactory) throws IOException {
-    Procedure procedure = null;
-    try (FileChannel channel = fileInputStream.getChannel()) {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
-      if (channel.read(byteBuffer) > 0) {
-        byteBuffer.flip();
-        procedure = procedureFactory.create(byteBuffer);
-        byteBuffer.clear();
-      }
-      return Optional.ofNullable(procedure);
-    }
-  }
-
-  // region TestOnly
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureWAL.class);
 
   private IProcedureFactory procedureFactory;
   private Path walFilePath;

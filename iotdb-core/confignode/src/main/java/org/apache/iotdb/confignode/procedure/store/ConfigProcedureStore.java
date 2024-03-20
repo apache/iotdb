@@ -58,7 +58,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
 
   @Override
   public List<Procedure<ConfigNodeProcedureEnv>> load() {
-    return procedureInfo.load();
+    return procedureInfo.oldLoad();
   }
 
   @Override

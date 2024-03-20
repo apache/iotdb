@@ -400,7 +400,7 @@ public class ConsensusManager {
             Thread.sleep(RETRY_WAIT_TIME_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.", e);
           }
         }
         result.setMessage(
