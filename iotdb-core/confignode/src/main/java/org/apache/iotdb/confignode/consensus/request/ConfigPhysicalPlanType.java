@@ -221,7 +221,7 @@ public enum ConfigPhysicalPlanType {
   ShowSubscription((short) 2000),
 
   /** Test Only. */
-  TestOnly((short) 33300),
+  TestOnly((short) 30000),
   ;
 
   private final short planType;
