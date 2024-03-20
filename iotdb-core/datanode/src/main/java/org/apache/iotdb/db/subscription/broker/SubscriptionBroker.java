@@ -39,7 +39,7 @@ public class SubscriptionBroker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
 
-  private final String brokerId; // consumer group ID
+  private final String brokerId; // consumer group id
 
   private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
