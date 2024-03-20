@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -122,6 +123,21 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   private void checkProcWalDir(String procedureWalDir) throws IOException {
     File dir = new File(procedureWalDir);
     checkOldProcWalDir(dir);
+  }
+
+  @TestOnly
+  public static void createOldProcWalDir() throws IOException {
+    File dir = new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder());
+    if (!dir.exists()) {
+      if (dir.mkdirs()) {
+        LOG.info("Make procedure wal dir: {}", dir);
+      } else {
+        throw new IOException(
+            String.format(
+                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                dir.getAbsolutePath()));
+      }
+    }
   }
 
   private void checkOldProcWalDir(File newDir) {

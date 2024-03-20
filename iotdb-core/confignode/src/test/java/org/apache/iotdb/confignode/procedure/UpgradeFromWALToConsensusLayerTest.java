@@ -71,7 +71,7 @@ public class UpgradeFromWALToConsensusLayerTest {
     configManager.getConsensusManager().write(new TestOnlyPlan());
 
     ProcedureInfo procedureInfo = configManager.getProcedureManager().getStore().getProcedureInfo();
-    new ConfigProcedureStore(configManager, procedureInfo);
+    ConfigProcedureStore.createOldProcWalDir();
 
     // prepare procedures
     RemoveDataNodeProcedure removeDataNodeProcedure =
