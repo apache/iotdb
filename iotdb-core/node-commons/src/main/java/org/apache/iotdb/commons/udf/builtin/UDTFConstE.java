@@ -52,12 +52,12 @@ public class UDTFConstE implements UDTF {
 
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
-    int colCount = columns[0].getPositionCount();
+    int rowCount = columns[0].getPositionCount();
 
-    for (int i = 0; i < colCount; i++) {
+    for (int i = 0; i < rowCount; i++) {
       boolean hasWritten = false;
-      for (Column column : columns) {
-        if (!column.isNull(i)) {
+      for (int j = 0; j < columns.length - 1; j++) {
+        if (!columns[j].isNull(i)) {
           builder.writeDouble(Math.E);
           hasWritten = true;
           break;
