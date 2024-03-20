@@ -101,12 +101,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private void collectValueColumnSchemaList() throws IOException {
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
-        this.readerAndChunkMetadataList) {
+    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
+      Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair =
+          this.readerAndChunkMetadataList.get(i);
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
-      for (int i = alignedChunkMetadataList.size() - 1; i >= 0; i--) {
-        AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         if (alignedChunkMetadata == null) {
           continue;
         }

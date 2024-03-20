@@ -48,6 +48,7 @@ import java.util.List;
 
 public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
+  private final String device = COMPACTION_TEST_SG + ".d1";
 
   @Before
   public void setUp()
@@ -71,6 +72,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   @Test
@@ -82,6 +84,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   @Test
@@ -93,6 +96,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   @Test
@@ -104,6 +108,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   @Test
@@ -115,6 +120,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   @Test
@@ -126,23 +132,23 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
             0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).get(0).getStartTime(device));
   }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()
       throws IOException, WriteProcessException {
-    String d1 = COMPACTION_TEST_SG + ".d1";
     MeasurementSchema measurementSchema1 = new MeasurementSchema("s1", TSDataType.BOOLEAN);
     TsFileResource resource1 = createEmptyFileAndResource(true);
     resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
-      writer.registerTimeseries(new Path(d1), measurementSchema1);
-      TSRecord record = new TSRecord(1, d1);
+      writer.registerTimeseries(new Path(device), measurementSchema1);
+      TSRecord record = new TSRecord(1, device);
       record.addTuple(new BooleanDataPoint("s1", true));
       writer.write(record);
       writer.flushAllChunkGroups();
     }
-    resource1.updateStartTime(d1, 1);
-    resource1.updateEndTime(d1, 1);
+    resource1.updateStartTime(device, 1);
+    resource1.updateEndTime(device, 1);
     resource1.serialize();
     seqResources.add(resource1);
 
@@ -150,21 +156,20 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
-      writer.registerTimeseries(new Path(d1), measurementSchema2);
-      TSRecord record = new TSRecord(2, d1);
+      writer.registerTimeseries(new Path(device), measurementSchema2);
+      TSRecord record = new TSRecord(2, device);
       record.addTuple(new IntDataPoint("s1", 10));
       writer.write(record);
       writer.flushAllChunkGroups();
     }
-    resource2.updateStartTime(d1, 2);
-    resource2.updateEndTime(d1, 2);
+    resource2.updateStartTime(device, 2);
+    resource2.updateEndTime(device, 2);
     resource2.serialize();
     seqResources.add(resource2);
   }
 
   private void generateDataTypeNotMatchFilesWithAlignedSeries()
       throws IOException, WriteProcessException {
-    String d1 = COMPACTION_TEST_SG + ".d1";
     List<MeasurementSchema> measurementSchemas1 = new ArrayList<>();
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
@@ -172,15 +177,15 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
-      writer.registerAlignedTimeseries(new Path(d1), measurementSchemas1);
-      TSRecord record = new TSRecord(1, d1);
+      writer.registerAlignedTimeseries(new Path(device), measurementSchemas1);
+      TSRecord record = new TSRecord(1, device);
       record.addTuple(new IntDataPoint("s1", 0));
       record.addTuple(new IntDataPoint("s2", 1));
       writer.writeAligned(record);
       writer.flushAllChunkGroups();
     }
-    resource1.updateStartTime(d1, 1);
-    resource1.updateEndTime(d1, 1);
+    resource1.updateStartTime(device, 1);
+    resource1.updateEndTime(device, 1);
     resource1.serialize();
     seqResources.add(resource1);
 
@@ -190,15 +195,15 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
-      writer.registerAlignedTimeseries(new Path(d1), measurementSchemas2);
-      TSRecord record = new TSRecord(2, d1);
+      writer.registerAlignedTimeseries(new Path(device), measurementSchemas2);
+      TSRecord record = new TSRecord(2, device);
       record.addTuple(new BooleanDataPoint("s1", true));
       record.addTuple(new BooleanDataPoint("s2", true));
       writer.writeAligned(record);
       writer.flushAllChunkGroups();
     }
-    resource2.updateStartTime(d1, 2);
-    resource2.updateEndTime(d1, 2);
+    resource2.updateStartTime(device, 2);
+    resource2.updateEndTime(device, 2);
     resource2.serialize();
     seqResources.add(resource2);
   }
