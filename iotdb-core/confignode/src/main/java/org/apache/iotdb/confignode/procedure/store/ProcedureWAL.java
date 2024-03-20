@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -61,5 +67,40 @@ public class ProcedureWAL {
       }
       return Optional.ofNullable(procedure);
     }
+  }
+
+  // region TestOnly
+
+  private IProcedureFactory procedureFactory;
+  private Path walFilePath;
+
+  public ProcedureWAL(Path walFilePath, IProcedureFactory procedureFactory) {
+    this.walFilePath = walFilePath;
+    this.procedureFactory = procedureFactory;
+  }
+
+  /**
+   * Create a wal file
+   *
+   * @throws IOException ioe
+   */
+  @TestOnly
+  public void save(Procedure procedure) throws IOException {
+    File walTmp = new File(walFilePath + ".tmp");
+    Path walTmpPath = walTmp.toPath();
+    Files.deleteIfExists(walTmpPath);
+    Files.createFile(walTmpPath);
+    try (FileOutputStream fos = new FileOutputStream(walTmp);
+        FileChannel channel = fos.getChannel();
+        PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
+      procedure.serialize(dataOutputStream);
+      channel.write(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
+
+      channel.force(true);
+      fos.getFD().sync();
+    }
+    Files.deleteIfExists(walFilePath);
+    Files.move(walTmpPath, walFilePath);
   }
 }

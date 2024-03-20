@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.impl.testonly.NeverFinishProcedure;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -31,11 +34,25 @@ import java.util.stream.LongStream;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class ProcedureInfoTest {
-  private static final ProcedureInfo procedureInfo = new ProcedureInfo();
+  private static final ProcedureInfo procedureInfo = new ProcedureInfo(null); /**/
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
+  @BeforeClass
+  public static void setup() {
+    if (!snapshotDir.exists()) {
+      snapshotDir.mkdirs();
+    }
+  }
+
+  @AfterClass
+  public static void cleanup() {
+    if (snapshotDir.exists()) {
+      FileUtils.deleteDirectory(snapshotDir);
+    }
+  }
+
   @Test
-  public void testProcedureId() throws Exception {
+  public void testProcedureId() {
     final long lastProcedureId = 100;
     LongStream.range(0, lastProcedureId)
         .parallel()
@@ -47,5 +64,13 @@ public class ProcedureInfoTest {
   }
 
   @Test
-  public void testSnapshot() throws Exception {}
+  public void testSnapshot() throws Exception {
+    procedureInfo.updateProcedure(new UpdateProcedurePlan(new NeverFinishProcedure(1)));
+    procedureInfo.updateProcedure(new UpdateProcedurePlan(new NeverFinishProcedure(100)));
+    procedureInfo.updateProcedure(new UpdateProcedurePlan(new NeverFinishProcedure(99999)));
+    Assert.assertTrue(procedureInfo.processTakeSnapshot(snapshotDir));
+    ProcedureInfo procedureInfo1 = new ProcedureInfo(null);
+    procedureInfo1.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(procedureInfo, procedureInfo1);
+  }
 }

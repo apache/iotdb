@@ -17,32 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.store;
+package org.apache.iotdb.confignode.consensus.request;
 
-import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.procedure.Procedure;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-import java.util.List;
+public class TestOnlyPlan extends ConfigPhysicalPlan {
+  public TestOnlyPlan() {
+    super(ConfigPhysicalPlanType.TestOnly);
+  }
 
-public interface IProcedureStore<Env> {
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+  }
 
-  List<Procedure<Env>> load();
-
-  List<Procedure<Env>> getProcedures();
-
-  ProcedureInfo getProcedureInfo();
-
-  long getNextProcId();
-
-  void update(Procedure<Env> procedure);
-
-  void update(Procedure<Env>[] subprocs);
-
-  void delete(long procId);
-
-  void delete(long[] childProcIds);
-
-  void delete(long[] batchIds, int startIndex, int batchCount);
-
-  boolean isOldVersionProcedureStore();
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

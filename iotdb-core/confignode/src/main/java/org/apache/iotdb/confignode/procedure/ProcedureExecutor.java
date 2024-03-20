@@ -76,7 +76,6 @@ public class ProcedureExecutor<Env> {
 
   private final ProcedureScheduler scheduler;
 
-  private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -88,7 +87,6 @@ public class ProcedureExecutor<Env> {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
-    this.lastProcId.incrementAndGet();
   }
 
   @TestOnly
@@ -301,27 +299,6 @@ public class ProcedureExecutor<Env> {
     }
     internalProcedure.setState(ProcedureState.SUCCESS);
     return timeoutExecutor.remove(internalProcedure);
-  }
-
-  /**
-   * Get next Procedure id
-   *
-   * @return next procedure id
-   */
-  private long nextProcId() {
-    long procId = lastProcId.incrementAndGet();
-    if (procId < 0) {
-      while (!lastProcId.compareAndSet(procId, 0)) {
-        procId = lastProcId.get();
-        if (procId >= 0) {
-          break;
-        }
-      }
-      while (procedures.containsKey(procId)) {
-        procId = lastProcId.incrementAndGet();
-      }
-    }
-    return procId;
   }
 
   /**
@@ -559,7 +536,7 @@ public class ProcedureExecutor<Env> {
       }
       subproc.setParentProcId(proc.getProcId());
       subproc.setRootProcId(rootProcedureId);
-      subproc.setProcId(nextProcId());
+      subproc.setProcId(store.getNextProcId());
       subproc.setProcRunnable();
       rootProcStack.addSubProcedure(subproc);
     }
@@ -924,12 +901,10 @@ public class ProcedureExecutor<Env> {
    * @return procedure id
    */
   public long submitProcedure(Procedure<Env> procedure) {
-    Preconditions.checkArgument(lastProcId.get() >= 0);
     Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
     Preconditions.checkArgument(!procedure.hasParent(), "Unexpected parent", procedure);
-    final long currentProcId = nextProcId();
     // Initialize the procedure
-    procedure.setProcId(currentProcId);
+    procedure.setProcId(store.getNextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
     store.update(procedure);

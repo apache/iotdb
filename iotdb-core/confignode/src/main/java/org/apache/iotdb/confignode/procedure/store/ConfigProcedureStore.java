@@ -67,6 +67,16 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   }
 
   @Override
+  public ProcedureInfo getProcedureInfo() {
+    return procedureInfo;
+  }
+
+  @Override
+  public long getNextProcId() {
+    return procedureInfo.getNextProcId();
+  }
+
+  @Override
   public void update(Procedure<ConfigNodeProcedureEnv> procedure) {
     Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);

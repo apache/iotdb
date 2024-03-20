@@ -22,18 +22,20 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureWAL;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +49,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
@@ -59,16 +64,26 @@ public class ProcedureInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureInfo.class);
 
   private static final String SNAPSHOT_FILENAME = "procedure_info.bin";
+  private static final String PROCEDURE_SNAPSHOT_DIR = "procedures";
+  private static final String PROCEDURE_SNAPSHOT_FILE_SUFFIX = ".bin";
 
   private static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
 
-  private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap = new HashMap<>();
+  private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
+      new ConcurrentHashMap<>();
 
   private final AtomicLong lastProcId = new AtomicLong(-1);
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
   private final String oldProcedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
+  private final Map<Long, ProcedureWAL> procWALMap = new HashMap<>();
+
+  private final ConfigManager configManager;
+
+  public ProcedureInfo(ConfigManager configManager) {
+    this.configManager = configManager;
+  }
 
   public boolean isOldVersion() {
     return new File(oldProcedureWalDir).exists();
@@ -90,7 +105,22 @@ public class ProcedureInfo implements SnapshotProcessor {
     procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
     procedureList.forEach(
         procedure -> lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId())));
-    // TODO: 这里需要手动触发快照，怎么做？然后删除procedureWAL目录
+    try {
+      configManager.getConsensusManager().manuallyTakeSnapshot();
+    } catch (ConsensusException e) {
+      // TODO: how to handle exception
+      throw new RuntimeException(e);
+    }
+    try {
+      FileUtils.recursiveDeleteFolder(oldProcedureWalDir);
+    } catch (IOException e) {
+      LOGGER.error("Delete useless procedure wal dir fail.", e);
+      LOGGER.error(
+          "You should manually delete the procedure wal dir before ConfigNode restart. {}",
+          oldProcedureWalDir);
+    }
+    LOGGER.info(
+        "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
     return procedureList;
   }
 
@@ -104,6 +134,22 @@ public class ProcedureInfo implements SnapshotProcessor {
         break;
       }
     } while (!lastProcId.compareAndSet(current, procedure.getProcId()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @TestOnly
+  public TSStatus oldUpdateProcedure(UpdateProcedurePlan updateProcedurePlan) {
+    Procedure procedure = updateProcedurePlan.getProcedure();
+    long procId = procedure.getProcId();
+    Path path = Paths.get(oldProcedureWalDir, procId + PROCEDURE_WAL_SUFFIX);
+    ProcedureWAL procedureWAL =
+        procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
+    try {
+      procedureWAL.save(procedure);
+    } catch (IOException e) {
+      LOGGER.error("Update Procedure (pid={}) wal failed", procedure.getProcId(), e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -122,59 +168,87 @@ public class ProcedureInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
+    File procedureSnapshotDir = new File(snapshotDir, PROCEDURE_SNAPSHOT_DIR);
+    if (procedureSnapshotDir.exists()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
-          snapshotFile.getAbsolutePath());
+          "Failed to take snapshot, because snapshot dir [{}] is already exist.",
+          procedureSnapshotDir.getAbsolutePath());
+      return false;
+    }
+    File tmpDir = new File(procedureSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
+    if (!tmpDir.mkdir()) {
+      LOGGER.error("Failed to take snapshot, because create tmp dir [{}] fail.", tmpDir);
       return false;
     }
 
-    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
-
-    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+    // save lastProcId
+    File mainFile = new File(tmpDir.getAbsolutePath() + File.separator + "procedure_info.bin");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(mainFile);
         DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
-
-      ReadWriteIOUtils.write(procedureMap.size(), fileOutputStream);
-      for (Procedure<ConfigNodeProcedureEnv> procedure : procedureMap.values()) {
-        procedure.serialize(dataOutputStream);
-      }
-
       ReadWriteIOUtils.write(lastProcId.get(), fileOutputStream);
-
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
-      tioStreamTransport.close();
-      return tmpFile.renameTo(snapshotFile);
     }
+
+    // save all procedures
+    procedureMap
+        .values()
+        .forEach(
+            procedure -> {
+              try {
+                new ProcedureWAL(
+                        Paths.get(
+                            tmpDir.getAbsolutePath()
+                                + File.separator
+                                + procedure.getProcId()
+                                + PROCEDURE_SNAPSHOT_FILE_SUFFIX),
+                        procedureFactory)
+                    .save(procedure);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
+
+    return tmpDir.renameTo(procedureSnapshotDir);
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
-    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+    File procedureSnapshotDir = new File(snapshotDir, PROCEDURE_SNAPSHOT_DIR);
+    if (!procedureSnapshotDir.exists() || !procedureSnapshotDir.isDirectory()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
-          snapshotFile.getAbsolutePath());
+          "Failed to load snapshot, because snapshot dir [{}] not exists.",
+          procedureSnapshotDir.getAbsolutePath());
       return;
     }
 
-    // TODO: lock ?
-
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-
-      long proceduresNum = ReadWriteIOUtils.readLong(fileInputStream);
-      for (int i = 0; i < proceduresNum; i++) {
-        ProcedureWAL.load(fileInputStream, ProcedureFactory.getInstance())
-            .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
-      }
-
-      ReadWriteIOUtils.readLong(fileInputStream);
-    } finally {
-      // TODO: unlock ?
+    File mainFile =
+        new File(procedureSnapshotDir.getAbsolutePath() + File.separator + "procedure_info.bin");
+    try (FileInputStream fileInputStream = new FileInputStream(mainFile)) {
+      lastProcId.set(ReadWriteIOUtils.readLong(fileInputStream));
     }
+
+    Arrays.stream(Objects.requireNonNull(procedureSnapshotDir.listFiles()))
+        .forEach(
+            procedureSnapshotFile -> {
+              if (!procedureSnapshotFile.getName().equals("procedure_info.bin")) {
+                ProcedureWAL.load(procedureSnapshotFile.toPath(), procedureFactory)
+                    .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
+              }
+            });
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ProcedureInfo procedureInfo = (ProcedureInfo) o;
+    return lastProcId.get() == procedureInfo.lastProcId.get()
+        && procedureMap.equals(procedureInfo.procedureMap);
   }
 }
