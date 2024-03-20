@@ -615,7 +615,7 @@ public class DataRegion implements IDataRegionForQuery {
     compactionRecoverManager.recoverCrossSpaceCompaction();
   }
 
-  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+  public void updatePartitionFileVersion(long partitionNum, long fileVersion) {
     partitionMaxFileVersions.compute(
         partitionNum,
         (key, oldVersion) ->

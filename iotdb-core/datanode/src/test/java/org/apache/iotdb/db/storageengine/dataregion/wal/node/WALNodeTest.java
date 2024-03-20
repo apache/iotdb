@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
@@ -89,6 +92,7 @@ public class WALNodeTest {
     walNode.close();
     config.setWalMode(prevMode);
     EnvironmentUtils.cleanDir(logDirectory);
+    StorageEngine.getInstance().reset();
   }
 
   @Test
@@ -264,7 +268,20 @@ public class WALNodeTest {
     long time = 0;
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     long memTableId = memTable.getMemTableId();
-    String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
+    String tsFilePath =
+        logDirectory
+            + File.separator
+            + databasePath
+            + File.separator
+            + dataRegionId
+            + File.separator
+            + "-1"
+            + File.separator
+            + memTableId
+            + ".tsfile";
+    StorageEngine.getInstance()
+        .setDataRegion(
+            new DataRegionId(1), new DataRegionTest.DummyDataRegion(logDirectory, databasePath));
     walNode.onMemTableCreated(memTable, tsFilePath);
     while (walNode.getCurrentLogVersion() == 0) {
       ++time;

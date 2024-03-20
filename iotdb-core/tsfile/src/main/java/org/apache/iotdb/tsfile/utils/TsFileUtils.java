@@ -55,4 +55,9 @@ public class TsFileUtils {
     File folder = tsFile.getParentFile().getParentFile().getParentFile().getParentFile();
     return folder.getName().equals("sequence");
   }
+
+  public static void main(String[] args) {
+    String s = "https://www.apache.org/licenses/";
+    System.out.println(s.matches("http?://.*apache.org/licenses/?"));
+  }
 }

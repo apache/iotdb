@@ -204,9 +204,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               regionStatistics,
               metric);
 
-      if (!(config
+      if (!config
           .getSchemaRegionConsensusProtocolClass()
-          .equals(ConsensusFactory.RATIS_CONSENSUS))) {
+          .equals(ConsensusFactory.RATIS_CONSENSUS)) {
         usingMLog = true;
         initMLog();
       } else {
