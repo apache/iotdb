@@ -32,8 +32,8 @@ import java.util.Objects;
 public class EnrichedTablets {
 
   private transient String topicName;
+  private transient String subscriptionCommitId;
   private transient List<Tablet> tablets;
-  private transient List<String> subscriptionCommitIds;
 
   public String getTopicName() {
     return topicName;
@@ -43,39 +43,37 @@ public class EnrichedTablets {
     return tablets;
   }
 
-  public List<String> getSubscriptionCommitIds() {
-    return subscriptionCommitIds;
+  public String getSubscriptionCommitId() {
+    return subscriptionCommitId;
   }
 
   public EnrichedTablets() {
     this.tablets = new ArrayList<>();
-    this.subscriptionCommitIds = new ArrayList<>();
   }
 
-  public EnrichedTablets(
-      String topicName, List<Tablet> tablets, List<String> subscriptionCommitIds) {
+  public EnrichedTablets(String topicName, List<Tablet> tablets, String subscriptionCommitId) {
     this.topicName = topicName;
     this.tablets = tablets;
-    this.subscriptionCommitIds = subscriptionCommitIds;
+    this.subscriptionCommitId = subscriptionCommitId;
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
+    ReadWriteIOUtils.write(subscriptionCommitId, stream);
     ReadWriteIOUtils.write(tablets.size(), stream);
     for (Tablet tablet : tablets) {
       tablet.serialize(stream);
     }
-    ReadWriteIOUtils.writeStringList(subscriptionCommitIds, stream);
   }
 
   public static EnrichedTablets deserialize(ByteBuffer buffer) {
     final EnrichedTablets enrichedTablets = new EnrichedTablets();
     enrichedTablets.topicName = ReadWriteIOUtils.readString(buffer);
+    enrichedTablets.subscriptionCommitId = ReadWriteIOUtils.readString(buffer);
     int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
       enrichedTablets.tablets.add(Tablet.deserialize(buffer));
     }
-    enrichedTablets.subscriptionCommitIds = ReadWriteIOUtils.readStringList(buffer);
     return enrichedTablets;
   }
 
@@ -92,12 +90,12 @@ public class EnrichedTablets {
     EnrichedTablets that = (EnrichedTablets) obj;
     return Objects.equals(this.topicName, that.topicName)
         && Objects.equals(this.tablets, that.tablets)
-        && Objects.equals(this.subscriptionCommitIds, that.subscriptionCommitIds);
+        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId);
   }
 
   @Override
   public int hashCode() {
     // TODO: Tablet hashCode
-    return Objects.hash(topicName, tablets, subscriptionCommitIds);
+    return Objects.hash(topicName, tablets, subscriptionCommitId);
   }
 }

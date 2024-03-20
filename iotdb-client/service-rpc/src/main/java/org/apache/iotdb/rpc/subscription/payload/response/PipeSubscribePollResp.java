@@ -65,13 +65,13 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   }
 
   public static PipeSubscribePollResp directToTPipeSubscribeResp(
-      TSStatus status, List<ByteBuffer> serializedEnrichedTabletsList) {
+      TSStatus status, List<ByteBuffer> byteBuffers) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
-    resp.body = serializedEnrichedTabletsList;
+    resp.body = byteBuffers;
 
     return resp;
   }

@@ -21,13 +21,10 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,18 +47,18 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<Pair<ByteBuffer, EnrichedTablets>> poll(Set<String> topicNames) {
-    List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsList = new ArrayList<>();
+  public List<SerializedEnrichedEvent> poll(Set<String> topicNames) {
+    List<SerializedEnrichedEvent> events = new ArrayList<>();
     topicNameToPrefetchingQueue.forEach(
         (topicName, prefetchingQueue) -> {
           if (topicNames.contains(topicName)) {
-            Pair<ByteBuffer, EnrichedTablets> enrichedTablets = prefetchingQueue.poll();
-            if (Objects.nonNull(enrichedTablets)) {
-              enrichedTabletsList.add(enrichedTablets);
+            SerializedEnrichedEvent event = prefetchingQueue.poll();
+            if (Objects.nonNull(event)) {
+              events.add(event);
             }
           }
         });
-    return enrichedTabletsList;
+    return events;
   }
 
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {

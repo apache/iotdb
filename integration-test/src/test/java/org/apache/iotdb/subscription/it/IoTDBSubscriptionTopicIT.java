@@ -117,7 +117,7 @@ public class IoTDBSubscriptionTopicIT {
           }
           topicNameToSubscriptionCommitIds
               .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .addAll(enrichedTablets.getSubscriptionCommitIds());
+              .add(enrichedTablets.getSubscriptionCommitId());
         }
         session.commit(topicNameToSubscriptionCommitIds);
       }
@@ -179,7 +179,7 @@ public class IoTDBSubscriptionTopicIT {
           }
           topicNameToSubscriptionCommitIds
               .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .addAll(enrichedTablets.getSubscriptionCommitIds());
+              .add(enrichedTablets.getSubscriptionCommitId());
         }
         session.commit(topicNameToSubscriptionCommitIds);
       }
@@ -235,7 +235,7 @@ public class IoTDBSubscriptionTopicIT {
           }
           topicNameToSubscriptionCommitIds
               .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .addAll(enrichedTablets.getSubscriptionCommitIds());
+              .add(enrichedTablets.getSubscriptionCommitId());
         }
         session.commit(topicNameToSubscriptionCommitIds);
       }

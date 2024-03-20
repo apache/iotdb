@@ -30,6 +30,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
@@ -42,7 +43,6 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestTyp
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -54,7 +54,6 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -327,22 +326,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // poll
     Set<String> topicNames = req.getTopicNames();
-    List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsList =
+    List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames);
-    List<ByteBuffer> serializedEnrichedTabletsList =
-        enrichedTabletsList.stream().map((pair) -> pair.left).collect(Collectors.toList());
-    List<List<String>> subscriptionCommitIdsList =
-        enrichedTabletsList.stream()
-            .map((pair) -> pair.right.getSubscriptionCommitIds())
+    List<ByteBuffer> byteBuffers =
+        events.stream().map(SerializedEnrichedEvent::getByteBuffer).collect(Collectors.toList());
+    List<String> subscriptionCommitIds =
+        events.stream()
+            .map(SerializedEnrichedEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
 
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
         consumerConfig,
         topicNames,
-        subscriptionCommitIdsList);
-    return PipeSubscribePollResp.directToTPipeSubscribeResp(
-        RpcUtils.SUCCESS_STATUS, serializedEnrichedTabletsList);
+        subscriptionCommitIds);
+    return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {

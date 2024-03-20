@@ -86,12 +86,12 @@ public class SubscriptionSessionExample {
         }
         topicNameToSubscriptionCommitIds
             .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-            .addAll(enrichedTablets.getSubscriptionCommitIds());
+            .add(enrichedTablets.getSubscriptionCommitId());
       }
       session.commit(topicNameToSubscriptionCommitIds);
     }
-    // session.unsubscribe(Collections.singleton("topic1"));
-    // session.dropConsumer();
+    session.unsubscribe(Collections.singleton("topic1"));
+    session.dropConsumer();
     session.close();
 
     System.out.println(count);

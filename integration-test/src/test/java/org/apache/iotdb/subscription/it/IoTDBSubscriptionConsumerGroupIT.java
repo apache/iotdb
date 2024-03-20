@@ -127,7 +127,7 @@ public class IoTDBSubscriptionConsumerGroupIT {
                       topicNameToSubscriptionCommitIds
                           .computeIfAbsent(
                               enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-                          .addAll(enrichedTablets.getSubscriptionCommitIds());
+                          .add(enrichedTablets.getSubscriptionCommitId());
                     }
                     session.commit(topicNameToSubscriptionCommitIds);
                   }

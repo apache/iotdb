@@ -30,20 +30,17 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPrefetchingQueue {
 
@@ -55,9 +52,13 @@ public class SubscriptionPrefetchingQueue {
 
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private final Map<String, EnrichedEvent> uncommittedEvents;
+  private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
 
-  private final ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>> prefetchingQueue;
+  private final ConcurrentIterableLinkedQueue<SerializedEnrichedEvent> prefetchingQueue;
+
+  // TODO: Consider the stale subscription commit ID; after restarting, the subscription commit ID
+  // from before the restart should not be accepted.
+  private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   public SubscriptionPrefetchingQueue(
       String brokerId, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
@@ -70,31 +71,23 @@ public class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
-  public Pair<ByteBuffer, EnrichedTablets> poll() {
+  public SerializedEnrichedEvent poll() {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
     }
 
-    Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
-    try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
+    SerializedEnrichedEvent event;
+    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
       if (Objects.nonNull(
-          enrichedTablets =
+          event =
               iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
-        if (Objects.isNull(enrichedTablets.left)) {
-          try {
-            enrichedTablets.left =
-                PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
-          } catch (IOException e) {
-            LOGGER.warn(
-                "Subscription: something unexpected happened when serializing EnrichedTablets: {}",
-                e.getMessage());
-            return null;
-          }
+        if (!event.serialize()) {
+          return null;
         }
         prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
-        return enrichedTablets;
+        return event;
       }
     }
 
@@ -103,14 +96,14 @@ public class SubscriptionPrefetchingQueue {
 
   public void commit(List<String> subscriptionCommitIds) {
     for (String subscriptionCommitId : subscriptionCommitIds) {
-      EnrichedEvent enrichedEvent = uncommittedEvents.get(subscriptionCommitId);
-      if (Objects.isNull(enrichedEvent)) {
+      SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
+      if (Objects.isNull(event)) {
         LOGGER.warn(
             "Subscription: subscription commit id [{}] does not exist, it may have been committed or something unexpected happened",
             subscriptionCommitId);
         continue;
       }
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      event.decreaseReferenceCount();
       uncommittedEvents.remove(subscriptionCommitId);
     }
   }
@@ -126,44 +119,36 @@ public class SubscriptionPrefetchingQueue {
   // for limit control
   private void prefetchOnce(long limit) {
     List<Tablet> tablets = new ArrayList<>();
-    List<String> subscriptionCommitIds = new ArrayList<>();
+    List<EnrichedEvent> enrichedEvents = new ArrayList<>();
 
     Event event;
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
       if (!(event instanceof EnrichedEvent)) {
-        // subscription agent should fetch committerKey and commitId of events
         LOGGER.warn("Subscription: Only support prefetch EnrichedEvent. Ignore {}.", event);
         continue;
       }
 
       if (event instanceof TabletInsertionEvent) {
-        Pair<Tablet, String> tabletWithSubscriptionCommitId =
-            convertToTabletWithSubscriptionCommitId((TabletInsertionEvent) event);
-        if (Objects.isNull(tabletWithSubscriptionCommitId)) {
+        Tablet tablet = convertToTablet((TabletInsertionEvent) event);
+        if (Objects.isNull(tablet)) {
           continue;
         }
-        tablets.add(tabletWithSubscriptionCommitId.left);
-        subscriptionCommitIds.add(tabletWithSubscriptionCommitId.right);
-        uncommittedEvents.put(tabletWithSubscriptionCommitId.right, (EnrichedEvent) event);
+        tablets.add(tablet);
+        enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
           break;
         }
       } else if (event instanceof PipeTsFileInsertionEvent) {
         for (TabletInsertionEvent tabletInsertionEvent :
             ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
-          Pair<Tablet, String> tabletWithSubscriptionCommitId =
-              convertToTabletWithSubscriptionCommitId(tabletInsertionEvent);
-          if (Objects.isNull(tabletWithSubscriptionCommitId)) {
+          Tablet tablet = convertToTablet(tabletInsertionEvent);
+          if (Objects.isNull(tablet)) {
             continue;
           }
-          tablets.add(tabletWithSubscriptionCommitId.left);
-          // committerKey and commitId is missing in events generated by toTabletInsertionEvents
+          tablets.add(tablet);
         }
-        String subscriptionCommitId =
-            ((PipeTsFileInsertionEvent) event).generateSubscriptionCommitId();
-        subscriptionCommitIds.add(subscriptionCommitId);
-        uncommittedEvents.put(subscriptionCommitId, (PipeTsFileInsertionEvent) event);
+        enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
           break;
         }
@@ -178,53 +163,42 @@ public class SubscriptionPrefetchingQueue {
 
     if (!tablets.isEmpty()) {
       prefetchingQueue.add(
-          new Pair<>(null, new EnrichedTablets(topicName, tablets, subscriptionCommitIds)));
+          new SerializedEnrichedEvent(
+              new EnrichedTablets(topicName, tablets, generateSubscriptionCommitId()),
+              enrichedEvents));
     }
   }
 
   private void serializeOnce() {
-    Pair<ByteBuffer, EnrichedTablets> enrichedTablets;
-    try (ConcurrentIterableLinkedQueue<Pair<ByteBuffer, EnrichedTablets>>.DynamicIterator iter =
+    SerializedEnrichedEvent event;
+    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
       // TODO: memory control
       while (Objects.nonNull(
-          enrichedTablets =
+          event =
               iter.next(
                   SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs()))) {
-        if (Objects.isNull(enrichedTablets.left)) {
-          try {
-            enrichedTablets.left =
-                PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets.right);
-          } catch (IOException e) {
-            LOGGER.warn(
-                "Subscription: something unexpected happened when serializing EnrichedTablets: {}",
-                e.getMessage());
-          }
-        }
+        event.serialize();
       }
     }
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private Pair<Tablet, String> convertToTabletWithSubscriptionCommitId(
-      TabletInsertionEvent tabletInsertionEvent) {
+  private Tablet convertToTablet(TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      Tablet tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      String subscriptionCommitId =
-          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-              .generateSubscriptionCommitId();
-      return new Pair<>(tablet, subscriptionCommitId);
+      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      String subscriptionCommitId =
-          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).generateSubscriptionCommitId();
-      return new Pair<>(tablet, subscriptionCommitId);
+      return ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
     }
 
     LOGGER.warn(
         "Subscription: Only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         tabletInsertionEvent);
     return null;
+  }
+
+  private String generateSubscriptionCommitId() {
+    return topicName + "_" + brokerId + "#" + subscriptionCommitIdGenerator.getAndIncrement();
   }
 }
