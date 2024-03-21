@@ -25,7 +25,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -155,7 +159,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             existedConsumerConfig,
             consumerConfig);
         // drop stale consumer
-        SubscriptionAgent.consumer().dropConsumer(existedConsumerConfig);
+        dropConsumer(existedConsumerConfig);
         consumerConfigThreadLocal.set(consumerConfig);
       }
     }
@@ -163,7 +167,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // create consumer if not existed
     if (!SubscriptionAgent.consumer()
         .isConsumerExisted(consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId())) {
-      SubscriptionAgent.consumer().createConsumer(consumerConfig);
+      createConsumer(consumerConfig);
     } else {
       LOGGER.info(
           "Subscription: Detect the same consumer {} when handshaking, skip the creation of consumer.",
@@ -261,7 +265,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // subscribe topics
     Set<String> topicNames = req.getTopicNames();
-    SubscriptionAgent.consumer().subscribe(consumerConfig, topicNames);
+    subscribe(consumerConfig, topicNames);
 
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
     return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
@@ -294,7 +298,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // unsubscribe topics
     Set<String> topicNames = req.getTopicNames();
-    SubscriptionAgent.consumer().unsubscribe(consumerConfig, topicNames);
+    unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
         "Subscription: consumer {} unsubscribe {} successfully", consumerConfig, topicNames);
@@ -402,9 +406,126 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // drop consumer
-    SubscriptionAgent.consumer().dropConsumer(consumerConfig);
+    dropConsumer(consumerConfig);
 
     LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  //////////////////////////// consumer operations ////////////////////////////
+
+  private void createConsumer(ConsumerConfig consumerConfig) throws SubscriptionException {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCreateConsumerReq req =
+          new TCreateConsumerReq()
+              .setConsumerId(consumerConfig.getConsumerId())
+              .setConsumerGroupId(consumerConfig.getConsumerGroupId())
+              .setConsumerAttributes(consumerConfig.getAttribute());
+      final TSStatus tsStatus = configNodeClient.createConsumer(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to create consumer %s in config node, status is %s.",
+                consumerConfig, tsStatus);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    } catch (ClientManagerException | TException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to create consumer %s in config node, exception is %s.",
+              consumerConfig, e.getMessage());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+  }
+
+  private void dropConsumer(ConsumerConfig consumerConfig) throws SubscriptionException {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCloseConsumerReq req =
+          new TCloseConsumerReq()
+              .setConsumerId(consumerConfig.getConsumerId())
+              .setConsumerGroupId(consumerConfig.getConsumerGroupId());
+      final TSStatus tsStatus = configNodeClient.closeConsumer(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to close consumer %s in config node, status is %s.",
+                consumerConfig, tsStatus);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    } catch (ClientManagerException | TException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to close consumer %s in config node, exception is %s.",
+              consumerConfig, e.getMessage());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    // TODO: broker TTL if no consumer in consumer group
+    // Currently, even if there are no consumers left in a consumer group on the CN side, the
+    // corresponding ConsumerGroupMeta is still retained. Correspondingly, on the DN side, the
+    // SubscriptionBroker is also retained, but there are no SubscriptionPrefetchingQueues left
+    // within it.
+  }
+
+  private void subscribe(ConsumerConfig consumerConfig, Set<String> topicNames)
+      throws SubscriptionException {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSubscribeReq req =
+          new TSubscribeReq()
+              .setConsumerId(consumerConfig.getConsumerId())
+              .setConsumerGroupId(consumerConfig.getConsumerGroupId())
+              .setTopicNames(topicNames);
+      final TSStatus tsStatus = configNodeClient.createSubscription(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to subscribe topics %s for consumer %s in config node, status is %s.",
+                topicNames, consumerConfig, tsStatus);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    } catch (ClientManagerException | TException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to subscribe topics %s for consumer %s in config node, exception is %s.",
+              topicNames, consumerConfig, e.getMessage());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+  }
+
+  private void unsubscribe(ConsumerConfig consumerConfig, Set<String> topicNames)
+      throws SubscriptionException {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TUnsubscribeReq req =
+          new TUnsubscribeReq()
+              .setConsumerId(consumerConfig.getConsumerId())
+              .setConsumerGroupId(consumerConfig.getConsumerGroupId())
+              .setTopicNames(topicNames);
+      final TSStatus tsStatus = configNodeClient.dropSubscription(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        final String exceptionMessage =
+            String.format(
+                "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, status is %s.",
+                topicNames, consumerConfig, tsStatus);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    } catch (ClientManagerException | TException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, exception is %s.",
+              topicNames, consumerConfig, e.getMessage());
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
   }
 }
