@@ -39,9 +39,12 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -49,16 +52,27 @@ import java.util.List;
 public class UpgradeFromWALToConsensusLayerTest {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(UpgradeFromWALToConsensusLayerTest.class);
+  ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+
+  private static final String DATA_DIR = "data_UpgradeFromWALToConsensusLayerTest";
+
+  @Before
+  public void setUp() throws Exception {
+    conf.setConsensusDir(DATA_DIR + File.separator + conf.getConsensusDir());
+    conf.setSystemDir(DATA_DIR + File.separator + conf.getSystemDir());
+  }
 
   @After
   public void tearDown() throws Exception {
-    FileUtils.recursiveDeleteFolder("data");
+    FileUtils.recursiveDeleteFolder(DATA_DIR);
+    conf.setConsensusDir(conf.getConsensusDir().replace(DATA_DIR + File.separator, ""));
+    conf.setSystemDir(conf.getSystemDir().replace(DATA_DIR + File.separator, ""));
   }
 
+  @Test
   public void test() throws IOException, ConsensusException, InterruptedException {
     // start configManager for the first time
     ConfigManager configManager = new ConfigManager();
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     conf.setConfigNodeId(0);
     conf.setInternalAddress("127.0.0.1");
     configManager.initConsensusManager();
