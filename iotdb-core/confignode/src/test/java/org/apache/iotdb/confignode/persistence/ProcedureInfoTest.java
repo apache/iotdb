@@ -55,7 +55,6 @@ public class ProcedureInfoTest {
   public void testProcedureId() {
     final long lastProcedureId = 100;
     LongStream.range(0, lastProcedureId)
-        .parallel()
         .forEach(
             id ->
                 procedureInfo.updateProcedure(

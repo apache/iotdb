@@ -207,6 +207,7 @@ public class ProcedureExecutor<Env> {
 
   private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
     if (store.isOldVersionProcedureStore()) {
+      LOG.info("Old procedure directory detected, upgrade beginning...");
       return store.load();
     } else {
       return store.getProcedures();

@@ -52,14 +52,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 public class ProcedureInfo implements SnapshotProcessor {
@@ -77,11 +75,9 @@ public class ProcedureInfo implements SnapshotProcessor {
   private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
 
-  private final AtomicLong lastProcId = new AtomicLong(-1);
+  private long lastProcId = -1;
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
-
-  private final Map<Long, ProcedureWAL> procWALMap = new HashMap<>();
 
   private final ConfigManager configManager;
 
@@ -107,13 +103,13 @@ public class ProcedureInfo implements SnapshotProcessor {
       LOGGER.error("Load procedure wal failed.", e);
     }
     procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
-    procedureList.forEach(
-        procedure -> lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId())));
+    procedureList.forEach(procedure -> lastProcId = Math.max(lastProcId, procedure.getProcId()));
     try {
+      LOGGER.info("Old procedure files have been loaded successfully, taking snapshot...");
       configManager.getConsensusManager().manuallyTakeSnapshot();
     } catch (ConsensusException e) {
-      // TODO: how to handle exception
-      throw new RuntimeException(e);
+      LOGGER.warn("Taking snapshot fail, upgrade fail", e);
+      return procedureList;
     }
     try {
       FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
@@ -131,13 +127,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure<ConfigNodeProcedureEnv> procedure = updateProcedurePlan.getProcedure();
     procedureMap.put(procedure.getProcId(), procedure);
-    long current;
-    do {
-      current = lastProcId.get();
-      if (current >= procedure.getProcId()) {
-        break;
-      }
-    } while (!lastProcId.compareAndSet(current, procedure.getProcId()));
+    lastProcId = Math.max(lastProcId, procedure.getProcId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -146,8 +136,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     Procedure procedure = updateProcedurePlan.getProcedure();
     long procId = procedure.getProcId();
     Path path = Paths.get(OLD_PROCEDURE_WAL_DIR, procId + PROCEDURE_WAL_SUFFIX);
-    ProcedureWAL procedureWAL =
-        procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
+    ProcedureWAL procedureWAL = new ProcedureWAL(path, procedureFactory);
     try {
       procedureWAL.save(procedure);
     } catch (IOException e) {
@@ -177,7 +166,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     } catch (IOException e) {
       LOGGER.error("Load {} failed, it will be deleted.", procedureFilePath, e);
       if (!procedureFilePath.toFile().delete()) {
-        LOGGER.error("{} delete failed; take appropriate action.", procedureFilePath, e);
+        LOGGER.error("{} deleted failed; take appropriate action.", procedureFilePath, e);
       }
     }
     return Optional.empty();
@@ -203,7 +192,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     try (FileOutputStream fileOutputStream = new FileOutputStream(mainFile);
         DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
-      ReadWriteIOUtils.write(lastProcId.get(), fileOutputStream);
+      ReadWriteIOUtils.write(lastProcId, fileOutputStream);
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
     }
@@ -223,7 +212,8 @@ public class ProcedureInfo implements SnapshotProcessor {
                         procedureFactory)
                     .save(procedure);
               } catch (IOException e) {
-                throw new RuntimeException(e);
+                LOGGER.warn(
+                    "{} id {} took snapshot fail", procedure.getClass(), procedure.getProcId(), e);
               }
             });
 
@@ -243,7 +233,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     File mainFile =
         new File(procedureSnapshotDir.getAbsolutePath() + File.separator + MAIN_SNAPSHOT_FILENAME);
     try (FileInputStream fileInputStream = new FileInputStream(mainFile)) {
-      lastProcId.set(ReadWriteIOUtils.readLong(fileInputStream));
+      lastProcId = ReadWriteIOUtils.readLong(fileInputStream);
     }
 
     Arrays.stream(Objects.requireNonNull(procedureSnapshotDir.listFiles()))
@@ -261,7 +251,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   public long getNextProcId() {
-    return this.lastProcId.addAndGet(1);
+    return this.lastProcId++;
   }
 
   @Override
@@ -273,7 +263,7 @@ public class ProcedureInfo implements SnapshotProcessor {
       return false;
     }
     ProcedureInfo procedureInfo = (ProcedureInfo) o;
-    return lastProcId.get() == procedureInfo.lastProcId.get()
+    return lastProcId == procedureInfo.lastProcId
         && procedureMap.equals(procedureInfo.procedureMap);
   }
 }
