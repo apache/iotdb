@@ -251,7 +251,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   public long getNextProcId() {
-    return this.lastProcId++;
+    return ++this.lastProcId;
   }
 
   @Override

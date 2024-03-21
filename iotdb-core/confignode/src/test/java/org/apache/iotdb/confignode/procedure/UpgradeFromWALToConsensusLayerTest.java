@@ -40,6 +40,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,11 @@ public class UpgradeFromWALToConsensusLayerTest {
     conf.setSystemDir(conf.getSystemDir().replace(DATA_DIR + File.separator, ""));
   }
 
+  /**
+   * This test will fully start the ConfigManager, generating some files that cannot be cleaned up,
+   * which will affect other tests. Therefore, this test is not enabled by default
+   */
+  @Ignore
   @Test
   public void test() throws IOException, ConsensusException, InterruptedException {
     // start configManager for the first time
