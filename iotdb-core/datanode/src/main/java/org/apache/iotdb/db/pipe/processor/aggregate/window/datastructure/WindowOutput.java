@@ -25,16 +25,16 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.Map;
 
 public class WindowOutput {
-  private long timeStamp;
+  private long timestamp;
   private long progressTime;
   private Map<String, Pair<TSDataType, Object>> aggregatedResults;
 
-  public long getTimeStamp() {
-    return timeStamp;
+  public long getTimestamp() {
+    return timestamp;
   }
 
-  public WindowOutput setTimeStamp(long timeStamp) {
-    this.timeStamp = timeStamp;
+  public WindowOutput setTimestamp(long timestamp) {
+    this.timestamp = timestamp;
     return this;
   }
 
@@ -55,5 +55,17 @@ public class WindowOutput {
       Map<String, Pair<TSDataType, Object>> aggregatedResults) {
     this.aggregatedResults = aggregatedResults;
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return "WindowOutput{"
+        + "timestamp="
+        + timestamp
+        + "progressTime="
+        + progressTime
+        + "aggregatedResults="
+        + aggregatedResults
+        + '}';
   }
 }

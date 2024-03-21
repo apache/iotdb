@@ -511,17 +511,19 @@ public class AggregateProcessor implements PipeProcessor {
    */
   public void collectWindowOutputs(
       List<WindowOutput> outputs, String timeSeries, RowCollector collector) throws IOException {
+    System.out.println(outputs);
+    System.out.println(timeSeries);
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
     // Sort and same timestamps removal
-    outputs.sort(Comparator.comparingLong(WindowOutput::getTimeStamp));
+    outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
 
     final AtomicLong lastValue = new AtomicLong(Long.MIN_VALUE);
     List<WindowOutput> distinctOutputs = new ArrayList<>();
     outputs.forEach(
         output -> {
-          long timeStamp = output.getTimeStamp();
+          long timeStamp = output.getTimestamp();
           if (timeStamp != lastValue.get()) {
             lastValue.set(timeStamp);
             distinctOutputs.add(output);
@@ -537,7 +539,7 @@ public class AggregateProcessor implements PipeProcessor {
     // Setup timestamps
     final long[] timestampColumn = new long[distinctOutputs.size()];
     for (int i = 0; i < distinctOutputs.size(); ++i) {
-      timestampColumn[i] = distinctOutputs.get(i).getTimeStamp();
+      timestampColumn[i] = distinctOutputs.get(i).getTimestamp();
     }
 
     for (int columnIndex = 0; columnIndex < columnNameStringList.length; ++columnIndex) {

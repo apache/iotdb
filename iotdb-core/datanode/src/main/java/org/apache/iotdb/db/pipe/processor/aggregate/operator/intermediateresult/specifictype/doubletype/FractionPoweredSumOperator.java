@@ -61,25 +61,25 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
 
   @Override
   public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
-    sum = initialInput;
+    sum = Math.pow(initialInput, power);
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    sum = initialInput;
+    sum = Math.pow(initialInput, power);
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    sum = initialInput;
+    sum = Math.pow(initialInput, power);
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
-    sum = initialInput;
+    sum = Math.pow(initialInput, power);
     return true;
   }
 

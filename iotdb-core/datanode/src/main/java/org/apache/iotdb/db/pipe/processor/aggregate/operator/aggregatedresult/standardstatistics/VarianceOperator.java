@@ -53,7 +53,7 @@ public class VarianceOperator implements AggregatedResultOperator {
     return new Pair<>(
         TSDataType.DOUBLE,
         intermediateResults.getDouble("sum_x2") / intermediateResults.getInt("count")
-            + Math.pow(
+            - Math.pow(
                 intermediateResults.getDouble("sum_x1") / intermediateResults.getInt("count"), 2));
   }
 }

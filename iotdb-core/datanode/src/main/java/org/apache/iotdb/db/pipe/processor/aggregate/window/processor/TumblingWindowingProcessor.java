@@ -95,7 +95,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
       return new Pair<>(
           WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
-              .setTimeStamp(window.getTimestamp())
+              .setTimestamp(window.getTimestamp())
               .setProgressTime(window.getTimestamp() + slidingInterval));
     }
     return new Pair<>(WindowState.COMPUTE, null);
@@ -104,7 +104,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   @Override
   public WindowOutput forceOutput(TimeSeriesWindow window) {
     return new WindowOutput()
-        .setTimeStamp(window.getTimestamp())
+        .setTimestamp(window.getTimestamp())
         .setProgressTime(window.getTimestamp() + slidingInterval);
   }
 }

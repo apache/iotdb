@@ -53,28 +53,24 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
 
   @Override
   public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
-    intValue = initialInput;
     outPutDataType = TSDataType.INT32;
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    longValue = initialInput;
     outPutDataType = TSDataType.INT64;
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    floatValue = initialInput;
     outPutDataType = TSDataType.FLOAT;
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
-    doubleValue = initialInput;
     outPutDataType = TSDataType.DOUBLE;
     return true;
   }

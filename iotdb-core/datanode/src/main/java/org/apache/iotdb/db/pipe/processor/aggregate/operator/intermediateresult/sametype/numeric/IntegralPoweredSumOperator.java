@@ -32,6 +32,30 @@ public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator 
   }
 
   @Override
+  public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
+    intValue = (int) Math.pow(initialInput, power);
+    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
+    longValue = (long) Math.pow(initialInput, power);
+    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
+    floatValue = (float) Math.pow(initialInput, power);
+    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
+    doubleValue = Math.pow(initialInput, power);
+    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+  }
+
+  @Override
   public void updateValue(int input, long timestamp) {
     intValue += (int) Math.pow(input, power);
   }
