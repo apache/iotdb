@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -58,6 +59,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -105,23 +107,29 @@ public class ProcedureInfo implements SnapshotProcessor {
     }
     procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
     procedureList.forEach(procedure -> lastProcId = Math.max(lastProcId, procedure.getProcId()));
-    try {
-      LOGGER.info("Old procedure files have been loaded successfully, taking snapshot...");
-      configManager.getConsensusManager().manuallyTakeSnapshot();
-    } catch (ConsensusException e) {
-      LOGGER.warn("Taking snapshot fail, upgrade fail", e);
-      return procedureList;
-    }
-    try {
-      FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
-    } catch (IOException e) {
-      LOGGER.error("Delete useless procedure wal dir fail.", e);
-      LOGGER.error(
-          "You should manually delete the procedure wal dir before ConfigNode restart. {}",
-          OLD_PROCEDURE_WAL_DIR);
-    }
-    LOGGER.info(
-        "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
+    ExecutorService executorService =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor("ProcedureUpgrade");
+    executorService.submit(
+        () -> {
+          try {
+            LOGGER.info("Old procedure files have been loaded successfully, taking snapshot...");
+            configManager.getConsensusManager().manuallyTakeSnapshot();
+          } catch (ConsensusException e) {
+            LOGGER.warn("Taking snapshot fail, procedure upgrade fail", e);
+            return;
+          }
+          try {
+            FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
+          } catch (IOException e) {
+            LOGGER.error("Delete useless procedure wal dir fail.", e);
+            LOGGER.error(
+                "You should manually delete the procedure wal dir before ConfigNode restart. {}",
+                OLD_PROCEDURE_WAL_DIR);
+          }
+          LOGGER.info(
+              "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
+        });
+    executorService.shutdown();
     return procedureList;
   }
 
