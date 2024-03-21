@@ -562,7 +562,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    TSStatus addStatus = addRegionLocation(new AddRegionLocationPlan(req.getRegionId(), req.getNewNode()));
+    TSStatus addStatus =
+        addRegionLocation(new AddRegionLocationPlan(req.getRegionId(), req.getNewNode()));
     if (addStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return addStatus;
     }

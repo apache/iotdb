@@ -192,7 +192,7 @@ public class RegionMigrateService implements IService {
     if (taskResultMap.containsKey(taskId)) {
       return false;
     }
-    taskResultMap.put(taskId, unfinishedResult);
+    taskResultMap.putIfAbsent(taskId, unfinishedResult);
     return true;
   }
 

@@ -43,8 +43,6 @@ import java.util.Objects;
 public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
 
-  // TODO: Reach an agreement on RegionMigrateProcedure
-
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 

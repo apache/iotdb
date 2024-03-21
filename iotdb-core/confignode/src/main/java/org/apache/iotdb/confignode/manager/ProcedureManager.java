@@ -539,7 +539,8 @@ public class ProcedureManager {
 
   // region region migration
 
-  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId) throws ProcedureException {
+  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId)
+      throws ProcedureException {
     if (configManager
         .getPartitionManager()
         .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
