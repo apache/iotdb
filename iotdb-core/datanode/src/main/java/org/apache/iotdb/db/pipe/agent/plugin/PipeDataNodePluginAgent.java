@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -214,18 +215,18 @@ public class PipeDataNodePluginAgent {
   }
 
   public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
-    dataRegionAgent.validateExtractor(extractorAttributes);
-    schemaRegionAgent.validateExtractor(extractorAttributes);
+    dataRegionAgent.validateExtractor(new PipeParameters(extractorAttributes));
+    schemaRegionAgent.validateExtractor(new PipeParameters(extractorAttributes));
   }
 
   public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
-    dataRegionAgent.validateProcessor(processorAttributes);
-    schemaRegionAgent.validateProcessor(processorAttributes);
+    dataRegionAgent.validateProcessor(new PipeParameters(processorAttributes));
+    schemaRegionAgent.validateProcessor(new PipeParameters(processorAttributes));
   }
 
   public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
       throws Exception {
-    dataRegionAgent.validateConnector(pipeName, connectorAttributes);
-    schemaRegionAgent.validateConnector(pipeName, connectorAttributes);
+    dataRegionAgent.validateConnector(pipeName, new PipeParameters(connectorAttributes));
+    schemaRegionAgent.validateConnector(pipeName, new PipeParameters(connectorAttributes));
   }
 }

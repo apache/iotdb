@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -103,6 +104,7 @@ public class AggregateProcessor implements PipeProcessor {
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
   private String outputDatabase;
+  private boolean isDatabaseGeneratedByAggregator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
   private final Map<String, Supplier<IntermediateResultOperator>>
@@ -127,24 +129,26 @@ public class AggregateProcessor implements PipeProcessor {
     validator
         .validate(
             args -> !((String) args).isEmpty(),
-            String.format("The parameter %s must not be empty", PROCESSOR_OPERATORS_KEY),
+            String.format("The parameter %s must not be empty.", PROCESSOR_OPERATORS_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
             args -> !((String) args).isEmpty(),
-            String.format("The parameter %s must not be empty", PROCESSOR_WINDOWING_STRATEGY_KEY),
+            String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
-                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE));
+                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
+        .validate(
+            args -> !(((String) args[0]).isEmpty() && (boolean) args[1]),
+            "Cannot write to the same database when the result is written back.",
+            parameters.getStringOrDefault(
+                PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE),
+            parameters.getBooleanOrDefault(
+                SystemConstant.WRITE_BACK_KEY, SystemConstant.WRITE_BACK_DEFAULT_VALUE));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    pipeName = configuration.getRuntimeEnvironment().getPipeName();
-    pipeName2referenceCountMap.compute(
-        pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
-    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
-
     database =
         StorageEngine.getInstance()
             .getDataRegion(
@@ -152,10 +156,28 @@ public class AggregateProcessor implements PipeProcessor {
                     ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
                         .getRegionId()))
             .getDatabaseName();
+    outputDatabase =
+        parameters.getStringOrDefault(
+            PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
+
+    isDatabaseGeneratedByAggregator =
+        database.equals(outputDatabase)
+            && parameters.getBooleanOrDefault(
+                SystemConstant.WRITE_BACK_KEY, SystemConstant.WRITE_BACK_DEFAULT_VALUE);
+
+    // Do not re-calculate the result written back
+    if (isDatabaseGeneratedByAggregator) {
+      return;
+    }
+
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    pipeName2referenceCountMap.compute(
+        pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
+    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
+
     pipeTaskMeta =
         ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
             .getPipeTaskMeta();
-
     // Load parameters
     long outputMaxDelaySeconds =
         parameters.getLongOrDefault(
@@ -168,9 +190,6 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    outputDatabase =
-        parameters.getStringOrDefault(
-            PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
 
     // Set output name
     List<String> operatorNameList =
@@ -307,6 +326,11 @@ public class AggregateProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    // Do not re-calculate the result written back
+    if (isDatabaseGeneratedByAggregator) {
+      return;
+    }
+
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       eventCollector.collect(tabletInsertionEvent);
@@ -420,6 +444,10 @@ public class AggregateProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    // Do not re-calculate the result written back
+    if (isDatabaseGeneratedByAggregator) {
+      return;
+    }
     try {
       for (final TabletInsertionEvent tabletInsertionEvent :
           tsFileInsertionEvent.toTabletInsertionEvents()) {
@@ -429,6 +457,7 @@ public class AggregateProcessor implements PipeProcessor {
       tsFileInsertionEvent.close();
     }
     // The timeProgressIndex shall only be reported by the output events
+    // whose progressIndex is bounded with tablet events
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
       ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReport();
     }
@@ -436,6 +465,10 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
+    // Do not re-calculate the result written back
+    if (isDatabaseGeneratedByAggregator) {
+      return;
+    }
     if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
       final AtomicReference<Exception> exception = new AtomicReference<>();
 
