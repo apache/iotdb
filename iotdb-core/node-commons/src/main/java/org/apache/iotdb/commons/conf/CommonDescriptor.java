@@ -537,6 +537,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_serialize_max_blocking_time_ms",
                 String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
+    config.setSubscriptionClearMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_clear_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionClearMaxBlockingTimeMs()))));
     config.setSubscriptionLaunchRetryIntervalMs(
         Long.parseLong(
             properties.getProperty(

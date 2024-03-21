@@ -230,6 +230,7 @@ public class CommonConfig {
   private int subscriptionMaxTabletsPerPrefetching = 16;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionClearMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionClearCommittedEventIntervalSeconds = 30;
   private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
@@ -977,6 +978,14 @@ public class CommonConfig {
   public void setSubscriptionSerializeMaxBlockingTimeMs(
       int subscriptionSerializeMaxBlockingTimeMs) {
     this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public int getSubscriptionClearMaxBlockingTimeMs() {
+    return subscriptionClearMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionClearMaxBlockingTimeMs(int subscriptionClearMaxBlockingTimeMs) {
+    this.subscriptionClearMaxBlockingTimeMs = subscriptionClearMaxBlockingTimeMs;
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {

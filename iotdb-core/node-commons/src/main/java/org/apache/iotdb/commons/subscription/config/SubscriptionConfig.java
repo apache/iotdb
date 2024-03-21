@@ -47,6 +47,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
   }
 
+  public int getSubscriptionClearMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getSubscriptionClearMaxBlockingTimeMs();
+  }
+
   public long getSubscriptionLaunchRetryIntervalMs() {
     return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
   }
@@ -72,6 +76,7 @@ public class SubscriptionConfig {
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionClearMaxBlockingTimeMs: {}", getSubscriptionClearMaxBlockingTimeMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionClearCommittedEventIntervalSeconds: {}",

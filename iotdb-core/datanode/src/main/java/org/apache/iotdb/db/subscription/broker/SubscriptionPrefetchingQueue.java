@@ -39,9 +39,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPrefetchingQueue {
@@ -52,7 +52,7 @@ public class SubscriptionPrefetchingQueue {
   private final String topicName;
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private final SortedMap<String, SerializedEnrichedEvent> uncommittedEvents;
+  private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
   private final ConcurrentIterableLinkedQueue<SerializedEnrichedEvent> prefetchingQueue;
 
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
@@ -62,7 +62,7 @@ public class SubscriptionPrefetchingQueue {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
-    this.uncommittedEvents = new ConcurrentSkipListMap<>();
+    this.uncommittedEvents = new ConcurrentHashMap<>();
     this.prefetchingQueue = new ConcurrentIterableLinkedQueue<>();
   }
 
@@ -213,7 +213,8 @@ public class SubscriptionPrefetchingQueue {
         prefetchingQueue.iterateFromEarliest()) {
       while (Objects.nonNull(
           event =
-              iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
+              iter.next(
+                  SubscriptionConfig.getInstance().getSubscriptionClearMaxBlockingTimeMs()))) {
         if (count >= size) {
           break;
         }
