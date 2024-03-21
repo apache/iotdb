@@ -79,17 +79,6 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
       TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       // Align to the last time + k * slidingInterval, k is a natural number
       window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval);
-      System.out.println(
-          windowList
-              + " "
-              + timeStamp
-              + " "
-              + window.getTimestamp()
-              + " "
-              + lastTime
-              + " "
-              + slidingInterval
-              + " add");
       windowList.add(window);
       return Collections.singleton(window);
     }
@@ -103,7 +92,6 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
       return new Pair<>(WindowState.IGNORE_VALUE, null);
     }
     if (timeStamp >= window.getTimestamp() + slidingInterval) {
-      System.out.println(timeStamp);
       return new Pair<>(
           WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
