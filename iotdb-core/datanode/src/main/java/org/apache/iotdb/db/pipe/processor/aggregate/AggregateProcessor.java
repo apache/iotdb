@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.AbstractOperatorProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
+import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -104,11 +106,11 @@ public class AggregateProcessor implements PipeProcessor {
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
   private String outputDatabase;
-  private boolean isDatabaseGeneratedByAggregator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
   private final Map<String, Supplier<IntermediateResultOperator>>
       intermediateResultName2OperatorSupplierMap = new HashMap<>();
+  private final Map<String, String> systemParameters = new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
   private static final ConcurrentMap<
@@ -149,6 +151,11 @@ public class AggregateProcessor implements PipeProcessor {
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    pipeName2referenceCountMap.compute(
+        pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
+    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
+
     database =
         StorageEngine.getInstance()
             .getDataRegion(
@@ -156,24 +163,6 @@ public class AggregateProcessor implements PipeProcessor {
                     ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
                         .getRegionId()))
             .getDatabaseName();
-    outputDatabase =
-        parameters.getStringOrDefault(
-            PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
-
-    isDatabaseGeneratedByAggregator =
-        database.equals(outputDatabase)
-            && parameters.getBooleanOrDefault(
-                SystemConstant.WRITE_BACK_KEY, SystemConstant.WRITE_BACK_DEFAULT_VALUE);
-
-    // Do not re-calculate the result written back
-    if (isDatabaseGeneratedByAggregator) {
-      return;
-    }
-
-    pipeName = configuration.getRuntimeEnvironment().getPipeName();
-    pipeName2referenceCountMap.compute(
-        pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
-    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
 
     pipeTaskMeta =
         ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
@@ -190,6 +179,9 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
+    outputDatabase =
+        parameters.getStringOrDefault(
+            PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
 
     // Set output name
     List<String> operatorNameList =
@@ -288,6 +280,11 @@ public class AggregateProcessor implements PipeProcessor {
     }
     windowingProcessor = (AbstractWindowingProcessor) windowProcessor;
 
+    // Configure system parameters
+    systemParameters.put(
+        UDFParametersFactory.TIMESTAMP_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
     // Restore window state
     ProgressIndex index = pipeTaskMeta.getProgressIndex();
     if (index == MinimumProgressIndex.INSTANCE) {
@@ -312,6 +309,7 @@ public class AggregateProcessor implements PipeProcessor {
                           new TimeSeriesRuntimeState(
                               outputName2OperatorMap,
                               intermediateResultName2OperatorSupplierMap,
+                              systemParameters,
                               windowingProcessor)));
       synchronized (stateReference) {
         try {
@@ -326,11 +324,6 @@ public class AggregateProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    // Do not re-calculate the result written back
-    if (isDatabaseGeneratedByAggregator) {
-      return;
-    }
-
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       eventCollector.collect(tabletInsertionEvent);
@@ -388,6 +381,7 @@ public class AggregateProcessor implements PipeProcessor {
                           new TimeSeriesRuntimeState(
                               outputName2OperatorMap,
                               intermediateResultName2OperatorSupplierMap,
+                              systemParameters,
                               windowingProcessor)));
 
       Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> result;
@@ -444,10 +438,6 @@ public class AggregateProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    // Do not re-calculate the result written back
-    if (isDatabaseGeneratedByAggregator) {
-      return;
-    }
     try {
       for (final TabletInsertionEvent tabletInsertionEvent :
           tsFileInsertionEvent.toTabletInsertionEvents()) {
@@ -465,10 +455,6 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
-    // Do not re-calculate the result written back
-    if (isDatabaseGeneratedByAggregator) {
-      return;
-    }
     if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
       final AtomicReference<Exception> exception = new AtomicReference<>();
 

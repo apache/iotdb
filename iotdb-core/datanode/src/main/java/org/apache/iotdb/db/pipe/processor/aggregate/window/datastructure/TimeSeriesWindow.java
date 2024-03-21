@@ -83,7 +83,8 @@ public class TimeSeriesWindow {
 
   public void initWindow(
       Map<String, Supplier<IntermediateResultOperator>> intermediateResult2OperatorSupplierMap,
-      Map<String, AggregatedResultOperator> aggregatedResultOperatorMap) {
+      Map<String, AggregatedResultOperator> aggregatedResultOperatorMap,
+      Map<String, String> systemParameters) {
     for (Map.Entry<String, Supplier<IntermediateResultOperator>> entry :
         intermediateResult2OperatorSupplierMap.entrySet()) {
       intermediateResultName2tsTypeAndOperatorMap.put(
@@ -91,6 +92,13 @@ public class TimeSeriesWindow {
     }
     // Deep copy because some unsupported aggregated results may be removed
     this.aggregatedOutputName2OperatorMap = new HashMap<>(aggregatedResultOperatorMap);
+    // Configure system parameters
+    this.intermediateResultName2tsTypeAndOperatorMap.values().stream()
+        .map(Pair::getRight)
+        .forEach(operator -> operator.configureSystemParameters(systemParameters));
+    this.aggregatedOutputName2OperatorMap
+        .values()
+        .forEach(operator -> operator.configureSystemParameters(systemParameters));
   }
 
   // Return the output and state of the window.

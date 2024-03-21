@@ -46,6 +46,7 @@ public class TimeSeriesRuntimeState {
   private final Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap;
   private final Map<String, Supplier<IntermediateResultOperator>>
       intermediateResultName2OperatorSupplierMap;
+  private final Map<String, String> systemParameters;
   private final AbstractWindowingProcessor windowingProcessor;
 
   // Inner set values
@@ -61,9 +62,11 @@ public class TimeSeriesRuntimeState {
   public TimeSeriesRuntimeState(
       Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap,
       Map<String, Supplier<IntermediateResultOperator>> intermediateResultName2OperatorSupplierMap,
+      Map<String, String> systemParameters,
       AbstractWindowingProcessor windowingProcessor) {
     this.aggregatorOutputName2OperatorMap = aggregatorOutputName2OperatorMap;
     this.intermediateResultName2OperatorSupplierMap = intermediateResultName2OperatorSupplierMap;
+    this.systemParameters = systemParameters;
     this.windowingProcessor = windowingProcessor;
   }
 
@@ -81,7 +84,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -124,7 +129,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -167,7 +174,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -210,7 +219,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -253,7 +264,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -296,7 +309,9 @@ public class TimeSeriesRuntimeState {
       addedWindows.forEach(
           window ->
               window.initWindow(
-                  intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap));
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
     }
     Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
@@ -371,7 +386,9 @@ public class TimeSeriesRuntimeState {
       // The runtime value will be deserialized if exists
       TimeSeriesWindow currentWindow = new TimeSeriesWindow(windowingProcessor, null);
       currentWindow.initWindow(
-          intermediateResultName2OperatorSupplierMap, aggregatorOutputName2OperatorMap);
+          intermediateResultName2OperatorSupplierMap,
+          aggregatorOutputName2OperatorMap,
+          systemParameters);
       currentWindow.deserialize(buffer);
       currentOpeningWindows.add(currentWindow);
     }
