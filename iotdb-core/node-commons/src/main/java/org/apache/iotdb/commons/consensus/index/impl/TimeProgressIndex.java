@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 public class TimeProgressIndex extends ProgressIndex {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  // Only the byteBuffer is nullable, the timeSeries, pair and timestamp must not be null
   private Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap;
 
   public TimeProgressIndex(
@@ -284,8 +285,8 @@ public class TimeProgressIndex extends ProgressIndex {
   @Override
   public String toString() {
     return "TimeProgressIndex{"
-        + "timeSeries2TimeWindowBufferPairMap="
+        + "timeSeries2TimeWindowBufferPairMap='"
         + timeSeries2TimestampWindowBufferPairMap
-        + '}';
+        + "'}";
   }
 }

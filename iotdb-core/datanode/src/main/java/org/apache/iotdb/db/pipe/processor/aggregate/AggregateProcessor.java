@@ -353,7 +353,7 @@ public class AggregateProcessor implements PipeProcessor {
           }
         });
 
-    if (exception.get() != null) {
+    if (Objects.nonNull(exception.get())) {
       throw exception.get();
     }
   }
@@ -426,7 +426,9 @@ public class AggregateProcessor implements PipeProcessor {
           }
           if (!Objects.isNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
-            resultMap.put(timeSeries, result.getRight());
+            if (Objects.nonNull(result.getRight())) {
+              resultMap.put(timeSeries, result.getRight());
+            }
           }
         } catch (IOException | UnsupportedOperationException e) {
           exception.set(e);
