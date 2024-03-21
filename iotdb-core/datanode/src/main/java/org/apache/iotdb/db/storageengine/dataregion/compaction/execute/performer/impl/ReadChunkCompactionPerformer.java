@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -201,13 +202,35 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return readerAndChunkMetadataList;
     }
     LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> result = new LinkedList<>();
-    List<ChunkMetadata> chunkMetadataListOfLastFile =
-        readerAndChunkMetadataList.getLast().getRight();
-    ChunkMetadata lastChunkMetadata = chunkMetadataListOfLastFile.get(0);
+    // find correct data type
+    TSDataType correctDataType = null;
+    for (int i = readerAndChunkMetadataList.size() - 1; i >= 0 && correctDataType == null; i--) {
+      List<ChunkMetadata> chunkMetadataList = readerAndChunkMetadataList.get(i).getRight();
+      if (chunkMetadataList == null || chunkMetadataList.isEmpty()) {
+        continue;
+      }
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        if (chunkMetadata == null) {
+          continue;
+        }
+        correctDataType = chunkMetadata.getDataType();
+        break;
+      }
+    }
+    if (correctDataType == null) {
+      return readerAndChunkMetadataList;
+    }
+    // check data type consistent and skip compact files with wrong data type
     for (Pair<TsFileSequenceReader, List<ChunkMetadata>> tsFileSequenceReaderListPair :
         readerAndChunkMetadataList) {
-      List<ChunkMetadata> currentFileChunkMetadataList = tsFileSequenceReaderListPair.getRight();
-      if (lastChunkMetadata.getDataType() != currentFileChunkMetadataList.get(0).getDataType()) {
+      boolean dataTypeConsistent = true;
+      for (ChunkMetadata chunkMetadata : tsFileSequenceReaderListPair.getRight()) {
+        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
+          dataTypeConsistent = false;
+          break;
+        }
+      }
+      if (!dataTypeConsistent) {
         continue;
       }
       result.add(tsFileSequenceReaderListPair);
