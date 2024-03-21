@@ -539,7 +539,7 @@ public class ProcedureManager {
 
   // region region migration
 
-  private TConsensusGroupId idToTConsensusGroupId(final int regionId) throws ProcedureException {
+  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId) throws ProcedureException {
     if (configManager
         .getPartitionManager()
         .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
@@ -595,12 +595,6 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (NodeStatus.Unknown.equals(
-        configManager.getLoadManager().getNodeStatus(migrateRegionReq.getFromId()))) {
-      failMessage =
-          String.format(
-              "Submit RegionMigrateProcedure failed, because the sourceDataNode %s is Unknown.",
-              migrateRegionReq.getFromId());
     } else if (!configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running)
         .stream()
         .map(TDataNodeConfiguration::getLocation)
@@ -626,7 +620,7 @@ public class ProcedureManager {
   public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
     TConsensusGroupId regionGroupId;
     try {
-      regionGroupId = idToTConsensusGroupId(migrateRegionReq.getRegionId());
+      regionGroupId = regionIdToTConsensusGroupId(migrateRegionReq.getRegionId());
     } catch (ProcedureException e) {
       LOGGER.error("get region id fail", e);
       return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())

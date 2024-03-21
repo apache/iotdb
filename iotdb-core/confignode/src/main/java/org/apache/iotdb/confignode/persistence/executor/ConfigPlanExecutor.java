@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -398,6 +399,8 @@ public class ConfigPlanExecutor {
         return triggerInfo.updateTriggerLocation((UpdateTriggerLocationPlan) physicalPlan);
       case CreateSchemaTemplate:
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
+      case UpdateRegionLocation:
+        return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
       case AddRegionLocation:
         return partitionInfo.addRegionLocation((AddRegionLocationPlan) physicalPlan);
       case RemoveRegionLocation:

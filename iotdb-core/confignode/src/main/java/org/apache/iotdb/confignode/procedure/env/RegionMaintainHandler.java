@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -79,8 +80,6 @@ public class RegionMaintainHandler {
 
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
-
-  private static final long DATANODE_MAX_DISCONNECTION_MS = 10000;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 
@@ -365,7 +364,7 @@ public class RegionMaintainHandler {
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     long lastTimeConnectDataNode = System.currentTimeMillis();
-    while (System.currentTimeMillis() - lastTimeConnectDataNode < DATANODE_MAX_DISCONNECTION_MS) {
+    while (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()) != NodeStatus.Unknown) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);

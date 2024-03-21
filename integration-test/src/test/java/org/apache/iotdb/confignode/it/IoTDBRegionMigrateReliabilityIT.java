@@ -214,7 +214,7 @@ public class IoTDBRegionMigrateReliabilityIT {
       final int configNodeNum,
       final int dataNodeNum,
       KeySetView<String, Boolean> killConfigNodeKeywords,
-      KeySetView<String, Boolean> killDataNodeKeywords // TODO：此参数尚未生效
+      KeySetView<String, Boolean> killDataNodeKeywords
       ) throws Exception {
     // prepare env
     EnvFactory.getEnv()

@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
@@ -558,6 +559,14 @@ public class PartitionInfo implements SnapshotProcessor {
     return databasePartitionTables.values().stream()
         .anyMatch(
             databasePartitionTable -> databasePartitionTable.containRegionGroup(regionGroupId));
+  }
+
+  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+    TSStatus addStatus = addRegionLocation(new AddRegionLocationPlan(req.getRegionId(), req.getNewNode()));
+    if (addStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return addStatus;
+    }
+    return removeRegionLocation(new RemoveRegionLocationPlan(req.getRegionId(), req.getOldNode()));
   }
 
   /** The region has expanded to a new DataNode, now update the databasePartitionTable. */

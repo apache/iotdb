@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -218,6 +219,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CreateRegionGroups:
           plan = new CreateRegionGroupsPlan();
+          break;
+        case UpdateRegionLocation:
+          plan = new UpdateRegionLocationPlan();
           break;
         case AddRegionLocation:
           plan = new AddRegionLocationPlan();
