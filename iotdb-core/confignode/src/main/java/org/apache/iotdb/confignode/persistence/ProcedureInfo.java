@@ -58,6 +58,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 public class ProcedureInfo implements SnapshotProcessor {
@@ -198,6 +199,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     }
 
     // save all procedures
+    AtomicBoolean snapshotAllSuccess = new AtomicBoolean(true);
     procedureMap
         .values()
         .forEach(
@@ -212,10 +214,14 @@ public class ProcedureInfo implements SnapshotProcessor {
                         procedureFactory)
                     .save(procedure);
               } catch (IOException e) {
+                snapshotAllSuccess.set(false);
                 LOGGER.warn(
                     "{} id {} took snapshot fail", procedure.getClass(), procedure.getProcId(), e);
               }
             });
+    if (!snapshotAllSuccess.get()) {
+      return false;
+    }
 
     return tmpDir.renameTo(procedureSnapshotDir);
   }
