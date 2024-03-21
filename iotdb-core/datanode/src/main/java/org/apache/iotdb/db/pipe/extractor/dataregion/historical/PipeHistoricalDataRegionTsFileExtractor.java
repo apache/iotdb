@@ -412,11 +412,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   private boolean isTsFileResourceAfterProgress(TsFileResource resource) {
-    if (startIndex instanceof TimeProgressIndex) {
-      // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
-    }
-    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    return startIndex instanceof TimeProgressIndex
+        // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
+        ? ((TimeProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
+        : !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
