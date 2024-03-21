@@ -72,7 +72,8 @@ public class SubscriptionRuntimeAgent implements IService {
         .registerPeriodicalJob(
             "SubscriptionBrokerAgent::recycleUncommittedEvents()",
             brokerAgent::recycleUncommittedEvents,
-            1);
+            SubscriptionConfig.getInstance()
+                .getSubscriptionUncommittedEventRecycleIntervalSeconds());
 
     isShutdown.set(false);
   }
@@ -84,7 +85,7 @@ public class SubscriptionRuntimeAgent implements IService {
     }
     isShutdown.set(true);
 
-    // TODO: drop pipe tasks?
+    // let PipeDataNodeRuntimeAgent to drop all related pipe tasks
   }
 
   public boolean isShutdown() {

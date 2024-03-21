@@ -72,8 +72,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
 
-  private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
-
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
@@ -84,6 +82,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               "Missing consumer config, please handshake first."),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
+
+  private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
 
   @Override
   public PipeSubscribeRequestVersion getVersion() {

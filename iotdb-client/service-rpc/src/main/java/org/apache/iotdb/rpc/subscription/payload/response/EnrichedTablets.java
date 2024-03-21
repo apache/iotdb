@@ -95,7 +95,8 @@ public class EnrichedTablets {
 
   @Override
   public int hashCode() {
-    // TODO: Tablet hashCode
-    return Objects.hash(topicName, tablets, subscriptionCommitId);
+    // Considering that the Tablet class has not implemented the hashCode method, the tablets member
+    // should not be included when calculating the hashCode of EnrichedTablets.
+    return Objects.hash(topicName, subscriptionCommitId);
   }
 }

@@ -38,8 +38,9 @@ public class SerializedEnrichedEvent {
 
   private final EnrichedTablets enrichedTablets;
   private final List<EnrichedEvent> enrichedEvents;
-  private ByteBuffer byteBuffer; // serialized EnrichedTablets
   private final long creationTime;
+
+  private ByteBuffer byteBuffer; // serialized EnrichedTablets
 
   public SerializedEnrichedEvent(
       EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {

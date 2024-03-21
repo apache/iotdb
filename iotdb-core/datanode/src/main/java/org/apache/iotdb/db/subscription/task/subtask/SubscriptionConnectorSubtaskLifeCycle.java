@@ -54,7 +54,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public void register() {
+  public synchronized void register() {
     if (registeredTaskCount < 0) {
       throw new IllegalStateException("registeredTaskCount < 0");
     }
@@ -74,7 +74,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public boolean deregister(String ignored) {
+  public synchronized boolean deregister(String ignored) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
@@ -98,7 +98,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
     if (runningTaskCount < 0) {
       throw new IllegalStateException("runningTaskCount < 0");
     }
@@ -116,7 +116,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     if (runningTaskCount <= 0) {
       throw new IllegalStateException("runningTaskCount <= 0");
     }
@@ -134,7 +134,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     executor.deregister(subtask.getTaskID());
     SubscriptionAgent.broker().unbindPrefetchingQueue(subtask);
   }

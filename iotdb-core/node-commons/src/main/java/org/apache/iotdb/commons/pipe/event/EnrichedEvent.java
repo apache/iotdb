@@ -59,12 +59,6 @@ public abstract class EnrichedEvent implements Event {
 
   protected boolean shouldReportOnCommit = false;
 
-  protected String topic;
-
-  public String getTopic() {
-    return topic;
-  }
-
   protected EnrichedEvent(
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
@@ -274,10 +268,6 @@ public abstract class EnrichedEvent implements Event {
 
   public long getCommitId() {
     return commitId;
-  }
-
-  public String generateSubscriptionCommitId() {
-    return String.format("%s_%s", committerKey, commitId);
   }
 
   public void onCommitted() {
