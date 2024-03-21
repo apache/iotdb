@@ -354,7 +354,7 @@ public class IoTConsensusServerImpl {
     return snapShotIndex;
   }
 
-  public void clearOldSnapshot() {
+  private void clearOldSnapshot() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
     if (versionFiles == null || versionFiles.length == 0) {
@@ -652,21 +652,6 @@ public class IoTConsensusServerImpl {
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
-    }
-  }
-
-  private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {
-    for (Peer peer : tmpPeerList) {
-      Path tmpConfigurationPath =
-          Paths.get(
-              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
-                  .getAbsolutePath());
-      Path configurationPath =
-          Paths.get(
-              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
-                  .getAbsolutePath());
-      Files.deleteIfExists(configurationPath);
-      Files.move(tmpConfigurationPath, configurationPath);
     }
   }
 

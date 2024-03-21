@@ -316,13 +316,7 @@ public class IoTConsensus implements IConsensus {
       try {
         logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
 
-        // step 1: clean up the remote snapshot
-        doSpotClean(peer, impl);
-
-        // step 2: clean up the local snapshot
-        impl.clearOldSnapshot();
-
-        // step 3: clean up the sync log channel
+        // clean up the sync log channel
         impl.notifyPeersToRemoveSyncLogChannel(peer);
 
       } catch (ConsensusGroupModifyPeerException mpe) {
