@@ -78,7 +78,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
     if (timeStamp >= (windowList.isEmpty() ? lastTime : lastTime + slidingInterval)) {
       TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       // Align to the last time + k * slidingInterval, k is a natural number
-      window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval);
+      window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval + lastTime);
       windowList.add(window);
       return Collections.singleton(window);
     }

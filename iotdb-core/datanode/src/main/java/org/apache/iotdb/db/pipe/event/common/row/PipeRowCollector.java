@@ -56,6 +56,9 @@ public class PipeRowCollector implements RowCollector {
     final PipeRow pipeRow = (PipeRow) row;
     final MeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
 
+    if (row instanceof PipeResetTabletRow) {
+      collectTabletInsertionEvent();
+    }
     if (tablet == null) {
       final String deviceId = pipeRow.getDeviceId();
       final List<MeasurementSchema> measurementSchemaList =

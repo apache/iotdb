@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
+import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -511,8 +512,6 @@ public class AggregateProcessor implements PipeProcessor {
    */
   public void collectWindowOutputs(
       List<WindowOutput> outputs, String timeSeries, RowCollector collector) throws IOException {
-    System.out.println(outputs);
-    System.out.println(timeSeries);
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
@@ -543,48 +542,45 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     for (int columnIndex = 0; columnIndex < columnNameStringList.length; ++columnIndex) {
-      // Fill in measurements and init columns
-      valueColumnTypes[columnIndex] =
-          distinctOutputs
-              .get(0)
-              .getAggregatedResults()
-              .get(columnNameStringList[columnIndex])
-              .getLeft();
-      measurementSchemaList[columnIndex] =
-          new MeasurementSchema(columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
       bitMaps[columnIndex] = new BitMap(distinctOutputs.size());
-      switch (valueColumnTypes[columnIndex]) {
-        case BOOLEAN:
-          valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
-          break;
-        case INT32:
-          valueColumns[columnIndex] = new int[distinctOutputs.size()];
-          break;
-        case INT64:
-          valueColumns[columnIndex] = new long[distinctOutputs.size()];
-          break;
-        case FLOAT:
-          valueColumns[columnIndex] = new float[distinctOutputs.size()];
-          break;
-        case DOUBLE:
-          valueColumns[columnIndex] = new double[distinctOutputs.size()];
-          break;
-        case TEXT:
-          valueColumns[columnIndex] = new String[distinctOutputs.size()];
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              String.format(
-                  "The output tablet does not support column type %s",
-                  valueColumnTypes[columnIndex]));
-      }
-
-      // Fill in values
       for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
         Map<String, Pair<TSDataType, Object>> aggregatedResults =
             distinctOutputs.get(rowIndex).getAggregatedResults();
-
         if (aggregatedResults.containsKey(columnNameStringList[columnIndex])) {
+          if (Objects.isNull(valueColumnTypes[columnIndex])) {
+            // Fill in measurements and init columns when the first non-null value is seen
+            valueColumnTypes[columnIndex] =
+                aggregatedResults.get(columnNameStringList[columnIndex]).getLeft();
+            measurementSchemaList[columnIndex] =
+                new MeasurementSchema(
+                    columnNameStringList[columnIndex], valueColumnTypes[columnIndex]);
+            switch (valueColumnTypes[columnIndex]) {
+              case BOOLEAN:
+                valueColumns[columnIndex] = new boolean[distinctOutputs.size()];
+                break;
+              case INT32:
+                valueColumns[columnIndex] = new int[distinctOutputs.size()];
+                break;
+              case INT64:
+                valueColumns[columnIndex] = new long[distinctOutputs.size()];
+                break;
+              case FLOAT:
+                valueColumns[columnIndex] = new float[distinctOutputs.size()];
+                break;
+              case DOUBLE:
+                valueColumns[columnIndex] = new double[distinctOutputs.size()];
+                break;
+              case TEXT:
+                valueColumns[columnIndex] = new String[distinctOutputs.size()];
+                break;
+              default:
+                throw new UnsupportedOperationException(
+                    String.format(
+                        "The output tablet does not support column type %s",
+                        valueColumnTypes[columnIndex]));
+            }
+          }
+          // Fill in values
           switch (valueColumnTypes[columnIndex]) {
             case BOOLEAN:
               ((boolean[]) valueColumns[columnIndex])[rowIndex] =
@@ -622,21 +618,32 @@ public class AggregateProcessor implements PipeProcessor {
       }
     }
 
+    String outputTimeSeries =
+        outputDatabase.isEmpty() ? timeSeries : timeSeries.replaceFirst(database, outputDatabase);
     // Collect rows
     for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
       collector.collectRow(
-          new PipeRow(
-              rowIndex,
-              outputDatabase.isEmpty()
-                  ? timeSeries
-                  : timeSeries.replaceFirst(database, outputDatabase),
-              false,
-              measurementSchemaList,
-              timestampColumn,
-              valueColumnTypes,
-              valueColumns,
-              bitMaps,
-              columnNameStringList));
+          rowIndex == 0
+              ? new PipeResetTabletRow(
+                  rowIndex,
+                  outputTimeSeries,
+                  false,
+                  measurementSchemaList,
+                  timestampColumn,
+                  valueColumnTypes,
+                  valueColumns,
+                  bitMaps,
+                  columnNameStringList)
+              : new PipeRow(
+                  rowIndex,
+                  outputTimeSeries,
+                  false,
+                  measurementSchemaList,
+                  timestampColumn,
+                  valueColumnTypes,
+                  valueColumns,
+                  bitMaps,
+                  columnNameStringList));
     }
   }
 

@@ -60,12 +60,12 @@ public class WindowOutput {
   @Override
   public String toString() {
     return "WindowOutput{"
-        + "timestamp="
+        + "timestamp='"
         + timestamp
-        + "progressTime="
+        + "', progressTime='"
         + progressTime
-        + "aggregatedResults="
+        + "', aggregatedResults='"
         + aggregatedResults
-        + '}';
+        + "'}";
   }
 }
