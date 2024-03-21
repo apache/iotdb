@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.function;
 
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -58,32 +56,26 @@ public class TypeVariableConstraint {
     this.castableFrom = new HashSet<>(requireNonNull(castableFrom, "castableFrom is null"));
   }
 
-  @JsonProperty
   public String getName() {
     return name;
   }
 
-  @JsonProperty
   public boolean isComparableRequired() {
     return comparableRequired;
   }
 
-  @JsonProperty
   public boolean isOrderableRequired() {
     return orderableRequired;
   }
 
-  @JsonProperty
   public Optional<String> getVariadicBound() {
     return variadicBound;
   }
 
-  @JsonProperty
   public Set<TypeSignature> getCastableTo() {
     return castableTo;
   }
 
-  @JsonProperty
   public Set<TypeSignature> getCastableFrom() {
     return castableFrom;
   }
