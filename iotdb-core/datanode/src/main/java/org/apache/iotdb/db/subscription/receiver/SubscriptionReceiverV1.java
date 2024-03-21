@@ -405,6 +405,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
+    // unsubscribe all subscribed topics
+    Set<String> topics =
+        SubscriptionAgent.consumer()
+            .getTopicsSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    LOGGER.info(
+        "Subscription: unsubscribe all subscribed topics {} before close consumer {}",
+        topics,
+        consumerConfig);
+    unsubscribe(consumerConfig, topics);
+
     // drop consumer
     dropConsumer(consumerConfig);
 
@@ -467,10 +478,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // TODO: broker TTL if no consumer in consumer group
-    // Currently, even if there are no consumers left in a consumer group on the CN side, the
-    // corresponding ConsumerGroupMeta is still retained. Correspondingly, on the DN side, the
-    // SubscriptionBroker is also retained, but there are no SubscriptionPrefetchingQueues left
-    // within it.
   }
 
   private void subscribe(ConsumerConfig consumerConfig, Set<String> topicNames)

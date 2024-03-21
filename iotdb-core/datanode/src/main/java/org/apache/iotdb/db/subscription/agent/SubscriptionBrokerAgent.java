@@ -47,7 +47,8 @@ public class SubscriptionBrokerAgent {
     String consumerGroupId = consumerConfig.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return Collections.emptyList();
     }
     // TODO: currently we fetch messages from all topics
@@ -59,7 +60,8 @@ public class SubscriptionBrokerAgent {
     String consumerGroupId = consumerConfig.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
     broker.commit(topicNameToSubscriptionCommitIds);
@@ -71,9 +73,28 @@ public class SubscriptionBrokerAgent {
     return consumerGroupIdToSubscriptionBroker.containsKey(consumerGroupId);
   }
 
-  public void createBroker(String consumerGroupId) {
+  public synchronized void createBroker(String consumerGroupId) {
     SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+  }
+
+  /** @return true -> if drop broker success */
+  public synchronized boolean dropBroker(String consumerGroupId) {
+    SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      // do nothing
+      return true;
+    }
+    if (!broker.isEmpty()) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] is not empty when dropping",
+          consumerGroupId);
+      return false;
+    }
+    consumerGroupIdToSubscriptionBroker.remove(consumerGroupId);
+    return true;
   }
 
   /////////////////////////////// prefetching queue ///////////////////////////////

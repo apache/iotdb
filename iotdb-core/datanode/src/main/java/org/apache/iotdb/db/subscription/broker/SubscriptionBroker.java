@@ -45,6 +45,10 @@ public class SubscriptionBroker {
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
 
+  public boolean isEmpty() {
+    return topicNameToPrefetchingQueue.isEmpty();
+  }
+
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
   public List<SerializedEnrichedEvent> poll(Set<String> topicNames) {

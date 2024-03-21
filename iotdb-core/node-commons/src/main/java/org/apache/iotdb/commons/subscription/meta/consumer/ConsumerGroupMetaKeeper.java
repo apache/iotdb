@@ -89,6 +89,14 @@ public class ConsumerGroupMetaKeeper {
         : Collections.emptySet();
   }
 
+  public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        ? consumerGroupIdToConsumerGroupMetaMap
+            .get(consumerGroupId)
+            .getTopicsSubscribedByConsumer(consumerId)
+        : Collections.emptySet();
+  }
+
   public void addConsumerGroupMeta(String consumerGroupId, ConsumerGroupMeta consumerGroupMeta) {
     consumerGroupIdToConsumerGroupMetaMap.put(consumerGroupId, consumerGroupMeta);
   }

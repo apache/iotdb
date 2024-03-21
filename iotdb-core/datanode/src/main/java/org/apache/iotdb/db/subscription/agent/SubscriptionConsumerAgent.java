@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class SubscriptionConsumerAgent {
 
@@ -63,7 +65,11 @@ public class SubscriptionConsumerAgent {
       ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
     acquireWriteLock();
     try {
-      handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
+      if (consumerGroupMetaFromCoordinator.isEmpty()) {
+        handleDropConsumerGroupInternal(consumerGroupMetaFromCoordinator.getConsumerGroupId());
+      } else {
+        handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
+      }
       return null;
     } catch (Exception e) {
       final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
@@ -82,9 +88,34 @@ public class SubscriptionConsumerAgent {
   private void handleSingleConsumerGroupMetaChangesInternal(
       final ConsumerGroupMeta metaFromCoordinator) {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
-    if (!SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
+    final ConsumerGroupMeta metaInAgent =
+        consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+
+    // if consumer group meta does not exist on local agent or creation time is inconsistent with
+    // meta from coordinator
+    if (Objects.isNull(metaInAgent)
+        || metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
+      if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
+        LOGGER.warn(
+            "Subscription: broker bound to consumer group [{}] has already existed when the corresponding consumer group meta does not exist on local agent, drop it",
+            consumerGroupId);
+        if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
+          final String exceptionMessage =
+              String.format(
+                  "Failed to drop stale broker bound to consumer group [%s]", consumerGroupId);
+          LOGGER.warn(exceptionMessage);
+          throw new SubscriptionException(exceptionMessage);
+        }
+      }
+
+      consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
+      consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       SubscriptionAgent.broker().createBroker(consumerGroupId);
+      return;
     }
+
+    // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
+    // changes in its fields.
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
   }
@@ -133,6 +164,19 @@ public class SubscriptionConsumerAgent {
   }
 
   private void handleDropConsumerGroupInternal(String consumerGroupId) {
+    if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
+      if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
+        final String exceptionMessage =
+            String.format("Failed to drop broker bound to consumer group [%s]", consumerGroupId);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    } else {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not existed when the corresponding consumer group meta has already existed on local agent, ignore it",
+          consumerGroupId);
+    }
+
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
   }
 
@@ -142,6 +186,15 @@ public class SubscriptionConsumerAgent {
       final ConsumerGroupMeta consumerGroupMeta =
           consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
       return Objects.nonNull(consumerGroupMeta) && consumerGroupMeta.containsConsumer(consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.getTopicsSubscribedByConsumer(consumerGroupId, consumerId);
     } finally {
       releaseReadLock();
     }
