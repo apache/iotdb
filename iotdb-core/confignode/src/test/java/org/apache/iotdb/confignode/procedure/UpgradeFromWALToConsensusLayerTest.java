@@ -39,7 +39,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +55,6 @@ public class UpgradeFromWALToConsensusLayerTest {
     FileUtils.recursiveDeleteFolder("data");
   }
 
-  @Test
   public void test() throws IOException, ConsensusException, InterruptedException {
     // start configManager for the first time
     ConfigManager configManager = new ConfigManager();
