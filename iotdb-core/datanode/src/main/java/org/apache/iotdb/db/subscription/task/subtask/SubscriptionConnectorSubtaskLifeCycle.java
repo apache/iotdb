@@ -20,34 +20,28 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeAbstractConnectorSubtaskLifeCycle;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskLifeCycle {
+public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskLifeCycle {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionConnectorSubtaskLifeCycle.class);
-
-  private final SubscriptionSubtaskExecutor executor;
-
-  private final SubscriptionConnectorSubtask subtask;
 
   private int runningTaskCount;
   private int registeredTaskCount;
 
   public SubscriptionConnectorSubtaskLifeCycle(
-      SubscriptionSubtaskExecutor executor,
-      SubscriptionConnectorSubtask subtask,
+      PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
+      PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
       BoundedBlockingPendingQueue<Event> pendingQueue) {
-    super(pendingQueue);
-
-    this.executor = executor;
-    this.subtask = subtask;
+    super(executor, subtask, pendingQueue);
 
     runningTaskCount = 0;
     registeredTaskCount = 0;
@@ -60,7 +54,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
     }
 
     if (registeredTaskCount == 0) {
-      SubscriptionAgent.broker().bindPrefetchingQueue(subtask);
+      SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionConnectorSubtask) subtask);
       executor.register(subtask);
       runningTaskCount = 0;
     }
@@ -136,6 +130,6 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeAbstractConnector
   @Override
   public synchronized void close() {
     executor.deregister(subtask.getTaskID());
-    SubscriptionAgent.broker().unbindPrefetchingQueue(subtask);
+    SubscriptionAgent.broker().unbindPrefetchingQueue((SubscriptionConnectorSubtask) subtask);
   }
 }

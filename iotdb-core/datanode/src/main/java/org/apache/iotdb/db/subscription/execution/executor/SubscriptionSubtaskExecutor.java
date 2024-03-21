@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.subscription.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 
-public class SubscriptionSubtaskExecutor extends PipeSubtaskExecutor {
+public class SubscriptionSubtaskExecutor extends PipeConnectorSubtaskExecutor {
 
   public SubscriptionSubtaskExecutor() {
     super(

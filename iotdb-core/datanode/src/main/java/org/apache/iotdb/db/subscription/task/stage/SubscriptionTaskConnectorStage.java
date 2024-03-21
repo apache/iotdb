@@ -17,45 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.stage;
+package org.apache.iotdb.db.subscription.task.stage;
 
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtaskManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskConnectorStage extends PipeTaskStage {
+public class SubscriptionTaskConnectorStage extends PipeTaskConnectorStage {
 
-  protected final String pipeName;
-  protected final long creationTime;
-  protected final PipeParameters pipeConnectorParameters;
-  protected final int regionId;
-  protected final PipeConnectorSubtaskExecutor executor;
-
-  protected String connectorSubtaskId;
-
-  public PipeTaskConnectorStage(
+  public SubscriptionTaskConnectorStage(
       String pipeName,
       long creationTime,
       PipeParameters pipeConnectorParameters,
       int regionId,
       PipeConnectorSubtaskExecutor executor) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.pipeConnectorParameters = pipeConnectorParameters;
-    this.regionId = regionId;
-    this.executor = executor;
-
-    registerSubtask();
+    super(pipeName, creationTime, pipeConnectorParameters, regionId, executor);
   }
 
+  @Override
   protected void registerSubtask() {
     this.connectorSubtaskId =
-        PipeConnectorSubtaskManager.instance()
+        SubscriptionConnectorSubtaskManager.instance()
             .register(
                 executor,
                 pipeConnectorParameters,
@@ -69,20 +56,22 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().start(connectorSubtaskId);
+    SubscriptionConnectorSubtaskManager.instance().start(connectorSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().stop(connectorSubtaskId);
+    SubscriptionConnectorSubtaskManager.instance().stop(connectorSubtaskId);
   }
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().deregister(pipeName, regionId, connectorSubtaskId);
+    SubscriptionConnectorSubtaskManager.instance()
+        .deregister(pipeName, regionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
-    return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
+    return SubscriptionConnectorSubtaskManager.instance()
+        .getPipeConnectorPendingQueue(connectorSubtaskId);
   }
 }

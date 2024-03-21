@@ -17,28 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask.connector;
+package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.pipe.api.event.Event;
+public enum PipeType {
+  USER((byte) 0),
+  SUBSCRIPTION((byte) 1),
+  ;
 
-public abstract class PipeAbstractConnectorSubtaskLifeCycle implements AutoCloseable {
+  private final byte type;
 
-  private final BoundedBlockingPendingQueue<Event> pendingQueue;
-
-  public PipeAbstractConnectorSubtaskLifeCycle(BoundedBlockingPendingQueue<Event> pendingQueue) {
-    this.pendingQueue = pendingQueue;
+  PipeType(byte type) {
+    this.type = type;
   }
 
-  public abstract void register();
-
-  public abstract boolean deregister(String pipeNameToDeregister);
-
-  public abstract void start();
-
-  public abstract void stop();
-
-  public BoundedBlockingPendingQueue<Event> getPendingQueue() {
-    return pendingQueue;
+  public static PipeType getPipeType(String pipeName) {
+    if (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)) {
+      return SUBSCRIPTION;
+    }
+    return USER;
   }
 }

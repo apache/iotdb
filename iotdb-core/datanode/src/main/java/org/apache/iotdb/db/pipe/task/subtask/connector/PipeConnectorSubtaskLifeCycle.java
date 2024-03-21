@@ -26,12 +26,13 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskLifeCycle {
+public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskLifeCycle.class);
 
-  private final PipeConnectorSubtaskExecutor executor;
-  private final PipeConnectorSubtask subtask;
+  protected final PipeConnectorSubtaskExecutor executor;
+  protected final PipeConnectorSubtask subtask;
+  private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;
   private int registeredTaskCount;
@@ -40,10 +41,9 @@ public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskL
       PipeConnectorSubtaskExecutor executor,
       PipeConnectorSubtask subtask,
       BoundedBlockingPendingQueue<Event> pendingQueue) {
-    super(pendingQueue);
-
     this.executor = executor;
     this.subtask = subtask;
+    this.pendingQueue = pendingQueue;
 
     runningTaskCount = 0;
     registeredTaskCount = 0;
@@ -53,7 +53,10 @@ public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskL
     return subtask;
   }
 
-  @Override
+  public BoundedBlockingPendingQueue<Event> getPendingQueue() {
+    return pendingQueue;
+  }
+
   public synchronized void register() {
     if (registeredTaskCount < 0) {
       throw new IllegalStateException("registeredTaskCount < 0");
@@ -86,7 +89,6 @@ public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskL
    *     the {@link PipeConnectorSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeConnectorSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  @Override
   public synchronized boolean deregister(String pipeNameToDeregister) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
@@ -112,7 +114,6 @@ public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskL
     }
   }
 
-  @Override
   public synchronized void start() {
     if (runningTaskCount < 0) {
       throw new IllegalStateException("runningTaskCount < 0");
@@ -130,7 +131,6 @@ public class PipeConnectorSubtaskLifeCycle extends PipeAbstractConnectorSubtaskL
         registeredTaskCount);
   }
 
-  @Override
   public synchronized void stop() {
     if (runningTaskCount <= 0) {
       throw new IllegalStateException("runningTaskCount <= 0");

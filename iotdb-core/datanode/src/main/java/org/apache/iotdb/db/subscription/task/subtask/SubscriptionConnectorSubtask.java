@@ -28,7 +28,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   private final String topicName;
-
   private final String consumerGroupId;
 
   public SubscriptionConnectorSubtask(
