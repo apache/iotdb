@@ -59,6 +59,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -179,15 +180,15 @@ public class AggregateProcessor implements PipeProcessor {
                     .replace(" ", "")
                     .split(","))
             .collect(Collectors.toList());
+
+    String outputMeasurementString =
+        parameters.getStringOrDefault(
+            PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE);
     List<String> outputMeasurementNameList =
-        Arrays.stream(
-                parameters
-                    .getStringOrDefault(
-                        PROCESSOR_OUTPUT_MEASUREMENTS_KEY,
-                        PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE)
-                    .replace(" ", "")
-                    .split(","))
-            .collect(Collectors.toList());
+        outputMeasurementString.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(outputMeasurementString.replace(" ", "").split(","))
+                .collect(Collectors.toList());
 
     Map<String, String> aggregatorName2OutputNameMap = new HashMap<>();
     for (int i = 0; i < operatorNameList.size(); ++i) {
@@ -205,7 +206,7 @@ public class AggregateProcessor implements PipeProcessor {
     Set<String> declaredIntermediateResultSet = new HashSet<>();
     PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
     for (String pipePluginName :
-        agent.getSubPluginNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
+        agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
       AbstractOperatorProcessor operatorProcessor =
@@ -605,7 +606,9 @@ public class AggregateProcessor implements PipeProcessor {
       collector.collectRow(
           new PipeRow(
               rowIndex,
-              timeSeries.replaceFirst(database, outputDatabase),
+              outputDatabase.isEmpty()
+                  ? timeSeries
+                  : timeSeries.replaceFirst(database, outputDatabase),
               false,
               measurementSchemaList,
               timestampColumn,
@@ -618,9 +621,10 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void close() throws Exception {
-    if (pipeName2referenceCountMap.compute(
-            pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
-        == 0) {
+    if (Objects.nonNull(pipeName)
+        && pipeName2referenceCountMap.compute(
+                pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
+            == 0) {
       pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
       pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
     }

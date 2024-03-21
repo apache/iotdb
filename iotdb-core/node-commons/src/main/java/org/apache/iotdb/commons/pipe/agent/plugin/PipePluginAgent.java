@@ -22,11 +22,9 @@ package org.apache.iotdb.commons.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
-import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -36,7 +34,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -48,9 +45,9 @@ public abstract class PipePluginAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
 
   protected final PipePluginMetaKeeper pipePluginMetaKeeper;
-  private final PipePluginConstructor pipeExtractorConstructor;
-  private final PipePluginConstructor pipeProcessorConstructor;
-  private final PipePluginConstructor pipeConnectorConstructor;
+  private final PipeExtractorConstructor pipeExtractorConstructor;
+  private final PipeProcessorConstructor pipeProcessorConstructor;
+  private final PipeConnectorConstructor pipeConnectorConstructor;
 
   protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
@@ -59,25 +56,25 @@ public abstract class PipePluginAgent {
     pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipePluginConstructor createPipeExtractorConstructor(
+  protected abstract PipeExtractorConstructor createPipeExtractorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeProcessorConstructor(
+  protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeConnectorConstructor(
+  protected abstract PipeConnectorConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
-    return (PipeExtractor) pipeExtractorConstructor.reflectPlugin(extractorParameters);
+    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
   public final PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return (PipeProcessor) pipeProcessorConstructor.reflectPlugin(processorParameters);
+    return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
   public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return (PipeConnector) pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
   }
 
   public void validate(
@@ -139,41 +136,27 @@ public abstract class PipePluginAgent {
   }
 
   /**
-   * Get the registered subClasses names of the given parent {@link PipePlugin}. This method is
-   * usually used to dynamically pick one or more {@link PipePlugin} as the "plugin" of the parent
-   * class.
+   * Get the registered subClasses names of the given parent {@link PipeProcessor}. This method is
+   * usually used to dynamically pick one or more {@link PipeProcessor} as the "plugin" of the
+   * parent class.
    *
-   * @param parentClass the parent {@link PipePlugin} to be checked
+   * @param parentClass the parent {@link PipeProcessor} to be checked
    * @return All the pluginNames of the plugin's subClass
    * @throws PipeException if any exception occurs
    */
-  public final List<String> getSubPluginNamesWithSpecifiedParent(
-      Class<? extends PipePlugin> parentClass) throws PipeException {
+  public final List<String> getSubProcessorNamesWithSpecifiedParent(
+      Class<? extends PipeProcessor> parentClass) throws PipeException {
     return Arrays.stream(pipePluginMetaKeeper.getAllPipePluginMeta())
+        .map(pipePluginMeta -> pipePluginMeta.getPluginName().toLowerCase())
         .filter(
-            pipePluginMeta -> {
-              try {
-                return ((PipePlugin)
-                            pipePluginMetaKeeper
-                                .getPluginClass(pipePluginMeta.getPluginName())
-                                .getDeclaredConstructor()
-                                .newInstance())
-                        .getClass()
-                        .getSuperclass()
-                    == parentClass;
-              } catch (InstantiationException
-                  | InvocationTargetException
-                  | NoSuchMethodException
-                  | IllegalAccessException e) {
-                String errorMessage =
-                    String.format(
-                        "Failed to reflect PipePlugin %s(%s) instance, because %s",
-                        pipePluginMeta.getPluginName(), pipePluginMeta.getClassName(), e);
-                LOGGER.warn(errorMessage, e);
-                throw new PipeException(errorMessage);
+            pluginName -> {
+              try (PipeProcessor processor =
+                  (PipeProcessor) pipeProcessorConstructor.reflectPluginByKey(pluginName)) {
+                return processor.getClass().getSuperclass() == parentClass;
+              } catch (Exception e) {
+                return false;
               }
             })
-        .map(PipePluginMeta::getPluginName)
         .collect(Collectors.toList());
   }
 

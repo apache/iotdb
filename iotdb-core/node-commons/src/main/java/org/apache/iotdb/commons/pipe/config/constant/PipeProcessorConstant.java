@@ -30,6 +30,7 @@ public class PipeProcessorConstant {
   public static final boolean PROCESSOR_DOWN_SAMPLING_SPLIT_FILE_DEFAULT_VALUE = false;
   public static final String PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY =
       "processor.down-sampling.memory-limit-in-bytes";
+  public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
 
   public static final String PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY =
       "processor.output.max-delay-seconds";
@@ -42,8 +43,7 @@ public class PipeProcessorConstant {
       "processor.output.min-report-interval-seconds";
   public static final long PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE = 30;
   public static final String PROCESSOR_OPERATORS_KEY = "processor.operators";
-  public static final String PROCESSOR_OPERATORS_DEFAULT_VALUE =
-      "avg, peak, rms, var, skew, kurt, ff, cf, pf, mf";
+  public static final String PROCESSOR_OPERATORS_DEFAULT_VALUE = "";
   public static final String PROCESSOR_WINDOWING_STRATEGY_KEY = "processor.windowing-strategy";
   public static final String PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE = "tumbling";
   public static final String PROCESSOR_SLIDING_BOUNDARY_TIME_KEY =
@@ -51,8 +51,6 @@ public class PipeProcessorConstant {
   public static final long PROCESSOR_SLIDING_BOUNDARY_TIME_DEFAULT_VALUE = 0;
   public static final String PROCESSOR_SLIDING_SECONDS_KEY = "processor.sliding.seconds";
   public static final long PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE = 120;
-
-  public static final long PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE = 16 * MB;
 
   public static final String PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY =
       "processor.tumbling-time.interval-seconds";
