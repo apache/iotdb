@@ -31,11 +31,9 @@ class TemplateNode(object):
     def get_children(self):
         return None
 
-    def add_child(self, node):
-        ...
+    def add_child(self, node): ...
 
-    def delete_child(self, node):
-        ...
+    def delete_child(self, node): ...
 
     def is_measurement(self):
         return False
@@ -43,5 +41,4 @@ class TemplateNode(object):
     def is_share_time(self):
         return False
 
-    def serialize(self, *args, **kwargs):
-        ...
+    def serialize(self, *args, **kwargs): ...
