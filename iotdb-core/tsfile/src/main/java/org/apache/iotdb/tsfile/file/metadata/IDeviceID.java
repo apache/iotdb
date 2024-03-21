@@ -17,19 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.memtable;
+package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.Accountable;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /** Device id interface. */
-public interface IDeviceID {
+public interface IDeviceID extends Comparable<IDeviceID>, Accountable {
 
-  /**
-   * To string format.
-   *
-   * @return string format device id
-   */
-  String toStringID();
+  int serialize(ByteBuffer byteBuffer);
 
-  void serialize(ByteBuffer byteBuffer);
+  int serialize(OutputStream outputStream) throws IOException;
+
+  byte[] getBytes();
+
+  boolean isEmpty();
+
+  static IDeviceID deserializeFrom(ByteBuffer byteBuffer) {
+    // TODO
+    return new PlainDeviceID(ReadWriteIOUtils.readVarIntString(byteBuffer));
+  }
+
+  static IDeviceID deserializeFrom(InputStream inputStream) throws IOException {
+    // TODO
+    return new PlainDeviceID(ReadWriteIOUtils.readVarIntString(inputStream));
+  }
 }

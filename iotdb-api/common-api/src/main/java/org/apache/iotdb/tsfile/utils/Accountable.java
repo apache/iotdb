@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,30 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion;
+package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-
-public class PartitionLastFlushTime implements ILastFlushTime {
-
-  private long partitionLastFlushTime;
-
-  public PartitionLastFlushTime(long initPartitionLastFlushTime) {
-    this.partitionLastFlushTime = initPartitionLastFlushTime;
-  }
-
-  @Override
-  public long getLastFlushTime(IDeviceID device) {
-    return partitionLastFlushTime;
-  }
-
-  @Override
-  public void updateLastFlushTime(IDeviceID device, long time) {
-    partitionLastFlushTime = Math.max(partitionLastFlushTime, time);
-  }
-
-  @Override
-  public ILastFlushTime degradeLastFlushTime() {
-    return this;
-  }
+public interface Accountable {
+  /** Return the memory usage of this object in bytes. Negative values are illegal. */
+  long ramBytesUsed();
 }

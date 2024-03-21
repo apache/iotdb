@@ -46,6 +46,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -90,8 +92,8 @@ public class WALRecoverManagerTest {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DATA_REGION_ID = "1";
-  private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
-  private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
+  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
   private static final String FILE_WITH_WAL_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private static final String FILE_WITHOUT_WAL_NAME =
@@ -187,7 +189,10 @@ public class WALRecoverManagerTest {
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
     WALEntry walEntry =
-        new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME, 4L), true);
+        new WALInfoEntry(
+            targetMemTable.getMemTableId(),
+            getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L),
+            true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
@@ -246,7 +251,7 @@ public class WALRecoverManagerTest {
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
-    InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME, 4L);
+    InsertRowNode insertRowNode = getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L);
     targetMemTable.insert(insertRowNode);
 
     WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowNode, true);

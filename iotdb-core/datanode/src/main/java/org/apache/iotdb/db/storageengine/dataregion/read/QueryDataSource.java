@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -108,7 +109,9 @@ public class QueryDataSource {
     int index = 0;
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
-          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
+          .computeIfAbsent(
+              resource.getOrderTime(new PlainDeviceID(deviceId), ascending),
+              key -> new ArrayList<>())
           .add(index++);
     }
 

@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -72,7 +74,7 @@ public class TsFileSequenceReaderTest {
   public void testReadTsFileSequentially() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-    Map<String, List<Pair<Long, Long>>> deviceChunkGroupMetadataOffsets = new HashMap<>();
+    Map<IDeviceID, List<Pair<Long, Long>>> deviceChunkGroupMetadataOffsets = new HashMap<>();
 
     long startOffset = reader.position();
     byte marker;
@@ -116,7 +118,8 @@ public class TsFileSequenceReaderTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
 
     // test for exist device "d2"
-    Map<String, List<ChunkMetadata>> chunkMetadataMap = reader.readChunkMetadataInDevice("d2");
+    Map<String, List<ChunkMetadata>> chunkMetadataMap =
+        reader.readChunkMetadataInDevice(new PlainDeviceID("d2"));
     int[] res = new int[] {20, 75, 100, 13};
 
     Assert.assertEquals(4, chunkMetadataMap.size());
@@ -131,7 +134,7 @@ public class TsFileSequenceReaderTest {
     }
 
     // test for non-exist device "d3"
-    Assert.assertTrue(reader.readChunkMetadataInDevice("d3").isEmpty());
+    Assert.assertTrue(reader.readChunkMetadataInDevice(new PlainDeviceID("d3")).isEmpty());
     reader.close();
   }
 

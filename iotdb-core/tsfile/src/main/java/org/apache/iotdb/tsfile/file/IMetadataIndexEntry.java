@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,30 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion;
+package org.apache.iotdb.tsfile.file;
 
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import java.io.IOException;
+import java.io.OutputStream;
 
-public class PartitionLastFlushTime implements ILastFlushTime {
+public interface IMetadataIndexEntry {
 
-  private long partitionLastFlushTime;
+  long getOffset();
 
-  public PartitionLastFlushTime(long initPartitionLastFlushTime) {
-    this.partitionLastFlushTime = initPartitionLastFlushTime;
-  }
+  void setOffset(long offset);
 
-  @Override
-  public long getLastFlushTime(IDeviceID device) {
-    return partitionLastFlushTime;
-  }
+  int serializeTo(OutputStream outputStream) throws IOException;
 
-  @Override
-  public void updateLastFlushTime(IDeviceID device, long time) {
-    partitionLastFlushTime = Math.max(partitionLastFlushTime, time);
-  }
+  Comparable getCompareKey();
 
-  @Override
-  public ILastFlushTime degradeLastFlushTime() {
-    return this;
-  }
+  boolean isDeviceLevel();
 }

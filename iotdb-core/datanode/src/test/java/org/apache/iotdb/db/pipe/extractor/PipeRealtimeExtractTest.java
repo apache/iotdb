@@ -39,6 +39,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -268,7 +269,8 @@ public class PipeRealtimeExtractTest {
             }
 
             TsFileResource resource = new TsFileResource(tsFile);
-            resource.updateStartTime(String.join(TsFileConstant.PATH_SEPARATOR, device), 0);
+            resource.updateStartTime(
+                new PlainDeviceID(String.join(TsFileConstant.PATH_SEPARATOR, device)), 0);
 
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(

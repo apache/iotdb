@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 import java.util.HashMap;
 import java.util.Map;
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGener
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -85,8 +86,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 100);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 100);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -103,8 +104,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 110);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 110);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -180,8 +181,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 3);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -198,8 +199,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 100);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 100);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -216,8 +217,8 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 110);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 110);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
@@ -287,8 +288,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime("d1", 1);
-    tsFileResource.updateEndTime("d1", 3);
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
     tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);

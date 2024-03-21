@@ -28,10 +28,11 @@ import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -77,6 +78,8 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
+
+  private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -148,6 +151,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   }
 
   public IDeviceID getDeviceID() {
+    if (deviceID == null) {
+      deviceID = deviceIDFactory.getDeviceID(devicePath);
+    }
     return deviceID;
   }
 
