@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinke
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -39,26 +41,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
 
   private final String brokerId; // consumer group id
-
   private final String topicName;
-
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   private final SortedMap<String, SerializedEnrichedEvent> uncommittedEvents;
-  private final ReentrantReadWriteLock uncommittedEventsLock;
   private final ConcurrentIterableLinkedQueue<SerializedEnrichedEvent> prefetchingQueue;
 
-  // TODO: Consider the stale subscription commit ID; after restarting, the subscription commit ID
-  // from before the restart should not be accepted.
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   public SubscriptionPrefetchingQueue(
@@ -66,8 +62,7 @@ public class SubscriptionPrefetchingQueue {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
-    this.uncommittedEvents = new TreeMap<>();
-    this.uncommittedEventsLock = new ReentrantReadWriteLock(true);
+    this.uncommittedEvents = new ConcurrentSkipListMap<>();
     this.prefetchingQueue = new ConcurrentIterableLinkedQueue<>();
   }
 
@@ -79,16 +74,32 @@ public class SubscriptionPrefetchingQueue {
       // without serializeOnce here
     }
 
+    long size = prefetchingQueue.size();
+    long count = 0;
     SerializedEnrichedEvent event;
     try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
-      if (Objects.nonNull(
+      while (Objects.nonNull(
           event =
               iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
+        if (count >= size) {
+          break;
+        }
+        count++;
         if (!event.serialize()) {
-          return null;
+          // The SerializedEnrichedEvent returned by poll always has a non-null byteBuffer.
+          continue;
         }
         prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
+        if (event.isCommitted()) {
+          continue;
+        }
+        // Re-enqueue the uncommitted event at the end of the queue.
+        prefetchingQueue.add(event);
+        if (!event.pollable()) {
+          continue;
+        }
+        event.recordLastPolledTimestamp();
         return event;
       }
     }
@@ -97,15 +108,6 @@ public class SubscriptionPrefetchingQueue {
   }
 
   public void commit(List<String> subscriptionCommitIds) {
-    uncommittedEventsLock.writeLock().lock();
-    try {
-      commitInternal(subscriptionCommitIds);
-    } finally {
-      uncommittedEventsLock.writeLock().unlock();
-    }
-  }
-
-  private void commitInternal(List<String> subscriptionCommitIds) {
     for (String subscriptionCommitId : subscriptionCommitIds) {
       SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
       if (Objects.isNull(event)) {
@@ -115,6 +117,7 @@ public class SubscriptionPrefetchingQueue {
         continue;
       }
       event.decreaseReferenceCount();
+      event.recordCommittedTimestamp();
       uncommittedEvents.remove(subscriptionCommitId);
     }
   }
@@ -177,57 +180,47 @@ public class SubscriptionPrefetchingQueue {
       SerializedEnrichedEvent enrichedEvent =
           new SerializedEnrichedEvent(
               new EnrichedTablets(topicName, tablets, subscriptionCommitId), enrichedEvents);
-
+      uncommittedEvents.put(subscriptionCommitId, enrichedEvent); // before enqueuing the event
       prefetchingQueue.add(enrichedEvent);
-
-      uncommittedEventsLock.writeLock().lock();
-      uncommittedEvents.put(subscriptionCommitId, enrichedEvent);
-      uncommittedEventsLock.writeLock().unlock();
     }
   }
 
   private void serializeOnce() {
+    long size = prefetchingQueue.size();
+    long count = 0;
     SerializedEnrichedEvent event;
     try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
         prefetchingQueue.iterateFromEarliest()) {
-      // TODO: memory control
+      // TODO: memory control & avoid unnecessary iteration
       while (Objects.nonNull(
           event =
               iter.next(
                   SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs()))) {
+        if (count >= size) {
+          break;
+        }
+        count++;
         event.serialize();
       }
     }
   }
 
-  /////////////////////////////// recycle ///////////////////////////////
-
-  public void recycleUncommittedEvents() {
-    uncommittedEventsLock.writeLock().lock();
-    try {
-      recycleUncommittedEventsInternal();
-    } finally {
-      uncommittedEventsLock.writeLock().unlock();
-    }
-  }
-
-  private void recycleUncommittedEventsInternal() {
-    int count = 0;
-    while (true) {
-      if (count >= SubscriptionConfig.getInstance().getSubscriptionMaxEventsPerRecycling()) {
-        break;
-      }
-      if (uncommittedEvents.isEmpty()) {
-        break;
-      }
-      String subscriptionCommitId = uncommittedEvents.firstKey();
-      SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
-      if (Objects.nonNull(event) && event.maybeExpired()) {
-        LOGGER.info(
-            "Subscription: recycle the event with subscriptionCommitId {}", subscriptionCommitId);
-        prefetchingQueue.add(event);
-        uncommittedEvents.remove(subscriptionCommitId);
+  public void clearCommittedEvents() {
+    long size = prefetchingQueue.size();
+    long count = 0;
+    SerializedEnrichedEvent event;
+    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
+        prefetchingQueue.iterateFromEarliest()) {
+      while (Objects.nonNull(
+          event =
+              iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
+        if (count >= size) {
+          break;
+        }
         count++;
+        if (event.isCommitted()) {
+          prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
+        }
       }
     }
   }
@@ -248,6 +241,17 @@ public class SubscriptionPrefetchingQueue {
   }
 
   private String generateSubscriptionCommitId() {
-    return topicName + "_" + brokerId + "#" + subscriptionCommitIdGenerator.getAndIncrement();
+    // subscription commit id format: {DataNodeId}#{RebootTimes}#{TopicName}_{BrokerId}#{Id}
+    // Recording data node ID and reboot times to address potential stale commit IDs caused by
+    // leader transfers or restarts.
+    return IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+        + "#"
+        + PipeAgent.runtime().getRebootTimes()
+        + "#"
+        + topicName
+        + "_"
+        + brokerId
+        + "#"
+        + subscriptionCommitIdGenerator.getAndIncrement();
   }
 }

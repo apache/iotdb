@@ -51,16 +51,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
   }
 
-  public int getSubscriptionMaxEventsPerRecycling() {
-    return COMMON_CONFIG.getSubscriptionMaxEventsPerRecycling();
+  public int getSubscriptionClearCommittedEventIntervalSeconds() {
+    return COMMON_CONFIG.getSubscriptionClearCommittedEventIntervalSeconds();
   }
 
-  public int getSubscriptionUncommittedEventRecycleIntervalSeconds() {
-    return COMMON_CONFIG.getSubscriptionUncommittedEventRecycleIntervalSeconds();
-  }
-
-  public int getSubscriptionUncommittedEventExpireSeconds() {
-    return COMMON_CONFIG.getSubscriptionUncommittedEventExpireSeconds();
+  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
+    return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalSeconds();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -77,13 +73,12 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
-    LOGGER.info("SubscriptionMaxEventsPerRecycling: {}", getSubscriptionMaxEventsPerRecycling());
     LOGGER.info(
-        "SubscriptionUncommittedEventRecycleIntervalSeconds: {}",
-        getSubscriptionUncommittedEventRecycleIntervalSeconds());
+        "SubscriptionClearCommittedEventIntervalSeconds: {}",
+        getSubscriptionClearCommittedEventIntervalSeconds());
     LOGGER.info(
-        "SubscriptionUncommittedEventExpireSeconds: {}",
-        getSubscriptionUncommittedEventExpireSeconds());
+        "SubscriptionRecycleUncommittedEventIntervalSeconds: {}",
+        getSubscriptionRecycleUncommittedEventIntervalSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

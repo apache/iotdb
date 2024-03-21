@@ -418,11 +418,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         SubscriptionAgent.consumer()
             .getTopicsSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-    LOGGER.info(
-        "Subscription: unsubscribe all subscribed topics {} before close consumer {}",
-        topics,
-        consumerConfig);
-    unsubscribe(consumerConfig, topics);
+    if (!topics.isEmpty()) {
+      LOGGER.info(
+          "Subscription: unsubscribe all subscribed topics {} before close consumer {}",
+          topics,
+          consumerConfig);
+      unsubscribe(consumerConfig, topics);
+    }
 
     // drop consumer
     dropConsumer(consumerConfig);

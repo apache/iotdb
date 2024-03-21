@@ -36,9 +36,13 @@ public class SerializedEnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SerializedEnrichedEvent.class);
 
+  private static final long INVALID_TIMESTAMP = -1;
+
   private final EnrichedTablets enrichedTablets;
   private final List<EnrichedEvent> enrichedEvents;
-  private final long creationTime;
+
+  private long lastPolledTimestamp;
+  private long committedTimestamp;
 
   private ByteBuffer byteBuffer; // serialized EnrichedTablets
 
@@ -46,7 +50,8 @@ public class SerializedEnrichedEvent {
       EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {
     this.enrichedTablets = enrichedTablets;
     this.enrichedEvents = enrichedEvents;
-    this.creationTime = System.currentTimeMillis();
+    this.lastPolledTimestamp = INVALID_TIMESTAMP;
+    this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
   /** @return true -> byte buffer is not null */
@@ -80,8 +85,25 @@ public class SerializedEnrichedEvent {
     }
   }
 
-  public boolean maybeExpired() {
-    return System.currentTimeMillis() - creationTime
-        > SubscriptionConfig.getInstance().getSubscriptionUncommittedEventExpireSeconds();
+  public void recordLastPolledTimestamp() {
+    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
+  }
+
+  public void recordCommittedTimestamp() {
+    committedTimestamp = System.currentTimeMillis();
+  }
+
+  public boolean isCommitted() {
+    return committedTimestamp != INVALID_TIMESTAMP;
+  }
+
+  public boolean pollable() {
+    if (lastPolledTimestamp == INVALID_TIMESTAMP) {
+      return true;
+    }
+    // Recycle events that may not be able to be committed, i.e., those that have been polled but
+    // not committed within a certain period of time.
+    return System.currentTimeMillis() - lastPolledTimestamp
+        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalSeconds();
   }
 }

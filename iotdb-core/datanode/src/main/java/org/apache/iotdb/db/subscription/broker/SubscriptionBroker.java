@@ -111,11 +111,9 @@ public class SubscriptionBroker {
     prefetchingQueue.executePrefetch();
   }
 
-  /////////////////////////////// recycle ///////////////////////////////
-
-  public void recycleUncommittedEvents() {
+  public void clearCommittedEvents() {
     topicNameToPrefetchingQueue
         .values()
-        .forEach(SubscriptionPrefetchingQueue::recycleUncommittedEvents);
+        .forEach(SubscriptionPrefetchingQueue::clearCommittedEvents);
   }
 }

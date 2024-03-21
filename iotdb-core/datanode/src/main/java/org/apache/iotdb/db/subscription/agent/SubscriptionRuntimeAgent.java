@@ -70,10 +70,9 @@ public class SubscriptionRuntimeAgent implements IService {
 
     PipeAgent.runtime()
         .registerPeriodicalJob(
-            "SubscriptionBrokerAgent::recycleUncommittedEvents()",
-            brokerAgent::recycleUncommittedEvents,
-            SubscriptionConfig.getInstance()
-                .getSubscriptionUncommittedEventRecycleIntervalSeconds());
+            "SubscriptionBrokerAgent::clearCommittedEvents()",
+            brokerAgent::clearCommittedEvents,
+            SubscriptionConfig.getInstance().getSubscriptionClearCommittedEventIntervalSeconds());
 
     isShutdown.set(false);
   }

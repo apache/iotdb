@@ -173,6 +173,15 @@ public class ConcurrentIterableLinkedQueue<E> {
     }
   }
 
+  public long size() {
+    lock.readLock().lock();
+    try {
+      return tailIndex - firstIndex;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public long getFirstIndex() {
     lock.readLock().lock();
     try {

@@ -231,9 +231,8 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionMaxEventsPerRecycling = 8;
-  private int subscriptionUncommittedEventRecycleIntervalSeconds = 300;
-  private int subscriptionUncommittedEventExpireSeconds = 240;
+  private int subscriptionClearCommittedEventIntervalSeconds = 30;
+  private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -988,31 +987,24 @@ public class CommonConfig {
     this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
   }
 
-  public int getSubscriptionMaxEventsPerRecycling() {
-    return subscriptionMaxEventsPerRecycling;
+  public int getSubscriptionClearCommittedEventIntervalSeconds() {
+    return subscriptionClearCommittedEventIntervalSeconds;
   }
 
-  public void setSubscriptionMaxEventsPerRecycling(int subscriptionMaxEventsPerRecycling) {
-    this.subscriptionMaxEventsPerRecycling = subscriptionMaxEventsPerRecycling;
+  public void setSubscriptionClearCommittedEventIntervalSeconds(
+      int subscriptionClearCommittedEventIntervalSeconds) {
+    this.subscriptionClearCommittedEventIntervalSeconds =
+        subscriptionClearCommittedEventIntervalSeconds;
   }
 
-  public int getSubscriptionUncommittedEventRecycleIntervalSeconds() {
-    return subscriptionUncommittedEventRecycleIntervalSeconds;
+  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
+    return subscriptionRecycleUncommittedEventIntervalSeconds;
   }
 
-  public void setSubscriptionUncommittedEventRecycleIntervalSeconds(
-      int subscriptionUncommittedEventRecycleIntervalSeconds) {
-    this.subscriptionUncommittedEventRecycleIntervalSeconds =
-        subscriptionUncommittedEventRecycleIntervalSeconds;
-  }
-
-  public int getSubscriptionUncommittedEventExpireSeconds() {
-    return subscriptionUncommittedEventExpireSeconds;
-  }
-
-  public void setSubscriptionUncommittedEventExpireSeconds(
-      int subscriptionUncommittedEventExpireSeconds) {
-    this.subscriptionUncommittedEventExpireSeconds = subscriptionUncommittedEventExpireSeconds;
+  public void setSubscriptionRecycleUncommittedEventIntervalSeconds(
+      int subscriptionRecycleUncommittedEventIntervalSeconds) {
+    this.subscriptionRecycleUncommittedEventIntervalSeconds =
+        subscriptionRecycleUncommittedEventIntervalSeconds;
   }
 
   public String getSchemaEngineMode() {

@@ -542,21 +542,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_launch_retry_interval_ms",
                 String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
-    config.setSubscriptionMaxEventsPerRecycling(
+    config.setSubscriptionClearCommittedEventIntervalSeconds(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_max_events_per_recycling",
-                String.valueOf(config.getSubscriptionMaxEventsPerRecycling()))));
-    config.setSubscriptionUncommittedEventRecycleIntervalSeconds(
+                "subscription_clear_committed_event_interval_seconds",
+                String.valueOf(config.getSubscriptionClearCommittedEventIntervalSeconds()))));
+    config.setSubscriptionRecycleUncommittedEventIntervalSeconds(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_uncommitted_event_recycle_interval_seconds",
-                String.valueOf(config.getSubscriptionUncommittedEventRecycleIntervalSeconds()))));
-    config.setSubscriptionUncommittedEventExpireSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_uncommitted_event_expire_seconds",
-                String.valueOf(config.getSubscriptionUncommittedEventExpireSeconds()))));
+                "subscription_recycle_uncommitted_event_interval_seconds",
+                String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalSeconds()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
