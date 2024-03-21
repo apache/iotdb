@@ -237,7 +237,6 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
-    //    config.checkMultiDirStrategyClassName();
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     IoTDBStartCheck.getInstance().checkOldSystemConfig();
