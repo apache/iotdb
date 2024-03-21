@@ -31,7 +31,7 @@ public class PipeMemoryWeighUtil {
   public static long memoryOfIDeviceId2Bool(Map<IDeviceID, Boolean> map) {
     long usageInBytes = 0L;
     for (Map.Entry<IDeviceID, Boolean> entry : map.entrySet()) {
-      usageInBytes = usageInBytes + entry.getKey().getRetainedSizeInBytes() + 1L;
+      usageInBytes = usageInBytes + entry.getKey().ramBytesUsed() + 1L;
     }
     return usageInBytes + 16L; // add the overhead of map
   }
@@ -49,7 +49,7 @@ public class PipeMemoryWeighUtil {
   public static long memoryOfIDeviceID2StrList(Map<IDeviceID, List<String>> map) {
     long usageInBytes = 0L;
     for (Map.Entry<IDeviceID, List<String>> entry : map.entrySet()) {
-      usageInBytes += entry.getKey().getRetainedSizeInBytes();
+      usageInBytes += entry.getKey().ramBytesUsed();
       for (String str : entry.getValue()) {
         usageInBytes += MemUtils.getStringMem(str);
       }

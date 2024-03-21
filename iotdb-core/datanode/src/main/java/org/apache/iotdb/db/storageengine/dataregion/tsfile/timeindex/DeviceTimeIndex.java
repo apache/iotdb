@@ -215,26 +215,10 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public long calculateRamSize() {
     return INSTANCE_SIZE
-        + calculateDeviceToIndexMapSize(RamUsageEstimator.shallowSizeOfInstance(Integer.class))
+        + RamUsageEstimator.sizeOfMap(
+            deviceToIndex, RamUsageEstimator.shallowSizeOfInstance(Integer.class))
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
-  }
-
-  private long calculateDeviceToIndexMapSize(long defSize) {
-    if (deviceToIndex == null) {
-      return 0;
-    }
-    long size = RamUsageEstimator.shallowSizeOf(deviceToIndex);
-    long sizeOfEntry = -1;
-    for (Map.Entry<IDeviceID, ?> entry : deviceToIndex.entrySet()) {
-      if (sizeOfEntry == -1) {
-        sizeOfEntry = RamUsageEstimator.shallowSizeOf(entry);
-      }
-      size += sizeOfEntry;
-      size += entry.getKey().getRetainedSizeInBytes();
-      size += RamUsageEstimator.sizeOfObject(entry.getValue(), defSize);
-    }
-    return RamUsageEstimator.alignObjectSize(size);
   }
 
   private int getDeviceIndex(IDeviceID deviceId) {

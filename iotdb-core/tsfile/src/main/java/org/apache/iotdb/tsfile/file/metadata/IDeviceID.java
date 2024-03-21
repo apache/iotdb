@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.Accountable;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -27,15 +28,13 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 /** Device id interface. */
-public interface IDeviceID extends Comparable<IDeviceID> {
+public interface IDeviceID extends Comparable<IDeviceID>, Accountable {
 
   int serialize(ByteBuffer byteBuffer);
 
   int serialize(OutputStream outputStream) throws IOException;
 
   byte[] getBytes();
-
-  long getRetainedSizeInBytes();
 
   boolean isEmpty();
 

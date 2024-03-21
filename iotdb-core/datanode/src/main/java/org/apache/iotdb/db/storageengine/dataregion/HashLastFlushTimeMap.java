@@ -68,7 +68,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
             timePartitionId, id -> new DeviceLastFlushTime());
     long lastFlushTime = flushTimeMapForPartition.getLastFlushTime(deviceId);
     if (lastFlushTime == Long.MIN_VALUE) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.getRetainedSizeInBytes();
+      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.ramBytesUsed();
       memCostForEachPartition.compute(
           timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
     }
@@ -86,7 +86,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     long memIncr = 0;
     for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
-        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().getRetainedSizeInBytes();
+        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
       }
       flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
     }

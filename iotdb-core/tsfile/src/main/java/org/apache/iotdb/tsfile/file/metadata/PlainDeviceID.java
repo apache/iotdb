@@ -87,7 +87,7 @@ public class PlainDeviceID implements IDeviceID {
   }
 
   @Override
-  public long getRetainedSizeInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }
 
