@@ -620,32 +620,89 @@ public class AggregateProcessor implements PipeProcessor {
       }
     }
 
+    // Filter null outputs
+    final Integer[] originColumnIndex2FilteredColumnIndexMapperList =
+        new Integer[columnNameStringList.length];
+    int filteredCount = 0;
+    for (int i = 0; i < columnNameStringList.length; ++i) {
+      if (!bitMaps[i].isAllMarked()) {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = ++filteredCount;
+      }
+    }
+
     String outputTimeSeries =
         outputDatabase.isEmpty() ? timeSeries : timeSeries.replaceFirst(database, outputDatabase);
-    // Collect rows
-    for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
-      collector.collectRow(
-          rowIndex == 0
-              ? new PipeResetTabletRow(
-                  rowIndex,
-                  outputTimeSeries,
-                  false,
-                  measurementSchemaList,
-                  timestampColumn,
-                  valueColumnTypes,
-                  valueColumns,
-                  bitMaps,
-                  columnNameStringList)
-              : new PipeRow(
-                  rowIndex,
-                  outputTimeSeries,
-                  false,
-                  measurementSchemaList,
-                  timestampColumn,
-                  valueColumnTypes,
-                  valueColumns,
-                  bitMaps,
-                  columnNameStringList));
+
+    if (filteredCount == columnNameStringList.length) {
+      // No filter, collect rows
+      for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
+        collector.collectRow(
+            rowIndex == 0
+                ? new PipeResetTabletRow(
+                    rowIndex,
+                    outputTimeSeries,
+                    false,
+                    measurementSchemaList,
+                    timestampColumn,
+                    valueColumnTypes,
+                    valueColumns,
+                    bitMaps,
+                    columnNameStringList)
+                : new PipeRow(
+                    rowIndex,
+                    outputTimeSeries,
+                    false,
+                    measurementSchemaList,
+                    timestampColumn,
+                    valueColumnTypes,
+                    valueColumns,
+                    bitMaps,
+                    columnNameStringList));
+      }
+    } else {
+      // Recompute the column arrays
+      final MeasurementSchema[] filteredMeasurementSchemaList =
+          new MeasurementSchema[filteredCount];
+      final String[] filteredColumnNameStringList = new String[filteredCount];
+      final TSDataType[] filteredValueColumnTypes = new TSDataType[filteredCount];
+      final Object[] filteredValueColumns = new Object[filteredCount];
+      final BitMap[] filteredBitMaps = new BitMap[filteredCount];
+
+      for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
+        if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
+          final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
+          filteredMeasurementSchemaList[filteredColumnIndex] = measurementSchemaList[i];
+          filteredColumnNameStringList[filteredColumnIndex] = columnNameStringList[i];
+          filteredValueColumnTypes[filteredColumnIndex] = valueColumnTypes[i];
+          filteredBitMaps[filteredColumnIndex] = bitMaps[i];
+          filteredValueColumns[filteredColumnIndex] = valueColumns[i];
+        }
+      }
+      // Collect rows
+      for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
+        collector.collectRow(
+            rowIndex == 0
+                ? new PipeResetTabletRow(
+                    rowIndex,
+                    outputTimeSeries,
+                    false,
+                    filteredMeasurementSchemaList,
+                    timestampColumn,
+                    filteredValueColumnTypes,
+                    filteredValueColumns,
+                    filteredBitMaps,
+                    filteredColumnNameStringList)
+                : new PipeRow(
+                    rowIndex,
+                    outputTimeSeries,
+                    false,
+                    filteredMeasurementSchemaList,
+                    timestampColumn,
+                    filteredValueColumnTypes,
+                    filteredValueColumns,
+                    filteredBitMaps,
+                    filteredColumnNameStringList));
+      }
     }
   }
 
