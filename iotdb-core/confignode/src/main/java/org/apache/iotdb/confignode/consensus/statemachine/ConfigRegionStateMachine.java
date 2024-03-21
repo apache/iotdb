@@ -247,6 +247,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     // Start leader scheduling services
     configManager.getProcedureManager().startExecutor();
+    threadPool.submit(
+        () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
     configManager.checkUserPathPrivilege();
