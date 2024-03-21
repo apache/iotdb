@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -54,8 +55,7 @@ public class LocalExecutionPlanner {
     ALLOCATE_MEMORY_FOR_OPERATORS = CONFIG.getAllocateMemoryForOperators();
     MAX_REST_MEMORY_FOR_LOAD =
         (long)
-            (((double) ALLOCATE_MEMORY_FOR_OPERATORS)
-                * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
+            ((ALLOCATE_MEMORY_FOR_OPERATORS) * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
   }
 
   /** allocated memory for operator execution */
@@ -126,6 +126,7 @@ public class LocalExecutionPlanner {
     }
 
     long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
+    QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {
       if (estimatedMemorySize > freeMemoryForOperators) {

@@ -80,6 +80,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -128,6 +129,8 @@ public class SessionConnection {
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+    } catch (StatementExecutionException e) {
+      throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -150,7 +153,7 @@ public class SessionConnection {
   }
 
   private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
@@ -211,6 +214,9 @@ public class SessionConnection {
       sessionId = openResp.getSessionId();
       statementId = client.requestStatementId(sessionId);
 
+    } catch (StatementExecutionException e) {
+      transport.close();
+      throw e;
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
@@ -228,6 +234,8 @@ public class SessionConnection {
           logger.error("Cluster has no nodes to connect");
           throw new IoTDBConnectionException(logForReconnectionFailure());
         }
+      } catch (StatementExecutionException e) {
+        throw new IoTDBConnectionException(e.getMessage());
       }
       break;
     }
@@ -1386,8 +1394,10 @@ public class SessionConnection {
             init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
-            logger.warn("The current node may have been down {},try next node", endPoint);
+            logger.warn("The current node may have been down {}, try next node", endPoint);
             continue;
+          } catch (StatementExecutionException e) {
+            logger.warn("login in failed, because {}", e.getMessage());
           }
           break;
         }
@@ -1397,6 +1407,9 @@ public class SessionConnection {
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;
         session.defaultSessionConnection = this;
+        if (session.endPointToSessionConnection == null) {
+          session.endPointToSessionConnection = new ConcurrentHashMap<>();
+        }
         session.endPointToSessionConnection.put(session.defaultEndPoint, this);
         break;
       }

@@ -218,6 +218,10 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   // two child -----------------------------------------------------------------------------------
 
   public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
@@ -501,10 +505,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
     return visitPlan(node, context);
   }
 }

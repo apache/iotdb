@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column}Builder;
 
+
 import java.util.Optional;
 
 /*
@@ -49,8 +50,8 @@ public class ${className} extends LinearFill {
   }
 
   @Override
-  void fillValue(Object array, int index) {
-    ((${type.dataType}[]) array)[index] = getFilledValue();
+  void fillValue(Object array, int index, double factor) {
+    ((${type.dataType}[]) array)[index] = getFilledValue(factor);
   }
 
   @Override
@@ -64,9 +65,13 @@ public class ${className} extends LinearFill {
   }
 
   @Override
-  Column createFilledValueColumn() {
-    ${type.dataType} filledValue = getFilledValue();
-    return new ${type.column}(1, Optional.empty(), new ${type.dataType}[] {filledValue});
+  Column createFilledValueColumn(double[] factors) {
+    int size = factors.length;
+    ${type.dataType}[] filledValue = new ${type.dataType}[size];
+    for (int i = 0; i < size; i++) {
+      filledValue[i] = getFilledValue(factors[i]);
+    }
+    return new ${type.column}(size, Optional.empty(), filledValue);
   }
 
   @Override
@@ -98,14 +103,8 @@ public class ${className} extends LinearFill {
     this.nextValueInCurrentColumn = this.nextValue;
   }
 
-  private ${type.dataType} getFilledValue() {
-    <#if type.dataType == "double">
-    return (previousValue + nextValueInCurrentColumn) / 2.0;
-    <#elseif type.dataType == "float">
-    return (previousValue + nextValueInCurrentColumn) / 2.0f;
-    <#else>
-    return (previousValue + nextValueInCurrentColumn) / 2;
-    </#if>
+  private ${type.dataType} getFilledValue(double factor) {
+    return (${type.dataType}) (previousValue + (nextValueInCurrentColumn - previousValue) * factor);
   }
 }
 
