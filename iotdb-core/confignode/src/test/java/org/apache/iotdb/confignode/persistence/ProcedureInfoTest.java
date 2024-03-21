@@ -34,7 +34,7 @@ import java.util.stream.LongStream;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class ProcedureInfoTest {
-  private static final ProcedureInfo procedureInfo = new ProcedureInfo(null); /**/
+  private static final ProcedureInfo procedureInfo = new ProcedureInfo(null);
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass

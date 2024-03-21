@@ -48,11 +48,11 @@ public interface IProcedureStore<Env> {
 
   void delete(long[] batchIds, int startIndex, int batchCount);
 
-void cleanup();
+  void cleanup();
 
-void stop();
+  void stop();
 
-void start();
+  void start();
 
   boolean isOldVersionProcedureStore();
 }

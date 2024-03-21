@@ -20,8 +20,6 @@
 package org.apache.iotdb.confignode.procedure.util;
 
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
-import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
-import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import java.util.concurrent.TimeUnit;
 
@@ -53,14 +51,5 @@ public class ProcedureTestUtil {
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
-  }
-
-  public static void stopService(
-      ProcedureExecutor procExecutor, ProcedureScheduler scheduler, IProcedureStore store) {
-    procExecutor.stop();
-    procExecutor.join();
-    scheduler.clear();
-    scheduler.stop();
-    store.stop();
   }
 }
