@@ -42,6 +42,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
+  private volatile boolean isRunning = false;
   private final ProcedureInfo procedureInfo;
   private final String procedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
@@ -55,6 +56,16 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     } catch (IOException e) {
       LOG.error("ConfigProcedureStore start failed ", e);
     }
+  }
+
+  @Override
+  public boolean isRunning() {
+    return isRunning;
+  }
+
+  @Override
+  public void setRunning(boolean running) {
+    this.isRunning = running;
   }
 
   @Override
@@ -117,6 +128,22 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
   public void delete(long[] batchIds, int startIndex, int batchCount) {
     for (int i = startIndex; i < batchCount; i++) {
       delete(batchIds[i]);
+    }
+  }
+
+  /** clean all the wal, used for unit test. */
+  public void cleanup() {
+    // no op
+  }
+
+  public void stop() {
+    isRunning = false;
+  }
+
+  @Override
+  public void start() {
+    if (!isRunning) {
+      isRunning = true;
     }
   }
 

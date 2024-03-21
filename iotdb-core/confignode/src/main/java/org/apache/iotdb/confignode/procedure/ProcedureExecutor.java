@@ -449,6 +449,10 @@ public class ProcedureExecutor<Env> {
         updateStoreOnExecution(rootProcStack, proc, subprocs);
       }
 
+      if (!store.isRunning()) {
+        return;
+      }
+
       if (proc.isRunnable() && !suspended && proc.isYieldAfterExecution(this.environment)) {
         yieldProcedure(proc);
         return;
@@ -595,7 +599,8 @@ public class ProcedureExecutor<Env> {
       lockState = executeRollback(procedure);
       releaseLock(procedure, false);
 
-      boolean abortRollback = lockState != ProcedureLockState.LOCK_ACQUIRED || !isRunning();
+      boolean abortRollback = lockState != ProcedureLockState.LOCK_ACQUIRED;
+      abortRollback |= !isRunning() || !store.isRunning();
       if (abortRollback) {
         return lockState;
       }

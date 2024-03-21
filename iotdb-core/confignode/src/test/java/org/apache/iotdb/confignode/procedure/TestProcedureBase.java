@@ -38,13 +38,16 @@ public class TestProcedureBase {
   @Before
   public void setUp() {
     initExecutor();
+    this.procStore.start();
     this.procExecutor.startWorkers();
   }
 
   @After
   public void tearDown() {
+    this.procStore.stop();
     this.procExecutor.stop();
     this.procExecutor.join();
+    this.procStore.cleanup();
   }
 
   protected void initExecutor() {

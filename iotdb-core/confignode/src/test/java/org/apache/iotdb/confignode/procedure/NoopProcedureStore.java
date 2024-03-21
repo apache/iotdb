@@ -35,6 +35,16 @@ public class NoopProcedureStore implements IProcedureStore {
   private volatile boolean running = false;
 
   @Override
+  public boolean isRunning() {
+    return running;
+  }
+
+  @Override
+  public void setRunning(boolean running) {
+    this.running = running;
+  }
+
+  @Override
   public List<Procedure> load() {
     return Collections.emptyList();
   }
@@ -68,6 +78,19 @@ public class NoopProcedureStore implements IProcedureStore {
 
   @Override
   public void delete(long[] batchIds, int startIndex, int batchCount) {}
+
+  @Override
+  public void cleanup() {}
+
+  @Override
+  public void stop() {
+    running = false;
+  }
+
+  @Override
+  public void start() {
+    running = true;
+  }
 
   @Override
   public boolean isOldVersionProcedureStore() {

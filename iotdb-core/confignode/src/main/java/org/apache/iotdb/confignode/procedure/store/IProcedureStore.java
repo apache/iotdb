@@ -26,6 +26,10 @@ import java.util.List;
 
 public interface IProcedureStore<Env> {
 
+  boolean isRunning();
+
+  void setRunning(boolean running);
+
   List<Procedure<Env>> load();
 
   List<Procedure<Env>> getProcedures();
@@ -43,6 +47,12 @@ public interface IProcedureStore<Env> {
   void delete(long[] childProcIds);
 
   void delete(long[] batchIds, int startIndex, int batchCount);
+
+void cleanup();
+
+void stop();
+
+void start();
 
   boolean isOldVersionProcedureStore();
 }
