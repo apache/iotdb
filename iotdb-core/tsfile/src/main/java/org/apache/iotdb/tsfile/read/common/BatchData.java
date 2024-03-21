@@ -856,6 +856,12 @@ public class BatchData {
     }
 
     @Override
+    public long getUsedMemorySize() {
+      // not used
+      return 0;
+    }
+
+    @Override
     public void close() {
       // do nothing
     }

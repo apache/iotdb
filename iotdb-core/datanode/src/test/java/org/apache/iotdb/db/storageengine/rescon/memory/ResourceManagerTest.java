@@ -209,7 +209,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
-    double curTimeIndexMemoryThreshold = 322;
+    long curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(
@@ -237,7 +237,7 @@ public class ResourceManagerTest {
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long previousRamSize = tsFileResource.calculateRamSize();
-    double curTimeIndexMemoryThreshold = 3221;
+    long curTimeIndexMemoryThreshold = 3221;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(0, previousRamSize - tsFileResource.calculateRamSize());
@@ -266,7 +266,7 @@ public class ResourceManagerTest {
     assertEquals(
         TimeIndexLevel.DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
-    double curTimeIndexMemoryThreshold = 3221;
+    long curTimeIndexMemoryThreshold = 3221;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
     assertEquals(
@@ -300,7 +300,7 @@ public class ResourceManagerTest {
 
   @Test
   public void testMultiDeviceTimeIndexDegrade() throws IOException, WriteProcessException {
-    double curTimeIndexMemoryThreshold = 9663.7;
+    long curTimeIndexMemoryThreshold = 9663;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     for (int i = 0; i < seqFileNum; i++) {
       File file =
@@ -340,7 +340,7 @@ public class ResourceManagerTest {
 
   @Test
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
-    double curTimeIndexMemoryThreshold = 322;
+    long curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     for (int i = 0; i < seqFileNum; i++) {
       File file =

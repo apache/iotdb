@@ -40,7 +40,7 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
                 new TimeoutChangeableTSnappyFramedTransport.Factory(
                     thriftDefaultBufferSize, thriftMaxFrameSize, true))
             : new DeepCopyRpcTransportFactory(
-                new TElasticFramedTransport.Factory(
+                new TimeoutChangeableTFastFramedTransport.Factory(
                     thriftDefaultBufferSize, thriftMaxFrameSize, true));
   }
 }
