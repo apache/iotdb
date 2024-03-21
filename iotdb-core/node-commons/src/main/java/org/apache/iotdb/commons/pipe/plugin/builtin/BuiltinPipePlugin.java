@@ -124,6 +124,7 @@ public enum BuiltinPipePlugin {
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
+                  AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
                   TUMBLING_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
