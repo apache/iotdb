@@ -95,6 +95,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
+  public void handleExit() {
+    LOGGER.info(
+        "Subscription: remove consumer config {} when handling exit",
+        consumerConfigThreadLocal.get());
+    consumerConfigThreadLocal.remove();
+  }
+
+  @Override
   public final TPipeSubscribeResp handle(TPipeSubscribeReq req) {
     final short reqType = req.getType();
     if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {

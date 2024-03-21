@@ -97,4 +97,12 @@ public class SubscriptionReceiverAgent {
     }
     return receiverThreadLocal.get();
   }
+
+  public final void handleClientExit() {
+    final SubscriptionReceiver receiver = receiverThreadLocal.get();
+    if (receiver != null) {
+      receiver.handleExit();
+      receiverThreadLocal.remove();
+    }
+  }
 }

@@ -28,4 +28,6 @@ public interface SubscriptionReceiver {
   TPipeSubscribeResp handle(TPipeSubscribeReq req);
 
   PipeSubscribeRequestVersion getVersion();
+
+  void handleExit();
 }
