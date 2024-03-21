@@ -70,19 +70,26 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
 
   @Override
   public Set<TimeSeriesWindow> mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
-    if (windowList.isEmpty()) {
+    long lastTime =
+        windowList.isEmpty()
+            ? slidingBoundaryTime
+            : windowList.get(windowList.size() - 1).getTimestamp();
+
+    if (timeStamp >= (windowList.isEmpty() ? lastTime : lastTime + slidingInterval)) {
       TimeSeriesWindow window = new TimeSeriesWindow(this, null);
-      window.setTimestamp(
-          timeStamp <= slidingBoundaryTime
-              ? slidingBoundaryTime
-              : ((timeStamp - slidingBoundaryTime - 1) / slidingInterval + 1) * slidingInterval
-                  + slidingBoundaryTime);
-      windowList.add(window);
-      return Collections.singleton(window);
-    } else if (timeStamp
-        >= windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval) {
-      TimeSeriesWindow window = new TimeSeriesWindow(this, null);
-      window.setTimestamp(windowList.get(windowList.size() - 1).getTimestamp() + slidingInterval);
+      // Align to the last time + k * slidingInterval, k is a natural number
+      window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval);
+      System.out.println(
+          windowList
+              + " "
+              + timeStamp
+              + " "
+              + window.getTimestamp()
+              + " "
+              + lastTime
+              + " "
+              + slidingInterval
+              + " add");
       windowList.add(window);
       return Collections.singleton(window);
     }
@@ -93,16 +100,17 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   public Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
       TimeSeriesWindow window, long timeStamp) {
     if (timeStamp < window.getTimestamp()) {
-      return new Pair<>(WindowState.IGNORE_DATA, null);
+      return new Pair<>(WindowState.IGNORE_VALUE, null);
     }
     if (timeStamp >= window.getTimestamp() + slidingInterval) {
+      System.out.println(timeStamp);
       return new Pair<>(
-          WindowState.EMIT_AND_PURGE,
+          WindowState.EMIT_AND_PURGE_WITHOUT_COMPUTE,
           new WindowOutput()
               .setTimeStamp(window.getTimestamp())
               .setProgressTime(window.getTimestamp() + slidingInterval));
     }
-    return new Pair<>(WindowState.NORMAL, null);
+    return new Pair<>(WindowState.COMPUTE, null);
   }
 
   @Override

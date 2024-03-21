@@ -71,7 +71,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, boolean value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -95,16 +94,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;
@@ -113,7 +114,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, int value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -137,16 +137,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;
@@ -155,7 +157,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, long value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -179,16 +180,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;
@@ -197,7 +200,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, float value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -221,16 +223,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;
@@ -239,7 +243,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, double value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -263,16 +266,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;
@@ -281,7 +286,6 @@ public class TimeSeriesRuntimeState {
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       long timestamp, String value, long outputMinReportIntervalMilliseconds) throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
-    long progressTime = Long.MAX_VALUE;
 
     if (timestamp <= lastReportTimeStamp) {
       return null;
@@ -305,16 +309,18 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        progressTime = Math.min(progressTime, stateWindowOutputPair.getRight().getProgressTime());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
       }
     }
     if (!outputList.isEmpty()) {
-      lastReportTimeStamp = Math.max(lastReportTimeStamp, progressTime);
       output =
-          new Pair<>(outputList, getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
       outputList.clear();
     }
     return output;

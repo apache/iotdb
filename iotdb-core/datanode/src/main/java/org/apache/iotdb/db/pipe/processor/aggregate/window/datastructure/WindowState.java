@@ -20,17 +20,56 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure;
 
 public enum WindowState {
-  NORMAL,
-  IGNORE_DATA,
-  EMIT,
+
+  // Normally calculate the value
+  COMPUTE,
+
+  // Do nothing to the value
+  IGNORE_VALUE,
+
+  // This value is not calculated in this round of emit.
+  // For example, current window is [1, 2], 3 comes, emit [1, 2] and compute 3, do not wipe the
+  // window
+  EMIT_WITHOUT_COMPUTE,
+
+  // This value is calculated in this round of emit.
+  // For example, current window is [1, 2], 3 comes, emit [1, 2, 3] and compute 3, do not wipe the
+  // window
+  EMIT_WITH_COMPUTE,
+
+  // Purely wipe the window
   PURGE,
-  EMIT_AND_PURGE;
+
+  // This value is not calculated in this round of emit, and wipe the window.
+  // For example, current window is [1, 2],  3 comes, emit [1, 2] and wipe the window
+  EMIT_AND_PURGE_WITHOUT_COMPUTE,
+
+  // This value is calculated in this round of emit, and wipe the window.
+  // For example, current window is [1, 2],  3 comes, emit [1, 2, 3] and wipe the window
+  EMIT_AND_PURGE_WITH_COMPUTE;
 
   public boolean isEmit() {
-    return this == EMIT || this == EMIT_AND_PURGE;
+    return isEmitWithCompute() || isEmitWithoutCompute();
+  }
+
+  public boolean isEmitWithoutCompute() {
+    return this == EMIT_WITHOUT_COMPUTE || this == EMIT_AND_PURGE_WITHOUT_COMPUTE;
+  }
+
+  public boolean isEmitWithCompute() {
+    return this == EMIT_WITH_COMPUTE || this == EMIT_AND_PURGE_WITH_COMPUTE;
   }
 
   public boolean isPurge() {
-    return this == PURGE || this == EMIT_AND_PURGE;
+    return this == PURGE
+        || this == EMIT_AND_PURGE_WITHOUT_COMPUTE
+        || this == EMIT_AND_PURGE_WITH_COMPUTE;
+  }
+
+  public boolean isCalculate() {
+    return this == COMPUTE
+        || this == EMIT_WITHOUT_COMPUTE
+        || this == EMIT_WITH_COMPUTE
+        || this == EMIT_AND_PURGE_WITH_COMPUTE;
   }
 }

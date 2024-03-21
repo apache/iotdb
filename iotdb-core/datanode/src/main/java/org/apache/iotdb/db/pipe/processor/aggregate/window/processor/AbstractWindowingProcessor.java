@@ -38,10 +38,10 @@ import java.util.Set;
 public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor {
 
   /**
-   * The windowing processor may add windows to the windowList. The newly added window shall be put
-   * into the end of the list. The window will soon be configured by the {@link AggregateProcessor}.
-   * Typically only the timestamp is needed, however the window can use the windowList and value to
-   * help judging.
+   * The {@link AbstractWindowingProcessor} may add {@link TimeSeriesWindow}s to the windowList,
+   * which will soon be configured by the {@link AggregateProcessor}. Typically only the timestamp
+   * is needed, however the {@link AbstractWindowingProcessor} can use the windowList and values to
+   * assist judgement.
    *
    * @return The added windows
    */
@@ -64,10 +64,15 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
       List<TimeSeriesWindow> windowList, long timeStamp, String value);
 
   /**
-   * The windowing processor may decide whether a window shall be terminated when a point is
-   * arrived. If yes, the processor shall set the pair of output timestamp, the time of the
-   * progressIndex to be reported, and whether the window is closed in this round. If not, it shall
-   * return {@code null}
+   * The {@link AbstractWindowingProcessor} may decide whether a {@link TimeSeriesWindow} shall be
+   * terminated when a point is arrived. If yes, the {@link AbstractWindowingProcessor} shall set
+   * the pair of output timestamp, the time of the progressIndex to be reported, and whether the
+   * window is closed in this round. If not, it shall return {@code null}.
+   *
+   * @return The pair of {@link WindowState} and {@link WindowOutput}, the latter one including the
+   *     report time and output timestamp. Note that when a report time is submitted, the {@link
+   *     AbstractWindowingProcessor} may never see the time below when the system has been
+   *     restarted.
    */
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
       TimeSeriesWindow window, long timeStamp, boolean value);
