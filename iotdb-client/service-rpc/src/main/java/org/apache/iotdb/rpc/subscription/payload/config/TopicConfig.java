@@ -85,7 +85,7 @@ public class TopicConfig extends PipeParameters {
     Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
         (key, value) -> {
-          if (key.startsWith("processor")) {
+          if (key.toLowerCase().startsWith("processor")) {
             attributesWithProcessorPrefix.put(key, value);
           }
         });
