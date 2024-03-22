@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
@@ -189,6 +190,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -1063,8 +1065,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
-    // TODO
-    return null;
+    try {
+      final TPushConsumerGroupRespExceptionMessage exceptionMessage;
+      if (req.isSetConsumerGroupNameToDrop()) {
+        exceptionMessage =
+            SubscriptionAgent.consumer().handleDropConsumerGroup(req.getConsumerGroupNameToDrop());
+      } else if (req.isSetConsumerGroupMeta()) {
+        exceptionMessage =
+            SubscriptionAgent.consumer()
+                .handleSingleConsumerGroupMetaChanges(
+                    ConsumerGroupMeta.deserialize(ByteBuffer.wrap(req.getConsumerGroupMeta())));
+      } else {
+        throw new SubscriptionException("Invalid request " + req + " from config node.");
+      }
+
+      return exceptionMessage == null
+          ? new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pushing single consumer group meta", e);
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
+    }
   }
 
   @Override

@@ -500,7 +500,7 @@ struct TPipeSubscribeResp {
   1:required common.TSStatus status
   2:required i8 version
   3:required i16 type
-  4:optional binary body
+  4:optional list<binary> body
 }
 
 struct TSBackupConfigurationResp {

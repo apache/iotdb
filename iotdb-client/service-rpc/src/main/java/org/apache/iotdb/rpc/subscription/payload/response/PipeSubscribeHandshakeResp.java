@@ -64,7 +64,9 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
         ReadWriteIOUtils.write(endPoint.getValue().ip, outputStream);
         ReadWriteIOUtils.write(endPoint.getValue().port, outputStream);
       }
-      resp.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage());
       return resp;
@@ -82,13 +84,16 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
-    if (handshakeResp.body.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(handshakeResp.body);
-      for (int i = 0; i < size; ++i) {
-        final int id = ReadWriteIOUtils.readInt(handshakeResp.body);
-        final String ip = ReadWriteIOUtils.readString(handshakeResp.body);
-        final int port = ReadWriteIOUtils.readInt(handshakeResp.body);
-        resp.endPoints.put(id, new TEndPoint(ip, port));
+    if (Objects.nonNull(handshakeResp.body) && !handshakeResp.body.isEmpty()) {
+      ByteBuffer byteBuffer = handshakeResp.body.get(0);
+      if (byteBuffer.hasRemaining()) {
+        int size = ReadWriteIOUtils.readInt(byteBuffer);
+        for (int i = 0; i < size; ++i) {
+          final int id = ReadWriteIOUtils.readInt(byteBuffer);
+          final String ip = ReadWriteIOUtils.readString(byteBuffer);
+          final int port = ReadWriteIOUtils.readInt(byteBuffer);
+          resp.endPoints.put(id, new TEndPoint(ip, port));
+        }
       }
     }
 

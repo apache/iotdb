@@ -26,15 +26,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
 
-  private transient List<String> topicNames = new ArrayList<>();
+  private transient Set<String> topicNames = new HashSet<>();
 
-  public List<String> getTopicNames() {
+  public Set<String> getTopicNames() {
     return topicNames;
   }
 
@@ -44,7 +44,7 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeUnsubscribeReq`, called by the
    * subscription client.
    */
-  public static PipeSubscribeUnsubscribeReq toTPipeSubscribeReq(List<String> topicNames)
+  public static PipeSubscribeUnsubscribeReq toTPipeSubscribeReq(Set<String> topicNames)
       throws IOException {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
@@ -54,7 +54,7 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
     req.type = PipeSubscribeRequestType.UNSUBSCRIBE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeStringList(topicNames, outputStream);
+      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -66,8 +66,8 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
       TPipeSubscribeReq unsubscribeReq) {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
-    if (unsubscribeReq.body.hasRemaining()) {
-      req.topicNames = ReadWriteIOUtils.readStringList(unsubscribeReq.body);
+    if (Objects.nonNull(unsubscribeReq.body) && unsubscribeReq.body.hasRemaining()) {
+      req.topicNames = ReadWriteIOUtils.readObjectSet(unsubscribeReq.body);
     }
 
     req.version = unsubscribeReq.version;

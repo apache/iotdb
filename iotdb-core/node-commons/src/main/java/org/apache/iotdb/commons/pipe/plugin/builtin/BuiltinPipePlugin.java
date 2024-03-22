@@ -79,6 +79,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
+  SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
   ;
 
   private final String pipePluginName;
@@ -133,5 +134,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
                   WEBSOCKET_SINK.getPipePluginName().toUpperCase(),
                   OPC_UA_SINK.getPipePluginName().toUpperCase(),
-                  WRITE_BACK_SINK.getPipePluginName().toUpperCase())));
+                  WRITE_BACK_SINK.getPipePluginName().toUpperCase(),
+                  SUBSCRIPTION_SINK.getPipePluginName().toUpperCase())));
 }

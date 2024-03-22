@@ -137,6 +137,9 @@ public class PipeConnectorConstant {
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
   public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;
 
+  public static final String SINK_TOPIC_KEY = "sink.topic";
+  public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

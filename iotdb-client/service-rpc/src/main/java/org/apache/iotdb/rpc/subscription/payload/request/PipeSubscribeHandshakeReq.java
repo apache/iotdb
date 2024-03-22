@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -62,7 +63,7 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
-    if (handshakeReq.body.hasRemaining()) {
+    if (Objects.nonNull(handshakeReq.body) && handshakeReq.body.hasRemaining()) {
       req.consumerConfig = ConsumerConfig.deserialize(handshakeReq.body);
     }
 

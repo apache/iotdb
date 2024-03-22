@@ -71,6 +71,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
@@ -760,11 +761,14 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleConsumerGroupMetaReq request =
         new TPushSingleConsumerGroupMetaReq().setConsumerGroupMeta(consumerGroupMeta);
 
-    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+        clientHandler =
+            new AsyncClientHandler<>(
+                DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    return clientHandler.getResponseList().stream()
+        .map(TPushConsumerGroupMetaResp::getStatus)
+        .collect(Collectors.toList());
   }
 
   public List<TSStatus> dropSingleConsumerGroupOnDataNode(String consumerGroupNameToDrop) {
@@ -773,11 +777,14 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleConsumerGroupMetaReq request =
         new TPushSingleConsumerGroupMetaReq().setConsumerGroupNameToDrop(consumerGroupNameToDrop);
 
-    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+        clientHandler =
+            new AsyncClientHandler<>(
+                DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    return clientHandler.getResponseList().stream()
+        .map(TPushConsumerGroupMetaResp::getStatus)
+        .collect(Collectors.toList());
   }
 
   public LockQueue getNodeLock() {

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.agent.topic;
+package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
@@ -26,14 +26,16 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TopicAgent {
+import java.util.List;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopicAgent.class);
+public class SubscriptionTopicAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTopicAgent.class);
 
   private final TopicMetaKeeper topicMetaKeeper;
 
-  public TopicAgent() {
-    topicMetaKeeper = new TopicMetaKeeper();
+  public SubscriptionTopicAgent() {
+    this.topicMetaKeeper = new TopicMetaKeeper();
   }
 
   ////////////////////////// TopicMeta Lock Control //////////////////////////
@@ -64,13 +66,13 @@ public class TopicAgent {
       return null;
     } catch (Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
-      final String errorMessage =
+      final String exceptionMessage =
           String.format(
-              "Failed to handle single topic meta changes for %s, because %s",
+              "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
               topicName, e.getMessage());
-      LOGGER.warn("Failed to handle single topic meta changes for {}", topicName, e);
+      LOGGER.warn(exceptionMessage);
       return new TPushTopicRespExceptionMessage(
-          topicName, errorMessage, System.currentTimeMillis());
+          topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
     }
@@ -82,17 +84,42 @@ public class TopicAgent {
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
   }
 
+  public TPushTopicRespExceptionMessage handleTopicMetaChanges(
+      List<TopicMeta> topicMetasFromCoordinator) {
+    acquireWriteLock();
+    try {
+      for (TopicMeta topicMetaFromCoordinator : topicMetasFromCoordinator) {
+        try {
+          handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
+        } catch (Exception e) {
+          final String topicName = topicMetaFromCoordinator.getTopicName();
+          final String exceptionMessage =
+              String.format(
+                  "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
+                  topicName, e.getMessage());
+          LOGGER.warn(exceptionMessage);
+          return new TPushTopicRespExceptionMessage(
+              topicName, exceptionMessage, System.currentTimeMillis());
+        }
+      }
+      return null;
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
     acquireWriteLock();
     try {
       handleDropTopicInternal(topicName);
       return null;
     } catch (Exception e) {
-      final String errorMessage =
-          String.format("Failed to drop topic %s, because %s", topicName, e.getMessage());
-      LOGGER.warn("Failed to drop topic {}", topicName, e);
+      final String exceptionMessage =
+          String.format(
+              "Subscription: Failed to drop topic %s, because %s", topicName, e.getMessage());
+      LOGGER.warn(exceptionMessage);
       return new TPushTopicRespExceptionMessage(
-          topicName, errorMessage, System.currentTimeMillis());
+          topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
     }
@@ -100,5 +127,14 @@ public class TopicAgent {
 
   private void handleDropTopicInternal(String topicName) {
     topicMetaKeeper.removeTopicMeta(topicName);
+  }
+
+  public boolean isTopicExisted(String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
   }
 }
