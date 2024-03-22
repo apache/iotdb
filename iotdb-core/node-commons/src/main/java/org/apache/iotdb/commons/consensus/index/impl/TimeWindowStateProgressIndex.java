@@ -223,6 +223,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
     }
   }
 
+  @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.TIME_WINDOW_STATE_PROGRESS_INDEX;
   }
