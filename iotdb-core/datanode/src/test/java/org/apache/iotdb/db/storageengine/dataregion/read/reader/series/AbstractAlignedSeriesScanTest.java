@@ -31,6 +31,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -61,7 +63,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 public abstract class AbstractAlignedSeriesScanTest {
 
   protected static final String TEST_DATABASE = "root.sg_pd";
-  protected static final String TEST_DEVICE = TEST_DATABASE + ".d1_aligned";
+  protected static final IDeviceID TEST_DEVICE = new PlainDeviceID(TEST_DATABASE + ".d1_aligned");
 
   /**
    * The data distribution is as follows.
@@ -97,9 +99,9 @@ public abstract class AbstractAlignedSeriesScanTest {
   public static void setUp() throws IOException, WriteProcessException, IllegalPathException {
     List<PartialPath> writtenPaths =
         Arrays.asList(
-            new AlignedPath(TEST_DEVICE, "s1"),
-            new AlignedPath(TEST_DEVICE, "s2"),
-            new AlignedPath(TEST_DEVICE, "s3"));
+            new AlignedPath(((PlainDeviceID) TEST_DEVICE).toStringID(), "s1"),
+            new AlignedPath(((PlainDeviceID) TEST_DEVICE).toStringID(), "s2"),
+            new AlignedPath(((PlainDeviceID) TEST_DEVICE).toStringID(), "s3"));
     List<TSDataType> dataTypes =
         Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32);
     List<TSEncoding> encodings =

@@ -284,7 +284,7 @@ public class ConfigManager implements IManager {
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo();
+    ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
@@ -350,7 +350,7 @@ public class ConfigManager implements IManager {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
-      procedureManager.shiftExecutor(false);
+      procedureManager.stopExecutor();
     }
   }
 

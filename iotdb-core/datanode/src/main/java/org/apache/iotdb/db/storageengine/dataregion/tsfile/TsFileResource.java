@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -286,11 +287,11 @@ public class TsFileResource {
     }
   }
 
-  public void updateStartTime(String device, long time) {
+  public void updateStartTime(IDeviceID device, long time) {
     timeIndex.updateStartTime(device, time);
   }
 
-  public void updateEndTime(String device, long time) {
+  public void updateEndTime(IDeviceID device, long time) {
     timeIndex.updateEndTime(device, time);
   }
 
@@ -386,16 +387,16 @@ public class TsFileResource {
     }
   }
 
-  public long getStartTime(String deviceId) {
+  public long getStartTime(IDeviceID deviceId) {
     return timeIndex.getStartTime(deviceId);
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public long getEndTime(String deviceId) {
+  public long getEndTime(IDeviceID deviceId) {
     return timeIndex.getEndTime(deviceId);
   }
 
-  public long getOrderTime(String deviceId, boolean ascending) {
+  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 
@@ -408,7 +409,7 @@ public class TsFileResource {
     return timeIndex.getMaxEndTime();
   }
 
-  public Set<String> getDevices() {
+  public Set<IDeviceID> getDevices() {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
@@ -446,7 +447,7 @@ public class TsFileResource {
    * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
    * you really understand the meaning!!!!!
    */
-  public boolean definitelyNotContains(String device) {
+  public boolean definitelyNotContains(IDeviceID device) {
     return timeIndex.definitelyNotContains(device);
   }
 
@@ -455,7 +456,7 @@ public class TsFileResource {
    * no device matched by given pattern, return null.
    */
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(
-      PartialPath devicePattern, Set<String> deviceMatchInfo) {
+      PartialPath devicePattern, Set<IDeviceID> deviceMatchInfo) {
     return timeIndex.getPossibleStartTimeAndEndTime(devicePattern, deviceMatchInfo);
   }
 
@@ -692,13 +693,13 @@ public class TsFileResource {
     return !isClosed() || timeIndex.stillLives(timeLowerBound);
   }
 
-  public boolean isDeviceIdExist(String deviceId) {
+  public boolean isDeviceIdExist(IDeviceID deviceId) {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
-      String deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
+      IDeviceID deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
     if (deviceId == null) {
       return isSatisfied(globalTimeFilter, isSeq, ttl, debug);
     }
@@ -768,7 +769,7 @@ public class TsFileResource {
   }
 
   /** @return true if the device is contained in the TsFile */
-  public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
+  public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
@@ -1094,17 +1095,17 @@ public class TsFileResource {
     }
   }
 
-  public void deleteRemovedDeviceAndUpdateEndTime(Map<String, Long> lastTimeForEachDevice) {
+  public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
-    for (Map.Entry<String, Long> entry : lastTimeForEachDevice.entrySet()) {
+    for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
       newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
       newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
     timeIndex = newTimeIndex;
   }
 
-  public void updateEndTime(Map<String, Long> lastTimeForEachDevice) {
-    for (Map.Entry<String, Long> entry : lastTimeForEachDevice.entrySet()) {
+  public void updateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
+    for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
       timeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
   }

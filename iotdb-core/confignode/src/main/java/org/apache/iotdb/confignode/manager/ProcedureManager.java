@@ -161,25 +161,25 @@ public class ProcedureManager {
     this.procedureMetrics = new ProcedureMetrics(this);
   }
 
-  public void shiftExecutor(boolean running) {
-    if (running) {
+  public void startExecutor() {
+    if (!executor.isRunning()) {
+      executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
+      executor.startWorkers();
+      executor.startCompletedCleaner(
+          CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
+          CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+      store.start();
+      LOGGER.info("ProcedureManager is started successfully.");
+    }
+  }
+
+  public void stopExecutor() {
+    if (executor.isRunning()) {
+      executor.stop();
       if (!executor.isRunning()) {
-        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
-        executor.startWorkers();
-        executor.startCompletedCleaner(
-            CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
-            CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
-        store.start();
-        LOGGER.info("ProcedureManager is started successfully.");
-      }
-    } else {
-      if (executor.isRunning()) {
-        executor.stop();
-        if (!executor.isRunning()) {
-          executor.join();
-          store.stop();
-          LOGGER.info("ProcedureManager is stopped successfully.");
-        }
+        executor.join();
+        store.stop();
+        LOGGER.info("ProcedureManager is stopped successfully.");
       }
     }
   }

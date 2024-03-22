@@ -220,6 +220,7 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(subscriptionInfo);
 
     this.procedureInfo = procedureInfo;
+    this.snapshotProcessorList.add(procedureInfo);
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
@@ -489,6 +490,8 @@ public class ConfigPlanExecutor {
         // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
         // collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
+      case TestOnly:
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

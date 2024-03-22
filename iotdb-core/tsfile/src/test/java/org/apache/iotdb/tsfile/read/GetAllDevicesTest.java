@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 
 import org.junit.After;
@@ -73,10 +75,12 @@ public class GetAllDevicesTest {
     FileGenerator.generateFile(10000, deviceNum, measurementNum);
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
 
-      List<String> devices = fileReader.getAllDevices();
+      List<IDeviceID> devices = fileReader.getAllDevices();
       Assert.assertEquals(deviceNum, devices.size());
       for (int i = 0; i < deviceNum; i++) {
-        Assert.assertEquals("d" + FileGenerator.generateIndexString(i, deviceNum), devices.get(i));
+        Assert.assertEquals(
+            new PlainDeviceID("d" + FileGenerator.generateIndexString(i, deviceNum)),
+            devices.get(i));
       }
 
       FileGenerator.after();

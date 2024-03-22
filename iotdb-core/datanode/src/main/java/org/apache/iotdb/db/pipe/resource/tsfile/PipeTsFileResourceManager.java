@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
@@ -262,7 +263,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<String, List<String>> getDeviceMeasurementsMapFromCache(File hardlinkOrCopiedTsFile)
+  public Map<IDeviceID, List<String>> getDeviceMeasurementsMapFromCache(File hardlinkOrCopiedTsFile)
       throws IOException {
     lock.lock();
     try {
@@ -274,7 +275,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<String, Boolean> getDeviceIsAlignedMapFromCache(File hardlinkOrCopiedTsFile)
+  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(File hardlinkOrCopiedTsFile)
       throws IOException {
     lock.lock();
     try {

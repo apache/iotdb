@@ -126,7 +126,7 @@ public class IoTDBProcedureIT {
     Assert.assertTrue(resp.getDatabaseInfoMap().size() < MAX_STATE);
     // Then shutdown the leader, wait the new leader exist and the procedure continue
     final int oldLeaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).stop();
+    EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).stopForcibly();
     if (needRestartLeader) {
       EnvFactory.getEnv().getConfigNodeWrapper(oldLeaderIndex).start();
     }
@@ -179,7 +179,7 @@ public class IoTDBProcedureIT {
 
     // Restart the ConfigNode
     final int leaderConfigNodeIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stop();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stopForcibly();
     EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).start();
     SyncConfigNodeIServiceClient newLeaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
