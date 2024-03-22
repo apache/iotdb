@@ -413,9 +413,11 @@ public class TsFileResourceUtils {
    * Index of this writer.
    *
    * @param writer a {@link TsFileIOWriter}
+   * @param tsFileResourceStatus the status of the generated TsFileResource
    * @return a updated {@link TsFileResource}
    */
-  public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
+  public static TsFileResource generateTsFileResource(
+      TsFileIOWriter writer, TsFileResourceStatus tsFileResourceStatus) {
     TsFileResource resource = new TsFileResource(writer.getFile());
     for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
       IDeviceID device = chunkGroupMetadata.getDevice();
@@ -424,7 +426,7 @@ public class TsFileResourceUtils {
         resource.updateEndTime(device, chunkMetadata.getEndTime());
       }
     }
-    resource.setStatus(TsFileResourceStatus.NORMAL);
+    resource.setStatus(tsFileResourceStatus);
     return resource;
   }
 }

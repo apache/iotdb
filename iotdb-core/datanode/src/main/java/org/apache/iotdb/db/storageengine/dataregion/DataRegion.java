@@ -2636,6 +2636,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       // help tsfile resource degrade
       TsFileResourceManager.getInstance().registerSealedTsFileResource(newTsFileResource);
+      newTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (DiskSpaceInsufficientException e) {

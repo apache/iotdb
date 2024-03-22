@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -317,7 +318,10 @@ public class LoadTsFileManager {
         writer.endFile();
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
-        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
+        dataRegion.loadNewTsFile(
+            generateResource(writer, progressIndex, TsFileResourceStatus.UNCLOSED),
+            true,
+            isGeneratedByPipe);
 
         dataRegion
             .getNonSystemDatabaseName()
@@ -343,9 +347,13 @@ public class LoadTsFileManager {
       }
     }
 
-    private TsFileResource generateResource(TsFileIOWriter writer, ProgressIndex progressIndex)
+    private TsFileResource generateResource(
+        TsFileIOWriter writer,
+        ProgressIndex progressIndex,
+        TsFileResourceStatus tsFileResourceStatus)
         throws IOException {
-      TsFileResource tsFileResource = TsFileResourceUtils.generateTsFileResource(writer);
+      TsFileResource tsFileResource =
+          TsFileResourceUtils.generateTsFileResource(writer, tsFileResourceStatus);
       tsFileResource.setProgressIndex(progressIndex);
       tsFileResource.serialize();
       return tsFileResource;
