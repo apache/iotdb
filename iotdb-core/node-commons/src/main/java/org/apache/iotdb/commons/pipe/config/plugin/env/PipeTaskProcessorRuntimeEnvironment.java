@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  PipeTaskMeta pipeTaskMeta;
+  private final PipeTaskMeta pipeTaskMeta;
 
   public PipeTaskProcessorRuntimeEnvironment(
       String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
