@@ -17,19 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it;
+package org.apache.iotdb.pipe.it.single;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,22 +36,11 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
-public class IoTDBPipeSingleEnvDemoIT {
-  @Before
-  public void setUp() throws Exception {
-    MultiEnvFactory.createEnv(1);
-    MultiEnvFactory.getEnv(0).initClusterEnvironment(1, 1);
-  }
-
-  @After
-  public void tearDown() {
-    MultiEnvFactory.getEnv(0).cleanClusterEnvironment();
-  }
-
+public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
   @Test
   public void testSingleEnv() throws Exception {
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) MultiEnvFactory.getEnv(0).getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
