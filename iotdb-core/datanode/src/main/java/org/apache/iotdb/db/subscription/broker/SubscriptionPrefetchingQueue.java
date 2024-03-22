@@ -86,10 +86,6 @@ public class SubscriptionPrefetchingQueue {
           break;
         }
         count++;
-        if (!event.serialize()) {
-          // The SerializedEnrichedEvent returned by poll always has a non-null byteBuffer.
-          return null;
-        }
         prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
         if (event.isCommitted()) {
           continue;
@@ -97,6 +93,11 @@ public class SubscriptionPrefetchingQueue {
         // Re-enqueue the uncommitted event at the end of the queue.
         prefetchingQueue.add(event);
         if (!event.pollable()) {
+          continue;
+        }
+        // Serialize the uncommitted and pollable event.
+        if (!event.serialize()) {
+          // The event returned by poll always has a non-null byte buffer.
           continue;
         }
         event.recordLastPolledTimestamp();
@@ -200,7 +201,9 @@ public class SubscriptionPrefetchingQueue {
           break;
         }
         count++;
-        if (event.pollable()) {
+        // Serialize the uncommitted and pollable event.
+        if (!event.isCommitted() && event.pollable()) {
+          // No need to concern whether serialization is successful.
           event.serialize();
         }
       }
