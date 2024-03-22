@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -53,7 +52,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
-  private ProgressIndex progressIndex;
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
@@ -97,8 +95,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   /**
-   * @return {@code false} if this file can't be sent by pipe due to format violations or is empty. {@code true}
-   *     otherwise.
+   * @return {@code false} if this file can't be sent by pipe due to format violations or is empty.
+   *     {@code true} otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
@@ -157,9 +155,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public ProgressIndex getProgressIndex() {
-    if (Objects.nonNull(progressIndex)) {
-      return progressIndex;
-    }
     try {
       waitForTsFileClose();
       return resource.getMaxProgressIndexAfterClose();
