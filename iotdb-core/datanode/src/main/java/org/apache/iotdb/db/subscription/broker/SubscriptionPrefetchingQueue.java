@@ -88,7 +88,7 @@ public class SubscriptionPrefetchingQueue {
         count++;
         if (!event.serialize()) {
           // The SerializedEnrichedEvent returned by poll always has a non-null byteBuffer.
-          continue;
+          return null;
         }
         prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
         if (event.isCommitted()) {
