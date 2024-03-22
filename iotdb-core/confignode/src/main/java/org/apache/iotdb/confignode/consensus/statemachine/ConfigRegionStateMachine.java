@@ -222,7 +222,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
       configManager.getLoadManager().stopLoadServices();
-      configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getProcedureManager().stopExecutor();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
@@ -246,7 +246,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getLoadManager().startLoadServices();
 
     // Start leader scheduling services
-    configManager.getProcedureManager().shiftExecutor(true);
+    configManager.getProcedureManager().startExecutor();
+    threadPool.submit(
+        () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
     configManager.checkUserPathPrivilege();

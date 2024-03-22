@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.confignode.procedure.Procedure.NO_PROC_ID;
+
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
 
@@ -59,7 +61,7 @@ public class ProcedureExecutor<Env> {
   private final ConcurrentHashMap<Long, RootProcedureStack<Env>> rollbackStack =
       new ConcurrentHashMap<>();
 
-  private final ConcurrentHashMap<Long, Procedure> procedures = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, Procedure<Env>> procedures = new ConcurrentHashMap<>();
 
   private ThreadGroup threadGroup;
 
@@ -74,23 +76,21 @@ public class ProcedureExecutor<Env> {
 
   private final ProcedureScheduler scheduler;
 
-  private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final Env environment;
-  private final IProcedureStore store;
+  private final IProcedureStore<Env> store;
 
   public ProcedureExecutor(
-      final Env environment, final IProcedureStore store, final ProcedureScheduler scheduler) {
+      final Env environment, final IProcedureStore<Env> store, final ProcedureScheduler scheduler) {
     this.environment = environment;
     this.scheduler = scheduler;
     this.store = store;
-    this.lastProcId.incrementAndGet();
   }
 
   @TestOnly
-  public ProcedureExecutor(final Env environment, final IProcedureStore store) {
+  public ProcedureExecutor(final Env environment, final IProcedureStore<Env> store) {
     this(environment, store, new SimpleProcedureScheduler());
   }
 
@@ -118,55 +118,34 @@ public class ProcedureExecutor<Env> {
 
   private void recover() {
     // 1.Build rollback stack
-    int runnableCount = 0;
-    int failedCount = 0;
-    int waitingCount = 0;
-    int waitingTimeoutCount = 0;
-    List<Procedure> procedureList = new ArrayList<>();
+    List<Procedure<Env>> procedureList = getProcedureListFromDifferentVersion();
     // Load procedure wal file
-    store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {
-        completed.putIfAbsent(proc.getProcId(), new CompletedProcedureContainer(proc));
+        completed.putIfAbsent(proc.getProcId(), new CompletedProcedureContainer<>(proc));
       } else {
         if (!proc.hasParent()) {
           rollbackStack.put(proc.getProcId(), new RootProcedureStack<>());
         }
       }
       procedures.putIfAbsent(proc.getProcId(), proc);
-      switch (proc.getState()) {
-        case RUNNABLE:
-          runnableCount++;
-          break;
-        case FAILED:
-          failedCount++;
-          break;
-        case WAITING:
-          waitingCount++;
-          break;
-        case WAITING_TIMEOUT:
-          waitingTimeoutCount++;
-          break;
-        default:
-          break;
-      }
     }
-    List<Procedure<Env>> runnableList = new ArrayList<>(runnableCount);
-    List<Procedure<Env>> failedList = new ArrayList<>(failedCount);
-    List<Procedure<Env>> waitingList = new ArrayList<>(waitingCount);
-    List<Procedure<Env>> waitingTimeoutList = new ArrayList<>(waitingTimeoutCount);
+    List<Procedure<Env>> runnableList = new ArrayList<>();
+    List<Procedure<Env>> failedList = new ArrayList<>();
+    List<Procedure<Env>> waitingList = new ArrayList<>();
+    List<Procedure<Env>> waitingTimeoutList = new ArrayList<>();
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished() && !proc.hasParent()) {
         continue;
       }
-      long rootProcedureId = getRootProcId(proc);
+      long rootProcedureId = getRootProcedureId(proc);
       if (proc.hasParent()) {
         Procedure<Env> parent = procedures.get(proc.getParentProcId());
         if (parent != null && !proc.isFinished()) {
           parent.incChildrenLatch();
         }
       }
-      RootProcedureStack rootStack = rollbackStack.get(rootProcedureId);
+      RootProcedureStack<Env> rootStack = rollbackStack.get(rootProcedureId);
       if (rootStack != null) {
         rootStack.loadStack(proc);
       }
@@ -226,8 +205,28 @@ public class ProcedureExecutor<Env> {
     scheduler.signalAll();
   }
 
-  public long getRootProcId(Procedure proc) {
-    return Procedure.getRootProcedureId(procedures, proc);
+  private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
+    if (store.isOldVersionProcedureStore()) {
+      LOG.info("Old procedure directory detected, upgrade beginning...");
+      return store.load();
+    } else {
+      return store.getProcedures();
+    }
+  }
+
+  /**
+   * Helper to look up the root Procedure ID.
+   *
+   * @param proc given a specified procedure.
+   */
+  Long getRootProcedureId(Procedure<Env> proc) {
+    while (proc.hasParent()) {
+      proc = procedures.get(proc.getParentProcId());
+      if (proc == null) {
+        return NO_PROC_ID;
+      }
+    }
+    return proc.getProcId();
   }
 
   private void releaseLock(Procedure<Env> procedure, boolean force) {
@@ -301,27 +300,6 @@ public class ProcedureExecutor<Env> {
     }
     internalProcedure.setState(ProcedureState.SUCCESS);
     return timeoutExecutor.remove(internalProcedure);
-  }
-
-  /**
-   * Get next Procedure id
-   *
-   * @return next procedure id
-   */
-  private long nextProcId() {
-    long procId = lastProcId.incrementAndGet();
-    if (procId < 0) {
-      while (!lastProcId.compareAndSet(procId, 0)) {
-        procId = lastProcId.get();
-        if (procId >= 0) {
-          break;
-        }
-      }
-      while (procedures.containsKey(procId)) {
-        procId = lastProcId.incrementAndGet();
-      }
-    }
-    return procId;
   }
 
   /**
@@ -563,7 +541,7 @@ public class ProcedureExecutor<Env> {
       }
       subproc.setParentProcId(proc.getProcId());
       subproc.setRootProcId(rootProcedureId);
-      subproc.setProcId(nextProcId());
+      subproc.setProcId(store.getNextProcId());
       subproc.setProcRunnable();
       rootProcStack.addSubProcedure(subproc);
     }
@@ -713,10 +691,6 @@ public class ProcedureExecutor<Env> {
     procedures.remove(proc.getProcId());
   }
 
-  private Long getRootProcedureId(Procedure<Env> proc) {
-    return Procedure.getRootProcedureId(procedures, proc);
-  }
-
   /**
    * Add a Procedure to executor.
    *
@@ -790,7 +764,7 @@ public class ProcedureExecutor<Env> {
     @Override
     public String toString() {
       Procedure<?> p = this.activeProcedure.get();
-      return getName() + "(pid=" + (p == null ? Procedure.NO_PROC_ID : p.getProcId() + ")");
+      return getName() + "(pid=" + (p == null ? NO_PROC_ID : p.getProcId() + ")");
     }
 
     /** @return the time since the current procedure is running */
@@ -921,7 +895,7 @@ public class ProcedureExecutor<Env> {
     return !procedures.containsKey(procId);
   }
 
-  public ConcurrentHashMap<Long, Procedure> getProcedures() {
+  public ConcurrentHashMap<Long, Procedure<Env>> getProcedures() {
     return procedures;
   }
 
@@ -933,12 +907,10 @@ public class ProcedureExecutor<Env> {
    * @return procedure id
    */
   public long submitProcedure(Procedure<Env> procedure) {
-    Preconditions.checkArgument(lastProcId.get() >= 0);
     Preconditions.checkArgument(procedure.getState() == ProcedureState.INITIALIZING);
     Preconditions.checkArgument(!procedure.hasParent(), "Unexpected parent", procedure);
-    final long currentProcId = nextProcId();
     // Initialize the procedure
-    procedure.setProcId(currentProcId);
+    procedure.setProcId(store.getNextProcId());
     procedure.setProcRunnable();
     // Commit the transaction
     store.update(procedure);
