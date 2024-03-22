@@ -189,118 +189,97 @@ public class Session implements ISession {
 
   public Session(String host, int rpcPort) {
     this(
-        host,
-        rpcPort,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
     this(
-        host,
-        Integer.parseInt(rpcPort),
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            Integer.parseInt(rpcPort),
+            username,
+            password,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
     this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            username,
+            password,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            username,
+            password,
+            fetchSize,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      long queryTimeoutInMs) {
+          String host,
+          int rpcPort,
+          String username,
+          String password,
+          int fetchSize,
+          long queryTimeoutInMs) {
     this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            username,
+            password,
+            fetchSize,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        zoneId,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            username,
+            password,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            zoneId,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-      String host, int rpcPort, String username, String password, boolean enableRedirection) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableRedirection,
-            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
-  }
-  public Session(
-          String host, int rpcPort, String username, String password, boolean enableRedirection, boolean enableRecordsConvertTablet) {
+          String host, int rpcPort, String username, String password, boolean enableRedirection) {
     this(
             host,
             rpcPort,
@@ -311,32 +290,31 @@ public class Session implements ISession {
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE,
             enableRedirection,
-            enableRecordsConvertTablet,
             SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      boolean enableRedirection) {
+          String host,
+          int rpcPort,
+          String username,
+          String password,
+          int fetchSize,
+          ZoneId zoneId,
+          boolean enableRedirection) {
     this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        zoneId,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableRedirection,
-            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        SessionConfig.DEFAULT_VERSION);
+            host,
+            rpcPort,
+            username,
+            password,
+            fetchSize,
+            zoneId,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            enableRedirection,
+            SessionConfig.DEFAULT_VERSION);
   }
 
+  @SuppressWarnings("squid:S107")
   public Session(
           String host,
           int rpcPort,
@@ -348,34 +326,6 @@ public class Session implements ISession {
           int thriftMaxFrameSize,
           boolean enableRedirection,
           Version version) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        zoneId,
-        thriftDefaultBufferSize,
-        thriftMaxFrameSize,
-        enableRedirection,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
-        version);
-    this.version = version;
-  }
-
-  @SuppressWarnings("squid:S107")
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      boolean enableRedirection,
-      boolean enableRecordsConvertTablet,
-      Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -384,10 +334,8 @@ public class Session implements ISession {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
-    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
     this.version = version;
   }
-
   public Session(List<String> nodeUrls, String username, String password) {
     this(
         nodeUrls,
@@ -398,7 +346,6 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -417,7 +364,6 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -431,7 +377,6 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -444,7 +389,6 @@ public class Session implements ISession {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       boolean enableRedirection,
-      boolean enableRecordsConvertTablet,
       Version version) {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -457,7 +401,6 @@ public class Session implements ISession {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
-    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
     this.version = version;
   }
 
