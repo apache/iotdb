@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -95,7 +95,8 @@ public class PipeMetaDeSerTest {
                 put(
                     678,
                     new PipeTaskMeta(
-                        new TimeProgressIndex(timeSeries2TimestampWindowBufferPairMap), 789));
+                        new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
+                        789));
                 put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0));
               }
             });

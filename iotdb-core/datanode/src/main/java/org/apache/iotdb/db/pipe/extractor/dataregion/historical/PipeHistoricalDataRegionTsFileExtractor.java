@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -384,7 +384,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
         resourceList.sort(
             (o1, o2) ->
-                startIndex instanceof TimeProgressIndex
+                startIndex instanceof TimeWindowStateProgressIndex
                     // The use of timeProgressIndex indicates that the processor is
                     // AggregateProcessor
                     ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
@@ -412,9 +412,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   private boolean isTsFileResourceAfterProgress(TsFileResource resource) {
-    return startIndex instanceof TimeProgressIndex
+    return startIndex instanceof TimeWindowStateProgressIndex
         // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-        ? ((TimeProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
+        ? ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
         : !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 

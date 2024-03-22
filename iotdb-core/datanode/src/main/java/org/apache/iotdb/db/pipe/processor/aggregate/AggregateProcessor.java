@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -283,15 +283,16 @@ public class AggregateProcessor implements PipeProcessor {
     if (index == MinimumProgressIndex.INSTANCE) {
       return;
     }
-    if (!(index instanceof TimeProgressIndex)) {
+    if (!(index instanceof TimeWindowStateProgressIndex)) {
       throw new PipeException(
           String.format(
               "The aggregate processor does not support progressIndexType %s", index.getType()));
     }
 
-    final TimeProgressIndex timeProgressIndex = (TimeProgressIndex) index;
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        (TimeWindowStateProgressIndex) index;
     for (Map.Entry<String, Pair<Long, ByteBuffer>> entry :
-        timeProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
+        timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
           pipeName2timeSeries2TimeSeriesRuntimeStateMap
               .get(pipeName)
@@ -325,13 +326,14 @@ public class AggregateProcessor implements PipeProcessor {
 
     lastValueReceiveTime.set(System.currentTimeMillis());
     final AtomicReference<Exception> exception = new AtomicReference<>();
-    final TimeProgressIndex progressIndex = new TimeProgressIndex(new ConcurrentHashMap<>());
+    final TimeWindowStateProgressIndex progressIndex =
+        new TimeWindowStateProgressIndex(new ConcurrentHashMap<>());
 
     final Iterable<TabletInsertionEvent> outputEvents =
         tabletInsertionEvent.processRowByRow(
             (row, rowCollector) ->
                 progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                    new TimeProgressIndex(processRow(row, rowCollector, exception))));
+                    new TimeWindowStateProgressIndex(processRow(row, rowCollector, exception))));
 
     // Must reset progressIndex before collection
     ((EnrichedEvent) tabletInsertionEvent).bindProgressIndex(progressIndex);
