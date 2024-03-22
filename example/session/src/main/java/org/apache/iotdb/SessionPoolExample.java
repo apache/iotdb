@@ -44,13 +44,13 @@ public class SessionPoolExample {
   /** Build a custom SessionPool for this example */
   private static void constructCustomSessionPool() {
     sessionPool =
-            new SessionPool.Builder()
-                    .host("127.0.0.1")
-                    .port(6667)
-                    .user("root")
-                    .password("root")
-                    .maxSize(3)
-                    .build();
+        new SessionPool.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .user("root")
+            .password("root")
+            .maxSize(3)
+            .build();
   }
 
   /** Build a redirect-able SessionPool for this example */
@@ -59,16 +59,16 @@ public class SessionPoolExample {
     nodeUrls.add("127.0.0.1:6667");
     nodeUrls.add("127.0.0.1:6668");
     sessionPool =
-            new SessionPool.Builder()
-                    .nodeUrls(nodeUrls)
-                    .user("root")
-                    .password("root")
-                    .maxSize(3)
-                    .build();
+        new SessionPool.Builder()
+            .nodeUrls(nodeUrls)
+            .user("root")
+            .password("root")
+            .maxSize(3)
+            .build();
   }
 
   public static void main(String[] args)
-          throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use
     constructRedirectSessionPool();
 
@@ -105,50 +105,50 @@ public class SessionPoolExample {
   private static void queryByRowRecord() {
     for (int i = 0; i < 1; i++) {
       service.submit(
-              () -> {
-                SessionDataSetWrapper wrapper = null;
-                try {
-                  wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
-                  System.out.println(wrapper.getColumnNames());
-                  System.out.println(wrapper.getColumnTypes());
-                  while (wrapper.hasNext()) {
-                    System.out.println(wrapper.next());
-                  }
-                } catch (IoTDBConnectionException | StatementExecutionException e) {
-                  LOGGER.error("Query by row record error", e);
-                } finally {
-                  // remember to close data set finally!
-                  sessionPool.closeResultSet(wrapper);
-                }
-              });
+          () -> {
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (wrapper.hasNext()) {
+                System.out.println(wrapper.next());
+              }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              LOGGER.error("Query by row record error", e);
+            } finally {
+              // remember to close data set finally!
+              sessionPool.closeResultSet(wrapper);
+            }
+          });
     }
   }
 
   private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
       service.submit(
-              () -> {
-                SessionDataSetWrapper wrapper = null;
-                try {
-                  wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
-                  // get DataIterator like JDBC
-                  DataIterator dataIterator = wrapper.iterator();
-                  System.out.println(wrapper.getColumnNames());
-                  System.out.println(wrapper.getColumnTypes());
-                  while (dataIterator.next()) {
-                    StringBuilder builder = new StringBuilder();
-                    for (String columnName : wrapper.getColumnNames()) {
-                      builder.append(dataIterator.getString(columnName) + " ");
-                    }
-                    System.out.println(builder);
-                  }
-                } catch (IoTDBConnectionException | StatementExecutionException e) {
-                  LOGGER.error("Query by Iterator error", e);
-                } finally {
-                  // remember to close data set finally!
-                  sessionPool.closeResultSet(wrapper);
+          () -> {
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              // get DataIterator like JDBC
+              DataIterator dataIterator = wrapper.iterator();
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (dataIterator.next()) {
+                StringBuilder builder = new StringBuilder();
+                for (String columnName : wrapper.getColumnNames()) {
+                  builder.append(dataIterator.getString(columnName) + " ");
                 }
-              });
+                System.out.println(builder);
+              }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              LOGGER.error("Query by Iterator error", e);
+            } finally {
+              // remember to close data set finally!
+              sessionPool.closeResultSet(wrapper);
+            }
+          });
     }
   }
 }
