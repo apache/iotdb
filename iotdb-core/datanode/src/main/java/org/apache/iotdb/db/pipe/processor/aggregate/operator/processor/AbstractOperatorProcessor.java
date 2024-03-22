@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.processor;
 
+import org.apache.iotdb.db.pipe.processor.aggregate.AbstractFormalProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
-import org.apache.iotdb.db.pipe.processor.formal.AbstractFormalProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
