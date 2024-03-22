@@ -40,8 +40,11 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -80,6 +83,76 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
     }
     Thread.currentThread().setName(oldThreadName);
+  }
+
+  @Test
+  public void testMeasurementIterator()
+      throws IOException, MetadataException, WriteProcessException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
+      writer.startChunkGroup("d1");
+      for (int i = 1000; i < 2000; i++) {
+        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+            "s" + i,
+            new TimeRange[] {new TimeRange(10, 20)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
+
+    seqResources.add(resource1);
+
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource2)) {
+      writer.startChunkGroup("d1");
+      for (int i = 1000; i < 5000; i++) {
+        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+            "s" + i,
+            new TimeRange[] {new TimeRange(20, 30)},
+            TSEncoding.PLAIN,
+            CompressionType.LZ4);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
+
+    seqResources.add(resource2);
+
+    int iterNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(seqResources)) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<IDeviceID, Boolean> deviceIsAlignedPair = multiTsFileDeviceIterator.nextDevice();
+        IDeviceID device = deviceIsAlignedPair.getLeft();
+        boolean isAligned = deviceIsAlignedPair.getRight();
+        MultiTsFileDeviceIterator.MultiTsFileNonAlignedMeasurementMetadataListIterator
+            measurementIterator =
+                multiTsFileDeviceIterator.iterateNotAlignedSeriesAndChunkMetadataList(device);
+        while (measurementIterator.hasNextSeries()) {
+          String series = measurementIterator.nextSeries();
+          //                  LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+          //         readerAndChunkMetadataList =
+          //                      measurementIterator.getMetadataListForCurrentSeries();
+          iterNum++;
+        }
+        //        MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
+        //            multiTsFileDeviceIterator.iterateNotAlignedSeries(device, true);
+        //        while (measurementIterator.hasNextSeries()) {
+        //          String series = measurementIterator.nextSeries();
+        //          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+        // readerAndChunkMetadataList =
+        //              measurementIterator.getMetadataListForCurrentSeries();
+        //          iterNum++;
+        //        }
+      }
+    }
+    //    new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, new
+    // ReadChunkCompactionPerformer(), 0).start();
+    Assert.assertEquals(4000, iterNum);
   }
 
   @Test
