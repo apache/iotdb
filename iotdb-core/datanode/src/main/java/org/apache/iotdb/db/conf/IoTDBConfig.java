@@ -630,17 +630,14 @@ public class IoTDBConfig {
   /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** Register time series as which type when receiving an integer string "67" */
-  private TSDataType integerStringInferType = TSDataType.FLOAT;
-
   /**
    * register time series as which type when receiving an integer string and using float may lose
-   * precision num > 2 ^ 24
+   * precision
    */
-  private TSDataType longStringInferType = TSDataType.DOUBLE;
+  private TSDataType integerStringInferType = TSDataType.INT64;
 
   /** register time series as which type when receiving a floating number string "6.7" */
-  private TSDataType floatingStringInferType = TSDataType.FLOAT;
+  private TSDataType floatingStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
@@ -2210,14 +2207,6 @@ public class IoTDBConfig {
 
   public void setIntegerStringInferType(TSDataType integerStringInferType) {
     this.integerStringInferType = integerStringInferType;
-  }
-
-  public void setLongStringInferType(TSDataType longStringInferType) {
-    this.longStringInferType = longStringInferType;
-  }
-
-  public TSDataType getLongStringInferType() {
-    return longStringInferType;
   }
 
   public TSDataType getFloatingStringInferType() {

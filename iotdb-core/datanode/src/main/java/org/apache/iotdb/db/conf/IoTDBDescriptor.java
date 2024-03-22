@@ -1298,10 +1298,6 @@ public class IoTDBDescriptor {
         TSDataType.valueOf(
             properties.getProperty(
                 "integer_string_infer_type", conf.getIntegerStringInferType().toString())));
-    conf.setLongStringInferType(
-        TSDataType.valueOf(
-            properties.getProperty(
-                "long_string_infer_type", conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(
             properties.getProperty(
