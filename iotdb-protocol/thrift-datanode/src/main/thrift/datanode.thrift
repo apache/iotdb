@@ -426,17 +426,31 @@ struct TPushSinglePipeMetaReq {
   2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
 }
 
+struct TPushMultiPipeMetaReq {
+  1: optional list<binary> pipeMetas // Should not set both to null.
+  2: optional list<string> pipeNamesToDrop // If it is not null, pipes with indicated names on datanode will be dropped.
+}
+
+struct TPushTopicMetaReq {
+  1: required list<binary> topicMetas
+}
+
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
 }
 
-struct TPushTopicMetaResp {
-  1: required common.TSStatus status
-  2: optional list<TPushTopicRespExceptionMessage> exceptionMessages
+struct TPushMultiTopicMetaReq {
+   1: optional list<binary> topicMetas // Should not set both to null.
+   2: optional list<string> topicNamesToDrop
 }
 
-struct TPushTopicRespExceptionMessage {
+struct TPushTopicMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushTopicMetaRespExceptionMessage> exceptionMessages
+}
+
+struct TPushTopicMetaRespExceptionMessage {
   1: required string topicName
   2: required string message
   3: required i64 timeStamp
@@ -889,9 +903,24 @@ service IDataNodeRPCService {
   TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req)
 
  /**
+  * Send multiple pipeMetas to DataNodes, for create/drop subscriptions
+  */
+  TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req)
+
+ /**
+  * Send topicMetas to DataNodes, for synchronization
+  */
+  TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req)
+
+ /**
   * Send one topic meta to DataNodes.
   */
   TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req)
+
+ /**
+  * Send multiple topic metas to DataNodes, for create/drop subscriptions
+  */
+  TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
 
  /**
   * Send one consumer group meta to DataNodes.

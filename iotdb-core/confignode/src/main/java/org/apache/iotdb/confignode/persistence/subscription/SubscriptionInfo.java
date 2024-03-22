@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
@@ -171,6 +172,26 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public Iterable<TopicMeta> getAllTopicMeta() {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.getAllTopicMeta();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TopicMeta deepCopyTopicMeta(String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper.getTopicMeta(topicName).deepCopy()
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public DataSet showTopics() {
     acquireReadLock();
     try {
@@ -199,6 +220,31 @@ public class SubscriptionInfo implements SnapshotProcessor {
       topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
       topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus alterMultipleTopics(AlterMultipleTopicsPlan plan) {
+    acquireWriteLock();
+    try {
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setSubStatus(new ArrayList<>());
+      for (AlterTopicPlan subPlan : plan.getSubPlans()) {
+        TSStatus innerStatus = alterTopic(subPlan);
+        status.getSubStatus().add(innerStatus);
+        if (innerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          status.setCode(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode());
+          break;
+        }
+      }
+
+      // If all sub-plans are successful, set the sub-status to null
+      // Otherwise, keep the sub-status to indicate the failing plan's index
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status.setSubStatus(null);
+      }
+      return status;
     } finally {
       releaseWriteLock();
     }
@@ -328,6 +374,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public ConsumerGroupMeta deepCopyConsumerGroupMeta(String consumerGroupName) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.containsConsumerGroupMeta(consumerGroupName)
+          ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupName).deepCopy()
+          : null;
     } finally {
       releaseReadLock();
     }

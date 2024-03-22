@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -28,11 +29,17 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -139,7 +146,7 @@ public abstract class AbstractOperateSubscriptionProcedure
       throws SubscriptionException;
 
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException;
+      throws SubscriptionException, IOException;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)
@@ -260,7 +267,34 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException;
+
+  /**
+   * Pushing all the topicMeta's to all the dataNodes.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing topic meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushTopicMetaResp> pushTopicMetaToDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException {
+    final List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
+    for (TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
+      topicMetaBinaryList.add(topicMeta.serialize());
+    }
+
+    return env.pushAllTopicMetaToDataNodes(topicMetaBinaryList);
+  }
+
+  public static boolean allTopicMetaPushedSuccessfully(Map<Integer, TPushTopicMetaResp> respMap) {
+    for (TPushTopicMetaResp resp : respMap.values()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   @Override
   protected OperateSubscriptionState getState(int stateId) {

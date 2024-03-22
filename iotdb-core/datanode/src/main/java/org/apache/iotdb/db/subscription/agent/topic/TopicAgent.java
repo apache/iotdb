@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.agent.topic;
 
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class TopicAgent {
 
   ////////////////////////// Topic Management Entry //////////////////////////
 
-  public TPushTopicRespExceptionMessage handleSingleTopicMetaChanges(
+  public TPushTopicMetaRespExceptionMessage handleSingleTopicMetaChanges(
       TopicMeta topicMetaFromCoordinator) {
     acquireWriteLock();
     try {
@@ -69,7 +69,7 @@ public class TopicAgent {
               "Failed to handle single topic meta changes for %s, because %s",
               topicName, e.getMessage());
       LOGGER.warn("Failed to handle single topic meta changes for {}", topicName, e);
-      return new TPushTopicRespExceptionMessage(
+      return new TPushTopicMetaRespExceptionMessage(
           topicName, errorMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
@@ -82,7 +82,7 @@ public class TopicAgent {
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
   }
 
-  public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
+  public TPushTopicMetaRespExceptionMessage handleDropTopic(String topicName) {
     acquireWriteLock();
     try {
       handleDropTopicInternal(topicName);
@@ -91,7 +91,7 @@ public class TopicAgent {
       final String errorMessage =
           String.format("Failed to drop topic %s, because %s", topicName, e.getMessage());
       LOGGER.warn("Failed to drop topic {}", topicName, e);
-      return new TPushTopicRespExceptionMessage(
+      return new TPushTopicMetaRespExceptionMessage(
           topicName, errorMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();

@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -98,6 +99,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
@@ -428,6 +430,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case ShowPipeV2:
           plan = new ShowPipePlanV2();
           break;
+        case OperateMultiplePipesV2:
+          plan = new OperateMultiplePipesPlanV2();
+          break;
         case PipeHandleLeaderChange:
           plan = new PipeHandleLeaderChangePlan();
           break;
@@ -448,6 +453,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AlterTopic:
           plan = new AlterTopicPlan();
+          break;
+        case AlterMultipleTopics:
+          plan = new AlterMultipleTopicsPlan();
           break;
         case AlterConsumerGroup:
           plan = new AlterConsumerGroupPlan();
