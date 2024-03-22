@@ -163,6 +163,13 @@ public class AsyncDataNodeClientPool {
       if (clientHandler.getRequestIndices().isEmpty()) {
         return;
       }
+
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Sleep was interrupted");
+      }
     }
 
     if (!clientHandler.getRequestIndices().isEmpty()) {
