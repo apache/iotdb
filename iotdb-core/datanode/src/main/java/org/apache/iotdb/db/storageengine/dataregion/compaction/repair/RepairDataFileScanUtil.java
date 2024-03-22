@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -74,8 +76,8 @@ public class RepairDataFileScanUtil {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsfile.getPath())) {
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
       while (deviceIterator.hasNext()) {
-        Pair<String, Boolean> deviceIsAlignedPair = deviceIterator.next();
-        String device = deviceIsAlignedPair.getLeft();
+        Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
+        IDeviceID device = deviceIsAlignedPair.getLeft();
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
           checkAlignedDeviceSeries(reader, device);
@@ -95,7 +97,7 @@ public class RepairDataFileScanUtil {
     }
   }
 
-  private void checkAlignedDeviceSeries(TsFileSequenceReader reader, String device)
+  private void checkAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
       throws IOException {
     List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata(device);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
@@ -121,14 +123,14 @@ public class RepairDataFileScanUtil {
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(device, currentTime);
+          checkPreviousTimeAndUpdate(((PlainDeviceID) device).toStringID(), currentTime);
         }
       }
     }
     previousTime = Long.MIN_VALUE;
   }
 
-  private void checkNonAlignedDeviceSeries(TsFileSequenceReader reader, String device)
+  private void checkNonAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
       throws IOException {
     Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
         reader.getMeasurementChunkMetadataListMapIterator(device);
@@ -220,7 +222,7 @@ public class RepairDataFileScanUtil {
 
   public static List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
     List<TsFileResource> overlapResources = new ArrayList<>();
-    Map<String, Long> deviceEndTimeMap = new HashMap<>();
+    Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
@@ -233,10 +235,10 @@ public class RepairDataFileScanUtil {
         continue;
       }
 
-      Set<String> devices = deviceTimeIndex.getDevices();
+      Set<IDeviceID> devices = deviceTimeIndex.getDevices();
       boolean fileHasOverlap = false;
       // check overlap
-      for (String device : devices) {
+      for (IDeviceID device : devices) {
         long deviceStartTimeInCurrentFile = deviceTimeIndex.getStartTime(device);
         if (deviceStartTimeInCurrentFile > deviceTimeIndex.getEndTime(device)) {
           continue;
@@ -253,7 +255,7 @@ public class RepairDataFileScanUtil {
       }
       // update end time map
       if (!fileHasOverlap) {
-        for (String device : devices) {
+        for (IDeviceID device : devices) {
           deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device));
         }
       }

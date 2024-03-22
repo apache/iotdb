@@ -29,6 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -156,15 +158,16 @@ public class CompactionFileGeneratorUtils {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(
+              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
-    for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
-      String device = deviceMeasurementEntry.getKey();
+    for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
+      IDeviceID device = deviceMeasurementEntry.getKey();
       writer.startChunkGroup(device);
       for (String sensor : deviceMeasurementEntry.getValue()) {
         long currTime = startTime;
@@ -213,16 +216,17 @@ public class CompactionFileGeneratorUtils {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(
+              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     int currChunksIndex = 0;
-    for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
-      String device = deviceMeasurementEntry.getKey();
+    for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
+      IDeviceID device = deviceMeasurementEntry.getKey();
       writer.startChunkGroup(device);
       for (String sensor : deviceMeasurementEntry.getValue()) {
         List<long[][]> chunks = chunkPagePointsNum.get(currChunksIndex);
@@ -304,15 +308,16 @@ public class CompactionFileGeneratorUtils {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
-    Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
+    Map<IDeviceID, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(
+              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
-    for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
-      String device = deviceMeasurementEntry.getKey();
+    for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
+      IDeviceID device = deviceMeasurementEntry.getKey();
       writer.startChunkGroup(device);
       for (String sensor : deviceMeasurementEntry.getValue()) {
         long currTime = startTime;

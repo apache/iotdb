@@ -69,8 +69,7 @@ public class WALManager implements IService {
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -100,7 +99,6 @@ public class WALManager implements IService {
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.isClusterMode()
         || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }
@@ -113,7 +111,6 @@ public class WALManager implements IService {
   /** WAL node will be deleted only when using iot consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.isClusterMode()
         || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }

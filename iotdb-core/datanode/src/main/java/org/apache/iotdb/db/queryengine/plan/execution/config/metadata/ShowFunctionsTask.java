@@ -51,6 +51,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_UNKNOWN;
 
 public class ShowFunctionsTask implements IConfigTask {
 
@@ -120,7 +121,7 @@ public class ShowFunctionsTask implements IConfigTask {
   }
 
   private static String getFunctionType(UDFInformation udfInformation) {
-    String functionType = null;
+    String functionType = FUNCTION_TYPE_UNKNOWN;
     if (udfInformation.isBuiltin()) {
       if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {
         functionType = FUNCTION_TYPE_BUILTIN_UDTF;

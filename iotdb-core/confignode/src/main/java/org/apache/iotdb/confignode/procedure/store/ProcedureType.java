@@ -109,9 +109,9 @@ public enum ProcedureType {
 
   /** Other */
   @TestOnly
-  NEVER_FINISH_PROCEDURE((short) 66600),
+  NEVER_FINISH_PROCEDURE((short) 30000),
   @TestOnly
-  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 66601);
+  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 30001);
 
   private final short typeCode;
 

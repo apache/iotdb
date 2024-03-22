@@ -382,7 +382,9 @@ public final class RamUsageEstimator {
       return 0;
     }
     long size;
-    if (o instanceof String) {
+    if (o instanceof Accountable) {
+      size = ((Accountable) o).ramBytesUsed();
+    } else if (o instanceof String) {
       size = sizeOf((String) o);
     } else if (o instanceof boolean[]) {
       size = sizeOf((boolean[]) o);
