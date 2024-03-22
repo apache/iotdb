@@ -107,7 +107,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case USING_TABLET:
       case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
+          // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
           final String errorMessage =
               String.format(
@@ -178,7 +178,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case USING_TSFILE:
       case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
+          // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
           final String errorMessage =
               String.format(
@@ -258,7 +258,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     while (realtimeEvent != null) {
       Event suppliedEvent;
 
-      // used to judge type of event, not directly for supplying.
+      // Used to judge type of event, not directly for supplying.
       final Event eventToSupply = realtimeEvent.getEvent();
       if (eventToSupply instanceof TabletInsertionEvent) {
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
@@ -285,7 +285,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
 
-    // means the pending queue is empty.
+    // Means the pending queue is empty.
     return null;
   }
 
@@ -307,7 +307,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TSFILE:
-        // if the state is USING_TSFILE, discard the event and poll the next one.
+        // If the state is USING_TSFILE, discard the event and poll the next one.
         return null;
       case EMPTY:
       case USING_TABLET:
@@ -316,7 +316,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
           return event.getEvent();
         } else {
-          // if the event's reference count can not be increased, it means the data represented by
+          // If the event's reference count can not be increased, it means the data represented by
           // this event is not reliable anymore. but the data represented by this event
           // has been carried by the following tsfile event, so we can just discard this event.
           event.getTsFileEpoch().migrateState(this, s -> TsFileEpoch.State.USING_BOTH);
@@ -335,7 +335,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         .migrateState(
             this,
             state -> {
-              // this would not happen, but just in case.
+              // This would not happen, but just in case.
               if (state.equals(TsFileEpoch.State.EMPTY)) {
                 LOGGER.error(
                     String.format("EMPTY TsFileEpoch when supplying TsFile Event %s", event));
@@ -347,7 +347,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case USING_TABLET:
-        // if the state is USING_TABLET, discard the event and poll the next one.
+        // If the state is USING_TABLET, discard the event and poll the next one.
         return null;
       case EMPTY:
       case USING_TSFILE:
@@ -356,7 +356,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
           return event.getEvent();
         } else {
-          // if the event's reference count can not be increased, it means the data represented by
+          // If the event's reference count can not be increased, it means the data represented by
           // this event is not reliable anymore. the data has been lost. we simply discard this
           // event
           // and report the exception to PipeRuntimeAgent.
