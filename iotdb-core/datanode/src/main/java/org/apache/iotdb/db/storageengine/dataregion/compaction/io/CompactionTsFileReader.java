@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
@@ -65,6 +66,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
    */
   public CompactionTsFileReader(String file, CompactionType compactionType) throws IOException {
     super(file);
+    this.tsFileInput = new CompactionTsFileInput(tsFileInput);
     this.compactionType = compactionType;
   }
 
@@ -143,7 +145,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   public void getDevicesAndEntriesOfOneLeafNode(
-      Long startOffset, Long endOffset, Queue<Pair<String, long[]>> measurementNodeOffsetQueue)
+      Long startOffset, Long endOffset, Queue<Pair<IDeviceID, long[]>> measurementNodeOffsetQueue)
       throws IOException {
     long before = readDataSize.get();
     super.getDevicesAndEntriesOfOneLeafNode(startOffset, endOffset, measurementNodeOffsetQueue);
@@ -153,9 +155,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   }
 
   @Override
-  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+  public MetadataIndexNode readMetadataIndexNode(long start, long end, boolean isDeviceLevel)
+      throws IOException {
     long before = readDataSize.get();
-    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end);
+    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end, isDeviceLevel);
     long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);

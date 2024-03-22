@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.FirstCreateStrategy;
@@ -43,8 +44,12 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -64,8 +69,7 @@ public class WALManager implements IService {
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -95,7 +99,6 @@ public class WALManager implements IService {
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.isClusterMode()
         || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }
@@ -108,7 +111,6 @@ public class WALManager implements IService {
   /** WAL node will be deleted only when using iot consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.isClusterMode()
         || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       return;
     }
@@ -165,12 +167,17 @@ public class WALManager implements IService {
     }
   }
 
-  public void deleteOutdatedFilesInWALNodes() {
+  protected void deleteOutdatedFilesInWALNodes() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
     }
     List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
-    walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
+    Map<WALNode, Long> walNode2DiskUsage = new HashMap<>();
+    for (WALNode walNode : walNodes) {
+      walNode2DiskUsage.put(walNode, walNode.getDiskUsage());
+    }
+    walNodes.sort(
+        (node1, node2) -> Long.compare(walNode2DiskUsage.get(node2), walNode2DiskUsage.get(node1)));
     for (WALNode walNode : walNodes) {
       walNode.deleteOutdatedFiles();
     }
@@ -260,6 +267,21 @@ public class WALManager implements IService {
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
+  }
+
+  public void syncDeleteOutdatedFilesInWALNodes() {
+    if (config.getWalMode() == WALMode.DISABLE || walDeleteThread == null) {
+      return;
+    }
+    Future<?> future = walDeleteThread.submit(this::deleteOutdatedFilesInWALNodes);
+    try {
+      future.get();
+    } catch (ExecutionException e) {
+      throw new StorageEngineFailureException("Failed to delete outdated wal file", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StorageEngineFailureException("Failed to delete outdated wal file", e);
+    }
   }
 
   @TestOnly

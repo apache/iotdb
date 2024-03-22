@@ -129,7 +129,10 @@ public class RpcUtils {
     }
   }
 
-  /** convert from TSStatusCode to TSStatus according to status code and status message */
+  /**
+   * Convert from {@link TSStatusCode} to {@link TSStatus} according to status code and status
+   * message
+   */
   public static TSStatus getStatus(TSStatusCode tsStatusCode) {
     return new TSStatus(tsStatusCode.getStatusCode());
   }
@@ -141,7 +144,8 @@ public class RpcUtils {
   }
 
   /**
-   * convert from TSStatusCode to TSStatus, which has message appending with existed status message
+   * Convert from {@link TSStatusCode} to {@link TSStatus}, which has message appended with existing
+   * status message
    *
    * @param tsStatusCode status type
    * @param message appending message

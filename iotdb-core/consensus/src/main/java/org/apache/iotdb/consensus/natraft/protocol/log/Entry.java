@@ -223,4 +223,19 @@ public abstract class Entry implements Comparable<Entry> {
   public EntrySerialization getSerialization() {
     return serialization;
   }
+
+  // TODO: modify TsFile instead
+  protected class PublicBAOS extends org.apache.iotdb.tsfile.utils.PublicBAOS {
+    public PublicBAOS() {
+      super();
+    }
+
+    public PublicBAOS(int size) {
+      super(size);
+    }
+
+    public PublicBAOS(byte[] bytes) {
+      this.buf = bytes;
+    }
+  }
 }

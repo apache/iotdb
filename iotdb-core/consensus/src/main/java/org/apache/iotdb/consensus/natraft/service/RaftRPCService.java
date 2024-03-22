@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 
@@ -79,7 +80,8 @@ public class RaftRPCService extends ThriftService implements RaftRPCServiceMBean
               config.getRpcConfig().isRpcThriftCompressionEnabled(),
               config.getRpcConfig().getConnectionTimeoutInMs(),
               config.getRpcConfig().getThriftMaxFrameSize(),
-              ThriftServiceThread.ServerType.SELECTOR);
+              ThriftServiceThread.ServerType.SELECTOR,
+              ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

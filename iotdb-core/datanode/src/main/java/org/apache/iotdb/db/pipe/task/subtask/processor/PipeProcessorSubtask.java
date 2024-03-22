@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.task.subtask.PipeDataNodeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -40,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PipeProcessorSubtask extends PipeDataNodeSubtask {
+public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
@@ -139,6 +143,11 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
         }
       }
       releaseLastEvent(!isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+      LOGGER.info(
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
+          e);
+      return false;
     } catch (Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
@@ -160,6 +169,10 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  public boolean isStoppedByException() {
+    return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
   }
 
   @Override
@@ -220,5 +233,17 @@ public class PipeProcessorSubtask extends PipeDataNodeSubtask {
 
   public int getPipeHeartbeatEventCount() {
     return outputEventCollector.getPipeHeartbeatEventCount();
+  }
+
+  //////////////////////////// Error report ////////////////////////////
+
+  @Override
+  protected String getRootCause(Throwable throwable) {
+    return ErrorHandlingUtils.getRootCause(throwable).getMessage();
+  }
+
+  @Override
+  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+    PipeAgent.runtime().report(event, exception);
   }
 }

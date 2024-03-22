@@ -32,10 +32,6 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   boolean isVolatile();
 
-  boolean isFull();
-
-  boolean isExpelled();
-
   boolean hasChildInNewChildBuffer(String name);
 
   boolean hasChildInBuffer(String name);
@@ -46,13 +42,19 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   Iterator<ICachedMNode> getChildrenBufferIterator();
 
-  Iterator<ICachedMNode> getNewChildBufferIterator();
-
   Map<String, ICachedMNode> getChildCache();
 
   Map<String, ICachedMNode> getNewChildBuffer();
 
   Map<String, ICachedMNode> getUpdatedChildBuffer();
+
+  Map<String, ICachedMNode> getNewChildFlushingBuffer();
+
+  Map<String, ICachedMNode> getUpdatedChildFlushingBuffer();
+
+  Map<String, ICachedMNode> getUpdatedChildReceivingBuffer();
+
+  void transferAllBufferReceivingToFlushing();
 
   void loadChildrenFromDisk(Map<String, ICachedMNode> children);
 
@@ -62,7 +64,9 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   void updateMNode(String name);
 
-  void moveMNodeToCache(String name);
+  void moveMNodeFromNewChildBufferToCache(String name);
+
+  void moveMNodeFromUpdateChildBufferToCache(String name);
 
   void evictMNode(String name);
 

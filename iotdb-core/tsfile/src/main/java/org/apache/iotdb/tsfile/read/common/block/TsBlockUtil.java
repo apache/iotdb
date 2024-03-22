@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.read.common.block;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 public class TsBlockUtil {
 
@@ -47,22 +49,75 @@ public class TsBlockUtil {
 
     while (left < right) {
       mid = (left + right) >> 1;
-      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
+      if (timeColumn.getLong(mid) < targetTime) {
         if (ascending) {
           left = mid + 1;
         } else {
           right = mid;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
+      } else if (timeColumn.getLong(mid) > targetTime) {
         if (ascending) {
           right = mid;
         } else {
           left = mid + 1;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
+      } else if (timeColumn.getLong(mid) == targetTime) {
         return mid;
       }
     }
     return left;
+  }
+
+  public static TsBlock applyFilterAndLimitOffsetToTsBlock(
+      TsBlock unFilteredBlock,
+      TsBlockBuilder builder,
+      Filter pushDownFilter,
+      PaginationController paginationController) {
+    boolean[] keepCurrentRow = pushDownFilter.satisfyTsBlock(unFilteredBlock);
+
+    // construct time column
+    int readEndIndex =
+        buildTimeColumnWithPagination(
+            unFilteredBlock, builder, keepCurrentRow, paginationController);
+
+    // construct value columns
+    for (int i = 0; i < builder.getValueColumnBuilders().length; i++) {
+      for (int rowIndex = 0; rowIndex < readEndIndex; rowIndex++) {
+        if (keepCurrentRow[rowIndex]) {
+          if (unFilteredBlock.getValueColumns()[i].isNull(rowIndex)) {
+            builder.getColumnBuilder(i).appendNull();
+          } else {
+            builder
+                .getColumnBuilder(i)
+                .writeObject(unFilteredBlock.getValueColumns()[i].getObject(rowIndex));
+          }
+        }
+      }
+    }
+    return builder.build();
+  }
+
+  private static int buildTimeColumnWithPagination(
+      TsBlock unFilteredBlock,
+      TsBlockBuilder builder,
+      boolean[] keepCurrentRow,
+      PaginationController paginationController) {
+    int readEndIndex = unFilteredBlock.getPositionCount();
+    for (int rowIndex = 0; rowIndex < readEndIndex; rowIndex++) {
+      if (keepCurrentRow[rowIndex]) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          keepCurrentRow[rowIndex] = false;
+        } else if (paginationController.hasCurLimit()) {
+          builder.getTimeColumnBuilder().writeLong(unFilteredBlock.getTimeByIndex(rowIndex));
+          builder.declarePosition();
+          paginationController.consumeLimit();
+        } else {
+          readEndIndex = rowIndex;
+          break;
+        }
+      }
+    }
+    return readEndIndex;
   }
 }

@@ -90,6 +90,16 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
+  public static void analyzeExpressionUsingTemplatedInfo(
+      Map<NodeRef<Expression>, TSDataType> types,
+      Expression expression,
+      TemplatedInfo templatedInfo) {
+    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    types.putAll(analyzer.getExpressionTypes());
+  }
+
   private static void addExpressionTypes(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
@@ -443,6 +453,7 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
       case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:
         throw new IllegalArgumentException(

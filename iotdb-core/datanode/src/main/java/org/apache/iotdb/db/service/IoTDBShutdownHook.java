@@ -78,18 +78,17 @@ public class IoTDBShutdownHook extends Thread {
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    WALManager.getInstance().deleteOutdatedFilesInWALNodes();
+    WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
     // own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .parallelStream()

@@ -53,10 +53,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedConfigSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWriteSchemaNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceMergeNode;
@@ -97,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -125,12 +128,16 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  public R visitSeriesScanSource(SeriesScanSourceNode node, C context) {
     return visitSourceNode(node, context);
   }
 
+  public R visitSeriesScan(SeriesScanNode node, C context) {
+    return visitSeriesScanSource(node, context);
+  }
+
   public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
-    return visitSourceNode(node, context);
+    return visitSeriesScanSource(node, context);
   }
 
   public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
@@ -211,6 +218,10 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   // two child -----------------------------------------------------------------------------------
 
   public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
@@ -228,6 +239,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeviceView(DeviceViewNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitAggregationMergeSort(AggregationMergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
@@ -470,22 +485,26 @@ public abstract class PlanVisitor<R, C> {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // Pipe Enriched Node
+  // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public R visitPipeEnrichedInsert(PipeEnrichedInsertNode node, C context) {
+  public R visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedDeleteData(PipeEnrichedDeleteDataNode node, C context) {
+  public R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedWriteSchema(PipeEnrichedWriteSchemaNode node, C context) {
+  public R visitPipeEnrichedWritePlanNode(PipeEnrichedWritePlanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedConfigSchema(PipeEnrichedConfigSchemaNode node, C context) {
+  public R visitPipeEnrichedNonWritePlanNode(PipeEnrichedNonWritePlanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
     return visitPlan(node, context);
   }
 }

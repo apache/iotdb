@@ -31,7 +31,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -46,9 +45,9 @@ import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
 
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstance.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final FragmentInstanceId id;
   private final QueryType type;
@@ -60,7 +59,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private TDataNodeLocation hostDataNode;
 
-  private final Expression globalTimePredicate;
+  private final TimePredicate globalTimePredicate;
 
   private final long timeOut;
 
@@ -76,13 +75,17 @@ public class FragmentInstance implements IConsensusRequest {
   // indicate which index we are retrying
   private transient int nextRetryIndex = 0;
 
+  // If this query is an EXPLAIN ANALYZE query
+  // We need to cache and calculate the statistics of this FragmentInstance if it is.
+  private boolean isExplainAnalyze = false;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Expression globalTimePredicate,
+      TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo) {
@@ -90,7 +93,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.globalTimePredicate = globalTimePredicate;
     this.id = id;
     this.type = type;
-    this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
+    this.timeOut = timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
   }
@@ -98,19 +101,21 @@ public class FragmentInstance implements IConsensusRequest {
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Expression globalTimePredicate,
+      TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
+      boolean isExplainAnalyze,
       boolean isRoot) {
     this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
     this.isRoot = isRoot;
+    this.isExplainAnalyze = isExplainAnalyze;
   }
 
   public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
-      Expression globalTimePredicate,
+      TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
@@ -166,7 +171,7 @@ public class FragmentInstance implements IConsensusRequest {
     isHighestPriority = highestPriority;
   }
 
-  public Expression getGlobalTimePredicate() {
+  public TimePredicate getGlobalTimePredicate() {
     return globalTimePredicate;
   }
 
@@ -208,7 +213,7 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasSessionInfo = ReadWriteIOUtils.readBool(buffer);
     SessionInfo sessionInfo = hasSessionInfo ? SessionInfo.deserializeFrom(buffer) : null;
     boolean hasTimePredicate = ReadWriteIOUtils.readBool(buffer);
-    Expression globalTimePredicate = hasTimePredicate ? Expression.deserialize(buffer) : null;
+    TimePredicate globalTimePredicate = hasTimePredicate ? TimePredicate.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
     FragmentInstance fragmentInstance =
@@ -217,6 +222,7 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
+    fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
     return fragmentInstance;
   }
 
@@ -232,7 +238,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(globalTimePredicate != null, outputStream);
       if (globalTimePredicate != null) {
-        Expression.serialize(globalTimePredicate, outputStream);
+        globalTimePredicate.serialize(outputStream);
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
@@ -240,9 +246,10 @@ public class FragmentInstance implements IConsensusRequest {
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
+      ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
-      logger.error("Unexpected error occurs when serializing this FragmentInstance.", e);
+      LOGGER.error("Unexpected error occurs when serializing this FragmentInstance.", e);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -283,5 +290,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public boolean isExplainAnalyze() {
+    return isExplainAnalyze;
   }
 }

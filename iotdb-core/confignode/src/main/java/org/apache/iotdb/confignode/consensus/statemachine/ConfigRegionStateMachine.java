@@ -34,7 +34,9 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -73,7 +75,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
 
-  /** Variables for ConfigNode Simple Consensus. */
+  /** Variables for {@link ConfigNode} Simple Consensus. */
   private LogWriter simpleLogWriter;
 
   private File simpleLogFile;
@@ -115,7 +117,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
@@ -128,6 +130,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       writeLogForSimpleConsensus(plan);
     }
+
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      PipeConfigNodeAgent.runtime().listener().tryListenToPlan(plan, false);
+    }
+
     return result;
   }
 
@@ -176,7 +183,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return read(plan);
   }
 
-  /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
+  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected DataSet read(ConfigPhysicalPlan plan) {
     DataSet result;
     try {
@@ -215,13 +222,16 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
       configManager.getLoadManager().stopLoadServices();
-      configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getProcedureManager().stopExecutor();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
       // Remove Metric after leader change
       configManager.removeMetrics();
+
+      // Shutdown leader related service for config pipe
+      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
     }
   }
 
@@ -236,24 +246,33 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getLoadManager().startLoadServices();
 
     // Start leader scheduling services
-    configManager.getProcedureManager().shiftExecutor(true);
+    configManager.getProcedureManager().startExecutor();
+    threadPool.submit(
+        () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
     configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
 
-    // we do cq recovery async for two reasons:
-    // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+    // Activate leader related service for config pipe
+    PipeConfigNodeAgent.runtime().notifyLeaderReady();
+
+    // we do cq recovery async for performance:
+    // cq recovery may be time-consuming, we use another thread to do it in
     // make notifyLeaderChanged not blocked by it
-    // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
-    // initialized after notifyLeaderChanged finished
     threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
 
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
     threadPool.submit(
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+    threadPool.submit(
+        () ->
+            configManager
+                .getPipeManager()
+                .getPipeRuntimeCoordinator()
+                .onConfigRegionGroupLeaderChanged());
 
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.
@@ -269,7 +288,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void stop() {
-    // do nothing
+    // Shutdown leader related service for config pipe
+    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
   }
 
   @Override
@@ -277,8 +297,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  /** TODO optimize the lock usage. */
-  private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
+  private void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
     if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
       try {
         simpleLogWriter.force();
@@ -350,7 +369,13 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           // read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
-            executor.executeNonQueryPlan(nextPlan);
+            TSStatus status = executor.executeNonQueryPlan(nextPlan);
+            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              // Recover the linked queue.
+              // Note that the "nextPlan"s may contain create and drop pipe operations
+              // and will affect whether the queue listen to the plans.
+              PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
+            }
           } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }
@@ -385,8 +410,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  private void createLogFile(int endIndex) {
-    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
+  private void createLogFile(int startIndex) {
+    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + startIndex);
     try {
       if (!simpleLogFile.createNewFile()) {
         LOGGER.warn(

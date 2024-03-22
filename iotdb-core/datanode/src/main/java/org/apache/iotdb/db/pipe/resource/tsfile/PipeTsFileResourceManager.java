@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -78,6 +81,14 @@ public class PipeTsFileResourceManager {
   private void ttlCheck() {
     final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
         hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet().iterator();
+    final Optional<Logger> logger =
+        PipeResourceManager.log()
+            .schedule(
+                PipeTsFileResourceManager.class,
+                PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
+                PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
+                hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
+
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -85,10 +96,12 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          LOGGER.info(
-              "Pipe file (file name: {}) is still referenced {} times",
-              entry.getKey(),
-              entry.getValue().getReferenceCount());
+          logger.ifPresent(
+              l ->
+                  l.info(
+                      "Pipe file (file name: {}) is still referenced {} times",
+                      entry.getKey(),
+                      entry.getValue().getReferenceCount()));
         }
       } catch (IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
@@ -277,7 +290,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<String, List<String>> getDeviceMeasurementsMapFromCache(File hardlinkOrCopiedTsFile)
+  public Map<IDeviceID, List<String>> getDeviceMeasurementsMapFromCache(File hardlinkOrCopiedTsFile)
       throws IOException {
     lock.lock();
     try {
@@ -289,7 +302,7 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public Map<String, Boolean> getDeviceIsAlignedMapFromCache(File hardlinkOrCopiedTsFile)
+  public Map<IDeviceID, Boolean> getDeviceIsAlignedMapFromCache(File hardlinkOrCopiedTsFile)
       throws IOException {
     lock.lock();
     try {

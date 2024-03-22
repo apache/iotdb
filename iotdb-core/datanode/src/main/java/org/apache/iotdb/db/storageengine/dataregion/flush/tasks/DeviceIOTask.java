@@ -67,7 +67,7 @@ public class DeviceIOTask implements Task {
   public void flushOneDevice(FlushDeviceContext deviceContext) {
     long starTime = System.currentTimeMillis();
     try {
-      flushContext.getWriter().startChunkGroup(deviceContext.getDeviceID().toStringID());
+      flushContext.getWriter().startChunkGroup(deviceContext.getDeviceID());
       for (IChunkWriter chunkWriter : deviceContext.getChunkWriters()) {
         chunkWriter.writeToFileWriter(flushContext.getWriter());
       }

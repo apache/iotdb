@@ -148,6 +148,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
@@ -167,6 +168,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -184,14 +189,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -1395,7 +1402,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Select Clause
   private SelectComponent parseSelectClause(
       IoTDBSqlParser.SelectClauseContext ctx, QueryStatement queryStatement) {
-    SelectComponent selectComponent = new SelectComponent(zoneId);
+    SelectComponent selectComponent = new SelectComponent();
 
     // parse LAST
     if (ctx.LAST() != null) {
@@ -1802,76 +1809,96 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertStatement insertStatement = new InsertStatement();
     insertStatement.setDevice(parsePrefixPath(ctx.prefixPath()));
-    boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
-    parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, isTimeDefault);
+    int timeIndex = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
+    parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, timeIndex);
     insertStatement.setAligned(ctx.ALIGNED() != null);
     return insertStatement;
   }
 
-  private boolean parseInsertColumnSpec(
+  private int parseInsertColumnSpec(
       IoTDBSqlParser.InsertColumnsSpecContext ctx, InsertStatement insertStatement) {
     List<String> measurementList = new ArrayList<>();
-    for (IoTDBSqlParser.NodeNameWithoutWildcardContext measurementName :
-        ctx.nodeNameWithoutWildcard()) {
-      measurementList.add(parseNodeNameWithoutWildCard(measurementName));
+    int timeIndex = -1;
+
+    for (int i = 0, size = ctx.insertColumn().size(); i < size; i++) {
+      String measurement = parseInsertColumn(ctx.insertColumn(i));
+      if ("time".equalsIgnoreCase(measurement) || "timestamp".equalsIgnoreCase(measurement)) {
+        if (timeIndex != -1) {
+          throw new SemanticException("One row should only have one time value");
+        } else {
+          timeIndex = i;
+        }
+      } else {
+        measurementList.add(measurement);
+      }
+    }
+    if (measurementList.isEmpty()) {
+      throw new SemanticException("InsertStatement should contain at least one measurement");
     }
     insertStatement.setMeasurementList(measurementList.toArray(new String[0]));
-    return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
+    return timeIndex;
+  }
+
+  private String parseInsertColumn(IoTDBSqlParser.InsertColumnContext columnContext) {
+    return parseNodeString(columnContext.getText());
   }
 
   private void parseInsertValuesSpec(
-      IoTDBSqlParser.InsertValuesSpecContext ctx,
-      InsertStatement insertStatement,
-      boolean isTimeDefault) {
-    List<IoTDBSqlParser.InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
+      IoTDBSqlParser.InsertValuesSpecContext ctx, InsertStatement insertStatement, int timeIndex) {
+    List<IoTDBSqlParser.RowContext> rows = ctx.row();
+    if (timeIndex == -1 && rows.size() != 1) {
+      throw new SemanticException("need timestamps when insert multi rows");
+    }
     List<String[]> valuesList = new ArrayList<>();
-    long[] timeArray = new long[insertMultiValues.size()];
-    for (int i = 0; i < insertMultiValues.size(); i++) {
+    long[] timeArray = new long[rows.size()];
+    for (int i = 0, size = rows.size(); i < size; i++) {
+      IoTDBSqlParser.RowContext row = rows.get(i);
       // parse timestamp
       long timestamp;
       List<String> valueList = new ArrayList<>();
-
-      if (insertMultiValues.get(i).timeValue() != null) {
-        if (isTimeDefault) {
-          if (insertMultiValues.size() != 1) {
-            throw new SemanticException("need timestamps when insert multi rows");
-          }
-          valueList.add(insertMultiValues.get(i).timeValue().getText());
-          timestamp = CommonDateTimeUtils.currentTime();
-        } else {
-          timestamp =
-              parseTimeValue(
-                  insertMultiValues.get(i).timeValue(), CommonDateTimeUtils.currentTime());
-          TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
-        }
+      // using now() instead
+      if (timeIndex == -1) {
+        timestamp = CommonDateTimeUtils.currentTime();
       } else {
-        if (!isTimeDefault) {
-          throw new SemanticException(
-              "the measurementList's size is not consistent with the valueList's size");
-        }
-        if (insertMultiValues.size() != 1) {
-          throw new SemanticException("need timestamps when insert multi rows");
-        }
-        timestamp = parseDateFormat(SqlConstant.NOW_FUNC);
+        timestamp = parseTimeValue(row.constant(timeIndex));
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
       }
       timeArray[i] = timestamp;
 
       // parse values
-      List<IoTDBSqlParser.MeasurementValueContext> values =
-          insertMultiValues.get(i).measurementValue();
-      for (IoTDBSqlParser.MeasurementValueContext value : values) {
-        for (IoTDBSqlParser.ConstantContext constant : value.constant()) {
-          if (constant.STRING_LITERAL() != null) {
-            valueList.add(parseStringLiteralInInsertValue(constant.getText()));
+      List<ConstantContext> values = row.constant();
+      for (int j = 0, columnCount = values.size(); j < columnCount; j++) {
+        if (j != timeIndex) {
+          if (values.get(j).STRING_LITERAL() != null) {
+            valueList.add(parseStringLiteralInInsertValue(values.get(j).getText()));
           } else {
-            valueList.add(constant.getText());
+            valueList.add(values.get(j).getText());
           }
         }
       }
+
       valuesList.add(valueList.toArray(new String[0]));
     }
     insertStatement.setTimes(timeArray);
     insertStatement.setValuesList(valuesList);
+  }
+
+  private long parseTimeValue(ConstantContext constant) {
+    if (constant.INTEGER_LITERAL() != null) {
+      try {
+        if (constant.MINUS() != null) {
+          return -Long.parseLong(constant.INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(constant.INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format("Can not parse %s to long value", constant.INTEGER_LITERAL().getText()));
+      }
+    } else if (constant.dateExpression() != null) {
+      return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());
+    } else {
+      throw new SemanticException(String.format("Can not parse %s to time", constant));
+    }
   }
 
   // Load File
@@ -2534,7 +2561,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
     QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
-    return new ExplainStatement(queryStatement);
+    if (ctx.ANALYZE() == null) {
+      return new ExplainStatement(queryStatement);
+    }
+    ExplainAnalyzeStatement explainAnalyzeStatement = new ExplainAnalyzeStatement(queryStatement);
+    if (ctx.VERBOSE() != null) {
+      explainAnalyzeStatement.setVerbose(true);
+    }
+    return explainAnalyzeStatement;
   }
 
   @Override
@@ -2920,6 +2954,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return;
       case SqlConstant.COUNT_IF:
       case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -3131,9 +3166,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-    }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
@@ -3150,22 +3182,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
-    }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
 
-  // Repair Data
+  // Start Repair Data
+
   @Override
-  public Statement visitRepairData(IoTDBSqlParser.RepairDataContext ctx) {
-    RepairDataStatement repairDataStatement = new RepairDataStatement(StatementType.REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
-    repairDataStatement.setOnCluster(ctx.LOCAL() == null);
-    return repairDataStatement;
+  public Statement visitStartRepairData(IoTDBSqlParser.StartRepairDataContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
+    startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
+    return startRepairDataStatement;
+  }
+
+  // Stop Repair Data
+
+  @Override
+  public Statement visitStopRepairData(IoTDBSqlParser.StopRepairDataContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    stopRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
+    return stopRepairDataStatement;
   }
 
   // Load Configuration
@@ -3174,10 +3212,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
     LoadConfigurationStatement loadConfigurationStatement =
         new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
-    }
     loadConfigurationStatement.setOnCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
   }
@@ -3187,10 +3221,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
     SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
-    }
     setSystemStatusStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.RUNNING() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
@@ -3245,7 +3275,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    showQueriesStatement.setZoneId(zoneId);
     return showQueriesStatement;
   }
 
@@ -3715,6 +3744,74 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitCreateTopic(IoTDBSqlParser.CreateTopicContext ctx) {
+    final CreateTopicStatement createTopicStatement = new CreateTopicStatement();
+
+    if (ctx.topicName != null) {
+      createTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in CREATE TOPIC, please enter topicName.");
+    }
+
+    if (ctx.topicAttributesClause() != null) {
+      createTopicStatement.setTopicAttributes(
+          parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+    } else {
+      createTopicStatement.setTopicAttributes(new HashMap<>());
+    }
+
+    return createTopicStatement;
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<IoTDBSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (IoTDBSqlParser.TopicAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          parseStringLiteral(context.topicKey.getText()),
+          parseStringLiteral(context.topicValue.getText()));
+    }
+    return collectorMap;
+  }
+
+  @Override
+  public Statement visitDropTopic(IoTDBSqlParser.DropTopicContext ctx) {
+    final DropTopicStatement dropTopicStatement = new DropTopicStatement();
+
+    if (ctx.topicName != null) {
+      dropTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP TOPIC, please enter topicName.");
+    }
+
+    return dropTopicStatement;
+  }
+
+  @Override
+  public Statement visitShowTopics(IoTDBSqlParser.ShowTopicsContext ctx) {
+    final ShowTopicsStatement showTopicsStatement = new ShowTopicsStatement();
+
+    if (ctx.topicName != null) {
+      showTopicsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showTopicsStatement;
+  }
+
+  @Override
+  public Statement visitShowSubscriptions(IoTDBSqlParser.ShowSubscriptionsContext ctx) {
+    final ShowSubscriptionsStatement showSubscriptionsStatement = new ShowSubscriptionsStatement();
+
+    if (ctx.topicName != null) {
+      showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showSubscriptionsStatement;
+  }
+
+  @Override
   public Statement visitGetRegionId(IoTDBSqlParser.GetRegionIdContext ctx) {
     TConsensusGroupType type =
         ctx.DATA() == null ? TConsensusGroupType.SchemaRegion : TConsensusGroupType.DataRegion;
@@ -4091,5 +4188,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showSpaceQuotaStatement.setDatabases(null);
     }
     return showSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitShowCurrentTimestamp(IoTDBSqlParser.ShowCurrentTimestampContext ctx) {
+    return new ShowCurrentTimestampStatement();
   }
 }

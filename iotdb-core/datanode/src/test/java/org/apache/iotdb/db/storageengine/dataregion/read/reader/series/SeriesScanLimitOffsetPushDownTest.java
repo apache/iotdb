@@ -215,6 +215,11 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
 
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertTrue(tsBlock == null || tsBlock.isEmpty());
+
     Assert.assertFalse(seriesScanUtil.hasNextPage());
 
     Assert.assertTrue(seriesScanUtil.hasNextChunk());

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.storageengine.dataregion.flush.tasks;
 
 import org.apache.iotdb.commons.concurrent.pipeline.Task;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 /**

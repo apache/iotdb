@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush.tasks;
 
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 import java.util.List;

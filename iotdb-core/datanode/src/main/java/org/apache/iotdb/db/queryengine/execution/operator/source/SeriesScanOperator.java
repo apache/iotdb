@@ -114,7 +114,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return calculateMaxPeekMemory() - calculateMaxReturnSize();
+    return calculateMaxPeekMemoryWithCounter() - calculateMaxReturnSize();
   }
 
   private boolean readFileData() throws IOException {

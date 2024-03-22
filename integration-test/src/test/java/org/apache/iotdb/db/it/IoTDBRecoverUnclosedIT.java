@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -149,7 +148,7 @@ public class IoTDBRecoverUnclosedIT {
     EnvFactory.getEnv().startAllDataNodes();
     logger.info("All DataNodes are started");
     // wait for cluster to start and check
-    Assert.assertTrue(((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown());
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
 
     // test count,
     try (Connection connection = EnvFactory.getEnv().getConnection();

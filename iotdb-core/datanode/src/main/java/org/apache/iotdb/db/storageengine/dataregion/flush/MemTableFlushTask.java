@@ -34,12 +34,12 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolM
 import org.apache.iotdb.db.storageengine.dataregion.flush.tasks.FlushContext;
 import org.apache.iotdb.db.storageengine.dataregion.flush.tasks.FlushDeviceContext;
 import org.apache.iotdb.db.storageengine.dataregion.flush.tasks.SortSeriesTask;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -159,9 +159,9 @@ public class MemTableFlushTask {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
     // sort the IDeviceID in lexicographical order
-    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
     deviceIDList.removeIf(
         d -> memTableMap.get(d).count() == 0 || memTableMap.get(d).getMemChunkMap().isEmpty());
+    Collections.sort(deviceIDList);
     allContext.setDeviceContexts(new ArrayList<>());
 
     if (deviceIDList.isEmpty()) {
@@ -179,7 +179,7 @@ public class MemTableFlushTask {
       List<String> seriesInOrder = new ArrayList<>(memChunkMap.keySet());
       // skip the empty device/chunk group
       seriesInOrder.removeIf(s -> memChunkMap.get(s).count() == 0);
-      seriesInOrder.sort((String::compareTo));
+      Collections.sort(seriesInOrder);
       // record the series order in the device context
       flushDeviceContext.setMeasurementIds(seriesInOrder);
       flushDeviceContext.setChunkWriters(new IChunkWriter[seriesInOrder.size()]);

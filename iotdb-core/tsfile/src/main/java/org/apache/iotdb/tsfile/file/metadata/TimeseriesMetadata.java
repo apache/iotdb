@@ -24,10 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,17 +38,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static io.airlift.slice.SizeOf.sizeOfCharArray;
-import static io.airlift.slice.SizeOf.sizeOfObjectArray;
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfObjectArray;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(TimeseriesMetadata.class).instanceSize()
-          + ClassLayout.parseClass(String.class).instanceSize()
-          + ClassLayout.parseClass(TSDataType.class).instanceSize()
-          + ClassLayout.parseClass(ArrayList.class).instanceSize();
+      (int)
+          (RamUsageEstimator.shallowSizeOfInstance(TimeseriesMetadata.class)
+              + RamUsageEstimator.shallowSizeOfInstance(String.class)
+              + RamUsageEstimator.shallowSizeOfInstance(TSDataType.class)
+              + RamUsageEstimator.shallowSizeOfInstance(ArrayList.class));
 
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -80,11 +79,10 @@ public class TsFilePlanRedoer {
     if (!node.hasValidMeasurements()) {
       return;
     }
-    String deviceId = node.getDevicePath().getFullPath();
     if (tsFileResource != null) {
       // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = tsFileResource.getEndTime(deviceId);
+      long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
       long minTimeInNode;
       if (node instanceof InsertRowNode) {
         minTimeInNode = ((InsertRowNode) node).getTime();
@@ -95,8 +93,6 @@ public class TsFilePlanRedoer {
         return;
       }
     }
-
-    node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(deviceId));
 
     if (node instanceof InsertRowNode) {
       if (node.isAligned()) {

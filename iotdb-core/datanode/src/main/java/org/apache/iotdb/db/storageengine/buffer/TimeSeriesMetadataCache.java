@@ -29,14 +29,16 @@ import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +52,9 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.airlift.slice.SizeOf.sizeOfCharArray;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_CACHE;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.READ_TIMESERIES_METADATA_FILE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
@@ -119,7 +121,10 @@ public class TimeSeriesMetadataCache {
         TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
         BloomFilter bloomFilter = reader.readBloomFilter();
         if (bloomFilter != null
-            && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+            && !bloomFilter.contains(
+                ((PlainDeviceID) key.device).toStringID()
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + key.measurement)) {
           return null;
         }
         TimeseriesMetadata timeseriesMetadata =
@@ -138,7 +143,9 @@ public class TimeSeriesMetadataCache {
         }
         // allow for the parallelism of different devices
         synchronized (
-            devices.computeIfAbsent(key.device + SEPARATOR + filePath, WeakReference::new)) {
+            devices.computeIfAbsent(
+                ((PlainDeviceID) key.device).toStringID() + SEPARATOR + filePath,
+                WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
@@ -157,7 +164,9 @@ public class TimeSeriesMetadataCache {
                         debug);
             if (bloomFilter != null
                 && !bloomFilter.contains(
-                    key.device + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+                    ((PlainDeviceID) key.device).toStringID()
+                        + TsFileConstant.PATH_SEPARATOR
+                        + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
@@ -250,19 +259,19 @@ public class TimeSeriesMetadataCache {
 
   public static class TimeSeriesMetadataCacheKey {
 
-    private static final int INSTANCE_SIZE =
-        ClassLayout.parseClass(TimeSeriesMetadataCacheKey.class).instanceSize()
-            + 2 * ClassLayout.parseClass(String.class).instanceSize();
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(TimeSeriesMetadataCacheKey.class)
+            + 2 * RamUsageEstimator.shallowSizeOfInstance(String.class);
 
     private final int regionId;
     private final long timePartitionId;
     private final long tsFileVersion;
     // high 32 bit is compaction level, low 32 bit is merge count
     private final long compactionVersion;
-    private final String device;
+    private final IDeviceID device;
     private final String measurement;
 
-    public TimeSeriesMetadataCacheKey(TsFileID tsFileID, String device, String measurement) {
+    public TimeSeriesMetadataCacheKey(TsFileID tsFileID, IDeviceID device, String measurement) {
       this.regionId = tsFileID.regionId;
       this.timePartitionId = tsFileID.timePartitionId;
       this.tsFileVersion = tsFileID.fileVersion;
@@ -276,7 +285,7 @@ public class TimeSeriesMetadataCache {
         long timePartitionId,
         long tsFileVersion,
         long compactionVersion,
-        String device,
+        IDeviceID device,
         String measurement) {
       this.regionId = regionId;
       this.timePartitionId = timePartitionId;
@@ -288,7 +297,7 @@ public class TimeSeriesMetadataCache {
 
     public long getRetainedSizeInBytes() {
       return INSTANCE_SIZE
-          + sizeOfCharArray(device.length())
+          + sizeOfCharArray(((PlainDeviceID) device).toStringID().length())
           + sizeOfCharArray(measurement.length());
     }
 
@@ -327,7 +336,7 @@ public class TimeSeriesMetadataCache {
           + ", compactionVersion="
           + compactionVersion
           + ", device='"
-          + device
+          + ((PlainDeviceID) device).toStringID()
           + '\''
           + ", measurement='"
           + measurement

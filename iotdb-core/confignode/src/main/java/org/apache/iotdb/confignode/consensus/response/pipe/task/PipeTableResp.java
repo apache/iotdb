@@ -107,7 +107,7 @@ public class PipeTableResp implements DataSet {
       final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
       final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
-      for (PipeRuntimeException e : runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap().values()) {
+      for (PipeRuntimeException e : runtimeMeta.getNodeId2PipeRuntimeExceptionMap().values()) {
         exceptionMessageBuilder
             .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
             .append(", ")
