@@ -238,7 +238,7 @@ public class TimeProgressIndex extends ProgressIndex {
     final TimeProgressIndex timeProgressIndex = new TimeProgressIndex();
     timeProgressIndex.timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
 
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String timeSeries = ReadWriteIOUtils.readString(byteBuffer);
       final long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
@@ -259,7 +259,7 @@ public class TimeProgressIndex extends ProgressIndex {
     final TimeProgressIndex timeProgressIndex = new TimeProgressIndex();
     timeProgressIndex.timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
 
-    int size = ReadWriteIOUtils.readInt(stream);
+    final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; ++i) {
       final String timeSeries = ReadWriteIOUtils.readString(stream);
       final long timestamp = ReadWriteIOUtils.readLong(stream);
