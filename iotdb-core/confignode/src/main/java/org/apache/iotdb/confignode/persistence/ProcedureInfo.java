@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.Compatibility130;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
@@ -86,10 +87,12 @@ public class ProcedureInfo implements SnapshotProcessor {
     this.configManager = configManager;
   }
 
+  @Compatibility130
   public boolean isOldVersion() {
     return new File(OLD_PROCEDURE_WAL_DIR).exists();
   }
 
+  @Compatibility130
   public List<Procedure<ConfigNodeProcedureEnv>> oldLoad() {
     List<Procedure<ConfigNodeProcedureEnv>> procedureList = new ArrayList<>();
     try (Stream<Path> s = Files.list(Paths.get(OLD_PROCEDURE_WAL_DIR))) {
@@ -108,6 +111,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     return procedureList;
   }
 
+  @Compatibility130
   public void upgrade() {
     if (isOldVersion()) {
       try {
@@ -137,6 +141,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  @Compatibility130
   @TestOnly
   public TSStatus oldUpdateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure procedure = updateProcedurePlan.getProcedure();
