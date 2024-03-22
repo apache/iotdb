@@ -509,7 +509,7 @@ public class ProcedureManager {
    * AddConfigNodeProcedure}s.
    */
   public void addConfigNode(TConfigNodeRegisterReq req) {
-    AddConfigNodeProcedure addConfigNodeProcedure =
+    final AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation(), req.getVersionInfo());
     this.executor.submitProcedure(addConfigNodeProcedure);
   }
@@ -519,7 +519,7 @@ public class ProcedureManager {
    * RemoveConfigNodeProcedure}s.
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
-    RemoveConfigNodeProcedure removeConfigNodeProcedure =
+    final RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
     this.executor.submitProcedure(removeConfigNodeProcedure);
     LOGGER.info("Submit RemoveConfigNodeProcedure successfully: {}", removeConfigNodePlan);

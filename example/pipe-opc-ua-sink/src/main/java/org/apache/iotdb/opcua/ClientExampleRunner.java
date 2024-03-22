@@ -54,22 +54,23 @@ public class ClientExampleRunner {
   }
 
   private OpcUaClient createClient() throws Exception {
-    Path securityTempDir = Paths.get(System.getProperty("java.io.tmpdir"), "client", "security");
+    final Path securityTempDir =
+        Paths.get(System.getProperty("java.io.tmpdir"), "client", "security");
     Files.createDirectories(securityTempDir);
     if (!Files.exists(securityTempDir)) {
       throw new Exception("unable to create security dir: " + securityTempDir);
     }
 
-    File pkiDir = securityTempDir.resolve("pki").toFile();
+    final File pkiDir = securityTempDir.resolve("pki").toFile();
 
     System.out.println("security dir: " + securityTempDir.toAbsolutePath());
     LoggerFactory.getLogger(getClass()).info("security pki dir: {}", pkiDir.getAbsolutePath());
 
-    IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
+    final IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
 
-    DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
 
-    DefaultClientCertificateValidator certificateValidator =
+    final DefaultClientCertificateValidator certificateValidator =
         new DefaultClientCertificateValidator(trustListManager);
 
     return OpcUaClient.create(
@@ -90,7 +91,7 @@ public class ClientExampleRunner {
 
   public void run() {
     try {
-      OpcUaClient client = createClient();
+      final OpcUaClient client = createClient();
 
       future.whenCompleteAsync(
           (c, ex) -> {
