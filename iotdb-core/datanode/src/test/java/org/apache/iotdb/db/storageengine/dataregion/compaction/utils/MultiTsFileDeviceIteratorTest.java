@@ -38,12 +38,14 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
@@ -57,8 +59,11 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -86,8 +91,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testMeasurementIterator()
-      throws IOException, MetadataException, WriteProcessException {
+  public void testMeasurementIterator() throws IOException, MetadataException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
       writer.startChunkGroup("d1");
@@ -111,7 +115,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       for (int i = 1000; i < 5000; i++) {
         writer.generateSimpleNonAlignedSeriesToCurrentDevice(
             "s" + i,
-            new TimeRange[] {new TimeRange(20, 30)},
+            new TimeRange[] {new TimeRange(30, 40)},
             TSEncoding.PLAIN,
             CompressionType.LZ4);
       }
@@ -122,37 +126,32 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     seqResources.add(resource2);
 
-    int iterNum = 0;
+    Set<String> measurementSet = new HashSet<>(4000);
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceIsAlignedPair = multiTsFileDeviceIterator.nextDevice();
         IDeviceID device = deviceIsAlignedPair.getLeft();
-        boolean isAligned = deviceIsAlignedPair.getRight();
         MultiTsFileDeviceIterator.MultiTsFileNonAlignedMeasurementMetadataListIterator
             measurementIterator =
                 multiTsFileDeviceIterator.iterateNotAlignedSeriesAndChunkMetadataList(device);
         while (measurementIterator.hasNextSeries()) {
           String series = measurementIterator.nextSeries();
-          //                  LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
-          //         readerAndChunkMetadataList =
-          //                      measurementIterator.getMetadataListForCurrentSeries();
-          iterNum++;
+          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
+              measurementIterator.getMetadataListForCurrentSeries();
+          measurementSet.add(series);
         }
-        //        MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
-        //            multiTsFileDeviceIterator.iterateNotAlignedSeries(device, true);
-        //        while (measurementIterator.hasNextSeries()) {
-        //          String series = measurementIterator.nextSeries();
-        //          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
-        // readerAndChunkMetadataList =
-        //              measurementIterator.getMetadataListForCurrentSeries();
-        //          iterNum++;
-        //        }
       }
     }
-    //    new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, new
-    // ReadChunkCompactionPerformer(), 0).start();
-    Assert.assertEquals(4000, iterNum);
+    new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0)
+        .start();
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetFile.getTsFile().getAbsolutePath())) {
+      Assert.assertEquals(4000, reader.getAllMeasurements().size());
+    }
+    Assert.assertEquals(4000, measurementSet.size());
   }
 
   @Test
