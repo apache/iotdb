@@ -346,9 +346,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
                             && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
@@ -362,9 +359,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
                             && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
@@ -413,6 +407,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return startIndex instanceof TimeWindowStateProgressIndex
         // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
         ? ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
+        // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+        // "equals" max progressIndex must be transmitted to avoid data loss
         : !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
