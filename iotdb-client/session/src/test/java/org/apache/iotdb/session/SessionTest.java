@@ -964,9 +964,11 @@ public class SessionTest {
     map.put("one", tablet);
     session.insertAlignedTablets(map, false);
     session.setEnableRedirection(true);
-    Assert.assertEquals(true, session.isEnableRedirection());
+    Assert.assertTrue(session.isEnableRedirection());
     session.setEnableQueryRedirection(true);
-    Assert.assertEquals(true, session.isEnableQueryRedirection());
+    Assert.assertTrue(session.isEnableQueryRedirection());
+    session.setEnableRecordsConvertTablet(true);
+    Assert.assertTrue(session.isEnableRecordsConvertTablet());
   }
 
   @Test

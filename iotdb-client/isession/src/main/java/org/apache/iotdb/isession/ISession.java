@@ -498,6 +498,10 @@ public interface ISession extends AutoCloseable {
 
   void setEnableRedirection(boolean enableRedirection);
 
+  boolean isEnableRecordsConvertTablet();
+
+  void setEnableRecordsConvertTablet(boolean enableRecordsConvertTablet);
+
   void sortTablet(Tablet tablet);
 
   TSBackupConfigurationResp getBackupConfiguration()

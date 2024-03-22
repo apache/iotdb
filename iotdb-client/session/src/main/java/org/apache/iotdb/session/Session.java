@@ -144,6 +144,7 @@ public class Session implements ISession {
 
   // Cluster version cache
   protected boolean enableRedirection;
+  protected boolean enableRecordsConvertTablet;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -197,6 +198,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -211,6 +213,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -225,6 +228,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -239,6 +243,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -259,6 +264,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
@@ -274,6 +280,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -289,7 +296,23 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
+            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
+  }
+  public Session(
+          String host, int rpcPort, String username, String password, boolean enableRedirection, boolean enableRecordsConvertTablet) {
+    this(
+            host,
+            rpcPort,
+            username,
+            password,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            enableRedirection,
+            enableRecordsConvertTablet,
+            SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
@@ -310,7 +333,34 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
+            SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
+  }
+
+  public Session(
+          String host,
+          int rpcPort,
+          String username,
+          String password,
+          int fetchSize,
+          ZoneId zoneId,
+          int thriftDefaultBufferSize,
+          int thriftMaxFrameSize,
+          boolean enableRedirection,
+          Version version) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        enableRedirection,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
+        version);
+    this.version = version;
   }
 
   @SuppressWarnings("squid:S107")
@@ -324,6 +374,7 @@ public class Session implements ISession {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       boolean enableRedirection,
+      boolean enableRecordsConvertTablet,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
@@ -333,6 +384,7 @@ public class Session implements ISession {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
+    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
     this.version = version;
   }
 
@@ -346,6 +398,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -364,6 +417,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -377,6 +431,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET,
         SessionConfig.DEFAULT_VERSION);
   }
 
@@ -389,6 +444,7 @@ public class Session implements ISession {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       boolean enableRedirection,
+      boolean enableRecordsConvertTablet,
       Version version) {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -401,6 +457,7 @@ public class Session implements ISession {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
+    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
     this.version = version;
   }
 
@@ -416,6 +473,7 @@ public class Session implements ISession {
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableRedirection = builder.enableRedirection;
+    this.enableRecordsConvertTablet = builder.enableRecordsConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
@@ -1907,14 +1965,16 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    // judge if convert records to tablets.
 
-    Set<String> deviceSet = new HashSet<>(deviceIds);
+    if(enableRecordsConvertTablet) {
+      // judge if convert records to tablets.
+      Set<String> deviceSet = new HashSet<>(deviceIds);
 
-    if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
-      convertToTabletsAndInsert(
-          deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
-      return;
+      if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
+        convertToTabletsAndInsert(
+                deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
+        return;
+      }
     }
     // insert records
     if (enableRedirection) {
@@ -1960,13 +2020,14 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
-    // judge if convert records to tablets.
-    Set<String> deviceSet = new HashSet<>(deviceIds);
-
-    if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
-      convertToTabletsAndInsert(
-          deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
-      return;
+    if(enableRecordsConvertTablet) {
+      // judge if convert records to tablets.
+      Set<String> deviceSet = new HashSet<>(deviceIds);
+      if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
+        convertToTabletsAndInsert(
+                deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
+        return;
+      }
     }
     if (enableRedirection) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
@@ -3634,6 +3695,18 @@ public class Session implements ISession {
   }
 
   @Override
+  public boolean isEnableRecordsConvertTablet(){
+    return enableRecordsConvertTablet;
+  }
+
+  @Override
+  public void setEnableRecordsConvertTablet(boolean enableRecordsConvertTablet){
+    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
+  }
+
+
+
+  @Override
   public TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     return defaultSessionConnection.getBackupConfiguration();
@@ -3654,6 +3727,8 @@ public class Session implements ISession {
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
+
+    private boolean enableRecordsConvertTablet = SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
@@ -3726,6 +3801,11 @@ public class Session implements ISession {
 
     public Builder enableRedirection(boolean enableRedirection) {
       this.enableRedirection = enableRedirection;
+      return this;
+    }
+
+    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet){
+      this.enableRecordsConvertTablet = enableRecordsConvertTablet;
       return this;
     }
 
