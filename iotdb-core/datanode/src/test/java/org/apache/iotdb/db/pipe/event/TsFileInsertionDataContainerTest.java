@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -234,7 +235,7 @@ public class TsFileInsertionDataContainerTest {
       long startTime,
       long endTime)
       throws Exception {
-    LOGGER.info(
+    LOGGER.debug(
         "testToTabletInsertionEvents: deviceNumber: {}, measurementNumber: {}, rowNumberInOneDevice: {}, patternFormat: {}, startTime: {}, endTime: {}",
         deviceNumber,
         measurementNumber,
@@ -425,7 +426,7 @@ public class TsFileInsertionDataContainerTest {
                       .filter(p -> p != null && !p.isEmpty())
                       .forEach(
                           p -> {
-                            oneDeviceInAlignedTsFile.set(k);
+                            oneDeviceInAlignedTsFile.set(((PlainDeviceID) k).toStringID());
                             oneMeasurementInAlignedTsFile.set(new Path(k, p, false).toString());
                           }));
       nonalignedReader
@@ -436,7 +437,7 @@ public class TsFileInsertionDataContainerTest {
                       .filter(p -> p != null && !p.isEmpty())
                       .forEach(
                           p -> {
-                            oneDeviceInUnalignedTsFile.set(k);
+                            oneDeviceInUnalignedTsFile.set(((PlainDeviceID) k).toStringID());
                             oneMeasurementInUnalignedTsFile.set(new Path(k, p, false).toString());
                           }));
     }

@@ -1303,7 +1303,7 @@ public class SeriesScanUtil {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDevice());
+      return fileResource.getEndTime(seriesPath.getIDeviceID());
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1326,7 +1326,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getDevice());
+      return time <= right.getEndTime(seriesPath.getIDeviceID());
     }
 
     @Override
@@ -1369,7 +1369,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), scanOptions.getGlobalTimeFilter(), true, false)) {
+                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1383,7 +1383,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), scanOptions.getGlobalTimeFilter(), false, false)) {
+                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1426,7 +1426,7 @@ public class SeriesScanUtil {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDevice());
+      return fileResource.getStartTime(seriesPath.getIDeviceID());
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1449,7 +1449,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDevice());
+      return time >= right.getStartTime(seriesPath.getIDeviceID());
     }
 
     @Override
@@ -1492,7 +1492,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), scanOptions.getGlobalTimeFilter(), true, false)) {
+                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1506,7 +1506,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), scanOptions.getGlobalTimeFilter(), false, false)) {
+                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;

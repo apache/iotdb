@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -77,12 +79,12 @@ public class TsFileResourceUtils {
         logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
-      Set<String> devices = timeIndex.getDevices();
+      Set<IDeviceID> devices = timeIndex.getDevices();
       if (devices.isEmpty()) {
         logger.error("{} {} empty resource", resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
-      for (String device : devices) {
+      for (IDeviceID device : devices) {
         long startTime = timeIndex.getStartTime(device);
         long endTime = timeIndex.getEndTime(device);
         if (startTime == Long.MAX_VALUE) {
@@ -327,8 +329,9 @@ public class TsFileResourceUtils {
   public static Map<Long, IChunkMetadata> getChunkMetadata(TsFileSequenceReader reader)
       throws IOException {
     Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
-    Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+    Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata =
+        reader.getAllTimeseriesMetadata(true);
+    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
           offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);
@@ -340,7 +343,7 @@ public class TsFileResourceUtils {
 
   public static boolean validateTsFileResourcesHasNoOverlap(List<TsFileResource> resources) {
     // deviceID -> <TsFileResource, last end time>
-    Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
+    Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       DeviceTimeIndex timeIndex;
       if (resource.getTimeIndexType() != 1) {
@@ -357,8 +360,8 @@ public class TsFileResourceUtils {
       if (timeIndex == null) {
         return false;
       }
-      Set<String> devices = timeIndex.getDevices();
-      for (String device : devices) {
+      Set<IDeviceID> devices = timeIndex.getDevices();
+      for (IDeviceID device : devices) {
         long currentStartTime = timeIndex.getStartTime(device);
         long currentEndTime = timeIndex.getEndTime(device);
         Pair<TsFileResource, Long> lastDeviceInfo =
@@ -368,7 +371,7 @@ public class TsFileResourceUtils {
           logger.error(
               "Device {} is overlapped between {} and {}, "
                   + "end time in {} is {}, start time in {} is {}",
-              device,
+              ((PlainDeviceID) device).toStringID(),
               lastDeviceInfo.left,
               resource,
               lastDeviceInfo.left,
@@ -393,8 +396,8 @@ public class TsFileResourceUtils {
   }
 
   public static void updateTsFileResource(
-      Map<String, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
@@ -415,7 +418,7 @@ public class TsFileResourceUtils {
   public static TsFileResource generateTsFileResource(TsFileIOWriter writer) {
     TsFileResource resource = new TsFileResource(writer.getFile());
     for (ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
-      String device = chunkGroupMetadata.getDevice();
+      IDeviceID device = chunkGroupMetadata.getDevice();
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         resource.updateStartTime(device, chunkMetadata.getStartTime());
         resource.updateEndTime(device, chunkMetadata.getEndTime());

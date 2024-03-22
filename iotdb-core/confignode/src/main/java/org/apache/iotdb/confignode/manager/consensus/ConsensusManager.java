@@ -42,6 +42,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -144,6 +145,7 @@ public class ConsensusManager {
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
                                           CONF.getConfigNodeRatisSnapshotTriggerThreshold())
+                                      .setCreationGap(1)
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
@@ -431,5 +433,9 @@ public class ConsensusManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  public void manuallyTakeSnapshot() throws ConsensusException {
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID);
   }
 }

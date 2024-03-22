@@ -64,6 +64,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -523,7 +525,11 @@ public class LoadTsFileScheduler implements IScheduler {
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
-                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
+                  .map(
+                      data ->
+                          new Pair<>(
+                              (IDeviceID) new PlainDeviceID(data.getDevice()),
+                              data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
@@ -580,25 +586,28 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
-        List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
+        List<Pair<IDeviceID, TTimePartitionSlot>> slotList, String userName) {
       List<TRegionReplicaSet> replicaSets = new ArrayList<>();
       int size = slotList.size();
 
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
-        List<Pair<String, TTimePartitionSlot>> subSlotList =
+        List<Pair<IDeviceID, TTimePartitionSlot>> subSlotList =
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
         DataPartition dataPartition =
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
+                .map(
+                    pair ->
+                        dataPartition.getDataRegionReplicaSetForWriting(
+                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
     }
 
     private List<DataPartitionQueryParam> toQueryParam(
-        List<Pair<String, TTimePartitionSlot>> slots) {
+        List<Pair<IDeviceID, TTimePartitionSlot>> slots) {
       return slots.stream()
           .collect(
               Collectors.groupingBy(
@@ -607,7 +616,9 @@ public class LoadTsFileScheduler implements IScheduler {
           .stream()
           .map(
               entry ->
-                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
+                  new DataPartitionQueryParam(
+                      ((PlainDeviceID) entry.getKey()).toStringID(),
+                      new ArrayList<>(entry.getValue())))
           .collect(Collectors.toList());
     }
   }

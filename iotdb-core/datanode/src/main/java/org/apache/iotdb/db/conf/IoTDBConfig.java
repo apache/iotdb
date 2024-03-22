@@ -600,9 +600,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
-  /** indicate whether current mode is cluster */
-  private boolean isClusterMode = false;
-
   /**
    * The cluster name that this DataNode joined in the cluster mode. The default value
    * "defaultCluster" will be changed after join cluster
@@ -1547,21 +1544,20 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode) {
-      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
-        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
-        if (multiDirStrategyClassName.equals(multiDirStrategy)
-            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
-          return;
-        }
+    confirmMultiDirStrategy();
+    for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+      // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+      if (multiDirStrategyClassName.equals(multiDirStrategy)
+          || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+        return;
       }
-      String msg =
-          String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
-      logger.error(msg);
-      throw new RuntimeException(msg);
     }
+    String msg =
+        String.format(
+            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+    logger.error(msg);
+    throw new RuntimeException(msg);
   }
 
   public int getBatchSize() {
@@ -3025,15 +3021,6 @@ public class IoTDBConfig {
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
-  public boolean isClusterMode() {
-    return isClusterMode;
-  }
-
-  public void setClusterMode(boolean isClusterMode) {
-    this.isClusterMode = isClusterMode;
-    checkMultiDirStrategyClassName();
   }
 
   public String getClusterName() {

@@ -219,6 +219,9 @@ public enum ConfigPhysicalPlanType {
   AlterConsumerGroup((short) 1900),
 
   ShowSubscription((short) 2000),
+
+  /** Test Only. */
+  TestOnly((short) 30000),
   ;
 
   private final short planType;

@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.memtable;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -56,26 +58,48 @@ public class PlainDeviceID implements IDeviceID {
     return deviceID.hashCode();
   }
 
-  @Override
   public String toString() {
     return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
   }
 
-  @Override
   public String toStringID() {
     return deviceID;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(deviceID, byteBuffer);
+  public int serialize(ByteBuffer byteBuffer) {
+    return ReadWriteIOUtils.write(deviceID, byteBuffer);
   }
 
-  public long getRetainedSizeInBytes() {
+  @Override
+  public int serialize(OutputStream outputStream) throws IOException {
+    return ReadWriteIOUtils.writeVar(deviceID, outputStream);
+  }
+
+  @Override
+  public byte[] getBytes() {
+    return deviceID.getBytes();
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return deviceID.isEmpty();
+  }
+
+  @Override
+  public long ramBytesUsed() {
     return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }
 
   public static PlainDeviceID deserialize(ByteBuffer byteBuffer) {
     return new PlainDeviceID(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  @Override
+  public int compareTo(IDeviceID other) {
+    if (!(other instanceof PlainDeviceID)) {
+      throw new IllegalArgumentException();
+    }
+    return deviceID.compareTo(((PlainDeviceID) other).deviceID);
   }
 }
