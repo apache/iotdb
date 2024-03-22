@@ -150,9 +150,9 @@ public class UDAFExample implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
+      if (!columns[0].isNull(i)) {
         state.count++;
-        state.sum += columns[1].getInt(i);
+        state.sum += columns[0].getInt(i);
       }
     }
   }
@@ -163,9 +163,9 @@ public class UDAFExample implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
+      if (!columns[0].isNull(i)) {
         avgState.count++;
-        avgState.sum += columns[1].getLong(i);
+        avgState.sum += columns[0].getLong(i);
       }
     }
   }
@@ -176,9 +176,9 @@ public class UDAFExample implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
+      if (!columns[0].isNull(i)) {
         avgState.count++;
-        avgState.sum += columns[1].getFloat(i);
+        avgState.sum += columns[0].getFloat(i);
       }
     }
   }
@@ -189,9 +189,9 @@ public class UDAFExample implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!columns[1].isNull(i)) {
+      if (!columns[0].isNull(i)) {
         avgState.count++;
-        avgState.sum += columns[1].getDouble(i);
+        avgState.sum += columns[0].getDouble(i);
       }
     }
   }
