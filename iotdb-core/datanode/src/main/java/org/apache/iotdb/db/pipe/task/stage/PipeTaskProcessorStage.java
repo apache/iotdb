@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -76,13 +77,17 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             ? PipeAgent.plugin()
                 .dataRegion()
                 .getConfiguredProcessor(
-                    pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
+                    pipeProcessorParameters.getStringOrDefault(
+                        PipeProcessorConstant.PROCESSOR_KEY,
+                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
                     pipeProcessorParameters,
                     runtimeConfiguration)
             : PipeAgent.plugin()
                 .schemaRegion()
                 .getConfiguredProcessor(
-                    pipeProcessorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY),
+                    pipeProcessorParameters.getStringOrDefault(
+                        PipeProcessorConstant.PROCESSOR_KEY,
+                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
                     pipeProcessorParameters,
                     runtimeConfiguration);
 

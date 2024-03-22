@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class PipePluginAgent {
@@ -176,13 +177,14 @@ public abstract class PipePluginAgent {
       String pipeProcessorName,
       PipeParameters processorParameters,
       PipeProcessorRuntimeConfiguration runtimeConfigurations) {
-    // TODO: Replace schema processor & config processor's construction
-    HashMap<String, String> processorKeyMap = new HashMap<>();
-    processorKeyMap.put(PipeProcessorConstant.PROCESSOR_KEY, pipeProcessorName);
-    PipeParameters replacedParameters =
+    final HashMap<String, String> processorKeyMap = new HashMap<>();
+    if (Objects.nonNull(pipeProcessorName)) {
+      processorKeyMap.put(PipeProcessorConstant.PROCESSOR_KEY, pipeProcessorName);
+    }
+    final PipeParameters replacedParameters =
         processorParameters.addOrReplaceEquivalentAttributesWithClone(
             new PipeParameters(processorKeyMap));
-    PipeProcessor processor = reflectProcessor(replacedParameters);
+    final PipeProcessor processor = reflectProcessor(replacedParameters);
     // Validate and customize should be called to expose exceptions in advance
     // and configure the processor.
     try {
