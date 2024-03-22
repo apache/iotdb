@@ -768,7 +768,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTaskInfo other = (PipeTaskInfo) obj;
+    final PipeTaskInfo other = (PipeTaskInfo) obj;
     return pipeMetaKeeper.equals(other.pipeMetaKeeper);
   }
 
