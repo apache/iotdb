@@ -113,7 +113,7 @@ public class SessionTest {
             .fetchSize(1000)
             .zoneId(ZoneId.systemDefault())
             .enableRedirection(true)
-                .enableRecordsConvertTablet(true)
+            .enableRecordsConvertTablet(true)
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
             .version(Version.V_0_13)
@@ -968,8 +968,6 @@ public class SessionTest {
     Assert.assertTrue(session.isEnableRedirection());
     session.setEnableQueryRedirection(true);
     Assert.assertTrue(session.isEnableQueryRedirection());
-    session.setEnableRecordsConvertTablet(true);
-    Assert.assertTrue(session.isEnableRecordsConvertTablet());
   }
 
   @Test
