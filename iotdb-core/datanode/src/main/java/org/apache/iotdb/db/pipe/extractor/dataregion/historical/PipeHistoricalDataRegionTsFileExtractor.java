@@ -101,7 +101,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    PipeParameters parameters = validator.getParameters();
+    final PipeParameters parameters = validator.getParameters();
 
     if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
       isHistoricalExtractorEnabled = true;
