@@ -312,9 +312,6 @@ public class Utils {
 
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
-    RaftServerConfigKeys.Log.setWriteBufferSize(
-        properties,
-        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSize() * 10));
     RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
         properties, config.getLeaderLogAppender().getSnapshotChunkSizeMax());
     RaftServerConfigKeys.Log.Appender.setInstallSnapshotEnabled(
