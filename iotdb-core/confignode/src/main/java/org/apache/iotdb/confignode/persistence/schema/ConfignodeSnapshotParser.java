@@ -46,7 +46,7 @@ public class ConfignodeSnapshotParser {
   private static final String SNAPSHOT_TEMPLATE_FILENAME = "template_info.bin";
 
   private ConfignodeSnapshotParser() {
-    // empty constructor
+    // Empty constructor
   }
 
   private static Path getLatestSnapshotPath(List<Path> snapshotPathList) {
@@ -69,8 +69,8 @@ public class ConfignodeSnapshotParser {
     String snapshotPath = CONF.getConsensusDir();
     try (DirectoryStream<Path> stream =
         Files.newDirectoryStream(Paths.get(snapshotPath), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
-      // in confignode there is only one consensus dir.
-      // get into confignode consensus dir
+      // In confignode there is only one consensus dir.
+      // Get into confignode consensus dir
       for (Path path : stream) {
         try (DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
@@ -84,7 +84,7 @@ public class ConfignodeSnapshotParser {
           Path latestSnapshotPath = getLatestSnapshotPath(snapshotList);
 
           if (latestSnapshotPath != null) {
-            // get role files.
+            // Get role files.
             String rolePath =
                 latestSnapshotPath
                     + File.separator
@@ -97,7 +97,7 @@ public class ConfignodeSnapshotParser {
                 snapshotPairList.add(new Pair<>(roleFile, CNSnapshotFileType.ROLE));
               }
             }
-            // get user files.
+            // Get user files.
             String userPath =
                 latestSnapshotPath
                     + File.separator
@@ -114,7 +114,7 @@ public class ConfignodeSnapshotParser {
                   userFilePath.add(user);
                 }
               }
-              // we should add user file firstly.
+              // We should add user file firstly.
               for (Path user : userFilePath) {
                 snapshotPairList.add(new Pair<>(new Pair<>(user, null), CNSnapshotFileType.USER));
               }
@@ -124,7 +124,7 @@ public class ConfignodeSnapshotParser {
               }
             }
 
-            // get cluster schema info file and template file.
+            // Get cluster schema info file and template file.
             File schemaInfoFile =
                 SystemFileFactory.INSTANCE.getFile(
                     latestSnapshotPath + File.separator + SNAPSHOT_CLUSTER_SCHEMA_FILENAME);

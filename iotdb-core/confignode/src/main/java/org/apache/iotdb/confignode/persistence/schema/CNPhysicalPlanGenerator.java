@@ -71,25 +71,25 @@ public class CNPhysicalPlanGenerator
   private final Logger logger = LoggerFactory.getLogger(CNPhysicalPlanGenerator.class);
   private final IMNodeFactory<IConfigMNode> nodeFactory = ConfigMNodeFactory.getInstance();
 
-  // file input stream.
+  // File input stream.
   private InputStream inputStream = null;
   private InputStream templateInputStream = null;
 
   private static final String STRING_ENCODING = "utf-8";
 
-  // for default password
+  // For default password
   private static final String DEFAULT_PASSWORD = "password";
   private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   private final HashMap<Integer, String> templateTable = new HashMap<>();
 
-  // all plan will be stored at this deque
+  // All plan will be stored at this deque
   private final Deque<ConfigPhysicalPlan> planDeque = new ArrayDeque<>();
 
-  CNSnapshotFileType snapshotFileType = CNSnapshotFileType.INVALID;
+  private CNSnapshotFileType snapshotFileType = CNSnapshotFileType.INVALID;
 
-  Exception latestException = null;
-  String userName;
+  private Exception latestException = null;
+  private String userName;
 
   public CNPhysicalPlanGenerator(Path snapshotFilePath, CNSnapshotFileType fileType)
       throws IOException {
