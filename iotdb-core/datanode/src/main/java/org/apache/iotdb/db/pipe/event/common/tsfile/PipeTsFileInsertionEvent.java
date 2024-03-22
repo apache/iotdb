@@ -97,7 +97,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   /**
-   * @return {@code false} if this file can't be sent by pipe due to format violations. {@code true}
+   * @return {@code false} if this file can't be sent by pipe due to format violations or is empty. {@code true}
    *     otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
