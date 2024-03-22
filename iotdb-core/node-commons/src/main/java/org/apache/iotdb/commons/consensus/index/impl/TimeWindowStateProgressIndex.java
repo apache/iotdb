@@ -130,29 +130,17 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
       final TimeWindowStateProgressIndex thatTimeWindowStateProgressIndex =
           (TimeWindowStateProgressIndex) progressIndex;
-      final Map<String, Pair<Long, ByteBuffer>> thisMapView =
-          new HashMap<>(thisTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap);
-      thisMapView
-          .entrySet()
-          .removeIf(
+      return thatTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.entrySet()
+          .stream()
+          .noneMatch(
               entry ->
-                  !thatTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap
+                  !thisTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap
                           .containsKey(entry.getKey())
-                      || Objects.equals(
-                          entry.getValue().getLeft(),
-                          thatTimeWindowStateProgressIndex
-                              .timeSeries2TimestampWindowBufferPairMap
-                              .get(entry.getKey())
-                              .getLeft()));
-      return !thisMapView.isEmpty()
-          && thisMapView.entrySet().stream()
-              .noneMatch(
-                  entry ->
-                      thatTimeWindowStateProgressIndex
+                      || thisTimeWindowStateProgressIndex
                               .timeSeries2TimestampWindowBufferPairMap
                               .get(entry.getKey())
                               .getLeft()
-                          > entry.getValue().getLeft());
+                          <= entry.getValue().getLeft());
     } finally {
       lock.readLock().unlock();
     }
