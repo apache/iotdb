@@ -216,6 +216,9 @@ public class DataNode implements DataNodeMBean {
       // Setup rpc service
       setUpRPCService();
 
+      // Preload some classes to reduce the time consumed during first time insertion.
+      classLoader();
+
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
@@ -565,7 +568,6 @@ public class DataNode implements DataNodeMBean {
 
     logger.info("Recover the schema...");
     initSchemaEngine();
-    classLoader();
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
