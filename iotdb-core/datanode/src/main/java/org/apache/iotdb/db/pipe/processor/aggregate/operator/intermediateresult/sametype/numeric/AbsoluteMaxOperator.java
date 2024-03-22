@@ -27,25 +27,25 @@ public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
 
   @Override
   public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
-    intValue = initialInput;
+    intValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    longValue = initialInput;
+    longValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    floatValue = initialInput;
+    floatValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 
   @Override
   public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
-    doubleValue = initialInput;
+    doubleValue = Math.abs(initialInput);
     return super.initAndGetIsSupport(initialInput, initialTimestamp);
   }
 

@@ -33,7 +33,7 @@ public class CustomizedReadableIntermediateResults {
   }
 
   public boolean getBoolean(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
     if (typeResultPair.getLeft() == TSDataType.BOOLEAN) {
       return (boolean) typeResultPair.getRight();
     }
@@ -42,10 +42,10 @@ public class CustomizedReadableIntermediateResults {
   }
 
   public int getInt(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    TSDataType type = typeResultPair.getLeft();
-    Object value = typeResultPair.getRight();
+    final TSDataType type = typeResultPair.getLeft();
+    final Object value = typeResultPair.getRight();
     switch (type) {
       case INT32:
         return (int) value;
@@ -62,10 +62,10 @@ public class CustomizedReadableIntermediateResults {
   }
 
   public long getLong(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    TSDataType type = typeResultPair.getLeft();
-    Object value = typeResultPair.getRight();
+    final TSDataType type = typeResultPair.getLeft();
+    final Object value = typeResultPair.getRight();
     switch (type) {
       case INT32:
         return (int) value;
@@ -82,10 +82,10 @@ public class CustomizedReadableIntermediateResults {
   }
 
   public float getFloat(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    TSDataType type = typeResultPair.getLeft();
-    Object value = typeResultPair.getRight();
+    final TSDataType type = typeResultPair.getLeft();
+    final Object value = typeResultPair.getRight();
     switch (type) {
       case INT32:
         return (int) value;
@@ -102,10 +102,10 @@ public class CustomizedReadableIntermediateResults {
   }
 
   public double getDouble(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    TSDataType type = typeResultPair.getLeft();
-    Object value = typeResultPair.getRight();
+    final TSDataType type = typeResultPair.getLeft();
+    final Object value = typeResultPair.getRight();
     switch (type) {
       case INT32:
         return (int) value;
@@ -124,10 +124,10 @@ public class CustomizedReadableIntermediateResults {
   // Note: This method will cast any decimal types to string without throwing
   // any exceptions.
   public String getString(String key) {
-    Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
+    final Pair<TSDataType, Object> typeResultPair = intermediateResults.get(key);
 
-    TSDataType type = typeResultPair.getLeft();
-    Object value = typeResultPair.getRight();
+    final TSDataType type = typeResultPair.getLeft();
+    final Object value = typeResultPair.getRight();
     switch (type) {
       case BOOLEAN:
         return Boolean.toString((boolean) value);

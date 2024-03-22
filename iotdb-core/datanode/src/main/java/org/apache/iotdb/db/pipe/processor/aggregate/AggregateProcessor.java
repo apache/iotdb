@@ -177,7 +177,7 @@ public class AggregateProcessor implements PipeProcessor {
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
 
     // Set output name
-    List<String> operatorNameList =
+    final List<String> operatorNameList =
         Arrays.stream(
                 parameters
                     .getStringOrDefault(PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)
@@ -185,16 +185,16 @@ public class AggregateProcessor implements PipeProcessor {
                     .split(","))
             .collect(Collectors.toList());
 
-    String outputMeasurementString =
+    final String outputMeasurementString =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE);
-    List<String> outputMeasurementNameList =
+    final List<String> outputMeasurementNameList =
         outputMeasurementString.isEmpty()
             ? Collections.emptyList()
             : Arrays.stream(outputMeasurementString.replace(" ", "").split(","))
                 .collect(Collectors.toList());
 
-    Map<String, String> aggregatorName2OutputNameMap = new HashMap<>();
+    final Map<String, String> aggregatorName2OutputNameMap = new HashMap<>();
     for (int i = 0; i < operatorNameList.size(); ++i) {
       if (i < outputMeasurementNameList.size()) {
         aggregatorName2OutputNameMap.put(
@@ -207,13 +207,13 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Load the useful aggregators' and their corresponding intermediate results' computational
     // logic.
-    Set<String> declaredIntermediateResultSet = new HashSet<>();
-    PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
+    final Set<String> declaredIntermediateResultSet = new HashSet<>();
+    final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
     for (String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
-      AbstractOperatorProcessor operatorProcessor =
+      final AbstractOperatorProcessor operatorProcessor =
           (AbstractOperatorProcessor)
               agent.getConfiguredProcessor(pipePluginName, parameters, configuration);
       operatorProcessor.getAggregatorOperatorSet().stream()
@@ -255,17 +255,17 @@ public class AggregateProcessor implements PipeProcessor {
 
     // Set up column name strings
     columnNameStringList = new String[outputName2OperatorMap.size()];
-    List<String> operatorNames = new ArrayList<>(outputName2OperatorMap.keySet());
+    final List<String> operatorNames = new ArrayList<>(outputName2OperatorMap.keySet());
     for (int i = 0; i < outputName2OperatorMap.size(); ++i) {
       columnNameStringList[i] = operatorNames.get(i);
     }
 
     // Get windowing processor
-    String processorName =
+    final String processorName =
         parameters.getStringOrDefault(
                 PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE)
             + WINDOWING_PROCESSOR_SUFFIX;
-    PipeProcessor windowProcessor =
+    final PipeProcessor windowProcessor =
         agent.getConfiguredProcessor(processorName, parameters, configuration);
     if (!(windowProcessor instanceof AbstractWindowingProcessor)) {
       throw new PipeException(
@@ -279,7 +279,7 @@ public class AggregateProcessor implements PipeProcessor {
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     // Restore window state
-    ProgressIndex index = pipeTaskMeta.getProgressIndex();
+    final ProgressIndex index = pipeTaskMeta.getProgressIndex();
     if (index == MinimumProgressIndex.INSTANCE) {
       return;
     }
@@ -289,10 +289,10 @@ public class AggregateProcessor implements PipeProcessor {
               "The aggregate processor does not support progressIndexType %s", index.getType()));
     }
 
-    TimeProgressIndex timeProgressIndex = (TimeProgressIndex) index;
+    final TimeProgressIndex timeProgressIndex = (TimeProgressIndex) index;
     for (Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
-      AtomicReference<TimeSeriesRuntimeState> stateReference =
+      final AtomicReference<TimeSeriesRuntimeState> stateReference =
           pipeName2timeSeries2TimeSeriesRuntimeStateMap
               .get(pipeName)
               .computeIfAbsent(
@@ -327,7 +327,7 @@ public class AggregateProcessor implements PipeProcessor {
     final AtomicReference<Exception> exception = new AtomicReference<>();
     final TimeProgressIndex progressIndex = new TimeProgressIndex(new ConcurrentHashMap<>());
 
-    Iterable<TabletInsertionEvent> outputEvents =
+    final Iterable<TabletInsertionEvent> outputEvents =
         tabletInsertionEvent.processRowByRow(
             (row, rowCollector) ->
                 progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
@@ -364,7 +364,7 @@ public class AggregateProcessor implements PipeProcessor {
       final String timeSeries =
           row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
 
-      AtomicReference<TimeSeriesRuntimeState> stateReference =
+      final AtomicReference<TimeSeriesRuntimeState> stateReference =
           pipeName2timeSeries2TimeSeriesRuntimeStateMap
               .get(pipeName)
               .computeIfAbsent(
@@ -377,9 +377,9 @@ public class AggregateProcessor implements PipeProcessor {
                               systemParameters,
                               windowingProcessor)));
 
-      Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> result;
+      final Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> result;
       synchronized (stateReference) {
-        TimeSeriesRuntimeState state = stateReference.get();
+        final TimeSeriesRuntimeState state = stateReference.get();
         try {
           switch (row.getDataType(index)) {
             case BOOLEAN:
@@ -458,11 +458,11 @@ public class AggregateProcessor implements PipeProcessor {
           .keySet()
           .forEach(
               timeSeries -> {
-                AtomicReference<TimeSeriesRuntimeState> stateReference =
+                final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
                   // This is only a formal tablet insertion event to collect all the results
-                  PipeRawTabletInsertionEvent tabletInsertionEvent =
+                  final PipeRawTabletInsertionEvent tabletInsertionEvent =
                       new PipeRawTabletInsertionEvent(
                           null, false, pipeName, pipeTaskMeta, null, false);
                   tabletInsertionEvent
@@ -513,7 +513,7 @@ public class AggregateProcessor implements PipeProcessor {
     outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
 
     final AtomicLong lastValue = new AtomicLong(Long.MIN_VALUE);
-    List<WindowOutput> distinctOutputs = new ArrayList<>();
+    final List<WindowOutput> distinctOutputs = new ArrayList<>();
     outputs.forEach(
         output -> {
           long timeStamp = output.getTimestamp();
@@ -622,7 +622,7 @@ public class AggregateProcessor implements PipeProcessor {
       }
     }
 
-    String outputTimeSeries =
+    final String outputTimeSeries =
         outputDatabase.isEmpty() ? timeSeries : timeSeries.replaceFirst(database, outputDatabase);
 
     if (filteredCount == columnNameStringList.length) {
