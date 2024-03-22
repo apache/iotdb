@@ -173,12 +173,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      InsertNode insertNode = getInsertNode();
+      final InsertNode insertNode = getInsertNode();
       if (insertNode instanceof InsertRowNode) {
-        long timestamp = ((InsertRowNode) insertNode).getTime();
+        final long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
       } else if (insertNode instanceof InsertTabletNode) {
-        long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+        final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
         if (Objects.isNull(timestamps) || timestamps.length == 0) {
           return false;
         }

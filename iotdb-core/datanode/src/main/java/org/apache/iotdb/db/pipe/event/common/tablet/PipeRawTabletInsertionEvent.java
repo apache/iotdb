@@ -152,7 +152,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    long[] timestamps = tablet.timestamps;
+    final long[] timestamps = tablet.timestamps;
     if (Objects.isNull(timestamps) || timestamps.length == 0) {
       return false;
     }
