@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeProgressIndex;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -139,14 +138,7 @@ public class AggregateProcessor implements PipeProcessor {
             args -> !((String) args).isEmpty(),
             String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
-                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
-        .validate(
-            args -> !(((String) args[0]).isEmpty() && (boolean) args[1]),
-            "Cannot write to the same database when the result is written back.",
-            parameters.getStringOrDefault(
-                PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE),
-            parameters.getBooleanOrDefault(
-                SystemConstant.WRITE_BACK_KEY, SystemConstant.WRITE_BACK_DEFAULT_VALUE));
+                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE));
   }
 
   @Override

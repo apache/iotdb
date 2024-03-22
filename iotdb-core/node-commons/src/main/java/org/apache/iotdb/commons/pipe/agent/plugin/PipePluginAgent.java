@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -86,20 +83,13 @@ public abstract class PipePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
-    PipeParameters processorParameters = new PipeParameters(processorAttributes);
-    PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-
-    Map<String, String> systemAttributes =
-        generateStaticSystemParameters(
-            extractorParameters, processorParameters, connectorParameters);
-    validateExtractor(blendUserAndSystemParameters(extractorParameters, systemAttributes));
-    validateProcessor(blendUserAndSystemParameters(processorParameters, systemAttributes));
-    validateConnector(
-        pipeName, blendUserAndSystemParameters(connectorParameters, systemAttributes));
+    validateExtractor(extractorAttributes);
+    validateProcessor(processorAttributes);
+    validateConnector(pipeName, connectorAttributes);
   }
 
-  public void validateExtractor(PipeParameters extractorParameters) throws Exception {
+  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
     try {
       temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
@@ -112,7 +102,8 @@ public abstract class PipePluginAgent {
     }
   }
 
-  public void validateProcessor(PipeParameters processorParameters) throws Exception {
+  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
+    final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
       temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
@@ -125,8 +116,9 @@ public abstract class PipePluginAgent {
     }
   }
 
-  public void validateConnector(String pipeName, PipeParameters connectorParameters)
+  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
       throws Exception {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
@@ -141,32 +133,6 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
       }
     }
-  }
-
-  public static Map<String, String> generateStaticSystemParameters(
-      PipeParameters extractorParameters,
-      PipeParameters processorParameters,
-      PipeParameters connectorParameters) {
-    Map<String, String> systemParameters = new HashMap<>();
-
-    String connectorName =
-        connectorParameters.getStringOrDefault(
-            Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-            BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
-    if (connectorName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
-        || connectorName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
-      systemParameters.put(SystemConstant.WRITE_BACK_KEY, Boolean.TRUE.toString());
-    }
-    return systemParameters;
-  }
-
-  public static PipeParameters blendUserAndSystemParameters(
-      PipeParameters userParameters, Map<String, String> systemParameters) {
-    // Deep copy the user parameters to avoid modification of the original parameters.
-    // If the original parameters are modified, progress index report will be affected.
-    final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
-    blendedParameters.putAll(systemParameters);
-    return new PipeParameters(blendedParameters);
   }
 
   /**

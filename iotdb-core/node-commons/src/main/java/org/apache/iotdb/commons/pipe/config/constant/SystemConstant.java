@@ -24,9 +24,6 @@ public class SystemConstant {
   public static final String RESTART_KEY = "__system.restart";
   public static final boolean RESTART_DEFAULT_VALUE = false;
 
-  public static final String WRITE_BACK_KEY = "__system.write-back";
-  public static final boolean WRITE_BACK_DEFAULT_VALUE = false;
-
   private SystemConstant() {
     throw new IllegalStateException("Utility class");
   }
