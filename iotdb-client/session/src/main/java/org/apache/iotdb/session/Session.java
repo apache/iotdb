@@ -1912,7 +1912,8 @@ public class Session implements ISession {
     Set<String> deviceSet = new HashSet<>(deviceIds);
 
     if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
-      invertToTabletsAndInsert(deviceIds, times, measurementsList, typesList, valuesList, false);
+      convertToTabletsAndInsert(
+          deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
       return;
     }
     // insert records
@@ -1963,7 +1964,8 @@ public class Session implements ISession {
     Set<String> deviceSet = new HashSet<>(deviceIds);
 
     if ((double) deviceSet.size() / deviceIds.size() < 0.1) {
-      invertToTabletsAndInsert(deviceIds, times, measurementsList, typesList, valuesList, true);
+      convertToTabletsAndInsert(
+          deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
       return;
     }
     if (enableRedirection) {
@@ -2028,7 +2030,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    invertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
+    convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
   }
 
   /**
@@ -2147,7 +2149,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    invertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
+    convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
   }
 
   /**
@@ -2703,8 +2705,8 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
-  // invert records of one device to tablet and insert
-  public void invertToTabletAndInsert(
+  // convert records of one device to tablet and insert
+  public void convertToTabletAndInsert(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -2712,14 +2714,16 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
+    // measurement -> type
     Map<String, TSDataType> measurementType = new HashMap<>();
     // build measurementType
     for (int rowIndex = 0; rowIndex < measurementsList.size(); rowIndex++) {
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
-        int finalColIndex = colIndex;
-        measurementType.computeIfAbsent(measurements.get(colIndex), k -> types.get(finalColIndex));
+        if (!measurementType.containsKey(measurements.get(colIndex))) {
+          measurementType.put(measurements.get(colIndex), types.get(colIndex));
+        }
       }
     }
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -2746,36 +2750,38 @@ public class Session implements ISession {
     }
   }
 
-  // invert records of multiple devices to tablets and insert
-  public void invertToTabletsAndInsert(
+  // convert records of multiple devices to tablets and insert
+  public void convertToTabletsAndInsert(
       List<String> deviceIds,
       List<Long> times,
       List<List<String>> measurementsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
+      int deviceSize,
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     // device -> measurement -> type
-    Map<String, Map<String, TSDataType>> measurementTypeMap = new HashMap<>();
+    Map<String, Map<String, TSDataType>> measurementTypeMap = new HashMap<>(deviceSize + 1, 1);
     // device -> row count
-    Map<String, Integer> rowMap = new HashMap<>();
+    Map<String, Integer> rowMap = new HashMap<>(deviceSize + 1, 1);
     // first we should build measurementTypeMap and rowMap
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
-      final Map<String, TSDataType> measurementType =
+      Map<String, TSDataType> measurementType =
           measurementTypeMap.computeIfAbsent(device, k -> new HashMap<>());
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
-        int finalColIndex = colIndex;
-        measurementType.computeIfAbsent(measurements.get(colIndex), k -> types.get(finalColIndex));
+        if (!measurementType.containsKey(measurements.get(colIndex))) {
+          measurementType.put(measurements.get(colIndex), types.get(colIndex));
+        }
       }
       rowMap.merge(device, 1, Integer::sum);
     }
     // device -> schema
-    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>();
+    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
     // device -> measurement
-    Map<String, List<String>> measurementMap = new HashMap<>();
+    Map<String, List<String>> measurementMap = new HashMap<>(deviceSize + 1, 1);
     // use measurementTypeMap to build schemaMap and measurementMap
     for (Map.Entry<String, Map<String, TSDataType>> entry : measurementTypeMap.entrySet()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -2788,7 +2794,7 @@ public class Session implements ISession {
       measurementMap.put(entry.getKey(), measurementList);
     }
     // device -> tablet
-    Map<String, Tablet> tablets = new HashMap<>();
+    Map<String, Tablet> tablets = new HashMap<>(deviceSize + 1, 1);
     // use schemaMap and rowMap to build tablets and insert
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
@@ -2818,7 +2824,15 @@ public class Session implements ISession {
       List<String> allMeasurements) {
     int row = tablet.rowSize++;
     tablet.addTimestamp(row, timestamp);
-    Map<String, Object> measurementValueMap = new HashMap<>();
+    // tablet without null value
+    if (measurements.size() == allMeasurements.size()) {
+      for (int i = 0; i < measurements.size(); i++) {
+        tablet.addValue(measurements.get(i), row, values.get(i));
+      }
+      return;
+    }
+    // tablet with null value
+    Map<String, Object> measurementValueMap = new HashMap<>(measurements.size() + 1, 1);
     for (int i = 0; i < measurements.size(); i++) {
       measurementValueMap.put(measurements.get(i), values.get(i));
     }
