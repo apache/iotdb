@@ -298,7 +298,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    PipePluginInfo other = (PipePluginInfo) obj;
+    final PipePluginInfo other = (PipePluginInfo) obj;
     return Objects.equals(pipePluginExecutableManager, other.pipePluginExecutableManager)
         && Objects.equals(pipePluginMetaKeeper, other.pipePluginMetaKeeper);
   }
