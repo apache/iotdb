@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
+@TestOnly
 public enum DataNodeKillPoints {
   OriginalRemovePeer,
   OriginalDeleteOldRegionPeer,

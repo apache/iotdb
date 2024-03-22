@@ -74,7 +74,6 @@ public class RootProcedureStack<Env> {
     state = State.FAILED;
   }
 
-  // TODO: check whether this method return sub-procedures from every level
   protected synchronized long[] getSubprocedureIds() {
     if (subprocs == null) {
       return new long[0];

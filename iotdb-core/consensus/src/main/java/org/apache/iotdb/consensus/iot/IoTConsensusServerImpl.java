@@ -613,7 +613,6 @@ public class IoTConsensusServerImpl {
   }
 
   public void recoverConfiguration() {
-    ByteBuffer buffer;
     try {
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
@@ -627,14 +626,7 @@ public class IoTConsensusServerImpl {
         Files.move(tmpConfigurationPath, configurationPath);
       }
       if (Files.exists(configurationPath)) {
-        // recover from old configuration file
-        buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
-        int size = buffer.getInt();
-        for (int i = 0; i < size; i++) {
-          configuration.add(Peer.deserialize(buffer));
-        }
-        Files.delete(configurationPath);
-        persistConfiguration();
+        recoverFromOldConfigurationFile(configurationPath);
       } else {
         // recover from split configuration file
         Path dirPath = Paths.get(storageDir);
@@ -647,6 +639,17 @@ public class IoTConsensusServerImpl {
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
+  }
+
+  // @Compatibility
+  private void recoverFromOldConfigurationFile(Path oldConfigurationPath) throws IOException {
+    ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(oldConfigurationPath));
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      configuration.add(Peer.deserialize(buffer));
+    }
+    persistConfiguration();
+    Files.delete(oldConfigurationPath);
   }
 
   private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {

@@ -115,6 +115,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -620,10 +621,14 @@ public class ProcedureManager {
 
   public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
     TConsensusGroupId regionGroupId;
-    try {
-      regionGroupId = regionIdToTConsensusGroupId(migrateRegionReq.getRegionId());
-    } catch (ProcedureException e) {
-      LOGGER.error("get region id fail", e);
+    Optional<TConsensusGroupId> optional =
+        configManager
+            .getPartitionManager()
+            .generateTConsensusGroupIdByRegionId(migrateRegionReq.getRegionId());
+    if (optional.isPresent()) {
+      regionGroupId = optional.get();
+    } else {
+      LOGGER.error("get region group id fail");
       return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
           .setMessage("get region group id fail");
     }

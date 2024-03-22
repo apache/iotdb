@@ -90,7 +90,6 @@ struct TDataNodeConfiguration {
   2: required TNodeResource resource
 }
 
-// TODO: deprecated
 enum TRegionMigrateFailedType {
   AddPeerFailed,
   RemovePeerFailed,

@@ -916,6 +916,25 @@ public class PartitionManager {
     return partitionInfo.generateNextRegionGroupId();
   }
 
+  public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
+    }
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
+    }
+    String msg =
+        String.format(
+            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            regionId);
+    LOGGER.warn(msg);
+    return Optional.empty();
+  }
+
   /**
    * GetNodePathsPartition.
    *

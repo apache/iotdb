@@ -208,15 +208,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
-    final int runningOrReadOnlyDataNodeNum =
+    final int existedDataNodeNum =
         getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+            .filterDataNodeThroughStatus(
+                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
             .size();
     int dataNodeNumAfterRemoving;
     if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
-      dataNodeNumAfterRemoving = runningOrReadOnlyDataNodeNum - 1;
+      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
     } else {
-      dataNodeNumAfterRemoving = runningOrReadOnlyDataNodeNum;
+      dataNodeNumAfterRemoving = existedDataNodeNum;
     }
     return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
