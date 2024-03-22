@@ -200,7 +200,9 @@ public class SubscriptionPrefetchingQueue {
           break;
         }
         count++;
-        event.serialize();
+        if (event.pollable()) {
+          event.serialize();
+        }
       }
     }
   }

@@ -75,6 +75,11 @@ public class SerializedEnrichedEvent {
     return byteBuffer;
   }
 
+  public void clearByteBuffer() {
+    byteBuffer.clear();
+    byteBuffer = null;
+  }
+
   public String getSubscriptionCommitId() {
     return enrichedTablets.getSubscriptionCommitId();
   }
