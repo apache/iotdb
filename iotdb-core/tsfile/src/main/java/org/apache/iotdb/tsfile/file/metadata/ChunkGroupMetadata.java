@@ -24,16 +24,16 @@ import java.util.List;
 /** Only maintained when writing, not serialized to TsFile. */
 public class ChunkGroupMetadata {
 
-  private String device;
+  private IDeviceID device;
 
   private List<ChunkMetadata> chunkMetadataList;
 
-  public ChunkGroupMetadata(String device, List<ChunkMetadata> chunkMetadataList) {
+  public ChunkGroupMetadata(IDeviceID device, List<ChunkMetadata> chunkMetadataList) {
     this.device = device;
     this.chunkMetadataList = chunkMetadataList;
   }
 
-  public String getDevice() {
+  public IDeviceID getDevice() {
     return device;
   }
 

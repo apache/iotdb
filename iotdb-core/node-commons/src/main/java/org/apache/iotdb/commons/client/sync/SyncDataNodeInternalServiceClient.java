@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
@@ -53,7 +53,7 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
         property
             .getProtocolFactory()
             .getProtocol(
-                RpcTransportFactory.INSTANCE.getTransport(
+                DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                     new TSocket(
                         TConfigurationConst.defaultTConfiguration,
                         endpoint.getIp(),

@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -61,10 +63,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
-  private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
-
   /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
+
+  private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   private boolean shouldFlush = false;
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
@@ -173,12 +175,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowNode insertRowNode) {
-    // If this insert plan isn't from storage engine (mainly from test), we should set a temp
-    // device
-    // id for it
-    if (insertRowNode.getDeviceID() == null) {
-      insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
-    }
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
@@ -224,10 +220,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insertAlignedRow(InsertRowNode insertRowNode) {
-    // If this insert node isn't from storage engine, we should set a temp device id for it
-    if (insertRowNode.getDeviceID() == null) {
-      insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
-    }
 
     String[] measurements = insertRowNode.getMeasurements();
     Object[] values = insertRowNode.getValues();
@@ -344,11 +336,6 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
-    // If this insert plan isn't from storage storageengine, we should set a temp device id for it
-    if (insertTabletNode.getDeviceID() == null) {
-      insertTabletNode.setDeviceID(deviceIDFactory.getDeviceID(insertTabletNode.getDevicePath()));
-    }
-
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
@@ -371,10 +358,6 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public void writeAlignedTablet(InsertTabletNode insertTabletNode, int start, int end) {
-    // if this insert plan isn't from storage storageengine, we should set a temp device id for it
-    if (insertTabletNode.getDeviceID() == null) {
-      insertTabletNode.setDeviceID(deviceIDFactory.getDeviceID(insertTabletNode.getDevicePath()));
-    }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
@@ -494,7 +477,7 @@ public abstract class AbstractMemTable implements IMemTable {
       List<Pair<PartialPath, IWritableMemChunkGroup>> targetDeviceList = new ArrayList<>();
       for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
         try {
-          PartialPath devicePathInMemTable = new PartialPath(entry.getKey().toStringID());
+          PartialPath devicePathInMemTable = new PartialPath(entry.getKey());
           if (devicePath.matchFullPath(devicePathInMemTable)) {
             targetDeviceList.add(new Pair<>(devicePathInMemTable, entry.getValue()));
           }
@@ -508,6 +491,7 @@ public abstract class AbstractMemTable implements IMemTable {
             targetDevice.right, originalPath, targetDevice.left, startTimestamp, endTimestamp);
       }
     } else {
+      // TODO:[DELETE]
       IWritableMemChunkGroup memChunkGroup =
           memTableMap.get(deviceIDFactory.getDeviceID(devicePath));
       if (memChunkGroup == null) {
@@ -619,7 +603,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     int size = FIXED_SERIALIZED_SIZE;
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(entry.getKey().toStringID());
+      size += ReadWriteIOUtils.sizeToWrite(((PlainDeviceID) entry.getKey()).toStringID());
       size += Byte.BYTES;
       size += entry.getValue().serializedSize();
     }
@@ -629,6 +613,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    // TODO:[WAL]
     WALWriteUtils.write(isSignalMemTable(), buffer);
     if (isSignalMemTable()) {
       return;
@@ -643,7 +628,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      WALWriteUtils.write(entry.getKey().toStringID(), buffer);
+      WALWriteUtils.write(((PlainDeviceID) entry.getKey()).toStringID(), buffer);
 
       IWritableMemChunkGroup memChunkGroup = entry.getValue();
       WALWriteUtils.write(memChunkGroup instanceof AlignedWritableMemChunkGroup, buffer);
@@ -662,8 +647,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     int memTableMapSize = stream.readInt();
     for (int i = 0; i < memTableMapSize; ++i) {
-      IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
 
+      IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {
@@ -676,14 +661,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public Map<String, Long> getMaxTime() {
-    Map<String, Long> latestTimeForEachDevice = new HashMap<>();
+  public Map<IDeviceID, Long> getMaxTime() {
+    Map<IDeviceID, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
       // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
       long maxTime = entry.getValue().getMaxTime();
       if (maxTime != Long.MIN_VALUE) {
-        latestTimeForEachDevice.put(entry.getKey().toStringID(), maxTime);
+        latestTimeForEachDevice.put(entry.getKey(), maxTime);
       }
     }
     return latestTimeForEachDevice;

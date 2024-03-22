@@ -85,11 +85,10 @@ public class IoTDBShutdownHook extends Thread {
     // own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .parallelStream()

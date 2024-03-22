@@ -53,7 +53,8 @@ import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -975,7 +976,8 @@ public class IoTDBDescriptor {
     loadTsFileProps(properties);
 
     // make RPCTransportFactory taking effect.
-    RpcTransportFactory.reInit();
+    ZeroCopyRpcTransportFactory.reInit();
+    DeepCopyRpcTransportFactory.reInit();
 
     // UDF
     loadUDFProps(properties);

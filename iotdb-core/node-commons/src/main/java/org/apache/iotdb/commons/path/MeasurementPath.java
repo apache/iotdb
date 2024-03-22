@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.path;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -80,6 +82,11 @@ public class MeasurementPath extends PartialPath {
     super(measurementPath.getNodes());
     this.measurementSchema = measurementSchema;
     this.isUnderAlignedEntity = isUnderAlignedEntity;
+  }
+
+  public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)
+      throws IllegalPathException {
+    this(((PlainDeviceID) device).toStringID(), measurement, measurementSchema);
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)

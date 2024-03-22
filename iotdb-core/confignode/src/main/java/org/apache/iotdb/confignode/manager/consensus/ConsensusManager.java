@@ -42,6 +42,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -75,8 +76,7 @@ public class ConsensusManager {
   private final IManager configManager;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
-      throws IOException {
+  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
   }
@@ -107,7 +107,7 @@ public class ConsensusManager {
   }
 
   /** ConsensusLayer local implementation. */
-  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) throws IOException {
+  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) {
     if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       upgrade();
       consensusImpl =
@@ -145,6 +145,7 @@ public class ConsensusManager {
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
                                           CONF.getConfigNodeRatisSnapshotTriggerThreshold())
+                                      .setCreationGap(1)
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
@@ -432,5 +433,9 @@ public class ConsensusManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  public void manuallyTakeSnapshot() throws ConsensusException {
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID);
   }
 }

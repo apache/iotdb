@@ -205,10 +205,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               regionStatistics,
               metric);
 
-      if (!(config.isClusterMode()
-          && config
-              .getSchemaRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.RATIS_CONSENSUS))) {
+      if (!config
+          .getSchemaRegionConsensusProtocolClass()
+          .equals(ConsensusFactory.RATIS_CONSENSUS)) {
         usingMLog = true;
         initMLog();
       } else {

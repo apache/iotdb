@@ -22,10 +22,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -147,7 +148,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   public void getDevicesAndEntriesOfOneLeafNode(
-      Long startOffset, Long endOffset, Queue<Pair<String, long[]>> measurementNodeOffsetQueue)
+      Long startOffset, Long endOffset, Queue<Pair<IDeviceID, long[]>> measurementNodeOffsetQueue)
       throws IOException {
     long before = readDataSize.get();
     super.getDevicesAndEntriesOfOneLeafNode(startOffset, endOffset, measurementNodeOffsetQueue);
@@ -157,9 +158,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   }
 
   @Override
-  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+  public MetadataIndexNode readMetadataIndexNode(long start, long end, boolean isDeviceLevel)
+      throws IOException {
     long before = readDataSize.get();
-    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end);
+    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end, isDeviceLevel);
     long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
@@ -192,7 +194,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     long before = readDataSize.get();
     Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new LinkedHashMap<>();
-    List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
+    List<IMetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
     for (int i = 0; i < childrenEntryList.size(); i++) {
       long startOffset = childrenEntryList.get(i).getOffset();
       long endOffset =
@@ -217,7 +219,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
       } else {
         // internal measurement node
-        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
             getTimeseriesMetadataAndOffsetByDevice(
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));

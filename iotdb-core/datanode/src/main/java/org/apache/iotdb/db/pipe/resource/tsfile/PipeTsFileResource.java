@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -53,8 +54,8 @@ public class PipeTsFileResource implements AutoCloseable {
 
   private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
   private PipeMemoryBlock allocatedMemoryBlock;
-  private Map<String, List<String>> deviceMeasurementsMap = null;
-  private Map<String, Boolean> deviceIsAlignedMap = null;
+  private Map<IDeviceID, List<String>> deviceMeasurementsMap = null;
+  private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
   public PipeTsFileResource(File hardlinkOrCopiedFile, boolean isTsFile) {
@@ -128,14 +129,15 @@ public class PipeTsFileResource implements AutoCloseable {
 
   //////////////////////////// Cache Getter ////////////////////////////
 
-  public synchronized Map<String, List<String>> tryGetDeviceMeasurementsMap() throws IOException {
+  public synchronized Map<IDeviceID, List<String>> tryGetDeviceMeasurementsMap()
+      throws IOException {
     if (deviceMeasurementsMap == null && isTsFile) {
       cacheObjectsIfAbsent();
     }
     return deviceMeasurementsMap;
   }
 
-  public synchronized Map<String, Boolean> tryGetDeviceIsAlignedMap() throws IOException {
+  public synchronized Map<IDeviceID, Boolean> tryGetDeviceIsAlignedMap() throws IOException {
     if (deviceIsAlignedMap == null && isTsFile) {
       cacheObjectsIfAbsent();
     }
@@ -178,16 +180,16 @@ public class PipeTsFileResource implements AutoCloseable {
     try (TsFileSequenceReader sequenceReader =
         new TsFileSequenceReader(hardlinkOrCopiedFile.getPath(), true, true)) {
       deviceMeasurementsMap = sequenceReader.getDeviceMeasurementsMap();
-      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
 
       deviceIsAlignedMap = new HashMap<>();
       final TsFileDeviceIterator deviceIsAlignedIterator =
           sequenceReader.getAllDevicesIteratorWithIsAligned();
       while (deviceIsAlignedIterator.hasNext()) {
-        final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
+        final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
         deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
       }
-      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+      memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
       measurementDataTypeMap = sequenceReader.getFullPathDataTypeMap();
       memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);

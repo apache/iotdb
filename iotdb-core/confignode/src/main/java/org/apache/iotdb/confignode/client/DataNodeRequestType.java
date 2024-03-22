@@ -73,6 +73,10 @@ public enum DataNodeRequestType {
   PIPE_PUSH_SINGLE_META,
   PIPE_HEARTBEAT,
 
+  // Subscription
+  TOPIC_PUSH_SINGLE_META,
+  CONSUMER_GROUP_PUSH_SINGLE_META,
+
   // CQ
   EXECUTE_CQ,
 

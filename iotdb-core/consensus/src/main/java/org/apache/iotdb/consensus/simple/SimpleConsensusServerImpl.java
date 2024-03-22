@@ -26,13 +26,12 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SimpleConsensusServerImpl implements IStateMachine {
 
   private final Peer peer;
   private final IStateMachine stateMachine;
-  private final AtomicBoolean initialized = new AtomicBoolean(false);
+  private boolean initialized = false;
 
   public SimpleConsensusServerImpl(Peer peer, IStateMachine stateMachine) {
     this.peer = peer;
@@ -48,8 +47,9 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public void start() {
-    if (initialized.compareAndSet(false, true)) {
+  public synchronized void start() {
+    if (!initialized) {
+      initialized = true;
       stateMachine.start();
       // Notify itself as the leader
       stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
@@ -58,7 +58,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     stateMachine.stop();
   }
 
@@ -68,7 +68,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
   }
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
+  public synchronized TSStatus write(IConsensusRequest request) {
     return stateMachine.write(request);
   }
 
@@ -77,18 +77,19 @@ public class SimpleConsensusServerImpl implements IStateMachine {
     return request;
   }
 
+  // The state machine below shall ensure the correctness of concurrent read-write.
   @Override
   public DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir) {
+  public synchronized boolean takeSnapshot(File snapshotDir) {
     return stateMachine.takeSnapshot(snapshotDir);
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public synchronized void loadSnapshot(File latestSnapshotRootDir) {
     stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 }

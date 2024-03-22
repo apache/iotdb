@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -79,8 +80,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
                 sizeForFileWriter,
                 CompactionType.INNER_SEQ_COMPACTION)) {
       while (deviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
-        String device = deviceInfo.left;
+        Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
+        IDeviceID device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
         if (aligned) {
@@ -119,7 +120,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void compactAlignedSeries(
-      String device,
+      IDeviceID device,
       TsFileResource targetResource,
       CompactionTsFileWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
@@ -167,7 +168,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   @SuppressWarnings("squid:S1135")
   private void compactNotAlignedSeries(
-      String device,
+      IDeviceID device,
       TsFileResource targetResource,
       CompactionTsFileWriter writer,
       MultiTsFileDeviceIterator deviceIterator)

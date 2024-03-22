@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -72,7 +73,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
-      String deviceId,
+      IDeviceID deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary) {

@@ -222,7 +222,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
       configManager.getLoadManager().stopLoadServices();
-      configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getProcedureManager().stopExecutor();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
@@ -246,7 +246,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getLoadManager().startLoadServices();
 
     // Start leader scheduling services
-    configManager.getProcedureManager().shiftExecutor(true);
+    configManager.getProcedureManager().startExecutor();
+    threadPool.submit(
+        () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
     configManager.checkUserPathPrivilege();
@@ -295,8 +297,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  /** TODO optimize the lock usage. */
-  private synchronized void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
+  private void writeLogForSimpleConsensus(ConfigPhysicalPlan plan) {
     if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
       try {
         simpleLogWriter.force();
@@ -409,8 +410,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  private void createLogFile(int endIndex) {
-    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
+  private void createLogFile(int startIndex) {
+    simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + startIndex);
     try {
       if (!simpleLogFile.createNewFile()) {
         LOGGER.warn(
